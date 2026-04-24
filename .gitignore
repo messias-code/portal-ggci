@@ -60,3 +60,10 @@ notas.txt
 # ==========================================
 ~$*.xls
 ~$*.xlsx
+
+# ==========================================
+# WINDOWS / WSL
+# Metadados de "Zone.Identifier" criados pelo Windows
+# quando arquivos são baixados da internet e acessados via WSL
+# ==========================================
+*:Zone.Identifier
