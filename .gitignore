@@ -1,0 +1,62 @@
+# ==========================================
+# PYTHON
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# ==========================================
+# AMBIENTES VIRTUAIS
+# ==========================================
+venv/
+env/
+.env
+
+# ==========================================
+# DJANGO
+# ==========================================
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Mantém apenas o arquivo __init__.py das migrations (ignora arquivos gerados)
+**/migrations/*
+!**/migrations/__init__.py
+
+# ==========================================
+# EDITORES E IDES
+# ==========================================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ==========================================
+# LOGS
+# ==========================================
+*.log
+
+# ==========================================
+# DADOS DE ANÁLISE E PROCESSAMENTO
+# Pastas criadas automaticamente pelos scripts
+# de extração, consolidação e geração de relatórios
+# ==========================================
+dados_analise/
+
+# ==========================================
+# RELATÓRIOS E ARQUIVOS DE SAÍDA GERADOS
+# ==========================================
+relatorio_geral.xlsx
+
+# ==========================================
+# ANOTAÇÕES LOCAIS
+# ==========================================
+notas.txt
+
+# ==========================================
+# ARQUIVOS TEMPORÁRIOS DO EXCEL
+# (criados ao abrir planilhas .xls/.xlsx abertas)
+# ==========================================
+~$*.xls
+~$*.xlsx
