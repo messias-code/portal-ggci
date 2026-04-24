@@ -1,0 +1,65 @@
+/* ==========================================================================
+   CONFIGURAÇÕES GLOBAIS
+   ========================================================================== */
+
+/* Define a fonte padrão para toda a página (A fonte 'Poppins' é importada no <head> dos arquivos HTML) */
+body { font-family: 'Poppins', sans-serif; }
+
+
+/* ==========================================================================
+   ANIMAÇÕES DO CARD DE LOGIN (FORMAS INTERNAS)
+   Onde editar no HTML: divs com classes .shape-1, .shape-2 e .shape-3 dentro
+   do painel esquerdo em 'templates/login/index.html'.
+   ========================================================================== */
+
+/* Animação de flutuação vertical (Sobe, desce e escala suavemente) */
+@keyframes float {
+    0%   { transform: translateY(0px) scale(1); }
+    33%  { transform: translateY(-30px) scale(1.05); }
+    66%  { transform: translateY(20px) scale(0.95); }
+    100% { transform: translateY(0px) scale(1); }
+}
+
+/* Animação de deslize horizontal com leve rotação */
+@keyframes slide {
+    0%   { transform: translateX(0px) rotate(0deg); }
+    50%  { transform: translateX(20px) rotate(5deg); }
+    100% { transform: translateX(0px) rotate(0deg); }
+}
+
+/* Aplicação das animações nas formas geométricas decorativas (atrás da imagem principal) */
+.shape-1 { animation: float 8s ease-in-out infinite; }
+.shape-2 { animation: float 12s ease-in-out infinite reverse; } /* Executa ao contrário para criar contraste */
+.shape-3 { animation: slide 10s ease-in-out infinite; }
+
+
+/* ======================================================================================
+   ANIMAÇÕES DO PLANO DE FUNDO (BOLHAS COLORIDAS BLUR)
+   Onde editar no HTML: divs com classes .bg-color-1 a .bg-color-4 que ficam
+   no fundo principal da página, atrás do card de login, em 'templates/login/index.html'.
+   =================================================================================== */
+
+/* Movimentação orgânica, lenta e contínua pelas extremidades da tela (Efeito Drift) */
+@keyframes drift-1 { 
+    0%, 100% { transform: translate(0px, 0px) scale(1); } 
+    33%      { transform: translate(3vw, -3vh) scale(1.05); } 
+    66%      { transform: translate(-2vw, 2vh) scale(0.98); } 
+}
+
+@keyframes drift-2 { 
+    0%, 100% { transform: translate(0px, 0px) scale(1); } 
+    33%      { transform: translate(-3vw, 4vh) scale(1.02); } 
+    66%      { transform: translate(3vw, -3vh) scale(0.96); } 
+}
+
+@keyframes drift-3 { 
+    0%, 100% { transform: translate(0px, 0px) scale(1); } 
+    33%      { transform: translate(2vw, 3vh) scale(0.98); } 
+    66%      { transform: translate(-3vw, -2vh) scale(1.05); } 
+}
+
+/* Aplicação das animações nas grandes bolhas de fundo com durações longas (20s a 35s) */
+.bg-color-1 { animation: drift-1 20s ease-in-out infinite; }
+.bg-color-2 { animation: drift-2 25s ease-in-out infinite; }
+.bg-color-3 { animation: drift-3 30s ease-in-out infinite; }
+.bg-color-4 { animation: drift-1 35s ease-in-out infinite reverse; } /* Reaproveita o drift-1 de forma reversa */
