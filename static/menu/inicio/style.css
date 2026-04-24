@@ -1,0 +1,72 @@
+/* ==========================================================================
+   CONFIGURAÇÕES GLOBAIS - TELA DE INÍCIO
+   ========================================================================== */
+
+/* Define a tipografia padrão para toda a página. 
+   A fonte 'Poppins' precisa ser importada no <head> do 'templates/inicio/index.html' */
+body { font-family: 'Poppins', sans-serif; }
+
+
+/* ==========================================================================
+   ANIMAÇÕES DO PLANO DE FUNDO (BOLHAS FLUTUANTES)
+   Onde editar no HTML: Procure pelas divs com as classes .bg-color-1 até 
+   .bg-color-4 que ficam no fundo da página em 'templates/inicio/index.html'.
+   ========================================================================== */
+
+/* Animações de movimentação orgânica e contínua (Efeito Drift).
+   Elas movem os elementos em eixos X e Y (translate) e alteram o tamanho (scale) 
+   suavemente para dar a sensação de que estão flutuando no ar. */
+
+/* Trajetória 1: Foca em movimento diagonal superior direito e inferior esquerdo */
+@keyframes drift-1 { 
+    0%, 100% { transform: translate(0px, 0px) scale(1); } 
+    33%      { transform: translate(3vw, -3vh) scale(1.05); } 
+    66%      { transform: translate(-2vw, 2vh) scale(0.98); } 
+}
+
+/* Trajetória 2: Foca em movimento diagonal inferior esquerdo e superior direito */
+@keyframes drift-2 { 
+    0%, 100% { transform: translate(0px, 0px) scale(1); } 
+    33%      { transform: translate(-3vw, 4vh) scale(1.02); } 
+    66%      { transform: translate(3vw, -3vh) scale(0.96); } 
+}
+
+/* Trajetória 3: Foca em expansão centralizada com movimentos mais curtos */
+@keyframes drift-3 { 
+    0%, 100% { transform: translate(0px, 0px) scale(1); } 
+    33%      { transform: translate(2vw, 3vh) scale(0.98); } 
+    66%      { transform: translate(-3vw, -2vh) scale(1.05); } 
+}
+
+/* Aplicação das animações nas bolhas com tempos longos (20s a 35s) para garantir 
+   um movimento muito suave e imperceptível, evitando distração na tela. */
+.bg-color-1 { animation: drift-1 20s ease-in-out infinite; }
+.bg-color-2 { animation: drift-2 25s ease-in-out infinite; }
+.bg-color-3 { animation: drift-3 30s ease-in-out infinite; }
+.bg-color-4 { animation: drift-1 35s ease-in-out infinite reverse; } /* Reusa o drift-1 ao contrário */
+
+
+/* ==========================================================================
+   ESTILIZAÇÃO DA BARRA DE ROLAGEM (CUSTOM SCROLLBAR)
+   Onde editar no HTML: Adicione a classe .custom-scrollbar em qualquer 
+   container que precise de rolagem no 'templates/inicio/index.html' 
+   (ex: na div principal que envolve os cards dos módulos).
+   ========================================================================== */
+
+/* Afina a largura da barra de rolagem (padrão do navegador é mais grossa) */
+.custom-scrollbar::-webkit-scrollbar { width: 6px; }
+
+/* Deixa o fundo (trilho) da barra de rolagem invisível para um visual mais limpo */
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+
+/* Define a cor e o formato do "pegador" (thumb) da barra de rolagem.
+   Neste caso, usa um tom de laranja/âmbar translúcido com bordas arredondadas. */
+.custom-scrollbar::-webkit-scrollbar-thumb { 
+    background: rgba(245, 158, 11, 0.4); 
+    border-radius: 10px; 
+}
+
+/* Intensifica a cor do "pegador" quando o usuário passa o mouse por cima */
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { 
+    background: rgba(245, 158, 11, 0.8); 
+}
