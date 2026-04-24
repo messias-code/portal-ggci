@@ -4,7 +4,7 @@
     <img src="static/sources/ovg.png" alt="portal-ggci" width="200">
 </p>
 
-> Plataforma web interna da Gerência de Governança, Controle e Inteligência (GGCI) da OVG, construída em Python/Django para centralizar ferramentas, automações e gestão operacional da equipe.
+> Plataforma web interna da Gerência de Gestão e Controle de Informações (GGCI) da OVG, construída em Python/Django para centralizar ferramentas, automações e gestão operacional da equipe.
 > "Automatize o que for repetitivo, padronize o que for manual, documente tudo."
 
 _**Desenvolvido com ❤️ para a equipe técnica da OVG**_
@@ -29,7 +29,7 @@ _**Desenvolvido com ❤️ para a equipe técnica da OVG**_
 
 ## 🚀 Sobre o Projeto
 
-O **Portal GGCI** nasceu da necessidade de eliminar tarefas manuais repetitivas, reduzir a dependência de planilhas descentralizadas e oferecer uma interface **unificada e segura** para a equipe técnica da Gerência de Governança, Controle e Inteligência da **Organização das Voluntárias de Goiás (OVG)**.
+O **Portal GGCI** nasceu da necessidade de eliminar tarefas manuais repetitivas, reduzir a dependência de planilhas descentralizadas e oferecer uma interface **unificada e segura** para a equipe técnica da Gerência de Gestão e Controle de Informações da **Organização das Voluntárias de Goiás (OVG)**.
 
 Em vez de depender de ferramentas externas dispersas, a equipe passa a contar com um **sistema próprio**, adaptado ao seu fluxo de trabalho, com controle de acessos granular, automações inteligentes e ferramentas de produtividade — tudo em uma única plataforma.
 
@@ -237,14 +237,70 @@ Siga a seção [Gestão de Banco de Dados e Usuários](#%EF%B8%8F-gestão-de-ban
 
 ## 🗄️ Gestão de Banco de Dados e Usuários (Ponto Crítico)
 
-Esta é a seção mais importante para garantir a **portabilidade do projeto**. Siga **rigorosamente** a ordem dos passos.
+Esta é a seção mais importante para garantir o funcionamento do projeto ao cloná-lo pela primeira vez ou ao mudar de computador. O Git **não** salva o arquivo do banco de dados local (`db.sqlite3`) nem os históricos de migrações (`migrations/`), por isso precisamos recriá-los do zero.
 
-### Passo 1 — Criar as Migrações
+Siga **rigorosamente** a ordem dos passos abaixo para evitar o erro clássico:
 
-O `makemigrations` lê os models do Django e gera os arquivos de instrução para construir as tabelas.
+```
+ValueError: Dependency on app with no migrations: usuarios
+```
+
+> **Por que esse erro acontece?** O Portal usa um **modelo de usuário customizado** (`usuarios.Usuario`). O sistema interno do Django (painel Admin, autenticação, sessões) depende desse app. Se você rodar `makemigrations` sem especificar o app `usuarios` primeiro, o Django não encontra a base do sistema de usuários e trava com esse erro.
+
+---
+
+### 🔍 Verificando o Estado do Banco de Dados
+
+> **ℹ️ Importante:** Este projeto usa **MySQL** como banco de dados, não SQLite. O banco **não é um arquivo** na pasta do projeto — ele vive dentro do servidor MySQL instalado no sistema operacional, em `/var/lib/mysql/portal_ggci/`. Por isso, o arquivo `db.sqlite3` **nunca vai aparecer** neste projeto.
+
+Antes de rodar qualquer comando, verifique se o MySQL está rodando e se o banco existe:
+
+**1. Verificar se o serviço MySQL está ativo:**
 
 ```bash
-python manage.py makemigrations
+sudo systemctl status mysql
+```
+
+- Se mostrar `Active: active (running)` → o servidor MySQL está rodando ✅
+- Se mostrar `Active: inactive (dead)` → inicie o serviço: `sudo systemctl start mysql`
+
+**2. Verificar se o banco `portal_ggci` existe:**
+
+```bash
+mysql -u root -povg@2026 -e "SHOW DATABASES;"
+```
+
+- Se `portal_ggci` aparecer na lista → o banco existe ✅
+- Se não aparecer → o banco ainda não foi criado, siga a [Instalação Limpa](#-passo-a-passo-da-instalação-limpa)
+
+**3. Verificar se há usuários cadastrados no banco:**
+
+```bash
+python manage.py shell -c "from usuarios.models import Usuario; print(f'{Usuario.objects.count()} usuário(s) encontrado(s)')"
+```
+
+- Se mostrar `X usuário(s) encontrado(s)` com X > 0 → o banco está populado e funcionando ✅
+- Se mostrar `0 usuário(s) encontrado(s)` → o banco existe mas está vazio, rode o `loaddata`
+- Se mostrar um erro de tabela → o banco existe mas sem estrutura, apague e recrie
+
+**4. Verificar se as migrações já foram aplicadas:**
+
+```bash
+python manage.py showmigrations
+```
+
+Procure pelo app `usuarios` na lista. Se aparecer `[X]` antes de cada item, as migrações já foram aplicadas. Se aparecer `[ ]`, ainda precisam ser executadas.
+
+---
+
+### ✅ Passo a Passo da Instalação Limpa
+
+**Passo 1 — Crie as migrações do app de usuários PRIMEIRO:**
+
+Este é o passo que previne o erro. O Django precisa construir a base do sistema de usuários antes de qualquer outra coisa.
+
+```bash
+python manage.py makemigrations usuarios
 ```
 
 Output esperado:
@@ -254,9 +310,22 @@ Migrations for 'usuarios':
     - Create model Usuario
 ```
 
-### Passo 2 — Aplicar as Migrações
+**Passo 2 — Crie as migrações dos demais módulos (Automações, etc):**
 
-O `migrate` executa os arquivos gerados e **cria as tabelas de fato** no MySQL.
+```bash
+python manage.py makemigrations
+```
+
+Output esperado:
+```
+Migrations for 'automacoes':
+  automacoes/migrations/0001_initial.py
+    ...
+```
+
+**Passo 3 — Aplique as migrações para construir as tabelas no banco:**
+
+O `migrate` executa todos os arquivos gerados e **cria as tabelas de fato** no banco de dados.
 
 ```bash
 python manage.py migrate
@@ -265,16 +334,17 @@ python manage.py migrate
 Output esperado:
 ```
 Operations to perform:
-  Apply all migrations: admin, auth, contenttypes, sessions, usuarios
+  Apply all migrations: admin, auth, automacoes, contenttypes, sessions, usuarios
 Running migrations:
   Applying contenttypes.0001_initial... OK
   Applying usuarios.0001_initial... OK
+  Applying admin.0001_initial... OK
   ...
 ```
 
-### Passo 3 — Restaurar Usuários e Permissões via Fixture
+**Passo 4 — Restaure os usuários e permissões via Fixture:**
 
-> ⚠️ **Esta etapa é fundamental.** O arquivo `usuarios_iniciais.json` contém um snapshot dos usuários de desenvolvimento com suas senhas (hash Argon2) e permissões. **Sem este passo, o banco estará vazio e sem nenhum usuário para login.**
+> ⚠️ **Esta etapa é fundamental.** O arquivo `usuarios_iniciais.json` é o único backup oficial dos usuários do sistema. Sem ele, o banco estará completamente vazio e você não conseguirá fazer login.
 
 ```bash
 python manage.py loaddata usuarios_iniciais.json
@@ -282,19 +352,49 @@ python manage.py loaddata usuarios_iniciais.json
 
 Output esperado:
 ```
-Installed 2 object(s) from 1 fixture(s).
+Installed X object(s) from 1 fixture(s).
 ```
 
-### Usuários Restaurados
+Após esse passo, o sistema estará pronto. Rode o servidor normalmente:
 
-Após o `loaddata`, os seguintes usuários estarão disponíveis no sistema:
+```bash
+python manage.py runserver 0.0.0.0:8000
+```
 
-| # | Nome | Login | Perfil | Superusuário |
-|---|---|---|---|---|
-| 1 | Administrador | `admin@ovg.org.br` | Administrador | ✅ Sim |
-| 2 | GGCI | `ggci@ovg.org.br` | Consulta | ❌ Não |
+---
 
-> **Nota:** As senhas estão armazenadas em **formato hash Argon2** no arquivo `.json`. Por segurança, as senhas em texto plano não ficam registradas no repositório. Solicite as credenciais ao responsável técnico do projeto.
+### 💥 Como Resetar o Banco de Dados MySQL (Apagar e Recriar do Zero)
+
+Se você encontrou um dos problemas abaixo, a solução é apagar o banco MySQL e recriar tudo:
+
+- ❌ Usuários "fantasmas" aparecem no sistema (de uma instalação anterior)
+- ❌ Erro `Dependency on app with no migrations: usuarios` ao subir o servidor
+- ❌ Erro `table already exists` ao rodar `migrate`
+- ❌ Banco de dados corrompido ou dados inconsistentes
+
+**O que acontece:** O banco de dados `portal_ggci` fica armazenado dentro do servidor MySQL, em `/var/lib/mysql/portal_ggci/`. O `.gitignore` não apaga esse banco — ele continua intacto na sua máquina mesmo depois de clonar o projeto novamente. Por isso, dados "fantasmas" de instalações anteriores podem aparecer.
+
+**Solução — Apague o banco MySQL e recrie do zero:**
+
+```bash
+# Passo 1: Apague o banco de dados no MySQL
+mysql -u root -povg@2026 -e "DROP DATABASE portal_ggci;"
+
+# Passo 2: Recrie o banco limpo
+mysql -u root -povg@2026 -e "CREATE DATABASE portal_ggci CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+
+# Passo 3: Recrie toda a estrutura do Django (na ordem correta)
+python manage.py makemigrations usuarios
+python manage.py makemigrations
+python manage.py migrate
+
+# Passo 4: Restaure os usuários
+python manage.py loaddata usuarios_iniciais.json
+```
+
+Pronto! Banco novo, limpo e 100% alinhado com o código atual.
+
+> **Nota:** As senhas estão armazenadas em **formato hash Argon2** no arquivo `.json`. Por segurança, as senhas em texto plano não ficam no repositório. Solicite as credenciais ao responsável técnico do projeto.
 
 ## ▶️ Execução do Servidor
 
@@ -346,55 +446,55 @@ ssh -R portal-ggci:80:localhost:8000 serveo.net
 
 ## 🔄 Manutenção e Atualização de Fixtures
 
-O arquivo `usuarios_iniciais.json` é a **fonte de portabilidade** do projeto. Ele precisa ser atualizado manualmente sempre que houver mudanças de usuários no ambiente de desenvolvimento.
+O arquivo `usuarios_iniciais.json` é a **fonte de portabilidade** do projeto e o **único backup oficial** dos usuários do sistema. O `.gitignore` esconde o banco de dados do repositório online — sem este `.json`, seria impossível recriar os acessos em um ambiente novo.
 
 ### Quando atualizar?
 
-- ✅ Ao criar um novo usuário de desenvolvimento pelo painel
-- ✅ Ao alterar as permissões de um usuário
-- ✅ Ao alterar o perfil de um usuário
+- ✅ Ao criar um novo usuário pelo painel de Gestão de Acessos
+- ✅ Ao alterar a senha de qualquer usuário
+- ✅ Ao mudar o perfil de um usuário (ex: de `comum` para `administrador`)
+- ✅ Ao ativar ou desativar permissões em módulos de qualquer usuário
 - ✅ Antes de qualquer commit que envolva mudanças de usuários
 - ❌ **Nunca** exporte usuários de produção para este arquivo
 
-### Como exportar o estado atual dos usuários
+### O Comando para Atualizar (dumpdata)
 
-O comando `dumpdata` do Django lê os dados do banco e os exporta para JSON:
+O comando `dumpdata` vai até o seu banco de dados local, extrai todos os usuários exatos que estão cadastrados e escreve no arquivo `.json` — sobrescrevendo a versão anterior:
 
 ```bash
-# Exportação formatada e legível (RECOMENDADO)
-python manage.py dumpdata usuarios.usuario --indent 4 > usuarios_iniciais.json
+python manage.py dumpdata usuarios.Usuario --indent 4 > usuarios_iniciais.json
 ```
 
-> **💡 Dica:** Use sempre `--indent 4` para gerar um JSON indentado. Isso facilita a revisão via `git diff` antes de commitar.
+> **💡 Dica:** Use sempre `--indent 4` para gerar um JSON indentado e legível. Isso facilita muito a revisão das mudanças via `git diff` antes de commitar.
 
-### Fluxo completo de atualização
+> **⚠️ ATENÇÃO — Comando correto:** O Portal GGCI usa um **model de usuário customizado** (`usuarios.Usuario`). O comando correto é **sempre** com `usuarios.Usuario`, nunca com `auth.user`.
+>
+> ✅ **Correto:** `python manage.py dumpdata usuarios.Usuario --indent 4 > usuarios_iniciais.json`
+>
+> ❌ **Incorreto:** `python manage.py dumpdata auth.user`
+
+### Fluxo completo de atualização e commit
 
 ```
 1. Crie ou edite usuários pelo painel de Gestão de Acessos
          │
          ▼
 2. Exporte o estado atual do banco para o JSON
-   $ python manage.py dumpdata usuarios.usuario --indent 4 > usuarios_iniciais.json
+   $ python manage.py dumpdata usuarios.Usuario --indent 4 > usuarios_iniciais.json
          │
          ▼
-3. Revise o arquivo gerado
+3. Revise o que mudou no arquivo
    $ git diff usuarios_iniciais.json
          │
          ▼
-4. Commite junto com as demais alterações
+4. Commite o arquivo atualizado
    $ git add usuarios_iniciais.json
-   $ git commit -m "fix(fixtures): atualiza usuarios_iniciais com novo usuário"
+   $ git commit -m "chore: atualiza fixture de usuarios via dumpdata"
          │
          ▼
-5. Qualquer desenvolvedor que fizer git pull pode recarregar os usuários:
+5. Qualquer desenvolvedor que fizer git pull pode restaurar os usuários com:
    $ python manage.py loaddata usuarios_iniciais.json
 ```
-
-> **⚠️ ATENÇÃO:** O Portal GGCI usa um **model de usuário customizado** (`usuarios.Usuario`). O comando correto é **sempre** `usuarios.usuario`, nunca `auth.user`.
->
-> ✅ Correto: `python manage.py dumpdata usuarios.usuario`
->
-> ❌ Incorreto: `python manage.py dumpdata auth.user`
 
 ## 💥 Desfazendo as Alterações (Teardown)
 
@@ -442,6 +542,6 @@ Dúvidas, sugestões ou problemas? Entre em contato:
 
 <p align="center">
     Desenvolvido por <strong>Ihan Messias Nascimento dos Santos</strong><br>
-    Gerência de Governança, Controle e Inteligência · Organização das Voluntárias de Goiás
+    Gerência de Gestão e Controle de Informações · Organização das Voluntárias de Goiás
 </p>
 
