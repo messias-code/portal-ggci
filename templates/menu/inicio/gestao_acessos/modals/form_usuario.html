@@ -1,0 +1,206 @@
+<div id="modalNovoUsuario" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4">
+    
+    <div id="modalConteudo" class="bg-white/95 backdrop-blur-xl border border-white/50 w-full max-w-3xl rounded-[2rem] shadow-2xl flex flex-col max-h-[90vh] transform scale-95 transition-transform duration-300 overflow-hidden relative">
+        
+        <div class="px-8 py-6 border-b border-purple-100/50 flex justify-between items-center shrink-0">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-pink-100 text-pink-500 flex items-center justify-center">
+                    <i class="fa-solid fa-user-gear text-lg"></i>
+                </div>
+                <h3 id="modalTitulo" class="text-2xl font-bold text-gray-800">Cadastrar Usuário</h3>
+            </div>
+            <button onclick="fecharModal()" class="text-gray-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-red-50"><i class="fa-solid fa-xmark text-xl"></i></button>
+        </div>
+
+        <div class="p-8 overflow-y-auto max-h-[60vh] custom-scrollbar">
+            <p class="text-gray-500 text-sm mb-8 text-center font-medium">Preencha os dados abaixo e defina os acessos modulares do colaborador.</p>
+
+            <form id="formCadastroUsuario" class="space-y-6">
+                {% csrf_token %}
+                
+                <input type="hidden" name="usuario_id" id="usuario_id" value="">
+
+                <div id="opcoes_edicao" class="hidden mb-6 p-5 bg-amber-50 border border-amber-200 rounded-2xl">
+                    <h4 class="text-sm font-bold text-amber-800 mb-3"><i class="fa-solid fa-triangle-exclamation"></i> Opções de Atualização</h4>
+                    <div class="flex flex-col sm:flex-row gap-6">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="check_alterar_nome" name="alterar_nome" value="1" class="w-4 h-4 text-amber-600 bg-white border-gray-300 rounded focus:ring-amber-500">
+                            <span class="text-sm font-semibold text-gray-700">Alterar Nome Completo</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="check_resetar_senha" name="resetar_senha" value="1" class="w-4 h-4 text-amber-600 bg-white border-gray-300 rounded focus:ring-amber-500">
+                            <span class="text-sm font-semibold text-gray-700">Resetar Senha para Padrão</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="space-y-4 mb-6 relative z-10">
+                    
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-pink-50/50 p-5 rounded-2xl border border-pink-200" id="box_admin">
+                        <div>
+                            <h4 class="text-lg font-extrabold text-gray-800 flex items-center gap-2"><i class="fa-solid fa-crown text-pink-500"></i> Nível Administrador</h4>
+                            <p class="text-xs text-gray-500 mt-1 font-medium">Acesso total à Gestão de Acessos e configurações do sistema.</p>
+                            <p id="msg_bloqueio_admin" class="hidden text-xs text-red-600 font-bold mt-2"><i class="fa-solid fa-lock"></i> Contas de Consulta não podem ser Administradoras.</p>
+                        </div>
+                        <label class="inline-flex items-center cursor-pointer bg-white px-4 py-2.5 rounded-xl border border-pink-100 shadow-sm hover:border-pink-300 transition-colors">
+                            <input type="checkbox" id="toggleAdminGeral" name="promover_admin" class="sr-only peer">
+                            <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-pink-500 peer-checked:to-purple-500"></div>
+                            <span class="ms-3 text-sm font-bold text-gray-700 peer-checked:text-pink-600">Promover</span>
+                        </label>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-blue-50/50 p-5 rounded-2xl border border-blue-200" id="box_consulta">
+                        <div>
+                            <h4 class="text-lg font-extrabold text-gray-800 flex items-center gap-2"><i class="fa-solid fa-users-viewfinder text-blue-500"></i> Conta de Consulta</h4>
+                            <p class="text-xs text-gray-500 mt-1 font-medium">Conta de uso departamental genérico (apenas visualização).</p>
+                        </div>
+                        <label class="inline-flex items-center cursor-pointer bg-white px-4 py-2.5 rounded-xl border border-blue-100 shadow-sm hover:border-blue-300 transition-colors">
+                            <input type="checkbox" id="toggleConsulta" name="promover_consulta" class="sr-only peer">
+                            <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                            <span class="ms-3 text-sm font-bold text-gray-700 peer-checked:text-blue-600">Promover</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="h-px w-full bg-gradient-to-r from-transparent via-purple-200 to-transparent my-8 relative z-10"></div>
+
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Nome Completo do Colaborador (ou Departamento)</label>
+                    <input type="text" name="nome_completo" id="nome_completo" required placeholder="EX: Nome completo / Siglas do departamento" class="w-full px-4 py-3 rounded-xl border border-purple-100 bg-white text-gray-800 focus:ring-2 focus:ring-purple-400 outline-none transition-all placeholder-gray-400 read-only:bg-gray-100 read-only:text-gray-500 read-only:cursor-not-allowed capitalize relative z-10">
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 opacity-70">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">E-mail Corporativo Gerado</label>
+                        <div class="relative">
+                            <input type="text" id="email_preview" disabled class="w-full pl-4 pr-32 py-3 rounded-xl border border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed relative z-10">
+                            <span class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold z-10">@ovg.org.br</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label id="lbl_senha_preview" class="block text-sm font-bold text-gray-700 mb-2">Senha Padrão Gerada</label>
+                        <input type="text" id="senha_preview" disabled class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed relative z-10">
+                    </div>
+                </div>
+                
+                <p id="info_senha_texto" class="text-xs text-center text-purple-600 font-medium mt-2 mb-8">
+                    <i class="fa-solid fa-circle-info relative z-10"></i> O login e a senha provisória são baseados no nome.
+                </p>
+
+                <div>
+                    <h4 class="text-base font-bold text-gray-800 mb-4 relative z-10">Acessos Modulares</h4>
+                    <div class="space-y-4">
+                        
+                        <!-- 1. Menu Início (Padrão Original com ID) -->
+                        <div class="border border-purple-100 rounded-2xl overflow-hidden bg-white relative z-10 shadow-sm hover:shadow-md transition-shadow">
+                            <div class="bg-gray-50 px-5 py-3 border-b border-gray-100 flex items-center gap-2 relative z-10">
+                                <i class="fa-solid fa-house text-purple-500 relative z-10"></i>
+                                <span class="font-bold text-gray-700 text-sm relative z-10">Menu: Início</span>
+                            </div>
+                            <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 relative z-10 bg-white">
+                                <!-- Gestão de Acessos -->
+                                <div id="box_gestao_acessos" class="flex items-center gap-3 p-3 rounded-xl border border-pink-100 bg-gray-50/50 relative z-10 transition-all duration-300">
+                                    <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-500 shrink-0">
+                                        <i class="fa-solid fa-building-lock text-sm"></i>
+                                    </div>
+                                    <span class="text-sm font-semibold text-gray-500 flex items-center gap-2">
+                                        Gestão de Acessos <span class="text-[10px] bg-pink-100 text-pink-600 px-2 py-0.5 rounded font-bold">Somente Admin</span>
+                                    </span>
+                                </div>
+                                <!-- Alteração de Senha -->
+                                <div id="box_alteracao_senha" class="flex items-center gap-3 p-3 rounded-xl border border-pink-100 bg-gray-50/50 relative z-10 transition-all duration-300">
+                                    <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-500 shrink-0">
+                                        <i class="fa-solid fa-user-secret text-sm"></i>
+                                    </div>
+                                    <span class="text-sm font-semibold text-gray-500 flex items-center gap-2">
+                                        Alteração de Senha <span class="text-[10px] bg-pink-100 text-pink-600 px-2 py-0.5 rounded font-bold">Padrão</span>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2. Menu Ferramentas -->
+                        <div class="border border-purple-100 rounded-2xl overflow-hidden bg-white relative z-10 shadow-sm hover:shadow-md transition-shadow">
+                            <div class="bg-gray-50 px-5 py-3 border-b border-gray-100 flex items-center justify-between gap-2 relative z-10">
+                                <div class="flex items-center gap-2">
+                                    <i class="fa-solid fa-screwdriver-wrench text-purple-500 relative z-10"></i>
+                                    <span class="font-bold text-gray-700 text-sm relative z-10">Menu: Ferramentas</span>
+                                </div>
+                                <label class="flex items-center gap-2 cursor-pointer bg-white px-3 py-1.5 rounded-lg border border-purple-200 shadow-sm hover:bg-purple-50 transition-colors">
+                                    <input type="checkbox" name="p_ferramentas" id="p_ferramentas" value="1" class="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 relative z-10 menu-toggle" data-target=".card-ferramentas">
+                                    <span class="text-xs font-bold text-purple-700">Liberar Menu</span>
+                                </label>
+                            </div>
+                            <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 relative z-10 bg-white">
+                                <!-- Checkbox clicável do Card -->
+                                <label class="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-gray-50/50 cursor-pointer hover:bg-gray-100 transition-colors card-container">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-500 shrink-0"><i class="fa-solid fa-brain"></i></div>
+                                        <span class="text-sm font-semibold text-gray-600">Formatador de Listas</span>
+                                    </div>
+                                    <input type="checkbox" name="p_formatador_listas" id="p_formatador_listas" value="1" class="w-4 h-4 text-pink-500 bg-gray-100 border-gray-300 rounded focus:ring-pink-500 card-ferramentas">
+                                </label>
+                                <!-- Checkbox clicável do Card -->
+                                <label class="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-gray-50/50 cursor-pointer hover:bg-gray-100 transition-colors card-container">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 shrink-0"><i class="fa-solid fa-language"></i></div>
+                                        <span class="text-sm font-semibold text-gray-600">Formatador de Dados</span>
+                                    </div>
+                                    <input type="checkbox" name="p_formatador_dados" id="p_formatador_dados" value="1" class="w-4 h-4 text-pink-600 bg-gray-100 border-gray-300 rounded focus:ring-pink-600 card-ferramentas">
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- 3. Menu Automações -->
+                        <div class="border border-purple-100 rounded-2xl overflow-hidden bg-white relative z-10 shadow-sm hover:shadow-md transition-shadow">
+                            <div class="bg-gray-50 px-5 py-3 border-b border-gray-100 flex items-center justify-between gap-2 relative z-10">
+                                <div class="flex items-center gap-2">
+                                    <i class="fa-brands fa-whmcs text-purple-500 text-lg relative z-10"></i>
+                                    <span class="font-bold text-gray-700 text-sm relative z-10">Menu: Automações</span>
+                                </div>
+                                <label class="flex items-center gap-2 cursor-pointer bg-white px-3 py-1.5 rounded-lg border border-purple-200 shadow-sm hover:bg-purple-50 transition-colors">
+                                    <input type="checkbox" name="p_automacoes" id="p_automacoes" value="1" class="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 relative z-10 menu-toggle" data-target=".card-automacoes">
+                                    <span class="text-xs font-bold text-purple-700">Liberar Menu</span>
+                                </label>
+                            </div>
+                            <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 relative z-10 bg-white">
+                                <!-- Checkbox clicável do Card -->
+                                <label class="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-gray-50/50 cursor-pointer hover:bg-gray-100 transition-colors card-container">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-500 shrink-0"><i class="fa-solid fa-robot"></i></div>
+                                        <span class="text-sm font-semibold text-gray-600">Análise IA</span>
+                                    </div>
+                                    <input type="checkbox" name="p_analise_ia" id="p_analise_ia" value="1" class="w-4 h-4 text-pink-500 bg-gray-100 border-gray-300 rounded focus:ring-pink-500 card-automacoes">
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- 4. Menu Documentações -->
+                        <div class="border border-purple-100 rounded-2xl overflow-hidden bg-white relative z-10 shadow-sm hover:shadow-md transition-shadow">
+                            <div class="bg-gray-50 px-5 py-3 border-b border-gray-100 flex items-center justify-between gap-2 relative z-10">
+                                <div class="flex items-center gap-2">
+                                    <i class="fa-solid fa-folder-open text-purple-500 relative z-10"></i>
+                                    <span class="font-bold text-gray-700 text-sm relative z-10">Menu: Documentações</span>
+                                </div>
+                                <label class="flex items-center gap-2 cursor-pointer bg-white px-3 py-1.5 rounded-lg border border-purple-200 shadow-sm hover:bg-purple-50 transition-colors">
+                                    <input type="checkbox" name="p_documentacoes" id="p_documentacoes" value="1" class="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 relative z-10">
+                                    <span class="text-xs font-bold text-purple-700">Liberar Menu</span>
+                                </label>
+                            </div>
+                            <!-- Espaço reservado para futuros cards -->
+                            <div class="p-4 bg-white/50">
+                                <p class="text-[11px] text-gray-400 italic text-center">Nenhum submódulo disponível no momento.</p>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="px-8 py-5 border-t border-purple-100/50 flex justify-end gap-3 bg-gray-50/50 shrink-0 relative z-10 transition-all duration-300">
+            <button onclick="fecharModal()" type="button" class="px-6 py-2.5 rounded-xl font-bold text-gray-500 bg-white border border-purple-100 hover:bg-gray-50 transition-all shadow-sm relative z-10">Cancelar</button>
+            <button id="btnSalvarUsuario" type="button" class="px-6 py-2.5 rounded-xl font-bold text-white bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 shadow-lg shadow-pink-500/30 hover:scale-[1.03] transition-all relative z-10">Salvar Acessos</button>
+        </div>
+    </div>
+</div>
