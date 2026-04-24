@@ -1,0 +1,109 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal GGCI - OVG</title>
+    
+    <!-- Configuração do Tailwind CSS (Framework de Estilos) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { darkMode: 'class', };</script>
+    
+    <!-- Importação da Fonte Poppins do Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- CSS Externo: Estilos específicos da tela de login (ex: animações de fundo) -->
+    <!-- Arquivo localizado em: static/login/style.css -->
+    <link rel="stylesheet" href="{% static 'login/style.css' %}">
+</head>
+
+<!-- Layout principal: Fundo claro, centralização do card e transições suaves -->
+<body class="bg-[#f8f6fb] fixed inset-0 flex items-center justify-center p-4 antialiased transition-colors duration-500 overflow-hidden">
+
+    <!-- INÍCIO: Elementos visuais de fundo (Bolas coloridas animadas) -->
+    <!-- As animações 'drift' são controladas pelo static/login/style.css -->
+    <div class="bg-color-1 absolute top-[-15%] left-[-10%] w-[65vw] h-[65vh] bg-pink-500/60 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="bg-color-2 absolute bottom-[-15%] left-[10%] w-[60vw] h-[60vh] bg-purple-600/60 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="bg-color-3 absolute top-[-5%] right-[-10%] w-[60vw] h-[60vh] bg-yellow-400/50 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="bg-color-4 absolute bottom-[-10%] right-[5%] w-[65vw] h-[65vh] bg-teal-400/50 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <!-- FIM: Elementos visuais de fundo -->
+
+    <!-- Container para exibição de mensagens de erro/sucesso (Toasts) geradas pelo JS -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col items-end"></div>
+
+    <!-- INÍCIO: Card Central (Dividido em duas colunas em telas grandes) -->
+    <div class="bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-2xl flex flex-col md:flex-row w-full max-w-5xl overflow-hidden border border-white/50 relative transition-colors duration-500 z-10">
+
+        <!-- Lado Esquerdo (Banner Decorativo com Imagem) -->
+        <div class="md:w-1/2 bg-purple-50/80 relative flex items-center justify-center p-10 overflow-hidden min-h-[450px] transition-colors duration-500">
+            <!-- Formas geométricas de fundo do banner -->
+            <div class="shape-1 absolute top-10 left-10 w-64 h-64 bg-purple-300 rounded-full mix-blend-multiply filter blur-2xl opacity-60"></div>
+            <div class="shape-2 absolute bottom-10 right-10 w-72 h-72 bg-pink-200 rounded-full mix-blend-multiply filter blur-2xl opacity-70"></div>
+            <div class="shape-3 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-50"></div>
+
+            <!-- Imagem principal do painel esquerdo -->
+            <img src="{% static 'sources/job.png' %}" alt="Equipe trabalhando" class="relative z-10 w-full max-w-sm drop-shadow-xl transform transition hover:scale-105 duration-700">
+        </div>
+
+        <!-- Lado Direito (Formulário de Login) -->
+        <div class="md:w-1/2 p-10 lg:p-14 flex flex-col justify-center bg-transparent relative transition-colors duration-500">
+            <div class="w-full max-w-md mx-auto space-y-8">
+                
+                <!-- Cabeçalho do Formulário (Logos e Títulos) -->
+                <div class="text-center flex flex-col items-center">
+                    <img src="{% static 'sources/ovg.png' %}" alt="Logo OVG" class="h-28 mb-6 drop-shadow-sm transition-transform hover:scale-105 duration-300">
+                    <h2 class="text-3xl font-bold text-gray-800 tracking-tight transition-colors">Portal GGCI</h2>
+                    <p class="mt-2 text-lg text-gray-500 font-medium transition-colors">Gerência de Gestão e Controle de Informações</p>
+                </div>
+
+                <!-- Alerta informativo para usuários sem acesso -->
+                <div class="bg-purple-50 border-l-4 border-purple-600 rounded-r-xl p-4 text-base text-purple-800 shadow-sm transition-colors">
+                    Caso não possua acesso, contate o administrador do sistema.
+                </div>
+
+                <!-- INÍCIO: Formulário de Autenticação -->
+                <!-- A lógica de envio (Fetch API) está em: static/login/script.js -->
+                <form id="formLogin" class="space-y-6" action="#" method="POST" novalidate>
+                    
+                    <!-- Token de Segurança Obrigatório do Django para requisições POST -->
+                    {% csrf_token %}
+
+                    <!-- Campo: Usuário (Login) -->
+                    <div>
+                        <label for="usuario" class="block text-lg font-semibold text-gray-700 mb-2 transition-colors">Usuário</label>
+                        <input id="usuario" name="usuario" type="text" required autocomplete="username" spellcheck="false" 
+                            class="block w-full rounded-2xl border-2 border-gray-200 bg-gray-50/50 py-4 px-5 text-lg text-gray-800 focus:bg-white focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-600 transition-all duration-300" 
+                            placeholder="Digite seu usuário">
+                    </div>
+
+                    <!-- Campo: Senha -->
+                    <div>
+                        <label for="senha" class="block text-lg font-semibold text-gray-700 mb-2 transition-colors">Senha</label>
+                        <input id="senha" name="senha" type="password" required autocomplete="current-password" 
+                            class="block w-full rounded-2xl border-2 border-gray-200 bg-gray-50/50 py-4 px-5 text-lg text-gray-800 focus:bg-white focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-600 transition-all duration-300" 
+                            placeholder="••••••••">
+                    </div>
+
+                    <!-- Botão de Submissão -->
+                    <button type="submit" class="w-full py-4 px-6 rounded-2xl shadow-xl shadow-purple-600/30 text-xl font-bold text-white bg-purple-700 hover:bg-purple-800 focus:outline-none focus:ring-4 focus:ring-purple-500/50 transform transition-all duration-300 hover:-translate-y-1">
+                        Acessar o Portal
+                    </button>
+                </form>
+                <!-- FIM: Formulário de Autenticação -->
+            </div>
+        </div>
+    </div>
+    <!-- FIM: Card Central -->
+
+    <!-- Configuração do Token CSRF para uso no Javascript Externo -->
+    <!-- Essa variável permite que o fetch() envie requisições seguras pro backend -->
+    <script>
+        const CSRF_TOKEN = '{{ csrf_token }}'; 
+    </script>
+    
+    <!-- JS Externo: Contém a lógica de validação visual e envio do login para a views.py -->
+    <!-- Arquivo localizado em: static/login/script.js -->
+    <script src="{% static 'login/script.js' %}"></script>
+</body>
+</html>
