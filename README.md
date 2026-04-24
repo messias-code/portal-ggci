@@ -327,7 +327,7 @@ Para compartilhar o portal com outros usuários da rede ou acessá-lo remotament
 Em um **segundo terminal**, execute:
 
 ```bash
-ssh -R portal-ggci:80:localhost:8000 serveo.net
+ssh -o ServerAliveInterval=60 -R portal-ggci:80:localhost:8000 serveo.net
 ```
 
 O portal ficará acessível publicamente em: **https://portal-ggci.serveousercontent.com**
