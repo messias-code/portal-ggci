@@ -24,7 +24,7 @@ LOGIN_USER = 'andreia.amaral@ovg.org.br'
 PASSWORD_USER = '123456'
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DOWNLOAD_PATH = os.path.join(BASE_DIR, "dados_polichat", "downloads")
+DOWNLOAD_PATH = os.path.join(BASE_DIR, "dados_polichat", "analise_anual")
 NOME_PADRAO_ARQUIVO = "relatorio_chats_atualizado.csv"
 ARQUIVO_CSV = os.path.join(DOWNLOAD_PATH, NOME_PADRAO_ARQUIVO)
 ARQUIVO_EXCEL = os.path.join(DOWNLOAD_PATH, "relatorio_chats_pronto.xlsx")

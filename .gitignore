@@ -43,6 +43,7 @@ Thumbs.db
 # de extração, consolidação e geração de relatórios
 # ==========================================
 dados_analise/
+dados_polichat/
 
 # ==========================================
 # RELATÓRIOS E ARQUIVOS DE SAÍDA GERADOS
