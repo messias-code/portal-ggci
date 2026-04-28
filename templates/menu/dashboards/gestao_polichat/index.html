@@ -1,133 +1,649 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestão Polichat - Portal GGCI</title>
+    <title>Mesa de Trabalho · Polichat</title>
 
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>tailwind.config = { darkMode: 'class', };</script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,300&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* ============================================
+           TOKENS E VARIÁVEIS
+        ============================================ */
+        :root {
+            --c-bg:        #f0f2f7;
+            --c-surface:   #ffffff;
+            --c-border:    #e8eaf2;
+            --c-text:      #1a1d2e;
+            --c-muted:     #7c809a;
+            --c-amber:     #f59e0b;
+            --c-amber-bg:  #fffbeb;
+            --c-amber-bd:  #fde68a;
+            --c-blue:      #3b82f6;
+            --c-blue-bg:   #eff6ff;
+            --c-blue-bd:   #bfdbfe;
+            --c-green:     #10b981;
+            --c-green-bg:  #ecfdf5;
+            --c-green-bd:  #a7f3d0;
+            --c-rose:      #f43f5e;
+            --c-rose-bg:   #fff1f2;
+            --c-rose-bd:   #fecdd3;
+            --c-purple:    #8b5cf6;
+            --c-purple-bg: #f5f3ff;
+            --c-purple-bd: #ddd6fe;
+            --shadow-sm:   0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+            --shadow-md:   0 4px 16px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04);
+            --r-card:      14px;
+            --r-badge:     6px;
+        }
 
-    <link rel="stylesheet" href="{% static 'menu/dashboards/gestao_polichat/style.css' %}">
+        /* ============================================
+           RESET E BASE
+        ============================================ */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; overflow: hidden; }
+
+        body {
+            font-family: 'DM Sans', system-ui, sans-serif;
+            background: var(--c-bg);
+            color: var(--c-text);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .mono { font-family: 'JetBrains Mono', monospace; }
+
+        /* ============================================
+           LAYOUT ROOT
+        ============================================ */
+        .app {
+            display: grid;
+            grid-template-rows: auto 1fr;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ============================================
+           HEADER
+        ============================================ */
+        .header {
+            background: var(--c-surface);
+            border-bottom: 1px solid var(--c-border);
+            padding: 0 24px;
+            height: 62px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            z-index: 100;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+
+        .brand-icon {
+            width: 38px; height: 38px;
+            background: linear-gradient(135deg, #fce7f3 0%, #f3e8ff 100%);
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            color: #c026d3;
+            font-size: 16px;
+            border: 1px solid #f0abfc;
+        }
+
+        .brand-title { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
+        .brand-title span { font-weight: 300; color: var(--c-muted); }
+
+        .sync-badge {
+            display: flex; align-items: center; gap: 6px;
+            font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px;
+            color: var(--c-muted);
+        }
+        .sync-dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: #10b981;
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+        .sync-dot.syncing { background: #f59e0b; animation: spin-once 1s linear infinite; }
+        @keyframes spin-once { to { transform: rotate(360deg); } }
+
+        .header-controls {
+            display: flex; align-items: center; gap: 10px;
+        }
+
+        .ctrl-group {
+            display: flex; flex-direction: column; gap: 2px;
+        }
+        .ctrl-label {
+            font-size: 9px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.8px; color: var(--c-muted);
+        }
+        .ctrl-input {
+            display: flex; align-items: center; gap: 8px;
+            background: var(--c-bg);
+            border: 1px solid var(--c-border);
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--c-text);
+            cursor: pointer;
+            transition: border-color .15s, box-shadow .15s;
+        }
+        .ctrl-input:focus-within {
+            border-color: #c026d3;
+            box-shadow: 0 0 0 3px rgba(192,38,211,.1);
+        }
+        .ctrl-input select,
+        .ctrl-input input[type="date"] {
+            background: transparent;
+            border: none; outline: none;
+            font-family: inherit; font-size: inherit; font-weight: inherit;
+            color: inherit; cursor: pointer;
+            appearance: none; -webkit-appearance: none;
+        }
+        .ctrl-input select { width: 200px; }
+        .ctrl-input input[type="date"] { width: 120px; }
+
+        .btn-back {
+            display: flex; align-items: center; gap: 6px;
+            background: transparent;
+            border: 1px solid var(--c-border);
+            border-radius: 8px;
+            padding: 7px 14px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 12px; font-weight: 600;
+            color: var(--c-muted);
+            cursor: pointer;
+            text-decoration: none;
+            transition: all .15s;
+        }
+        .btn-back:hover { border-color: #c026d3; color: #c026d3; background: #fdf4ff; }
+
+        .btn-sync {
+            display: flex; align-items: center; gap: 6px;
+            background: #fdf4ff;
+            border: 1px solid #f0abfc;
+            border-radius: 8px;
+            padding: 7px 14px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 12px; font-weight: 700;
+            color: #c026d3;
+            cursor: pointer;
+            transition: all .15s;
+            white-space: nowrap;
+        }
+        .btn-sync:hover:not(:disabled) { background: #fae8ff; border-color: #c026d3; box-shadow: 0 0 0 3px rgba(192,38,211,.1); }
+        .btn-sync:disabled { opacity: .5; cursor: not-allowed; }
+        .btn-sync.spinning i { animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ============================================
+           MAIN BODY
+        ============================================ */
+        .main {
+            display: grid;
+            grid-template-rows: auto 1fr;
+            overflow: hidden;
+            padding: 20px 24px;
+            gap: 16px;
+        }
+
+        /* ============================================
+           KPI STRIP
+        ============================================ */
+        .kpi-strip {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 12px;
+        }
+
+        .kpi-card {
+            background: var(--c-surface);
+            border: 1px solid var(--c-border);
+            border-radius: var(--r-card);
+            padding: 14px 16px;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            transition: box-shadow .2s, transform .2s;
+            cursor: default;
+        }
+        .kpi-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+
+        .kpi-icon {
+            width: 40px; height: 40px; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; flex-shrink: 0;
+        }
+        .kpi-icon.amber  { background: var(--c-amber-bg);  color: var(--c-amber);  border: 1px solid var(--c-amber-bd); }
+        .kpi-icon.blue   { background: var(--c-blue-bg);   color: var(--c-blue);   border: 1px solid var(--c-blue-bd); }
+        .kpi-icon.green  { background: var(--c-green-bg);  color: var(--c-green);  border: 1px solid var(--c-green-bd); }
+        .kpi-icon.rose   { background: var(--c-rose-bg);   color: var(--c-rose);   border: 1px solid var(--c-rose-bd); }
+        .kpi-icon.purple { background: var(--c-purple-bg); color: var(--c-purple); border: 1px solid var(--c-purple-bd); }
+
+        .kpi-body { flex: 1; min-width: 0; }
+        .kpi-label { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--c-muted); white-space: nowrap; }
+        .kpi-value {
+            font-size: 26px; font-weight: 800; letter-spacing: -1px; line-height: 1.1;
+            margin-top: 2px;
+        }
+        .kpi-value.amber  { color: var(--c-amber); }
+        .kpi-value.blue   { color: var(--c-blue); }
+        .kpi-value.green  { color: var(--c-green); }
+        .kpi-value.rose   { color: var(--c-rose); }
+        .kpi-value.purple { color: var(--c-purple); }
+
+        /* ============================================
+           GRID DE TABELAS (4 painéis)
+        ============================================ */
+        .tables-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 12px;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        .panel {
+            background: var(--c-surface);
+            border: 1px solid var(--c-border);
+            border-radius: var(--r-card);
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-width: 0;
+        }
+
+        /* Accent top border por tipo */
+        .panel.aguardando  { border-top: 3px solid var(--c-amber); }
+        .panel.andamento   { border-top: 3px solid var(--c-blue); }
+        .panel.meu-fecho   { border-top: 3px solid var(--c-green); }
+        .panel.outro-fecho { border-top: 3px solid var(--c-rose); }
+
+        .panel-header {
+            padding: 12px 14px 10px;
+            border-bottom: 1px solid var(--c-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+        .panel-title {
+            display: flex; align-items: center; gap: 7px;
+            font-size: 11px; font-weight: 700;
+        }
+        .panel-title i { font-size: 12px; }
+        .panel.aguardando  .panel-title { color: #b45309; }
+        .panel.andamento   .panel-title { color: #1d4ed8; }
+        .panel.meu-fecho   .panel-title { color: #065f46; }
+        .panel.outro-fecho .panel-title { color: #be123c; }
+
+        .panel-count {
+            font-size: 10px; font-weight: 700;
+            padding: 2px 8px; border-radius: 20px;
+        }
+        .panel.aguardando  .panel-count { background: var(--c-amber-bg); color: #b45309; border: 1px solid var(--c-amber-bd); }
+        .panel.andamento   .panel-count { background: var(--c-blue-bg);  color: #1d4ed8; border: 1px solid var(--c-blue-bd); }
+        .panel.meu-fecho   .panel-count { background: var(--c-green-bg); color: #065f46; border: 1px solid var(--c-green-bd); }
+        .panel.outro-fecho .panel-count { background: var(--c-rose-bg);  color: #be123c; border: 1px solid var(--c-rose-bd); }
+
+        .panel-body {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        /* Scrollbar minimalista */
+        .panel-body::-webkit-scrollbar { width: 4px; }
+        .panel-body::-webkit-scrollbar-track { background: transparent; }
+        .panel-body::-webkit-scrollbar-thumb { background: #e2e5ef; border-radius: 4px; }
+
+        /* ============================================
+           CHAT CARDS (dentro dos painéis)
+        ============================================ */
+        .chat-card {
+            padding: 11px 14px;
+            border-bottom: 1px solid #f4f5f9;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            transition: background .12s;
+        }
+        .chat-card:last-child { border-bottom: none; }
+        .chat-card:hover { background: #fafbfd; }
+
+        .chat-card-top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .client-info { flex: 1; min-width: 0; }
+        .client-name {
+            font-size: 12px; font-weight: 700;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .client-phone {
+            font-size: 10px; color: var(--c-muted);
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 500;
+            margin-top: 1px;
+        }
+
+        .time-badge {
+            font-size: 11px; font-weight: 700; flex-shrink: 0;
+            font-family: 'JetBrains Mono', monospace;
+            padding: 2px 7px;
+            border-radius: 6px;
+        }
+        .time-badge.espera  { background: var(--c-amber-bg); color: #b45309; }
+        .time-badge.atend   { background: var(--c-blue-bg);  color: #1d4ed8; }
+        .time-badge.total   { background: var(--c-green-bg); color: #065f46; }
+        .time-badge.danger  { background: var(--c-rose-bg);  color: #be123c; }
+
+        .chat-meta {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3px 8px;
+        }
+
+        .meta-row {
+            display: flex; align-items: center; gap: 4px;
+            font-size: 10px; color: var(--c-muted);
+            min-width: 0;
+        }
+        .meta-row i { font-size: 9px; flex-shrink: 0; width: 10px; text-align: center; }
+        .meta-row span {
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            font-weight: 500;
+        }
+        .meta-row span.mono { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; }
+
+        .redir-tag {
+            display: inline-flex; align-items: center; gap: 3px;
+            background: #fef3c7; color: #92400e;
+            border: 1px solid #fde68a;
+            font-size: 9px; font-weight: 700;
+            padding: 1px 5px; border-radius: 4px;
+            letter-spacing: 0.3px;
+        }
+
+        /* Status pill para aguardando */
+        .status-pill {
+            display: inline-flex; align-items: center; gap: 4px;
+            font-size: 9px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase;
+            padding: 2px 7px; border-radius: 20px;
+        }
+        .status-pill::before {
+            content: ''; width: 5px; height: 5px; border-radius: 50%;
+        }
+        .status-pill.aguardando { background: var(--c-amber-bg); color: #b45309; border: 1px solid var(--c-amber-bd); }
+        .status-pill.aguardando::before { background: var(--c-amber); animation: blink 1.2s ease-in-out infinite; }
+        .status-pill.atendimento { background: var(--c-blue-bg); color: #1d4ed8; border: 1px solid var(--c-blue-bd); }
+        .status-pill.atendimento::before { background: var(--c-blue); }
+        .status-pill.finalizado { background: var(--c-green-bg); color: #065f46; border: 1px solid var(--c-green-bd); }
+        .status-pill.finalizado::before { background: var(--c-green); }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* Separador de tempo com ícones */
+        .time-timeline {
+            display: flex; align-items: center; gap: 4px;
+            flex-wrap: wrap;
+        }
+        .tt-step {
+            display: flex; align-items: center; gap: 3px;
+            font-size: 9.5px; font-family: 'JetBrains Mono', monospace;
+            color: var(--c-muted); font-weight: 500;
+        }
+        .tt-step i { font-size: 8px; }
+        .tt-arrow { color: #d1d5db; font-size: 9px; }
+
+        /* ============================================
+           EMPTY / LOADING STATES
+        ============================================ */
+        .empty-state {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 30px 16px; text-align: center; gap: 8px;
+        }
+        .empty-state .empty-icon { font-size: 24px; opacity: 0.3; }
+        .empty-state p { font-size: 11px; color: var(--c-muted); font-weight: 500; line-height: 1.4; }
+        .empty-state .empty-cta { font-size: 10px; color: #c026d3; font-weight: 600; }
+
+        /* Skeleton loader */
+        .skeleton-card {
+            padding: 11px 14px; border-bottom: 1px solid #f4f5f9;
+            display: flex; flex-direction: column; gap: 6px;
+        }
+        .skel { background: linear-gradient(90deg, #f0f2f7 25%, #e8eaf2 50%, #f0f2f7 75%);
+                background-size: 200% 100%;
+                animation: skel-shimmer 1.4s infinite;
+                border-radius: 4px; }
+        @keyframes skel-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        .skel-name { height: 12px; width: 65%; }
+        .skel-phone { height: 9px; width: 40%; margin-top: 2px; }
+        .skel-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 2px; }
+        .skel-meta-item { height: 9px; }
+
+        /* ============================================
+           PROMPT INICIAL
+        ============================================ */
+        #prompt-inicial {
+            position: absolute; inset: 0; z-index: 50;
+            background: rgba(240, 242, 247, 0.9);
+            backdrop-filter: blur(8px);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .prompt-box {
+            background: white; border-radius: 18px; padding: 40px 48px;
+            text-align: center; box-shadow: var(--shadow-md);
+            max-width: 380px;
+        }
+        .prompt-box .p-emoji { font-size: 40px; margin-bottom: 12px; }
+        .prompt-box h3 { font-size: 18px; font-weight: 800; margin-bottom: 6px; }
+        .prompt-box p { font-size: 12px; color: var(--c-muted); line-height: 1.6; }
+        .prompt-box .arrow-up {
+            margin-top: 16px; font-size: 11px; font-weight: 600; color: #c026d3;
+            display: flex; align-items: center; justify-content: center; gap: 4px;
+        }
+    </style>
 </head>
 
-<body class="bg-[#f8f6fb] text-gray-800 fixed inset-0 p-4 lg:p-6 flex transition-colors duration-500 overflow-hidden">
+<body>
+<div class="app">
 
-    <!-- Bolhas de fundo animadas -->
-    <div class="bg-color-1 absolute top-[-15%] left-[-10%] w-[65vw] h-[65vh] bg-pink-500/70 rounded-full blur-[140px] pointer-events-none z-0"></div>
-    <div class="bg-color-2 absolute bottom-[-15%] left-[10%] w-[60vw] h-[60vh] bg-purple-600/70 rounded-full blur-[140px] pointer-events-none z-0"></div>
-    <div class="bg-color-3 absolute top-[-5%] right-[-10%] w-[60vw] h-[60vh] bg-yellow-400/60 rounded-full blur-[140px] pointer-events-none z-0"></div>
-    <div class="bg-color-4 absolute bottom-[-10%] right-[5%] w-[65vw] h-[65vh] bg-teal-400/60 rounded-full blur-[140px] pointer-events-none z-0"></div>
-
-    <!-- Container principal (página inteira, sem sidebar) -->
-    <div class="w-full h-full bg-white/70 backdrop-blur-2xl border border-white/80 rounded-[2rem] shadow-2xl flex flex-col overflow-hidden relative z-10">
-
-        <!-- ==========================================
-             HEADER
-             ========================================== -->
-        <header class="h-24 px-8 lg:px-10 flex justify-between items-center border-b border-pink-100/50 bg-white/40 backdrop-blur-md shrink-0 z-10">
-            <div class="flex items-center gap-5">
-                <div class="w-16 h-16 bg-gradient-to-br from-pink-100 to-fuchsia-100 text-pink-600 rounded-2xl flex items-center justify-center border border-pink-200 shadow-sm">
-                    <i class="fa-solid fa-bezier-curve text-3xl"></i>
-                </div>
-                <div>
-                    <h2 class="text-2xl font-black text-gray-800 tracking-tight">Gestão Polichat</h2>
-                    <p class="text-[14px] text-gray-500 font-semibold mt-0.5">Acompanhamento de atendimentos e desempenho</p>
+    <!-- =================== HEADER =================== -->
+    <header class="header">
+        <div class="header-brand">
+            <div class="brand-icon"><i class="fa-solid fa-user-astronaut"></i></div>
+            <div>
+                <div class="brand-title">Mesa de Trabalho <span>Individual</span></div>
+                <div class="sync-badge" id="sync-status">
+                    <div class="sync-dot" id="sync-dot"></div>
+                    <span id="sync-text">Sincronização ativa</span>
                 </div>
             </div>
-            <a href="{% url 'dashboards' %}"
-                class="px-5 py-2.5 bg-white/80 hover:bg-pink-50 text-pink-600 font-bold rounded-xl transition-all shadow-sm border border-pink-100 flex items-center gap-2 text-sm">
-                <i class="fa-solid fa-arrow-left"></i> Voltar
+        </div>
+
+        <div class="header-controls">
+            <div class="ctrl-group">
+                <div class="ctrl-label">Agente</div>
+                <div class="ctrl-input">
+                    <i class="fa-solid fa-user" style="color:#c026d3;font-size:11px;"></i>
+                    <select id="filtro-agente">
+                        <option value="">— Selecione seu nome —</option>
+                    </select>
+                    <i class="fa-solid fa-chevron-down" style="color:#d1d5db;font-size:9px;"></i>
+                </div>
+            </div>
+
+            <div class="ctrl-group">
+                <div class="ctrl-label">Período</div>
+                <div class="ctrl-input">
+                    <i class="fa-regular fa-calendar" style="color:#c026d3;font-size:11px;"></i>
+                    <input type="date" id="filtro-inicio" max="2030-12-31">
+                    <span style="color:#d1d5db;font-weight:700;">–</span>
+                    <input type="date" id="filtro-fim" max="2030-12-31">
+                </div>
+            </div>
+
+            <button class="btn-sync" id="btn-sync-manual" title="Buscar novos dados do Poli Digital agora">
+                <i class="fa-solid fa-rotate-right"></i>
+                Atualizar agora
+            </button>
+
+            <a href="{% url 'dashboards' %}" class="btn-back">
+                <i class="fa-solid fa-arrow-left"></i>
+                Voltar
             </a>
-        </header>
+        </div>
+    </header>
 
-        <!-- ==========================================
-             CONTEÚDO PRINCIPAL
-             ========================================== -->
-        <div class="flex-1 p-4 lg:p-6 flex flex-col gap-3 overflow-hidden relative z-10">
+    <!-- =================== MAIN =================== -->
+    <div class="main" style="position: relative;">
 
-            <!-- Barra de ações -->
-            <div class="bg-white/90 backdrop-blur-xl border border-white/80 p-2 rounded-[1rem] shadow-[0_8px_20px_rgb(0,0,0,0.03)] flex justify-end shrink-0 relative z-20">
-                <button id="btn-atualizar"
-                    class="text-white bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-purple-300 shadow-lg shadow-purple-500/40 font-bold rounded-xl text-[13px] px-5 py-2.5 tracking-widest uppercase flex items-center gap-2 transition-all">
-                    <i class="fa-solid fa-rotate"></i><span>Atualizar Dados</span>
-                </button>
+        <!-- Prompt inicial overlay -->
+        <div id="prompt-inicial">
+            <div class="prompt-box">
+                <div class="p-emoji">👆</div>
+                <h3>Selecione seu perfil</h3>
+                <p>Escolha seu nome no filtro acima para carregar sua mesa de trabalho individual com todos os atendimentos do período.</p>
+                <div class="arrow-up"><i class="fa-solid fa-arrow-up"></i> Filtro de agente acima</div>
             </div>
+        </div>
 
-            <!-- Dashboard Content -->
-            <div id="dashboard-content" class="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-4 relative z-10 pb-10">
-                
-                <!-- KPIs Top Row -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 shrink-0">
-                    <!-- KPI 1 -->
-                    <div class="bg-white/80 border border-purple-100 p-5 rounded-[1.5rem] shadow-sm flex flex-col gap-1 transition-all hover:shadow-md hover:-translate-y-1">
-                        <span class="text-gray-500 text-xs font-bold uppercase tracking-wider flex items-center gap-2"><i class="fa-solid fa-users text-pink-500"></i> Total de Contatos</span>
-                        <h3 id="kpi-total" class="text-3xl font-black text-gray-800">--</h3>
-                        <p class="text-xs text-gray-400 font-medium"><span id="kpi-receptivos" class="text-purple-600 font-bold">--</span> receptivos • <span id="kpi-ativos" class="text-pink-600 font-bold">--</span> ativos</p>
-                    </div>
-
-                    <!-- KPI 2 -->
-                    <div class="bg-white/80 border border-purple-100 p-5 rounded-[1.5rem] shadow-sm flex flex-col gap-1 transition-all hover:shadow-md hover:-translate-y-1">
-                        <span class="text-gray-500 text-xs font-bold uppercase tracking-wider flex items-center gap-2"><i class="fa-solid fa-stopwatch text-purple-500"></i> Tempo Médio 1ª Resp.</span>
-                        <h3 id="kpi-tme" class="text-3xl font-black text-gray-800">--:--</h3>
-                        <p class="text-xs text-gray-400 font-medium">Espera média do usuário</p>
-                    </div>
-
-                    <!-- KPI 3 -->
-                    <div class="bg-white/80 border border-purple-100 p-5 rounded-[1.5rem] shadow-sm flex flex-col gap-1 transition-all hover:shadow-md hover:-translate-y-1">
-                        <span class="text-gray-500 text-xs font-bold uppercase tracking-wider flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation text-orange-500"></i> Pior Tempo 1ª Resp.</span>
-                        <h3 id="kpi-pior" class="text-3xl font-black text-gray-800">--:--</h3>
-                        <p class="text-xs text-gray-400 font-medium">Maior fila enfrentada</p>
-                    </div>
-                </div>
-
-                <!-- Charts Row -->
-                <div class="flex flex-col lg:flex-row gap-4 min-h-[350px]">
-                    <!-- Donut Chart -->
-                    <div class="bg-white/80 border border-purple-100 p-5 rounded-[1.5rem] shadow-sm lg:w-1/3 flex flex-col relative transition-all hover:shadow-md">
-                        <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wider mb-2"><i class="fa-solid fa-chart-pie text-pink-500 mr-2"></i>Status dos Chats</h3>
-                        <div class="flex-1 relative flex items-center justify-center min-h-[250px] w-full">
-                            <canvas id="chart-status"></canvas>
-                        </div>
-                    </div>
-
-                    <!-- Bar Chart -->
-                    <div class="bg-white/80 border border-purple-100 p-5 rounded-[1.5rem] shadow-sm lg:w-2/3 flex flex-col relative transition-all hover:shadow-md">
-                        <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wider mb-2"><i class="fa-solid fa-ranking-star text-purple-500 mr-2"></i>Desempenho por Agente</h3>
-                        <div class="flex-1 relative flex items-center justify-center min-h-[250px] w-full">
-                            <canvas id="chart-agentes"></canvas>
-                        </div>
-                    </div>
+        <!-- KPI Strip -->
+        <div class="kpi-strip">
+            <div class="kpi-card">
+                <div class="kpi-icon amber"><i class="fa-solid fa-hourglass-half"></i></div>
+                <div class="kpi-body">
+                    <div class="kpi-label">Aguardando</div>
+                    <div class="kpi-value amber" id="kpi-aguardando">0</div>
                 </div>
             </div>
+            <div class="kpi-card">
+                <div class="kpi-icon blue"><i class="fa-solid fa-headset"></i></div>
+                <div class="kpi-body">
+                    <div class="kpi-label">Em Andamento</div>
+                    <div class="kpi-value blue" id="kpi-andamento">0</div>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon green"><i class="fa-solid fa-trophy"></i></div>
+                <div class="kpi-body">
+                    <div class="kpi-label">Fechados por Mim</div>
+                    <div class="kpi-value green" id="kpi-fechados-mim">0</div>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon rose"><i class="fa-solid fa-people-arrows"></i></div>
+                <div class="kpi-body">
+                    <div class="kpi-label">Fechados por Outro</div>
+                    <div class="kpi-value rose" id="kpi-fechados-outro">0</div>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon purple"><i class="fa-solid fa-stopwatch"></i></div>
+                <div class="kpi-body">
+                    <div class="kpi-label">TMA (Fechados)</div>
+                    <div class="kpi-value purple mono" id="kpi-tma" style="font-size:20px;margin-top:4px;">--:--</div>
+                </div>
+            </div>
+        </div>
 
-            <!-- MODAL DE PROGRESSO (Hidden) -->
-            <div id="modal-progresso" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/60 backdrop-blur-md transition-opacity duration-300 opacity-0">
-                <div class="bg-white p-8 rounded-[2rem] shadow-2xl max-w-md w-full mx-4 border border-pink-100 transform scale-95 transition-transform duration-300 flex flex-col items-center text-center">
-                    <div class="w-16 h-16 bg-gradient-to-br from-pink-100 to-fuchsia-100 text-pink-600 rounded-full flex items-center justify-center mb-4 shadow-inner">
-                        <i class="fa-solid fa-cloud-arrow-down text-3xl animate-bounce"></i>
+        <!-- 4 Painéis em grid -->
+        <div class="tables-grid">
+
+            <!-- AGUARDANDO -->
+            <div class="panel aguardando">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <i class="fa-solid fa-clock"></i> Aguardando Atendimento
                     </div>
-                    <h3 class="text-xl font-black text-gray-800 mb-1">Atualizando Dados</h3>
-                    <p id="modal-status-text" class="text-sm text-gray-500 font-medium mb-6">Iniciando robô de extração...</p>
-                    
-                    <div class="w-full bg-gray-100 rounded-full h-4 border border-gray-200 shadow-inner overflow-hidden relative">
-                        <div id="modal-progress-bar" class="h-full bg-gradient-to-r from-pink-400 to-purple-600 transition-all duration-500 ease-out" style="width: 0%;"></div>
+                    <span class="panel-count" id="cnt-aguardando">0</span>
+                </div>
+                <div class="panel-body" id="lista-aguardando">
+                    <div class="empty-state">
+                        <div class="empty-icon">🎉</div>
+                        <p>Nenhum cliente aguardando.</p>
                     </div>
-                    <span id="modal-progress-perc" class="mt-2 text-sm font-bold text-purple-600">0%</span>
+                </div>
+            </div>
+
+            <!-- EM ANDAMENTO -->
+            <div class="panel andamento">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <i class="fa-solid fa-circle-play"></i> Em Atendimento
+                    </div>
+                    <span class="panel-count" id="cnt-andamento">0</span>
+                </div>
+                <div class="panel-body" id="lista-andamento">
+                    <div class="empty-state">
+                        <div class="empty-icon">💤</div>
+                        <p>Nenhum em andamento agora.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FECHADOS POR MIM -->
+            <div class="panel meu-fecho">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <i class="fa-solid fa-check-circle"></i> Fechados por Mim
+                    </div>
+                    <span class="panel-count" id="cnt-fechados-mim">0</span>
+                </div>
+                <div class="panel-body" id="lista-fechados-mim">
+                    <div class="empty-state">
+                        <div class="empty-icon">📭</div>
+                        <p>Nenhum fechamento registrado neste período.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FECHADOS POR OUTRO -->
+            <div class="panel outro-fecho">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <i class="fa-solid fa-person-walking-arrow-right"></i> Fechados por Outro
+                    </div>
+                    <span class="panel-count" id="cnt-fechados-outro">0</span>
+                </div>
+                <div class="panel-body" id="lista-fechados-outro">
+                    <div class="empty-state">
+                        <div class="empty-icon">✅</div>
+                        <p>Nenhum chamado transferido neste período.</p>
+                    </div>
                 </div>
             </div>
 
         </div>
-    </div>
+    </div><!-- /main -->
+</div><!-- /app -->
 
-    <script src="{% static 'menu/dashboards/gestao_polichat/script.js' %}"></script>
+<script src="{% static 'menu/dashboards/gestao_polichat/script.js' %}?v=9"></script>
 </body>
-
 </html>

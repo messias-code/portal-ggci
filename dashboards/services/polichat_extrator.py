@@ -1,15 +1,3 @@
-"""
-==========================================================================
-SERVIÇO: EXTRAÇÃO E TRATAMENTO DE DADOS - POLICHAT
-==========================================================================
-Adaptação do script original fornecido para Playwright (compatível WSL).
-Preserva rigidamente a mesma lógica, cliques (JS) e XPaths do modelo original
-para garantir que funcione perfeitamente como antes.
-Fase 1: Login no Poli Digital → Metabase → Download CSV
-Fase 2: Tratamento de dados com Pandas → Geração do Excel final
-==========================================================================
-"""
-
 import os
 import time
 import glob
@@ -35,23 +23,21 @@ ARQUIVO_EXCEL = os.path.join(DOWNLOAD_PATH, "relatorio_chats_pronto.xlsx")
 def formatar_tempo_exato(td):
     if pd.isna(td): return ""
     segundos_totais = max(0, int(td.total_seconds()))
-    
     dias, resto_dias = divmod(segundos_totais, 86400)
     horas, resto = divmod(resto_dias, 3600)
     minutos, segundos = divmod(resto, 60)
-    
     return f"{dias}.{horas:02d}:{minutos:02d}:{segundos:02d}"
 
 def limpar_pasta_downloads():
     os.makedirs(DOWNLOAD_PATH, exist_ok=True)
-    for extensao in ["*.csv", "*.xlsx", "*.crdownload", "*.png"]:
+    for extensao in ["*.csv", "*.xlsx", "*.crdownload", "*.png", "*_temp.xlsx"]:
         for arquivo in glob.glob(os.path.join(DOWNLOAD_PATH, extensao)):
             try: os.remove(arquivo)
             except: pass
     print("🧹 Pasta de downloads limpa para a nova extração.")
 
 # ==========================================
-# 3. MÓDULO DE EXTRAÇÃO INVISÍVEL (PLAYWRIGHT)
+# 3. MÓDULO DE EXTRAÇÃO (PLAYWRIGHT)
 # ==========================================
 def extrair_relatorio_metabase():
     print("\n" + "="*50)
@@ -64,222 +50,195 @@ def extrair_relatorio_metabase():
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch(
                 headless=True,
-                args=[
-                    '--disable-notifications',
-                    '--ignore-certificate-errors',
-                    '--no-sandbox',
-                    '--disable-dev-shm-usage',
-                    '--window-size=1920,1080'
-                ]
+                args=['--disable-notifications', '--ignore-certificate-errors', '--no-sandbox', '--disable-dev-shm-usage', '--window-size=1920,1080']
             )
-            context = browser.new_context(
-                viewport={'width': 1920, 'height': 1080},
-                user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-                accept_downloads=True
-            )
+            context = browser.new_context(viewport={'width': 1920, 'height': 1080}, accept_downloads=True)
             page = context.new_page()
-
-            def clicar_js(locator_base, xpath, descricao="elemento", delay=0.5):
-                print(f"👉 A clicar em: {descricao}")
-                el = locator_base.locator(f"xpath={xpath}").first
-                el.wait_for(state="visible", timeout=60000)
-                el.scroll_into_view_if_needed()
-                el.evaluate("node => node.click()")
-                time.sleep(delay)
 
             try:
                 print("🔑 Realizando login no Poli Digital...")
-                # Trocado networkidle para load para evitar o Timeout Exceeded
                 page.goto("https://app-spa.poli.digital/login", wait_until="load", timeout=60000)
                 
                 page.locator("xpath=//*[@id='root']/div/div/div/div/div[2]/div/form/input").first.fill(LOGIN_USER)
                 page.locator("xpath=//*[@id='root']/div/div/div/div/div[2]/div/form/div[3]/div/input").first.fill(PASSWORD_USER)
-                clicar_js(page, "//*[@id='root']/div/div/div/div/div[2]/div/form/div[6]/button", "Botão Entrar", delay=2)
-
-                clicar_js(page, "//*[@id='sidebar']/div[1]/li[5]/a/div", "Menu Relatórios", delay=2)
                 
-                print("⏳ A entrar no ambiente do Metabase (Invisível)...")
-                iframe_el = page.locator("xpath=//iframe[@title='Metabase Dashboard']").first
-                iframe_el.wait_for(state="attached", timeout=60000)
-                frame = iframe_el.content_frame
+                btn_entrar = page.locator("xpath=//*[@id='root']/div/div/div/div/div[2]/div/form/div[6]/button").first
+                btn_entrar.wait_for(state="visible", timeout=30000)
+                btn_entrar.evaluate("node => node.click()")
 
-                clicar_js(frame, "//*[@id='2-T-138']/span", "Aba Visão Geral")
-                clicar_js(frame, "//button[contains(., 'Data - Período')]", "Filtro de Data")
-                clicar_js(frame, "//button[contains(., 'Atual')] | //*[text()='Atual']", "Opção 'Atual'")
-                clicar_js(frame, "//button[.//span[text()='Ano']] | //button[contains(., 'Ano')]", "Botão 'Ano'")
+                print("⏳ Aguardando redirecionamento de segurança do Poli Digital...")
+                page.wait_for_timeout(5000) 
 
-                print("⏳ A aguardar o Metabase processar os dados de UM ANO (15s)...")
+                print("👉 Navegando diretamente para a página de Relatórios...")
+                page.goto("https://app-spa.poli.digital/relatorio", wait_until="load", timeout=60000)
+                
+                print("⏳ A aguardar o Metabase carregar (Isto pode demorar alguns segundos)...")
+                page.wait_for_timeout(8000) # Pausa estratégica para o iframe nascer no DOM
+
+                # =======================================================
+                # CORREÇÃO: Frame Locator Inteligente
+                # =======================================================
+                metabase_frame = page.frame_locator("iframe").first
+                
+                try:
+                    aba_visao = metabase_frame.locator("xpath=//div[@role='tab' and @aria-label='Visão Geral']").first
+                    # Aumentado para 60 segundos porque o Metabase é pesado a processar a primeira renderização
+                    aba_visao.wait_for(state="visible", timeout=60000)
+                    aba_visao.scroll_into_view_if_needed()
+                    aba_visao.evaluate("node => node.click()")
+                    time.sleep(2)
+                    frame_ativo = metabase_frame
+                    print("✅ Iframe do Metabase acedido com sucesso.")
+                except Exception as e:
+                    print("⚠️ Iframe falhou. A tentar na página nativa principal...")
+                    frame_ativo = page
+                    aba_visao = frame_ativo.locator("xpath=//div[@role='tab' and @aria-label='Visão Geral']").first
+                    aba_visao.wait_for(state="visible", timeout=30000)
+                    aba_visao.scroll_into_view_if_needed()
+                    aba_visao.evaluate("node => node.click()")
+                    time.sleep(2)
+
+                def clicar_dinamico(xpath, descricao="elemento", delay=0.5):
+                    print(f"👉 A clicar em: {descricao}")
+                    el = frame_ativo.locator(f"xpath={xpath}").first
+                    el.wait_for(state="visible", timeout=30000)
+                    el.scroll_into_view_if_needed()
+                    el.evaluate("node => node.click()")
+                    time.sleep(delay)
+
+                clicar_dinamico("//button[@aria-label='Data - Período']", "Filtro de Data")
+                try: clicar_dinamico("//*[text()='Atual'] | //*[contains(text(), 'Este mês')]", "Opção 'Este mês'", delay=1)
+                except: pass
+                clicar_dinamico("//span[text()='Ano']", "Botão 'Ano'")
+
+                print("⏳ A aguardar o servidor processar os dados de UM ANO (15s)...")
                 time.sleep(15) 
 
                 print("📜 A localizar a tabela 'Relatório de chats'...")
                 xpath_titulo = "//*[contains(text(), 'Relátorio de chats') or contains(text(), 'Relatório de chats')]"
-                titulo_tabela = frame.locator(f"xpath={xpath_titulo}").first
-                titulo_tabela.wait_for(state="visible", timeout=60000)
+                titulo_tabela = frame_ativo.locator(f"xpath={xpath_titulo}").first
+                titulo_tabela.wait_for(state="visible", timeout=30000)
                 titulo_tabela.scroll_into_view_if_needed()
-                time.sleep(2) 
                 titulo_tabela.hover()
                 time.sleep(1) 
 
-                xpath_opcoes = f"{xpath_titulo}/ancestor::div[contains(@class, 'react-grid-item')]//button[@data-testid='public-or-embedded-dashcard-menu']"
-                clicar_js(frame, xpath_opcoes, "Botão '...' (Opções do Gráfico)")
+                try:
+                    xpath_opcoes = f"{xpath_titulo}/ancestor::div[contains(@class, 'react-grid-item')]//button[@data-testid='public-or-embedded-dashcard-menu']"
+                    clicar_dinamico(xpath_opcoes, "Botão '...' (Opções)")
+                except:
+                    clicar_dinamico("//button[@data-testid='public-or-embedded-dashcard-menu']", "Botão '...' Alternativo")
                 
-                clicar_js(frame, "//button[@aria-label='Fazer download de resultados']", "Fazer download de resultados")
-                clicar_js(frame, "//label[.//span[text()='.csv']] | //label[contains(., '.csv')]", "Formato .csv")
+                clicar_dinamico("//button[@aria-label='Fazer download de resultados']", "Download de resultados")
+                clicar_dinamico("//input[@value='csv']/following-sibling::label | //label[contains(., '.csv')]", "Formato .csv")
                 
                 try:
-                    formatacao_el = frame.locator("xpath=//input[@data-testid='keep-data-formatted']").first
+                    formatacao_el = frame_ativo.locator("xpath=//input[@data-testid='keep-data-formatted']").first
                     if formatacao_el.is_checked():
                         formatacao_el.evaluate("node => node.click()")
-                        print("✅ Formatação desmarcada.")
-                except Exception:
-                    pass 
+                        print("✅ Formatação desmarcada com sucesso.")
+                except Exception: pass 
 
-                print("📥 A aguardar o download em background...")
+                print("📥 A aguardar o download...")
                 with page.expect_download(timeout=300000) as download_info:
-                    clicar_js(frame, "//button[@data-testid='download-results-button']", "Botão 'Baixar'", delay=1)
+                    clicar_dinamico("//button[@data-testid='download-results-button']", "Botão 'Baixar'", delay=1)
                 
-                download = download_info.value
-                
-                if os.path.exists(ARQUIVO_CSV):
-                    os.remove(ARQUIVO_CSV)
-                
-                download.save_as(ARQUIVO_CSV)
+                if os.path.exists(ARQUIVO_CSV): os.remove(ARQUIVO_CSV)
+                download_info.value.save_as(ARQUIVO_CSV)
                 print(f"🎉 DOWNLOAD CONCLUÍDO! Ficheiro salvo como: {NOME_PADRAO_ARQUIVO}")
                 sucesso = True
 
             except Exception as e:
                 print(f"❌ Falha no processo de extração: {e}")
-                try: page.screenshot(path=os.path.join(DOWNLOAD_PATH, "erro_log_extracao.png"))
-                except: pass
 
             finally:
                 browser.close()
                 print("🏁 Navegador encerrado.")
 
-    except Exception as e:
-        print(f"❌ Erro crítico: {e}")
-            
+    except Exception as e: print(f"❌ Erro crítico: {e}")
     return sucesso
+
 
 # ==========================================
 # 4. MÓDULO DE TRATAMENTO DE DADOS (PANDAS)
 # ==========================================
 def analisar_e_limpar_dados():
     print("\n" + "="*50)
-    print("📊 FASE 2: FORMATAÇÃO EXCEL BRUTA")
+    print("📊 FASE 2: ENGENHARIA DE DADOS E FORMATAÇÃO EXCEL")
     print("="*50)
 
     try:
         df = pd.read_csv(ARQUIVO_CSV, sep=',', low_memory=False)
 
-        # 1. TRATAR TELEFONES E IDENTIFICADORES (E Notação Científica)
-        if 'Telefone do contato' in df.columns:
-            # Substitui telefones que vieram como notação científica (ex: 5,56282E+11) por NaN temporariamente
-            df.loc[df['Telefone do contato'].astype(str).str.contains(r'E\+', case=False, na=False), 'Telefone do contato'] = np.nan
-            
-            # Tenta preencher os buracos do telefone usando o histórico do mesmo 'Id do cliente'
-            if 'Id do cliente' in df.columns:
-                df['Telefone do contato'] = df.groupby('Id do cliente')['Telefone do contato'].transform(lambda x: x.ffill().bfill())
-                
-            # Limpa '.0' e 'nan'
-            df['Telefone do contato'] = df['Telefone do contato'].fillna('').astype(str).replace(['nan', 'None'], '').str.replace(r'\.0$', '', regex=True)
-
-        if 'Id do cliente' in df.columns:
-            df['Id do cliente'] = df['Id do cliente'].fillna('').astype(str).replace(['nan', 'None'], '').str.replace(r'\.0$', '', regex=True)
-
-        # 2. IDENTIFICAR ROBÔ (AUTOATENDIMENTO)
-        if 'Atendente' in df.columns:
-            df['Atendente'] = df['Atendente'].fillna('Chatbot').replace('', 'Chatbot')
-        if 'Fechado por' in df.columns:
-            df['Fechado por'] = df['Fechado por'].fillna('Chatbot').replace('', 'Chatbot')
-
-        # 3. CRIAR COLUNA DE STATUS DO ATENDIMENTO
-        dt_resp = pd.to_datetime(df.get('Data de primeira resposta'), errors='coerce')
-        dt_fim = pd.to_datetime(df.get('Data de finalização do chat'), errors='coerce')
-
-        def definir_status(resp, fim):
-            if pd.notna(fim):
-                return "Finalizado"
-            elif pd.isna(resp):
-                return "Aguardando Contato"
-            else:
-                return "Em Atendimento"
-
-        df['Status do Atendimento'] = [definir_status(r, f) for r, f in zip(dt_resp, dt_fim)]
-
-        # 4. TRATAR COLUNAS DE DATA (Separando Data e Hora)
-        colunas_data = ['Data de criação do chat', 'Data de primeira resposta', 'Data de finalização do chat']
-        
-        for col in colunas_data:
+        colunas_texto = ['Telefone do contato', 'Id do atendimento', 'Id do cliente', 'CPF do contato']
+        for col in colunas_texto:
             if col in df.columns:
-                # Converte para datetime (ignora erros para nulos)
-                dt_series = pd.to_datetime(df[col], errors='coerce').dt.tz_localize(None)
-                
-                # Cria a coluna de Hora
-                col_hora = col.replace('Data de', 'Hora de')
-                df[col_hora] = dt_series.dt.strftime('%H:%M').fillna('')
-                
-                # Formata a coluna original apenas com a Data
-                def formatar_apenas_data(dt):
-                    if pd.isna(dt): return ''
-                    return f"{dt.day}/{dt.month}/{dt.year}"
-                
-                df[col] = dt_series.apply(formatar_apenas_data)
+                df[col] = df[col].fillna(-1).astype(str).str.replace(r'\.0$', '', regex=True).replace('-1', '')
 
-        # 5. REMOVER COLUNAS INDESEJADAS
-        colunas_remover = [
-            'Id do atendimento', 'CPF do contato', 'Channel',
-            'Nota do atendimento', 'Nota de atendimento', 'Mensagens Totais', 
-            'Mensagens do Atendente', 'Mensagens do cliente', 
-            'Motivo do serviço', 'Motivo do fechamento',
-            'Departamento do Chat', 'Hora de inicio do chat'
-        ]
-        df = df.drop(columns=[col for col in colunas_remover if col in df.columns])
+        dt_chegada = pd.to_datetime(df.get('Data de criação do chat'), errors='coerce').dt.tz_localize(None)
+        dt_resposta = pd.to_datetime(df.get('Data de primeira resposta'), errors='coerce').dt.tz_localize(None)
+        dt_fim = pd.to_datetime(df.get('Data de finalização do chat'), errors='coerce').dt.tz_localize(None)
 
-        # 6. ORDENAR COLUNAS PARA MELHOR VISUALIZAÇÃO
-        ordem_desejada = [
-            'Cliente', 'Telefone do contato', 'Status do Atendimento', 
-            'Atendente', 'Fechado por', 
-            'Data de criação do chat', 'Hora de criação do chat', 
-            'Data de primeira resposta', 'Hora de primeira resposta', 'Tempo primeira mensagem',
-            'Data de finalização do chat', 'Hora de finalização do chat', 'Tempo de encerramento da conversa',
-            'Houve redirecionamento', 'Redirecionado para', 'Tipo', 'Id do cliente'
-        ]
+        def formatar_nome(nome):
+            if pd.isna(nome) or str(nome).strip() in ['', 'null', 'None']: return "Não informado"
+            partes = str(nome).strip().split()
+            return f"{partes[0]} {partes[-1]}" if len(partes) > 1 else partes[0]
+            
+        if 'Atendente' in df.columns: df['Atendente'] = df['Atendente'].apply(formatar_nome)
+        else: df['Atendente'] = "Não informado"
+
+        if 'Fechado por' in df.columns: df['Fechado por'] = df['Fechado por'].apply(formatar_nome)
+        else: df['Fechado por'] = "Não informado"
+
+        df['Dentro do Expediente?'] = dt_chegada.apply(lambda dt: "Sim" if pd.notna(dt) and dt.dayofweek < 5 and (8*60+1) <= (dt.hour*60+dt.minute) <= (17*60+59) else "Não")
+
+        def diagnosticar(resp, fim):
+            if pd.isna(resp): return "Aguardando Atendimento" if pd.isna(fim) else "Sem Interação"
+            return "Em Atendimento"
+        df['Diagnóstico da Conversa'] = [diagnosticar(r, f) for r, f in zip(dt_resposta, dt_fim)]
         
-        colunas_finais = [col for col in ordem_desejada if col in df.columns]
-        # Adiciona qualquer coluna extra que tenha sobrado
-        colunas_finais += [col for col in df.columns if col not in colunas_finais]
-        df = df[colunas_finais]
+        data_limite_espera = dt_resposta.fillna(dt_fim)
+        df['Tempo de Espera (Fila)'] = (data_limite_espera - dt_chegada).apply(formatar_tempo_exato)
+        df['Tempo de Conversa (Atendimento)'] = np.where(dt_resposta.notna(), (dt_fim - dt_resposta).apply(formatar_tempo_exato), "")
+        df['Tempo Total (Início ao Fim)'] = (dt_fim - dt_chegada).apply(formatar_tempo_exato)
 
-        print("🎨 A criar o ficheiro Excel...")
-        writer = pd.ExcelWriter(ARQUIVO_EXCEL, engine='xlsxwriter', engine_kwargs={'options': {'strings_to_urls': False}})
+        ordem_historia = [
+            'Cliente', 'Telefone do contato', 'Data de criação do chat', 'Hora de criação do chat', 
+            'Houve redirecionamento', 'Atendente', 'Tempo de Espera (Fila)', 
+            'Data de primeira resposta', 'Hora de primeira resposta', 'Tempo de Conversa (Atendimento)',
+            'Data de finalização do chat', 'Hora de finalização do chat', 'Fechado por', 'Tempo Total (Início ao Fim)', 
+            'Status do Atendimento'
+        ]
+
+        colunas_finais = [col for col in ordem_historia if col in df.columns]
+        df_final = df[colunas_finais].copy()
+
+        print("🎨 A criar o ficheiro Excel temporário...")
+        ARQUIVO_TEMP = ARQUIVO_EXCEL.replace('.xlsx', '_temp.xlsx')
+        
+        writer = pd.ExcelWriter(ARQUIVO_TEMP, engine='xlsxwriter', datetime_format='dd/mm/yyyy', engine_kwargs={'options': {'strings_to_urls': False}})
         nome_aba = 'Relatorio_Chats'
         
-        df.to_excel(writer, index=False, header=False, startrow=1, sheet_name=nome_aba)
-        
+        df_final.to_excel(writer, index=False, header=False, startrow=1, sheet_name=nome_aba)
         workbook = writer.book
         ws = writer.sheets[nome_aba]
-        ws.set_tab_color('#FF8C00') 
         
-        (max_r, max_c) = df.shape
-        if max_r > 0:
-            ws.add_table(0, 0, max_r, max_c - 1, {
-                'columns': [{'header': str(c)} for c in df.columns],
+        if df_final.shape[0] > 0:
+            ws.add_table(0, 0, df_final.shape[0], df_final.shape[1] - 1, {
+                'columns': [{'header': str(c)} for c in df_final.columns],
                 'style': 'Table Style Medium 9', 'name': 'Tab_Chats'
             })
-        else:
-            ws.write_row(0, 0, df.columns)
 
-        ws.ignore_errors({'number_stored_as_text': 'A1:XFD1048576'})
-
-        for i, col in enumerate(df.columns):
-            try: tamanho = int(df[col].fillna("").astype(str).str.len().max())
-            except: tamanho = 10
-            largura = min(max(tamanho, len(str(col))) + 2, 45)
-            ws.set_column(i, i, largura)
+        for i, col in enumerate(df_final.columns):
+            try: tam = int(df_final[col].fillna("").astype(str).str.len().max())
+            except: tam = 10
+            ws.set_column(i, i, min(max(tam, len(str(col))) + 2, 45))
 
         writer.close()
-        print(f"🏆 SUCESSO TOTAL! Ficheiro final: {os.path.basename(ARQUIVO_EXCEL)}")
+        
+        if os.path.exists(ARQUIVO_EXCEL): os.remove(ARQUIVO_EXCEL)
+        os.rename(ARQUIVO_TEMP, ARQUIVO_EXCEL)
+        
+        print(f"🏆 SUCESSO TOTAL! Ficheiro final atualizado: {os.path.basename(ARQUIVO_EXCEL)}")
         return True
 
     except Exception as e:
@@ -287,12 +246,9 @@ def analisar_e_limpar_dados():
         return False
 
 # ==========================================
-# 5. ORQUESTRADOR PRINCIPAL (PIPELINE)
+# 5. ORQUESTRADOR PRINCIPAL
 # ==========================================
 def executar_pipeline():
     limpar_pasta_downloads()
-    if extrair_relatorio_metabase():
-        return analisar_e_limpar_dados()
-    else:
-        print("\n⚠️ O tratamento de dados foi cancelado porque o ficheiro CSV não pôde ser descarregado.")
-        return False
+    if extrair_relatorio_metabase(): return analisar_e_limpar_dados()
+    else: return False
