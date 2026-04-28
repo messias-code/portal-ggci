@@ -1,0 +1,31 @@
+/* ==========================================================================
+   CONFIGURAÇÕES ESPECÍFICAS - GESTÃO POLICHAT
+   ========================================================================== */
+body { font-family: 'Poppins', sans-serif; }
+
+/* Animações das Bolhas de Fundo */
+@keyframes drift-1 { 
+    0%, 100% { transform: translate(0px, 0px) scale(1); } 
+    33%      { transform: translate(3vw, -3vh) scale(1.05); } 
+    66%      { transform: translate(-2vw, 2vh) scale(0.98); } 
+}
+@keyframes drift-2 { 
+    0%, 100% { transform: translate(0px, 0px) scale(1); } 
+    33%      { transform: translate(-3vw, 4vh) scale(1.02); } 
+    66%      { transform: translate(3vw, -3vh) scale(0.96); } 
+}
+@keyframes drift-3 { 
+    0%, 100% { transform: translate(0px, 0px) scale(1); } 
+    33%      { transform: translate(2vw, 3vh) scale(0.98); } 
+    66%      { transform: translate(-3vw, -2vh) scale(1.05); } 
+}
+.bg-color-1 { animation: drift-1 20s ease-in-out infinite; }
+.bg-color-2 { animation: drift-2 25s ease-in-out infinite; }
+.bg-color-3 { animation: drift-3 30s ease-in-out infinite; }
+.bg-color-4 { animation: drift-1 35s ease-in-out infinite reverse; }
+
+/* Customização da Barra de Rolagem do Terminal */
+.custom-scrollbar-dark::-webkit-scrollbar { width: 8px; }
+.custom-scrollbar-dark::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.3); border-radius: 10px; }
+.custom-scrollbar-dark::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 10px; }
+.custom-scrollbar-dark::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }

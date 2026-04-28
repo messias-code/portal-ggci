@@ -122,6 +122,8 @@ def gestao_acessos(request):
             'p_automacoes': 1 if u.p_automacoes else 0,
             'p_analise_ia': 1 if u.p_analise_ia else 0,
             'p_documentacoes': 1 if u.p_documentacoes else 0,
+            'p_dashboards': 1 if u.p_dashboards else 0,
+            'p_gestao_polichat': 1 if u.p_gestao_polichat else 0,
             'username_only': username_only,
             'can_edit': can_edit,
             'can_delete': can_delete,
@@ -237,6 +239,9 @@ def api_salvar_usuario(request):
             
             p_documentacoes = 1 if request.POST.get('p_documentacoes') else 0
 
+            p_dashboards = 1 if request.POST.get('p_dashboards') else 0
+            p_gestao_polichat = 1 if request.POST.get('p_gestao_polichat') else 0
+
             # MODO: NOVO USUÁRIO
             if not usuario_id:
                 if not is_master_admin and perfil == 'administrador':
@@ -255,7 +260,9 @@ def api_salvar_usuario(request):
                     p_formatador_dados=p_formatador_dados,
                     p_automacoes=p_automacoes,
                     p_analise_ia=p_analise_ia,
-                    p_documentacoes=p_documentacoes
+                    p_documentacoes=p_documentacoes,
+                    p_dashboards=p_dashboards,
+                    p_gestao_polichat=p_gestao_polichat
                 )
                 novo_usuario.set_password(senha_gerada)
                 novo_usuario.save()
@@ -289,6 +296,9 @@ def api_salvar_usuario(request):
                 alvo.p_analise_ia = p_analise_ia
                 
                 alvo.p_documentacoes = p_documentacoes
+
+                alvo.p_dashboards = p_dashboards
+                alvo.p_gestao_polichat = p_gestao_polichat
 
                 if alterar_nome:
                     alvo.nome = nome_completo
@@ -354,3 +364,19 @@ def automacoes(request):
 def analise_ia_view(request):
     """Renderiza a tela de Análise IA (Automação de Contratos)"""
     return render(request, 'menu/automacoes/analise_ia/index.html')
+
+@login_required(login_url='/')
+def dashboards(request):
+    """Renderiza o hub de Dashboards. Protegido por permissão modular."""
+    if not request.user.p_dashboards and request.user.usuario != 'admin@ovg.org.br':
+        return redirect('inicio')
+        
+    return render(request, 'menu/dashboards/index.html')
+
+@login_required(login_url='/')
+def gestao_polichat_view(request):
+    """Renderiza a tela do Dashboard Gestão Polichat (página inteira)."""
+    if not request.user.p_gestao_polichat and request.user.usuario != 'admin@ovg.org.br':
+        return redirect('dashboards')
+        
+    return render(request, 'menu/dashboards/gestao_polichat/index.html')

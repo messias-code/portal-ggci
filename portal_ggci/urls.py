@@ -80,8 +80,17 @@ urlpatterns = [
     path('automacoes/', views.automacoes, name='automacoes'),
     path('menu/automacoes/analise-ia/', views.analise_ia_view, name='analise_ia'),
 
+    # Dashboards:
+    path('dashboards/', views.dashboards, name='dashboards'),
+    path('dashboards/gestao-polichat/', views.gestao_polichat_view, name='gestao_polichat'),
+
     # ======================================================================
     # APIS DO NOVO MOTOR DE IA (APP AUTOMACOES)
     # ======================================================================
     path('motor-ia/', include('automacoes.urls')),
+
+    # ======================================================================
+    # APIS DO DASHBOARD POLICHAT (APP DASHBOARDS)
+    # ======================================================================
+    path('dashboards/', include('dashboards.urls')),
 ]

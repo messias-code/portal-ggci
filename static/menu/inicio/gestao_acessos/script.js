@@ -269,7 +269,8 @@ function abrirModalNovo() {
     // Dispara reset visual das permissões granulares
     const campos = [
         'p_ferramentas', 'p_formatador_listas', 'p_formatador_dados', 
-        'p_automacoes', 'p_analise_ia', 'p_documentacoes'
+        'p_automacoes', 'p_analise_ia', 'p_documentacoes',
+        'p_dashboards', 'p_gestao_polichat'
     ];
     campos.forEach(campo => {
         const el = document.getElementById(campo);
@@ -329,7 +330,8 @@ function abrirModalEdicao(user) {
     // Marca os acessos modulares e granulares do usuário de forma segura
     const camposBooleanos = [
         'p_ferramentas', 'p_formatador_listas', 'p_formatador_dados', 
-        'p_automacoes', 'p_analise_ia', 'p_documentacoes'
+        'p_automacoes', 'p_analise_ia', 'p_documentacoes',
+        'p_dashboards', 'p_gestao_polichat'
     ];
     
     let isMasterUser = (user.usuario === 'admin@ovg.org.br');

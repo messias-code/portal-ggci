@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     # Nossos aplicativos principais:
     'usuarios',
     'automacoes',
+    'dashboards',
 ]
 
 # Interceptadores de Requisição. Protegem contra ataques (CSRF, Clickjacking) 

@@ -193,6 +193,30 @@
                             </div>
                         </div>
 
+                        <!-- 5. Menu Dashboards -->
+                        <div class="border border-purple-100 rounded-2xl overflow-hidden bg-white relative z-10 shadow-sm hover:shadow-md transition-shadow">
+                            <div class="bg-gray-50 px-5 py-3 border-b border-gray-100 flex items-center justify-between gap-2 relative z-10">
+                                <div class="flex items-center gap-2">
+                                    <i class="fa-solid fa-chart-line text-purple-500 relative z-10"></i>
+                                    <span class="font-bold text-gray-700 text-sm relative z-10">Menu: Dashboards</span>
+                                </div>
+                                <label class="flex items-center gap-2 cursor-pointer bg-white px-3 py-1.5 rounded-lg border border-purple-200 shadow-sm hover:bg-purple-50 transition-colors">
+                                    <input type="checkbox" name="p_dashboards" id="p_dashboards" value="1" class="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 relative z-10 menu-toggle" data-target=".card-dashboards">
+                                    <span class="text-xs font-bold text-purple-700">Liberar Menu</span>
+                                </label>
+                            </div>
+                            <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 relative z-10 bg-white">
+                                <!-- Checkbox clicável do Card -->
+                                <label class="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-gray-50/50 cursor-pointer hover:bg-gray-100 transition-colors card-container">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-500 shrink-0"><i class="fa-solid fa-bezier-curve"></i></div>
+                                        <span class="text-sm font-semibold text-gray-600">Gestão Polichat</span>
+                                    </div>
+                                    <input type="checkbox" name="p_gestao_polichat" id="p_gestao_polichat" value="1" class="w-4 h-4 text-pink-500 bg-gray-100 border-gray-300 rounded focus:ring-pink-500 card-dashboards">
+                                </label>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </form>
