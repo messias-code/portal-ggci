@@ -5,4 +5,5 @@ urlpatterns = [
     path('api/polichat/iniciar/', views.iniciar_extracao_polichat, name='iniciar_polichat'),
     path('api/polichat/status/<int:processo_id>/', views.checar_status_polichat, name='status_polichat'),
     path('api/polichat/baixar/<int:processo_id>/', views.baixar_resultado_polichat, name='baixar_polichat'),
+    path('api/polichat/dados/', views.api_polichat_dados, name='api_polichat_dados'),
 ]

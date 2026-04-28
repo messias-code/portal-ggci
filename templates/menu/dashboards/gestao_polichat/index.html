@@ -13,6 +13,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <link rel="stylesheet" href="{% static 'menu/dashboards/gestao_polichat/style.css' %}">
 </head>
@@ -53,57 +54,73 @@
         <div class="flex-1 p-4 lg:p-6 flex flex-col gap-3 overflow-hidden relative z-10">
 
             <!-- Barra de ações -->
-            <div class="bg-white/90 backdrop-blur-xl border border-white/80 p-2 rounded-[1rem] shadow-[0_8px_20px_rgb(0,0,0,0.03)] flex items-center shrink-0">
-
+            <div class="bg-white/90 backdrop-blur-xl border border-white/80 p-2 rounded-[1rem] shadow-[0_8px_20px_rgb(0,0,0,0.03)] flex justify-end shrink-0 relative z-20">
                 <button id="btn-atualizar"
-                    class="text-white bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-purple-300 shadow-lg shadow-purple-500/40 font-bold rounded-xl text-[13px] px-5 py-2.5 tracking-widest uppercase flex items-center justify-center gap-2 w-64 transition-all">
-                    <i class="fa-solid fa-rotate"></i><span>Atualizar Dashboard</span>
+                    class="text-white bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-purple-300 shadow-lg shadow-purple-500/40 font-bold rounded-xl text-[13px] px-5 py-2.5 tracking-widest uppercase flex items-center gap-2 transition-all">
+                    <i class="fa-solid fa-rotate"></i><span>Atualizar Dados</span>
                 </button>
-
-                <div class="flex-1 mx-4 bg-gray-100 rounded-lg h-7 border border-gray-200 shadow-inner relative flex items-center justify-center overflow-hidden">
-                    <div id="progress-bar"
-                        class="absolute top-0 left-0 h-full bg-gradient-to-r from-pink-400 to-purple-500 transition-all duration-500 ease-out"
-                        style="width: 0%;"></div>
-                    <span id="progress-text"
-                        class="relative z-10 text-[13px] font-black text-gray-700 tracking-wide drop-shadow-[0_0_2px_rgba(255,255,255,0.8)]">0%</span>
-                </div>
-
-                <button id="btn-download"
-                    class="text-gray-500 bg-gradient-to-r from-gray-100 via-gray-200 to-gray-300 shadow-sm font-bold rounded-xl text-[13px] px-5 py-2.5 tracking-widest uppercase flex items-center justify-center gap-2 w-64 transition-all cursor-not-allowed"
-                    disabled>
-                    <i class="fa-solid fa-download"></i><span>Baixar Excel</span>
-                </button>
-
             </div>
 
-            <!-- Console de logs (terminal) -->
-            <div class="flex-1 min-h-[150px] bg-[#111116] border border-gray-800 rounded-[1.5rem] shadow-2xl flex flex-col overflow-hidden">
-                <div class="bg-[#1a1b26] px-5 py-2.5 flex items-center justify-between border-b border-gray-800 shrink-0">
-                    <div class="flex space-x-2.5">
-                        <div class="w-3.5 h-3.5 rounded-full bg-[#ff5f56] shadow-sm"></div>
-                        <div class="w-3.5 h-3.5 rounded-full bg-[#ffbd2e] shadow-sm"></div>
-                        <div class="w-3.5 h-3.5 rounded-full bg-[#27c93f] shadow-sm"></div>
+            <!-- Dashboard Content -->
+            <div id="dashboard-content" class="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-4 relative z-10 pb-10">
+                
+                <!-- KPIs Top Row -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 shrink-0">
+                    <!-- KPI 1 -->
+                    <div class="bg-white/80 border border-purple-100 p-5 rounded-[1.5rem] shadow-sm flex flex-col gap-1 transition-all hover:shadow-md hover:-translate-y-1">
+                        <span class="text-gray-500 text-xs font-bold uppercase tracking-wider flex items-center gap-2"><i class="fa-solid fa-users text-pink-500"></i> Total de Contatos</span>
+                        <h3 id="kpi-total" class="text-3xl font-black text-gray-800">--</h3>
+                        <p class="text-xs text-gray-400 font-medium"><span id="kpi-receptivos" class="text-purple-600 font-bold">--</span> receptivos • <span id="kpi-ativos" class="text-pink-600 font-bold">--</span> ativos</p>
                     </div>
-                    <span class="text-gray-400 text-[11px] font-mono tracking-widest font-bold flex items-center gap-2">
-                        <i class="fa-solid fa-terminal text-gray-500"></i> CONSOLE — POLICHAT
-                    </span>
-                    <div class="w-10"></div>
+
+                    <!-- KPI 2 -->
+                    <div class="bg-white/80 border border-purple-100 p-5 rounded-[1.5rem] shadow-sm flex flex-col gap-1 transition-all hover:shadow-md hover:-translate-y-1">
+                        <span class="text-gray-500 text-xs font-bold uppercase tracking-wider flex items-center gap-2"><i class="fa-solid fa-stopwatch text-purple-500"></i> Tempo Médio 1ª Resp.</span>
+                        <h3 id="kpi-tme" class="text-3xl font-black text-gray-800">--:--</h3>
+                        <p class="text-xs text-gray-400 font-medium">Espera média do usuário</p>
+                    </div>
+
+                    <!-- KPI 3 -->
+                    <div class="bg-white/80 border border-purple-100 p-5 rounded-[1.5rem] shadow-sm flex flex-col gap-1 transition-all hover:shadow-md hover:-translate-y-1">
+                        <span class="text-gray-500 text-xs font-bold uppercase tracking-wider flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation text-orange-500"></i> Pior Tempo 1ª Resp.</span>
+                        <h3 id="kpi-pior" class="text-3xl font-black text-gray-800">--:--</h3>
+                        <p class="text-xs text-gray-400 font-medium">Maior fila enfrentada</p>
+                    </div>
                 </div>
 
-                <div id="console-logs"
-                    class="p-6 flex-1 overflow-y-auto font-mono text-[13px] leading-relaxed custom-scrollbar-dark bg-[#0d0d12] text-gray-300">
-                    <div class="flex gap-2 mb-1">
-                        <span class="text-pink-500 font-bold">ovg@polichat:</span>
-                        <span class="text-purple-400">~</span>
-                        <span class="text-white">$</span>
-                        <span class="text-gray-300 animate-pulse">atualizar_dashboard --verbose</span>
+                <!-- Charts Row -->
+                <div class="flex flex-col lg:flex-row gap-4 min-h-[350px]">
+                    <!-- Donut Chart -->
+                    <div class="bg-white/80 border border-purple-100 p-5 rounded-[1.5rem] shadow-sm lg:w-1/3 flex flex-col relative transition-all hover:shadow-md">
+                        <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wider mb-2"><i class="fa-solid fa-chart-pie text-pink-500 mr-2"></i>Status dos Chats</h3>
+                        <div class="flex-1 relative flex items-center justify-center min-h-[250px] w-full">
+                            <canvas id="chart-status"></canvas>
+                        </div>
                     </div>
 
-                    <div class="text-pink-500/80 italic mb-2">
-                        <i class="fa-solid fa-angle-right"></i> Aguardando início...
+                    <!-- Bar Chart -->
+                    <div class="bg-white/80 border border-purple-100 p-5 rounded-[1.5rem] shadow-sm lg:w-2/3 flex flex-col relative transition-all hover:shadow-md">
+                        <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wider mb-2"><i class="fa-solid fa-ranking-star text-purple-500 mr-2"></i>Desempenho por Agente</h3>
+                        <div class="flex-1 relative flex items-center justify-center min-h-[250px] w-full">
+                            <canvas id="chart-agentes"></canvas>
+                        </div>
                     </div>
+                </div>
+            </div>
 
-                    <div class="inline-block w-2 h-4 bg-pink-500 ml-1 align-middle animate-bounce"></div>
+            <!-- MODAL DE PROGRESSO (Hidden) -->
+            <div id="modal-progresso" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/60 backdrop-blur-md transition-opacity duration-300 opacity-0">
+                <div class="bg-white p-8 rounded-[2rem] shadow-2xl max-w-md w-full mx-4 border border-pink-100 transform scale-95 transition-transform duration-300 flex flex-col items-center text-center">
+                    <div class="w-16 h-16 bg-gradient-to-br from-pink-100 to-fuchsia-100 text-pink-600 rounded-full flex items-center justify-center mb-4 shadow-inner">
+                        <i class="fa-solid fa-cloud-arrow-down text-3xl animate-bounce"></i>
+                    </div>
+                    <h3 class="text-xl font-black text-gray-800 mb-1">Atualizando Dados</h3>
+                    <p id="modal-status-text" class="text-sm text-gray-500 font-medium mb-6">Iniciando robô de extração...</p>
+                    
+                    <div class="w-full bg-gray-100 rounded-full h-4 border border-gray-200 shadow-inner overflow-hidden relative">
+                        <div id="modal-progress-bar" class="h-full bg-gradient-to-r from-pink-400 to-purple-600 transition-all duration-500 ease-out" style="width: 0%;"></div>
+                    </div>
+                    <span id="modal-progress-perc" class="mt-2 text-sm font-bold text-purple-600">0%</span>
                 </div>
             </div>
 

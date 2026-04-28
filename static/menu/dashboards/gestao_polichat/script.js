@@ -1,269 +1,253 @@
 /* ==========================================================================
-   SCRIPT: DASHBOARD GESTÃO POLICHAT
-   Controla o botão "Atualizar Dashboard" e o monitoramento em tempo real.
-   Padrão simplificado baseado no módulo de Análise IA.
+   SCRIPT: DASHBOARD VISUAL POLICHAT
+   Controla o carregamento dos KPIs, gráficos via Chart.js e a atualização
+   em tempo real com modal de progresso.
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log("Dashboard Gestão Polichat inicializado.");
 
+    // Elementos DOM (Atualização)
     const btnAtualizar = document.getElementById('btn-atualizar');
-    const btnDownload = document.getElementById('btn-download');
-    const consoleLogs = document.getElementById('console-logs');
-    const progressBar = document.getElementById('progress-bar');
-    const progressText = document.getElementById('progress-text');
+    const modalProgresso = document.getElementById('modal-progresso');
+    const modalProgressBar = document.getElementById('modal-progress-bar');
+    const modalProgressPerc = document.getElementById('modal-progress-perc');
+    const modalStatusText = document.getElementById('modal-status-text');
+
+    // Elementos DOM (KPIs)
+    const kpiTotal = document.getElementById('kpi-total');
+    const kpiReceptivos = document.getElementById('kpi-receptivos');
+    const kpiAtivos = document.getElementById('kpi-ativos');
+    const kpiTme = document.getElementById('kpi-tme');
+    const kpiPior = document.getElementById('kpi-pior');
 
     let pollInterval = null;
-    let autoScroll = true;
+    let chartStatusInstance = null;
+    let chartAgentesInstance = null;
 
-    let targetProgress = 0;
-    let displayedProgress = 0;
-    let idleTicks = 0;
-    let smoothInterval = null;
-    let spinnerInterval = null;
-    const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-    let spinnerIdx = 0;
-
-    consoleLogs.addEventListener('scroll', () => {
-        autoScroll = (consoleLogs.scrollHeight - consoleLogs.scrollTop - consoleLogs.clientHeight < 10);
-    });
+    // 1. Carrega os dados na abertura da página
+    carregarDashboard();
 
     // ============================
     // BOTÃO: ATUALIZAR DASHBOARD
     // ============================
     btnAtualizar.addEventListener('click', () => {
         btnAtualizar.disabled = true;
-        btnAtualizar.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Processando...</span>';
-        btnAtualizar.classList.add('opacity-70', 'cursor-not-allowed');
+        btnAtualizar.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Iniciando...</span>';
+        
+        // Exibe o modal com animação
+        modalProgresso.classList.remove('hidden');
+        setTimeout(() => modalProgresso.classList.remove('opacity-0'), 10);
+        
+        modalProgressBar.style.width = '0%';
+        modalProgressPerc.innerText = '0%';
+        modalStatusText.innerText = 'Iniciando extração do Poli Digital...';
 
-        // Reset download
-        btnDownload.disabled = true;
-        btnDownload.innerHTML = '<i class="fa-solid fa-download"></i><span>Baixar Excel</span>';
-        btnDownload.className = 'text-gray-500 bg-gradient-to-r from-gray-100 via-gray-200 to-gray-300 shadow-sm font-bold rounded-xl text-[13px] px-5 py-2.5 tracking-widest uppercase flex items-center justify-center gap-2 w-64 transition-all cursor-not-allowed';
-
-        // Reset progress
-        targetProgress = 0;
-        displayedProgress = 0;
-        idleTicks = 0;
-        progressBar.style.transition = 'width 0.2s ease-out';
-        progressBar.classList.replace('from-red-500', 'from-pink-400');
-        progressBar.classList.replace('to-red-600', 'to-purple-500');
-        progressBar.style.width = '0%';
-        progressText.innerText = '0%';
-
-        // Smooth progress animation
-        if (smoothInterval) clearInterval(smoothInterval);
-        smoothInterval = setInterval(() => {
-            if (displayedProgress < targetProgress) {
-                displayedProgress += 1;
-                idleTicks = 0;
-            } else if (displayedProgress >= targetProgress && displayedProgress < 98) {
-                idleTicks++;
-                if (idleTicks >= 16) {
-                    displayedProgress += 1;
-                    idleTicks = 0;
-                }
-            }
-            progressBar.style.width = `${displayedProgress}%`;
-            progressText.innerText = `${displayedProgress}%`;
-        }, 150);
-
-        // Spinner animation
-        if (spinnerInterval) clearInterval(spinnerInterval);
-        spinnerInterval = setInterval(() => {
-            const spinEl = document.querySelector('.loading-spinner');
-            if (spinEl) {
-                spinnerIdx = (spinnerIdx + 1) % spinnerFrames.length;
-                spinEl.innerText = spinnerFrames[spinnerIdx];
-            }
-        }, 80);
-
-        // Reset console
-        consoleLogs.innerHTML = `
-            <div class="flex gap-2 mb-1 text-[14px]">
-                <span class="text-pink-500 font-bold">ovg@polichat:</span>
-                <span class="text-purple-400">~</span>
-                <span class="text-white">$</span>
-                <span class="text-gray-300">atualizar_dashboard --verbose</span>
-            </div>
-            <div class="text-pink-500/80 italic mb-2 text-[13px] flex items-center gap-2">
-                <i class="fa-solid fa-angle-right"></i> Aguardando início...
-            </div>
-            <span class="loading-spinner text-pink-500 font-bold ml-1 text-[16px]">⠋</span>
-        `;
-
-        // Trigger backend
+        // Dispara o backend
         fetch('/dashboards/api/polichat/iniciar/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
         })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'ok') {
-                    window.__polichat_id = data.processo_id;
-                    iniciarMonitoramento(data.processo_id);
-                } else {
-                    adicionarLog(`<div class="text-red-500">Erro: ${data.mensagem}</div>`);
-                    resetarBotoes();
-                }
-            })
-            .catch(err => {
-                adicionarLog(`<div class="text-red-500">Erro de conexão: ${err}</div>`);
-                resetarBotoes();
-            });
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'ok') {
+                iniciarMonitoramento(data.processo_id);
+            } else {
+                alert("Erro ao iniciar atualização: " + data.mensagem);
+                fecharModal();
+            }
+        })
+        .catch(err => {
+            alert("Erro de conexão ao tentar atualizar.");
+            fecharModal();
+        });
     });
 
     // ============================
-    // FUNÇÕES AUXILIARES
+    // FUNÇÃO: BUSCAR E RENDERIZAR DADOS
     // ============================
-    function adicionarLog(html) {
-        const lastEl = consoleLogs.querySelector('.loading-spinner');
-        if (lastEl) lastEl.remove();
-        consoleLogs.insertAdjacentHTML('beforeend', html);
-        consoleLogs.insertAdjacentHTML('beforeend', `<span class="loading-spinner text-pink-500 font-bold ml-1 text-[16px]">${spinnerFrames[spinnerIdx]}</span>`);
-        if (autoScroll) consoleLogs.scrollTop = consoleLogs.scrollHeight;
+    function carregarDashboard() {
+        fetch('/dashboards/api/polichat/dados/')
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'ok') {
+                    atualizarKPIs(data.kpis);
+                    atualizarGraficoStatus(data.graficos.status);
+                    atualizarGraficoAgentes(data.graficos.agentes);
+                } else {
+                    console.warn("Base de dados ainda não gerada. O usuário precisa atualizar os dados.");
+                }
+            })
+            .catch(err => console.error("Erro ao carregar dados do dashboard:", err));
     }
 
-    function resetarBotoes() {
-        btnAtualizar.disabled = false;
-        btnAtualizar.innerHTML = '<i class="fa-solid fa-rotate"></i><span>Atualizar Dashboard</span>';
-        btnAtualizar.classList.remove('opacity-70', 'cursor-not-allowed');
-        if (spinnerInterval) clearInterval(spinnerInterval);
-        if (smoothInterval) clearInterval(smoothInterval);
-        const spinEl = document.querySelector('.loading-spinner');
-        if (spinEl) spinEl.remove();
+    function atualizarKPIs(kpis) {
+        // Animação de entrada rápida nos números
+        kpiTotal.innerText = kpis.total_contatos;
+        kpiReceptivos.innerText = kpis.receptivos;
+        kpiAtivos.innerText = kpis.ativos;
+        kpiTme.innerText = kpis.tempo_medio_resposta;
+        kpiPior.innerText = kpis.pior_tempo_resposta;
     }
 
     // ============================
-    // MONITORAMENTO (POLLING)
+    // CHART.JS: CONFIGURAÇÕES DOS GRÁFICOS
+    // ============================
+    function atualizarGraficoStatus(statusData) {
+        const ctx = document.getElementById('chart-status').getContext('2d');
+        if (chartStatusInstance) chartStatusInstance.destroy();
+
+        chartStatusInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Finalizados', 'Em Atendimento', 'Aguardando'],
+                datasets: [{
+                    data: [statusData.finalizados, statusData.andamento, statusData.outros],
+                    backgroundColor: ['#10b981', '#f59e0b', '#ec4899'],
+                    borderWidth: 0,
+                    hoverOffset: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '75%',
+                plugins: {
+                    legend: { 
+                        position: 'bottom', 
+                        labels: { usePointStyle: true, padding: 20, font: { family: 'Poppins', size: 12 } } 
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0,0,0,0.8)',
+                        padding: 12,
+                        titleFont: { family: 'Poppins' },
+                        bodyFont: { family: 'Poppins' }
+                    }
+                }
+            }
+        });
+    }
+
+    function atualizarGraficoAgentes(agentesData) {
+        const ctx = document.getElementById('chart-agentes').getContext('2d');
+        if (chartAgentesInstance) chartAgentesInstance.destroy();
+
+        // Extrair os dados formatados (Apenas o primeiro nome para não poluir o gráfico)
+        const labels = agentesData.map(a => a.nome.split(' ')[0]); 
+        const finalizados = agentesData.map(a => a.finalizados);
+        const andamento = agentesData.map(a => a.em_andamento);
+        const aguardando = agentesData.map(a => a.aguardando);
+
+        chartAgentesInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Finalizados',
+                        data: finalizados,
+                        backgroundColor: '#10b981',
+                        borderRadius: 4
+                    },
+                    {
+                        label: 'Em Andamento',
+                        data: andamento,
+                        backgroundColor: '#f59e0b',
+                        borderRadius: 4
+                    },
+                    {
+                        label: 'Aguardando',
+                        data: aguardando,
+                        backgroundColor: '#ec4899',
+                        borderRadius: 4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                scales: {
+                    x: { 
+                        stacked: true, 
+                        grid: { display: false },
+                        ticks: { font: { family: 'Poppins' } }
+                    },
+                    y: { 
+                        stacked: true, 
+                        border: { display: false },
+                        grid: { color: 'rgba(0,0,0,0.05)' },
+                        ticks: { font: { family: 'Poppins' } }
+                    }
+                },
+                plugins: {
+                    legend: { 
+                        position: 'top', 
+                        align: 'end', 
+                        labels: { usePointStyle: true, boxWidth: 8, font: { family: 'Poppins' } } 
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0,0,0,0.8)',
+                        padding: 12,
+                        titleFont: { family: 'Poppins' },
+                        bodyFont: { family: 'Poppins' }
+                    }
+                }
+            }
+        });
+    }
+
+    // ============================
+    // MONITORAMENTO (POLLING - MODAL)
     // ============================
     function iniciarMonitoramento(processo_id) {
         pollInterval = setInterval(() => {
             fetch(`/dashboards/api/polichat/status/${processo_id}/`)
                 .then(res => res.json())
                 .then(data => {
-                    let promptHtml = `
-                    <div class="flex items-center gap-1.5 font-mono text-[14px] mb-1">
-                        <span class="text-pink-500 font-bold">ovg@polichat:</span>
-                        <span class="text-purple-400">~</span>
-                        <span class="text-white">$</span>
-                        <span class="text-gray-300"> atualizar_dashboard --verbose</span>
-                    </div>
-                `;
+                    let prog = data.progresso || 0;
+                    modalProgressBar.style.width = `${prog}%`;
+                    modalProgressPerc.innerText = `${prog}%`;
 
-                    let rawLog = data.log || "";
+                    // Pega a última linha do log gerado no backend para mostrar o status atual textualmente
+                    if (data.log) {
+                        let logs = data.log.split('\n').filter(l => l.trim() !== '');
+                        if (logs.length > 0) {
+                            // Limpa os emojis do backend para ficar um texto clean no Modal
+                            let lastLog = logs[logs.length - 1].replace(/[✅❌⚠️🔑📊⏳📜👉📥🔧🏁🎨🧹🏆🚀🔄]/g, '').trim();
+                            if(lastLog) modalStatusText.innerText = lastLog;
+                        }
+                    }
 
-                    // Badge builder
-                    const mkBadge = (bg, bdr, lc, pc, icon, label, msg) =>
-                        `<div class="my-2"><span class="${bg} border ${bdr} px-2.5 py-1 rounded shadow-sm inline-flex items-center whitespace-nowrap"><span class="${lc} font-bold text-[11px] uppercase mr-2">${icon} ${label}</span><span class="${pc} mx-2">|</span><span class="text-gray-200 text-[13px]">${msg}</span></span></div>`;
-
-                    const B = {
-                        emerald: (i, l, m) => mkBadge('bg-emerald-900/40', 'border-emerald-700/50', 'text-emerald-400', 'text-emerald-800', i, l, m),
-                        red: (i, l, m) => mkBadge('bg-red-900/50', 'border-red-700/60', 'text-red-400', 'text-red-800', i, l, m),
-                        pink: (i, l, m) => mkBadge('bg-pink-900/40', 'border-pink-700/50', 'text-pink-400', 'text-pink-800', i, l, m),
-                        blue: (i, l, m) => mkBadge('bg-blue-900/40', 'border-blue-700/50', 'text-blue-400', 'text-blue-800', i, l, m),
-                        yellow: (i, l, m) => mkBadge('bg-yellow-900/40', 'border-yellow-700/50', 'text-yellow-400', 'text-yellow-800', i, l, m)
-                    };
-
-                    // Terminal-style command separators
-                    const termCmd = (cmd) => `<div class="flex items-center gap-1 mt-4 mb-1.5 font-mono text-[14px] whitespace-nowrap"><span class="text-pink-500 font-bold">ovg@polichat:</span><span class="text-purple-400"> ~</span><span class="text-white"> $</span><span class="text-gray-300"> ${cmd}</span></div>`;
-
-                    // Transform key messages into styled badges
-                    rawLog = rawLog.replace(/🚀 Iniciando pipeline de extração Polichat\.\.\./g, termCmd('extracao_polichat --run'));
-                    rawLog = rawLog.replace(/🔄 Iniciando tratamento de dados\.\.\./g, termCmd('tratamento_dados --run'));
-                    rawLog = rawLog.replace(/🎉 Pipeline concluído em (.*)!/g, termCmd('exit 0  <span class="text-gray-500 mx-1">—</span> <span class="text-emerald-400 font-semibold ml-1">✔ Concluído em $1</span>'));
-
-                    rawLog = rawLog.replace(/🧹 Pasta de downloads limpa para nova extração\./g, B.blue('⚙', 'SISTEMA', 'Pasta de downloads limpa.'));
-                    rawLog = rawLog.replace(/🎉 DOWNLOAD CONCLUÍDO! Arquivo: (.*)/g, B.emerald('✔', 'DOWNLOAD', 'CSV extraído com sucesso: $1'));
-                    rawLog = rawLog.replace(/🏆 SUCESSO! Excel gerado: (.*)/g, B.emerald('✔', 'EXCEL', 'Relatório gerado: $1'));
-
-                    rawLog = rawLog.replace(/⚠️ Tratamento cancelado: o CSV não foi extraído\./g, B.yellow('⚠', 'ATENÇÃO', 'CSV não extraído. Pipeline abortado.'));
-                    rawLog = rawLog.replace(/⚠️ Pipeline abortado: o CSV não pôde ser extraído\./g, B.red('✖', 'FALHA', 'Não foi possível extrair o CSV.'));
-
-                    // Clean up emoji prefixes
-                    rawLog = rawLog
-                        .replace(/✅ /g, '<span class="text-emerald-400 mr-1">✔</span> ')
-                        .replace(/❌ /g, '<span class="text-red-500 font-bold mr-1">✖</span> ')
-                        .replace(/⚠️ /g, '<span class="text-yellow-500 mr-1">⚠</span> ')
-                        .replace(/🔑 /g, '<span class="text-yellow-400 mr-1">🔑</span> ')
-                        .replace(/📊 /g, '<span class="text-blue-400 mr-1">📊</span> ')
-                        .replace(/⏳ /g, '<span class="text-gray-400 mr-1">⏳</span> ')
-                        .replace(/📜 /g, '<span class="text-purple-400 mr-1">📜</span> ')
-                        .replace(/👉 /g, '<span class="text-cyan-400 mr-1">→</span> ')
-                        .replace(/📥 /g, '<span class="text-blue-400 mr-1">📥</span> ')
-                        .replace(/🔧 /g, '<span class="text-orange-400 mr-1">⚙</span> ')
-                        .replace(/🏁 /g, '<span class="text-gray-500 mr-1">⏹</span> ')
-                        .replace(/🎨 /g, '<span class="text-pink-400 mr-1">🎨</span> ');
-
-                    let htmlLog = rawLog.replace(/\n{3,}/g, '\n\n').replace(/\n/g, '<div class="h-px"></div>');
-
-                    consoleLogs.innerHTML = promptHtml + `<div class="mt-3 font-mono text-[14px] tracking-tight leading-snug text-gray-300">${htmlLog}</div>` + `<span class="loading-spinner text-pink-500 font-bold ml-1 text-[16px]">${spinnerFrames[spinnerIdx]}</span>`;
-
-                    if (autoScroll) consoleLogs.scrollTop = consoleLogs.scrollHeight;
-                    targetProgress = data.progresso || 0;
-
-                    // ============================
-                    // FINALIZAÇÃO
-                    // ============================
+                    // Se terminou a rotina
                     if (data.status_codigo === 'CONCLUIDO' || data.status_codigo === 'FALHA') {
                         clearInterval(pollInterval);
-                        clearInterval(smoothInterval);
-                        clearInterval(spinnerInterval);
-
-                        targetProgress = 100;
-                        displayedProgress = 100;
-                        progressBar.style.width = '100%';
-                        progressText.innerText = '100%';
-
-                        const cursor = consoleLogs.querySelector('.loading-spinner');
-                        if (cursor) cursor.remove();
-
-                        if (data.status_codigo === 'CONCLUIDO' && data.arquivo_resultado) {
-                            btnDownload.disabled = false;
-                            btnDownload.classList.remove('cursor-not-allowed', 'text-gray-500', 'bg-gradient-to-r', 'from-gray-100', 'via-gray-200', 'to-gray-300');
-                            btnDownload.classList.add('text-white', 'bg-gradient-to-r', 'from-green-500', 'via-green-600', 'to-green-700', 'hover:bg-gradient-to-br');
-
-                            btnDownload.onclick = async () => {
-                                const downloadUrl = `/dashboards/api/polichat/baixar/${processo_id}/`;
-
-                                if (window.showSaveFilePicker) {
-                                    try {
-                                        const handle = await window.showSaveFilePicker({
-                                            suggestedName: 'relatorio_chats_pronto.xlsx',
-                                            types: [{ description: 'Planilha Excel', accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] } }]
-                                        });
-
-                                        const textoOriginal = btnDownload.innerHTML;
-                                        btnDownload.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Salvando...</span>';
-
-                                        const response = await fetch(downloadUrl);
-                                        if (!response.ok) throw new Error("Falha HTTP.");
-                                        const buffer = await response.arrayBuffer();
-                                        const writable = await handle.createWritable();
-                                        await writable.write(buffer);
-                                        await writable.close();
-
-                                        btnDownload.innerHTML = '<i class="fa-solid fa-check-double"></i><span>Salvo!</span>';
-                                        setTimeout(() => { btnDownload.innerHTML = textoOriginal; }, 4000);
-
-                                    } catch (err) {
-                                        if (err.name !== 'AbortError') {
-                                            window.location.href = downloadUrl;
-                                        }
-                                    }
-                                } else {
-                                    window.location.href = downloadUrl;
-                                }
-                            };
-                        } else if (data.status_codigo === 'FALHA') {
-                            progressBar.classList.replace('from-pink-400', 'from-red-500');
-                            progressBar.classList.replace('to-purple-500', 'to-red-600');
-                        }
-
-                        resetarBotoes();
+                        modalProgressBar.style.width = '100%';
+                        modalProgressPerc.innerText = '100%';
+                        modalStatusText.innerText = data.status_codigo === 'CONCLUIDO' ? 'Atualização Concluída!' : 'Ocorreu uma falha na extração!';
+                        
+                        // Espera um pouco para o usuário ver o 100% e depois fecha o modal e recarrega os gráficos
+                        setTimeout(() => {
+                            fecharModal();
+                            if (data.status_codigo === 'CONCLUIDO') {
+                                carregarDashboard(); 
+                            }
+                        }, 2000);
                     }
                 })
                 .catch(err => console.error("Polling error:", err));
         }, 1500);
+    }
+
+    function fecharModal() {
+        btnAtualizar.disabled = false;
+        btnAtualizar.innerHTML = '<i class="fa-solid fa-rotate"></i><span>Atualizar Dados</span>';
+        
+        // Animação de saída
+        modalProgresso.classList.add('opacity-0');
+        setTimeout(() => modalProgresso.classList.add('hidden'), 300);
     }
 });

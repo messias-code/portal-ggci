@@ -166,145 +166,120 @@ def extrair_relatorio_metabase():
 # ==========================================
 def analisar_e_limpar_dados():
     print("\n" + "="*50)
-    print("📊 FASE 2: ENGENHARIA DE DADOS E FORMATAÇÃO EXCEL")
+    print("📊 FASE 2: FORMATAÇÃO EXCEL BRUTA")
     print("="*50)
 
     try:
         df = pd.read_csv(ARQUIVO_CSV, sep=',', low_memory=False)
 
-        colunas_texto = ['Telefone do contato', 'Id do atendimento', 'Id do cliente', 'CPF do contato']
-        for col in colunas_texto:
-            if col in df.columns:
-                df[col] = df[col].fillna(-1).astype(str).str.replace(r'\.0$', '', regex=True).replace('-1', '')
-
-        dt_chegada = pd.to_datetime(df.get('Data de criação do chat'), errors='coerce').dt.tz_localize(None)
-        dt_resposta = pd.to_datetime(df.get('Data de primeira resposta'), errors='coerce').dt.tz_localize(None)
-        dt_fim = pd.to_datetime(df.get('Data de finalização do chat'), errors='coerce').dt.tz_localize(None)
-
-        # -----------------------------------------------------------------
-        # REGRA: ATENDENTE E FECHADO POR (Nome, Sobrenome ou "Não informado")
-        # -----------------------------------------------------------------
-        def formatar_nome_simples(nome):
-            if pd.isna(nome) or str(nome).strip() in ['', 'null', 'None']:
-                return "Não informado"
-            partes = str(nome).strip().split()
-            if len(partes) == 1: return partes[0]
-            return f"{partes[0]} {partes[-1]}"
+        # 1. TRATAR TELEFONES E IDENTIFICADORES (E Notação Científica)
+        if 'Telefone do contato' in df.columns:
+            # Substitui telefones que vieram como notação científica (ex: 5,56282E+11) por NaN temporariamente
+            df.loc[df['Telefone do contato'].astype(str).str.contains(r'E\+', case=False, na=False), 'Telefone do contato'] = np.nan
             
+            # Tenta preencher os buracos do telefone usando o histórico do mesmo 'Id do cliente'
+            if 'Id do cliente' in df.columns:
+                df['Telefone do contato'] = df.groupby('Id do cliente')['Telefone do contato'].transform(lambda x: x.ffill().bfill())
+                
+            # Limpa '.0' e 'nan'
+            df['Telefone do contato'] = df['Telefone do contato'].fillna('').astype(str).replace(['nan', 'None'], '').str.replace(r'\.0$', '', regex=True)
+
+        if 'Id do cliente' in df.columns:
+            df['Id do cliente'] = df['Id do cliente'].fillna('').astype(str).replace(['nan', 'None'], '').str.replace(r'\.0$', '', regex=True)
+
+        # 2. IDENTIFICAR ROBÔ (AUTOATENDIMENTO)
         if 'Atendente' in df.columns:
-            df['Atendente'] = df['Atendente'].apply(formatar_nome_simples)
-        else:
-            df['Atendente'] = "Não informado"
-
+            df['Atendente'] = df['Atendente'].fillna('Chatbot').replace('', 'Chatbot')
         if 'Fechado por' in df.columns:
-            df['Fechado por'] = df['Fechado por'].apply(formatar_nome_simples)
-        else:
-            df['Fechado por'] = "Não informado"
+            df['Fechado por'] = df['Fechado por'].fillna('Chatbot').replace('', 'Chatbot')
 
-        # -----------------------------------------------------------------
-        # PERÍODO DO DIA E EXPEDIENTE
-        # -----------------------------------------------------------------
-        horas = dt_chegada.dt.hour
-        df['Período do Dia'] = np.select(
-            [(horas >= 0) & (horas < 6), (horas >= 6) & (horas < 12), (horas >= 12) & (horas < 18), (horas >= 18) & (horas <= 23)],
-            ['Madrugada', 'Manhã', 'Tarde', 'Noite'], default='Desconhecido'
-        )
+        # 3. CRIAR COLUNA DE STATUS DO ATENDIMENTO
+        dt_resp = pd.to_datetime(df.get('Data de primeira resposta'), errors='coerce')
+        dt_fim = pd.to_datetime(df.get('Data de finalização do chat'), errors='coerce')
 
-        def verificar_expediente(dt):
-            if pd.isna(dt) or dt.dayofweek >= 5: return "Não" 
-            minutos_do_dia = dt.hour * 60 + dt.minute
-            if (8 * 60 + 1) <= minutos_do_dia <= (17 * 60 + 59): return "Sim"
-            return "Não"
-            
-        df['Dentro do Expediente?'] = dt_chegada.apply(verificar_expediente)
-
-        # -----------------------------------------------------------------
-        # AVALIAÇÃO DA ESPERA
-        # -----------------------------------------------------------------
-        def avaliar_espera(row, data_chegada, data_resposta, data_fim):
-            if pd.isna(data_resposta): return "Sem Resposta"
-            minutos = (data_resposta - data_chegada).total_seconds() / 60
-            if minutos <= 5: return "Rapido"
-            elif minutos <= 15: return "Aceitavel"
-            else: return "Demorado"
-            
-        df['Avaliação da Espera'] = [avaliar_espera(row, c, r, f) for row, c, r, f in zip(df.to_dict('records'), dt_chegada, dt_resposta, dt_fim)]
-
-        # -----------------------------------------------------------------
-        # DIAGNÓSTICO DA CONVERSA (Aguardando Atendimento, Sem Interação, Em Atendimento)
-        # -----------------------------------------------------------------
-        def diagnosticar_conversa(resp, fim):
-            if pd.isna(resp):
-                # Se não houve resposta e ainda não foi fechado
-                if pd.isna(fim): return "Aguardando Atendimento"
-                # Se não houve resposta e já foi fechado (Robô, Vácuo, etc)
-                else: return "Sem Interação"
+        def definir_status(resp, fim):
+            if pd.notna(fim):
+                return "Finalizado"
+            elif pd.isna(resp):
+                return "Aguardando Contato"
             else:
-                # Se já teve resposta humana, o status é "Em Atendimento" (independente de estar fechado ou não, conforme solicitado)
                 return "Em Atendimento"
 
-        df['Diagnóstico da Conversa'] = [diagnosticar_conversa(r, f) for r, f in zip(dt_resposta, dt_fim)]
+        df['Status do Atendimento'] = [definir_status(r, f) for r, f in zip(dt_resp, dt_fim)]
+
+        # 4. TRATAR COLUNAS DE DATA (Separando Data e Hora)
+        colunas_data = ['Data de criação do chat', 'Data de primeira resposta', 'Data de finalização do chat']
         
-        df['Status Final'] = np.where(dt_fim.notna(), "Encerrado", "Em Aberto")
+        for col in colunas_data:
+            if col in df.columns:
+                # Converte para datetime (ignora erros para nulos)
+                dt_series = pd.to_datetime(df[col], errors='coerce').dt.tz_localize(None)
+                
+                # Cria a coluna de Hora
+                col_hora = col.replace('Data de', 'Hora de')
+                df[col_hora] = dt_series.dt.strftime('%H:%M').fillna('')
+                
+                # Formata a coluna original apenas com a Data
+                def formatar_apenas_data(dt):
+                    if pd.isna(dt): return ''
+                    return f"{dt.day}/{dt.month}/{dt.year}"
+                
+                df[col] = dt_series.apply(formatar_apenas_data)
 
-        data_limite_espera = dt_resposta.fillna(dt_fim)
-        df['Tempo de Espera (Fila)'] = (data_limite_espera - dt_chegada).apply(formatar_tempo_exato)
-        df['Tempo de Conversa (Atendimento)'] = np.where(dt_resposta.notna(), (dt_fim - dt_resposta).apply(formatar_tempo_exato), "")
-        df['Tempo Total (Início ao Fim)'] = (dt_fim - dt_chegada).apply(formatar_tempo_exato)
-
-        df['1. Data de Entrada'] = dt_chegada.dt.normalize()
-        df['1. Hora de Entrada'] = dt_chegada.dt.time
-        df['2. Data da 1ª Resposta'] = dt_resposta.dt.normalize()
-        df['2. Hora da 1ª Resposta'] = dt_resposta.dt.time
-        df['3. Data de Encerramento'] = dt_fim.dt.normalize()
-        df['3. Hora de Encerramento'] = dt_fim.dt.time
-
-        ordem_historia = [
-            'Id do atendimento', 'Cliente', 'Telefone do contato',
-            '1. Data de Entrada', '1. Hora de Entrada', 'Período do Dia', 'Dentro do Expediente?',
-            'Houve redirecionamento', 'Departamento do Chat', 'Atendente', 'Tempo de Espera (Fila)', 'Avaliação da Espera',
-            '2. Data da 1ª Resposta', '2. Hora da 1ª Resposta',
-            'Diagnóstico da Conversa', 'Tempo de Conversa (Atendimento)',
-            '3. Data de Encerramento', '3. Hora de Encerramento', 'Fechado por', 'Tempo Total (Início ao Fim)', 'Status Final',
-            'Motivo do serviço', 'Motivo do fechamento'
+        # 5. REMOVER COLUNAS INDESEJADAS
+        colunas_remover = [
+            'Id do atendimento', 'CPF do contato', 'Channel',
+            'Nota do atendimento', 'Nota de atendimento', 'Mensagens Totais', 
+            'Mensagens do Atendente', 'Mensagens do cliente', 
+            'Motivo do serviço', 'Motivo do fechamento',
+            'Departamento do Chat', 'Hora de inicio do chat'
         ]
+        df = df.drop(columns=[col for col in colunas_remover if col in df.columns])
 
-        colunas_finais = [col for col in ordem_historia if col in df.columns]
-        df_final = df[colunas_finais].copy()
+        # 6. ORDENAR COLUNAS PARA MELHOR VISUALIZAÇÃO
+        ordem_desejada = [
+            'Cliente', 'Telefone do contato', 'Status do Atendimento', 
+            'Atendente', 'Fechado por', 
+            'Data de criação do chat', 'Hora de criação do chat', 
+            'Data de primeira resposta', 'Hora de primeira resposta', 'Tempo primeira mensagem',
+            'Data de finalização do chat', 'Hora de finalização do chat', 'Tempo de encerramento da conversa',
+            'Houve redirecionamento', 'Redirecionado para', 'Tipo', 'Id do cliente'
+        ]
+        
+        colunas_finais = [col for col in ordem_desejada if col in df.columns]
+        # Adiciona qualquer coluna extra que tenha sobrado
+        colunas_finais += [col for col in df.columns if col not in colunas_finais]
+        df = df[colunas_finais]
 
-        print("🎨 A criar o ficheiro Excel Premium...")
-        writer = pd.ExcelWriter(ARQUIVO_EXCEL, engine='xlsxwriter', datetime_format='dd/mm/yyyy', engine_kwargs={'options': {'strings_to_urls': False}})
+        print("🎨 A criar o ficheiro Excel...")
+        writer = pd.ExcelWriter(ARQUIVO_EXCEL, engine='xlsxwriter', engine_kwargs={'options': {'strings_to_urls': False}})
         nome_aba = 'Relatorio_Chats'
-        df_final.to_excel(writer, index=False, header=False, startrow=1, sheet_name=nome_aba)
+        
+        df.to_excel(writer, index=False, header=False, startrow=1, sheet_name=nome_aba)
         
         workbook = writer.book
         ws = writer.sheets[nome_aba]
         ws.set_tab_color('#FF8C00') 
         
-        (max_r, max_c) = df_final.shape
+        (max_r, max_c) = df.shape
         if max_r > 0:
             ws.add_table(0, 0, max_r, max_c - 1, {
-                'columns': [{'header': str(c)} for c in df_final.columns],
+                'columns': [{'header': str(c)} for c in df.columns],
                 'style': 'Table Style Medium 9', 'name': 'Tab_Chats'
             })
         else:
-            ws.write_row(0, 0, df_final.columns)
+            ws.write_row(0, 0, df.columns)
 
         ws.ignore_errors({'number_stored_as_text': 'A1:XFD1048576'})
-        fmt_hora = workbook.add_format({'num_format': 'hh:mm:ss'})
-        fmt_central = workbook.add_format({'align': 'center'})
 
-        for i, col in enumerate(df_final.columns):
-            try: tamanho = int(df_final[col].fillna("").astype(str).str.len().max())
+        for i, col in enumerate(df.columns):
+            try: tamanho = int(df[col].fillna("").astype(str).str.len().max())
             except: tamanho = 10
             largura = min(max(tamanho, len(str(col))) + 2, 45)
-
-            if "Hora " in col or "Tempo " in col: ws.set_column(i, i, largura, fmt_hora)
-            elif "Houve" in col: ws.set_column(i, i, largura, fmt_central)
-            else: ws.set_column(i, i, largura)
+            ws.set_column(i, i, largura)
 
         writer.close()
-        print(f"🏆 SUCESSO TOTAL! O Pipeline terminou. Ficheiro final: {os.path.basename(ARQUIVO_EXCEL)}")
+        print(f"🏆 SUCESSO TOTAL! Ficheiro final: {os.path.basename(ARQUIVO_EXCEL)}")
         return True
 
     except Exception as e:

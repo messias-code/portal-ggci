@@ -1,0 +1,8 @@
+Index(['Cliente', 'Telefone do contato', 'Status do Atendimento', 'Atendente',
+       'Fechado por', 'Tipo', 'Tempo primeira mensagem'],
+      dtype='object')
+   Cliente  Telefone do contato  ...       Tipo Tempo primeira mensagem
+0  LUCIANA                  123  ...  receptivo                00:10:00
+1    JOISS                  456  ...  receptivo                00:05:00
+
+[2 rows x 7 columns]
