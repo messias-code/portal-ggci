@@ -3,6 +3,7 @@ import math
 import traceback
 import subprocess
 import sys
+import uuid
 import pandas as pd
 from datetime import datetime
 from django.http import JsonResponse, FileResponse, Http404
@@ -10,17 +11,24 @@ from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from .models import ProcessamentoPolichat
 
+
 @csrf_exempt
 def iniciar_extracao_polichat(request):
     if request.method == 'POST':
+        force = request.GET.get('force') == 'true' or request.POST.get('force') == 'true'
         robos_ativos = ProcessamentoPolichat.objects.filter(status__in=['PENDENTE', 'PROCESSANDO']).order_by('-id')
+        
         if robos_ativos.exists():
-            return JsonResponse({'status': 'ok', 'processo_id': robos_ativos.first().id, 'msg': 'Robô já em execução.'})
+            if force:
+                robos_ativos.update(status='FALHA', log='Cancelado pelo usuário. Nova sincronização forçada.')
+            else:
+                return JsonResponse({'status': 'ok', 'processo_id': robos_ativos.first().id, 'msg': 'Robô já em execução.'})
 
         processo = ProcessamentoPolichat.objects.create(status='PENDENTE')
         comando = [sys.executable, 'manage.py', 'executar_polichat', str(processo.id)]
         subprocess.Popen(comando)
         return JsonResponse({'status': 'ok', 'processo_id': processo.id})
+        
     return JsonResponse({'status': 'erro', 'mensagem': 'Método inválido'}, status=400)
 
 
@@ -57,67 +65,99 @@ def api_polichat_dados(request):
         arquivo_excel = os.path.join(pasta_dados, "relatorio_chats_pronto.xlsx")
         arquivo_pickle = os.path.join(pasta_dados, "cache_dataframe.pkl")
 
-        data_inicio = request.GET.get('inicio')
-        data_fim = request.GET.get('fim')
-        agente_filtro = request.GET.get('agente', '').strip()
+        data_inicio_str = request.GET.get('inicio', '').strip()
+        data_fim_str    = request.GET.get('fim', '').strip()
+        agente_filtro   = request.GET.get('agente', '').strip()
+        
+        force_refresh = request.GET.get('force') == '1'
+
+        def parse_data_segura(s):
+            if not s: return None
+            try:
+                dt = pd.to_datetime(s, format='%Y-%m-%d')
+                if not (2000 <= dt.year <= 2099): return False
+                return dt
+            except:
+                return False  
+
+        dt_inicio = parse_data_segura(data_inicio_str)
+        dt_fim    = parse_data_segura(data_fim_str)
+
+        if dt_inicio is False or dt_fim is False:
+            return JsonResponse({'status': 'erro', 'mensagem': 'Data inválida.'}, status=400)
 
         df = pd.DataFrame()
         tem_excel = os.path.exists(arquivo_excel)
         tem_pickle = os.path.exists(arquivo_pickle)
 
-        if tem_excel and tem_pickle:
-            if os.path.getmtime(arquivo_pickle) >= os.path.getmtime(arquivo_excel):
-                df = pd.read_pickle(arquivo_pickle)
-            else:
-                try:
-                    df = pd.read_excel(arquivo_excel, engine='openpyxl')
-                    df.columns = df.columns.astype(str).str.strip()
-                    if 'Data de criação do chat' in df.columns:
-                        df['Data_Filtro'] = pd.to_datetime(df['Data de criação do chat'], dayfirst=True, errors='coerce')
-                    df.to_pickle(arquivo_pickle)
-                except Exception:
-                    df = pd.read_pickle(arquivo_pickle)
-        elif tem_pickle:
-            df = pd.read_pickle(arquivo_pickle)
+        def carregar_do_excel():
+            _df = pd.read_excel(arquivo_excel, engine='openpyxl')
+            _df.columns = _df.columns.astype(str).str.strip()
+            if 'Data de criação do chat' in _df.columns:
+                str_dates = _df['Data de criação do chat'].astype(str).str.strip().str[:10]
+                _df['Data_Filtro'] = pd.to_datetime(str_dates, format='%d/%m/%Y', errors='coerce')
+            temp_pkl = f"{arquivo_pickle}.{uuid.uuid4().hex}.tmp"
+            try:
+                _df.to_pickle(temp_pkl)
+                os.replace(temp_pkl, arquivo_pickle)
+            except Exception:
+                if os.path.exists(temp_pkl):
+                    try: os.remove(temp_pkl)
+                    except: pass
+            return _df
+
+        def carregar_do_pickle():
+            try: return pd.read_pickle(arquivo_pickle)
+            except: return None
+
+        if tem_pickle:
+            df = carregar_do_pickle()
+            if df is None and tem_excel: df = carregar_do_excel()
         elif tem_excel:
-            df = pd.read_excel(arquivo_excel, engine='openpyxl')
-            df.columns = df.columns.astype(str).str.strip()
-            if 'Data de criação do chat' in df.columns:
-                df['Data_Filtro'] = pd.to_datetime(df['Data de criação do chat'], dayfirst=True, errors='coerce')
-            df.to_pickle(arquivo_pickle)
+            df = carregar_do_excel()
 
         EMPTY_RESPONSE = {
-            'status': 'ok',
-            'mensagem': 'Base vazia.',
+            'status': 'ok', 'mensagem': 'Base vazia.',
             'kpis': {'fechados_por_mim': 0, 'fechados_por_outro': 0, 'em_andamento': 0, 'aguardando': 0, 'tma': '--:--'},
             'tabelas': {'aguardando': [], 'em_andamento': [], 'fechados_por_mim': [], 'fechados_por_outro': []},
             'filtros_disponiveis': {'agentes': []}
         }
 
-        if df.empty:
+        if df is None or df.empty:
             return JsonResponse(EMPTY_RESPONSE)
 
-        # Limpeza e Filtro de Data
+        # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+        # AUTO-CURA DO PANDAS (BLINDAGEM CONTRA O KEYERROR)
+        # Se o Extrator mandou o Pickle sem o Data_Filtro, recriamos instantaneamente!
+        # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+        if 'Data_Filtro' not in df.columns and 'Data de criação do chat' in df.columns:
+            str_dates = df['Data de criação do chat'].astype(str).str.strip().str[:10]
+            df['Data_Filtro'] = pd.to_datetime(str_dates, format='%d/%m/%Y', errors='coerce')
+
+        for col in ['Atendente', 'Fechado por', 'Tempo Total (Início ao Fim)', 'Tempo de Conversa (Atendimento)', 'Tempo de Espera (Fila)', 'Transferido Para', 'Tempo Final (Após Transf)']:
+            if col not in df.columns: df[col] = ''
+
+        _todos_atend   = set(df['Atendente'].dropna().astype(str).str.strip().unique())
+        _todos_fecham  = set(df['Fechado por'].dropna().astype(str).str.strip().unique())
+        _excluir       = {'chatbot', 'não informado', 'nan', 'administração', '', 'transferido', 'disparador'}
+        
+        lista_agentes_total = sorted([
+            a for a in _todos_atend.union(_todos_fecham)
+            if a.lower() not in _excluir
+        ])
+
         df = df[~df['Atendente'].astype(str).str.lower().str.contains('disparador', na=False)]
 
         if 'Data_Filtro' in df.columns:
-            if data_inicio:
-                df = df[df['Data_Filtro'] >= pd.to_datetime(data_inicio)]
-            if data_fim:
-                df = df[df['Data_Filtro'] <= pd.to_datetime(data_fim) + pd.Timedelta(hours=23, minutes=59, seconds=59)]
-
-        # Garantir colunas existem
-        for col in ['Atendente', 'Fechado por']:
-            if col not in df.columns:
-                df[col] = ''
-
-        # Lista de Agentes para o Select
-        agentes_atendentes = set(df['Atendente'].dropna().unique())
-        agentes_fechadores = set(df['Fechado por'].dropna().unique())
-        lista_agentes_total = sorted([
-            str(a).strip() for a in agentes_atendentes.union(agentes_fechadores)
-            if str(a).strip() and str(a).lower() not in ['chatbot', 'não informado', 'nan', 'administração', 'nan']
-        ])
+            if not pd.api.types.is_datetime64_any_dtype(df['Data_Filtro']):
+                df['Data_Filtro'] = pd.to_datetime(df['Data_Filtro'], format='%d/%m/%Y', errors='coerce')
+            try: df['Data_Filtro'] = df['Data_Filtro'].dt.tz_localize(None)
+            except: pass
+                
+            mask = pd.Series(True, index=df.index)
+            if dt_inicio: mask &= (df['Data_Filtro'] >= dt_inicio.replace(tzinfo=None))
+            if dt_fim:    mask &= (df['Data_Filtro'] <= (dt_fim + pd.Timedelta(hours=23, minutes=59, seconds=59)).replace(tzinfo=None))
+            df = df[mask]
 
         if not agente_filtro:
             r = EMPTY_RESPONSE.copy()
@@ -125,104 +165,96 @@ def api_polichat_dados(request):
             r['filtros_disponiveis'] = {'agentes': lista_agentes_total}
             return JsonResponse(r)
 
-        # ==========================================
-        # PROCESSAMENTO INDIVIDUAL FOCADO
-        # ==========================================
+        ag_lower = agente_filtro.lower()
         df_view = df[
-            (df['Atendente'].astype(str).str.strip().str.lower() == agente_filtro.lower()) |
-            (df['Fechado por'].astype(str).str.strip().str.lower() == agente_filtro.lower())
-        ]
+            (df['Atendente'].astype(str).str.strip().str.lower() == ag_lower) |
+            (df['Fechado por'].astype(str).str.strip().str.lower() == ag_lower)
+        ].copy()
 
-        def tempo_para_segundos(tempo):
-            if pd.isna(tempo):
-                return 0
-            if hasattr(tempo, 'hour'):
-                return (tempo.hour * 3600) + (tempo.minute * 60) + getattr(tempo, 'second', 0)
-            t_str = str(tempo).strip()
-            if t_str in ['', 'NaT', 'nan', 'None']:
-                return 0
+        # Ordenação Absoluta
+        df_view = df_view.sort_values(by=['Data_Filtro', 'Hora de criação do chat'], ascending=[False, False])
+
+        agora = pd.Timestamp.now('America/Sao_Paulo').tz_localize(None)
+        
+        dt_c_full = df_view['Data de criação do chat'].astype(str) + ' ' + df_view['Hora de criação do chat'].astype(str)
+        df_view['__dt_criacao_calc'] = pd.to_datetime(dt_c_full, format='%d/%m/%Y %H:%M:%S', errors='coerce')
+
+        dt_r_full = df_view['Data de primeira resposta'].astype(str) + ' ' + df_view['Hora de primeira resposta'].astype(str)
+        df_view['__dt_resp_calc'] = pd.to_datetime(dt_r_full, format='%d/%m/%Y %H:%M:%S', errors='coerce')
+
+        df_view['__live_espera_seg'] = (agora - df_view['__dt_criacao_calc']).dt.total_seconds().fillna(-1).astype(int)
+        df_view['__live_atend_seg']  = (agora - df_view['__dt_resp_calc']).dt.total_seconds().fillna(-1).astype(int)
+
+        df_view = df_view.fillna('')
+        records = df_view.to_dict('records')
+
+        def tempo_para_segundos(t_str):
+            t_str = str(t_str).strip()
+            if t_str in ['', 'nan', 'NaT', 'None', '-']: return 0
             try:
-                if '.' in t_str:
-                    dias, resto = t_str.split('.')
-                    h, m, s = map(int, resto.split(':'))
-                    return (int(dias) * 86400) + (h * 3600) + (m * 60) + s
-                elif ':' in t_str:
+                dias = 0
+                if 'd ' in t_str:
+                    parts = t_str.split('d ')
+                    dias, t_str = int(parts[0]), parts[1]
+                if ':' in t_str:
                     p = t_str.split(':')
-                    if len(p) == 3:
-                        return (int(p[0]) * 3600) + (int(p[1]) * 60) + int(p[2])
-                    elif len(p) == 2:
-                        return (int(p[0]) * 60) + int(p[1])
+                    if len(p) == 3: return (dias * 86400) + (int(p[0]) * 3600) + (int(p[1]) * 60) + int(p[2])
+                    elif len(p) == 2: return (dias * 86400) + (int(p[0]) * 60) + int(p[1])
                 return 0
             except:
                 return 0
 
-        def formatar_segundos_legivel(segundos_totais):
-            if segundos_totais <= 0:
-                return "--"
-            horas = math.floor(segundos_totais / 3600)
-            minutos = math.floor((segundos_totais % 3600) / 60)
-            if horas > 0:
-                return f"{horas}h {minutos}m"
-            else:
-                return f"{minutos}m"
+        def formatar_segundos_legivel(seg):
+            if seg <= 0: return "--"
+            seg = int(seg)
+            h, rem = divmod(seg, 3600)
+            m, s = divmod(rem, 60)
+            if h > 0: return f"{h}h {m}m {s}s"
+            if m > 0: return f"{m}m {s}s"
+            return f"{s}s"
 
-        def fmt_dt(data_str, hora_str):
-            """Formata data e hora de forma legível, retorna string ou '-'"""
-            d = str(data_str).replace('nan', '').strip()
-            h = str(hora_str).replace('nan', '').strip()
-            if d:
-                return f"{d} {h}".strip()
-            return '-'
+        def parse_br_time(d_str, h_str):
+            try: return datetime.strptime(f"{d_str} {h_str}", "%d/%m/%Y %H:%M:%S")
+            except: return None
 
-        agora = datetime.now()
-        lista_aguardando = []
-        lista_em_andamento = []
-        lista_fechados_por_mim = []
-        lista_fechados_por_outro = []
+        lista_aguardando, lista_em_andamento, lista_fechados_por_mim, lista_fechados_por_outro = [], [], [], []
+        contagem_aguardando = contagem_em_andamento = contagem_fechados_por_mim = contagem_fechados_por_outro = soma_atendimento = 0
 
-        contagem_aguardando = 0
-        contagem_em_andamento = 0
-        contagem_fechados_por_mim = 0
-        contagem_fechados_por_outro = 0
-        soma_atendimento = 0
-
-        for _, row in df_view.iterrows():
-            st_raw = str(row.get('Status do Atendimento', ''))
+        for row in records:
+            st_raw = str(row.get('Status do Atendimento', '')).strip()
             st_lower = st_raw.lower()
-            is_finalizado = 'finalizado' in st_lower or 'encerrado' in st_lower
-            is_aguardando = 'aguardando' in st_lower
-            is_em_atendimento = 'atendimento' in st_lower and not is_finalizado and not is_aguardando
+            
+            data_ent = str(row.get('Data de criação do chat', '')).strip()
+            hora_ent = str(row.get('Hora de criação do chat', '')).strip()
+            data_entrada_fmt = f"{data_ent} {hora_ent}".strip() if data_ent else '-'
 
-            atend = str(row.get('Atendente', '')).replace('nan', '').strip()
-            fechado_por = str(row.get('Fechado por', '')).replace('nan', '').strip()
+            data_resp = str(row.get('Data de primeira resposta', '')).strip()
+            hora_resp = str(row.get('Hora de primeira resposta', '')).strip()
+            primeira_resposta_fmt = f"{data_resp} {hora_resp}".strip() if data_resp else '-'
 
-            is_minha_abertura = atend.lower() == agente_filtro.lower()
-            is_meu_fechamento = fechado_por.lower() == agente_filtro.lower()
+            data_fim = str(row.get('Data de finalização do chat', '')).strip()
+            hora_fim = str(row.get('Hora de finalização do chat', '')).strip()
+            data_fechamento_fmt = f"{data_fim} {hora_fim}".strip() if data_fim else '-'
 
-            # Data de entrada
-            data_ent = str(row.get('Data de criação do chat', '')).replace('nan', '').strip()
-            hora_ent = str(row.get('Hora de criação do chat', '')).replace('nan', '').strip()
-            data_entrada_fmt = fmt_dt(data_ent, hora_ent)
-
-            # Primeira resposta
-            data_resp = str(row.get('Data de primeira resposta', '')).replace('nan', '').strip()
-            hora_resp = str(row.get('Hora de primeira resposta', '')).replace('nan', '').strip()
-            primeira_resposta_fmt = fmt_dt(data_resp, hora_resp)
-
-            # Tempo espera
-            if is_aguardando:
-                try:
-                    dt_chegada = pd.to_datetime(f"{data_ent} {hora_ent}".strip(), dayfirst=True)
-                    seg_espera = max(0, (agora - dt_chegada).total_seconds())
-                except:
-                    seg_espera = tempo_para_segundos(row.get('Tempo primeira mensagem', 0))
+            if 'finalizado' in st_lower or 'encerrado' in st_lower or bool(data_fim):
+                is_finalizado, is_aguardando, is_em_atendimento, st_raw = True, False, False, "Finalizado"
+            elif 'aguardando' in st_lower or (not bool(data_resp) and not bool(data_fim)):
+                is_finalizado, is_aguardando, is_em_atendimento, st_raw = False, True, False, "Aguardando"
             else:
-                seg_espera = tempo_para_segundos(row.get('Tempo primeira mensagem', 0))
+                is_finalizado, is_aguardando, is_em_atendimento, st_raw = False, False, True, "Em Atendimento"
+
+            atend = str(row.get('Atendente', '')).strip()
+            fechado_por = str(row.get('Fechado por', '')).strip()
+            is_minha_abertura = atend.lower() == ag_lower
+            is_meu_fechamento = fechado_por.lower() == ag_lower
+
+            calc_espera = row.get('__live_espera_seg', -1)
+            seg_espera = calc_espera if (is_aguardando and calc_espera >= 0) else tempo_para_segundos(row.get('Tempo de Espera (Fila)'))
 
             obj_base = {
-                'status': st_raw.strip(),
-                'cliente': str(row.get('Cliente', '')).replace('nan', 'Desconhecido').strip().title(),
-                'telefone': str(row.get('Telefone do contato', '')).replace('nan', '').replace('.0', '').strip(),
+                'status': st_raw,
+                'cliente': str(row.get('Cliente', '')).strip().title() or 'Desconhecido',
+                'telefone': str(row.get('Telefone do contato', '')).replace('.0', '').strip(),
                 'atendente': atend.title(),
                 'data_entrada': data_entrada_fmt,
                 'primeira_resposta': primeira_resposta_fmt,
@@ -232,18 +264,23 @@ def api_polichat_dados(request):
             }
 
             if is_finalizado:
-                data_fim = str(row.get('Data de finalização do chat', '')).replace('nan', '').strip()
-                hora_fim = str(row.get('Hora de finalização do chat', '')).replace('nan', '').strip()
-                seg_total = tempo_para_segundos(row.get('Tempo de encerramento da conversa'))
-                seg_atend = seg_total - seg_espera if seg_total >= seg_espera else 0
+                seg_total = tempo_para_segundos(row.get('Tempo Total (Início ao Fim)'))
+                seg_atend = tempo_para_segundos(row.get('Tempo de Conversa (Atendimento)'))
+                if seg_atend == 0 and seg_total > 0:
+                    seg_atend = seg_total - seg_espera if seg_total >= seg_espera else 0
+
+                t_para = str(row.get('Transferido Para', '')).strip()
+                t_final = str(row.get('Tempo Final (Após Transf)', '')).strip()
 
                 obj_base.update({
-                    'fechado_por': fechado_por.title(),
-                    'data_fechamento': fmt_dt(data_fim, hora_fim),
+                    'fechado_por': t_para.title() if t_para else fechado_por.title(),
+                    'data_fechamento': data_fechamento_fmt,
                     'tempo_atendimento': formatar_segundos_legivel(seg_atend),
                     'tempo_total': formatar_segundos_legivel(seg_total),
                     'tempo_atendimento_seg': seg_atend,
                     'tempo_total_seg': seg_total,
+                    'tempo_espera_transferencia': formatar_segundos_legivel(seg_total),
+                    'tempo_total_final': t_final if t_final else '--',
                 })
 
                 if is_meu_fechamento:
@@ -261,49 +298,32 @@ def api_polichat_dados(request):
 
             elif is_em_atendimento and is_minha_abertura:
                 contagem_em_andamento += 1
-                try:
-                    dt_resp_dt = pd.to_datetime(f"{data_resp} {hora_resp}".strip(), dayfirst=True)
-                    seg_atend_vivo = max(0, (agora - dt_resp_dt).total_seconds())
-                    obj_base['tempo_atendimento'] = formatar_segundos_legivel(seg_atend_vivo)
-                    obj_base['tempo_atendimento_seg'] = seg_atend_vivo
-                except:
+                calc_atend = row.get('__live_atend_seg', -1)
+                if calc_atend >= 0:
+                    obj_base['tempo_atendimento'] = formatar_segundos_legivel(calc_atend)
+                    obj_base['tempo_atendimento_seg'] = calc_atend
+                else:
                     obj_base['tempo_atendimento'] = 'Em curso...'
                     obj_base['tempo_atendimento_seg'] = 0
                 lista_em_andamento.append(obj_base)
-
-        # Ordenações
-        lista_aguardando.sort(key=lambda x: -x.get('tempo_espera_seg', 0))
-        lista_em_andamento.sort(key=lambda x: -x.get('tempo_atendimento_seg', 0))
-        lista_fechados_por_mim.reverse()
-        lista_fechados_por_outro.reverse()
 
         tma_calc = formatar_segundos_legivel(soma_atendimento // contagem_fechados_por_mim) if contagem_fechados_por_mim > 0 else '--:--'
 
         return JsonResponse({
             'status': 'ok',
-            'mensagem': '',
             'kpis': {
-                'fechados_por_mim': contagem_fechados_por_mim,
-                'fechados_por_outro': contagem_fechados_por_outro,
-                'em_andamento': contagem_em_andamento,
-                'aguardando': contagem_aguardando,
-                'tma': tma_calc,
-                # Mantendo retrocompatibilidade
-                'fechados': contagem_fechados_por_mim,
-                'andamento': contagem_em_andamento,
-                'passados_outro': contagem_fechados_por_outro,
+                'fechados_por_mim': contagem_fechados_por_mim, 'fechados_por_outro': contagem_fechados_por_outro,
+                'em_andamento': contagem_em_andamento, 'aguardando': contagem_aguardando, 'tma': tma_calc,
+                'fechados': contagem_fechados_por_mim, 'andamento': contagem_em_andamento, 'passados_outro': contagem_fechados_por_outro,
             },
             'tabelas': {
-                'aguardando': lista_aguardando[:150],
-                'em_andamento': lista_em_andamento[:150],
-                'fechados_por_mim': lista_fechados_por_mim[:150],
-                'fechados_por_outro': lista_fechados_por_outro[:150],
-                # Retrocompatibilidade
-                'ativos': (lista_aguardando + lista_em_andamento)[:150],
-                'fechados': lista_fechados_por_mim[:150],
+                'aguardando': lista_aguardando[:150], 'em_andamento': lista_em_andamento[:150],
+                'fechados_por_mim': lista_fechados_por_mim[:150], 'fechados_por_outro': lista_fechados_por_outro[:150],
             },
             'filtros_disponiveis': {'agentes': lista_agentes_total}
         })
 
     except Exception as e:
+        print(f"Erro na API Polichat: {e}")
+        traceback.print_exc()
         return JsonResponse({'status': 'erro', 'mensagem': traceback.format_exc()}, status=500)

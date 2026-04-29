@@ -1,6 +1,7 @@
 import os
 import time
 import glob
+import shutil
 import pandas as pd
 import numpy as np
 from playwright.sync_api import sync_playwright
@@ -8,247 +9,361 @@ from playwright.sync_api import sync_playwright
 # ==========================================
 # 1. CONFIGURAÇÕES E CAMINHOS
 # ==========================================
-LOGIN_USER = 'andreia.amaral@ovg.org.br'
+LOGIN_USER    = 'andreia.amaral@ovg.org.br'
 PASSWORD_USER = '123456'
+LOGIN_URL     = 'https://spa.poli.digital/login'
+RELATORIO_URL = 'https://app-spa.poli.digital/relatorio'
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+BASE_DIR      = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DOWNLOAD_PATH = os.path.join(BASE_DIR, "dados_polichat", "analise_anual")
-NOME_PADRAO_ARQUIVO = "relatorio_chats_atualizado.csv"
-ARQUIVO_CSV = os.path.join(DOWNLOAD_PATH, NOME_PADRAO_ARQUIVO)
+
+# Arquivos Oficiais
+ARQUIVO_CSV   = os.path.join(DOWNLOAD_PATH, "relatorio_chats_atualizado.csv")
 ARQUIVO_EXCEL = os.path.join(DOWNLOAD_PATH, "relatorio_chats_pronto.xlsx")
+
+# Arquivos Temporários e Backups
+ARQUIVO_CSV_TMP   = os.path.join(DOWNLOAD_PATH, "relatorio_chats_temp.csv")
+ARQUIVO_EXCEL_TMP = os.path.join(DOWNLOAD_PATH, "relatorio_chats_temp.xlsx")
+ARQUIVO_CSV_BKP   = os.path.join(DOWNLOAD_PATH, "relatorio_chats_atualizado_bkp.csv")
+ARQUIVO_EXCEL_BKP = os.path.join(DOWNLOAD_PATH, "relatorio_chats_pronto_bkp.xlsx")
+
+# Timeouts centralizados (ms)
+T_NAV      = 90_000   
+T_METABASE = 60_000   
+T_EL       = 30_000   
+T_DOWNLOAD = 300_000  
 
 # ==========================================
 # 2. FUNÇÕES AUXILIARES
 # ==========================================
 def formatar_tempo_exato(td):
     if pd.isna(td): return ""
-    segundos_totais = max(0, int(td.total_seconds()))
-    dias, resto_dias = divmod(segundos_totais, 86400)
-    horas, resto = divmod(resto_dias, 3600)
-    minutos, segundos = divmod(resto, 60)
-    return f"{dias}.{horas:02d}:{minutos:02d}:{segundos:02d}"
+    s = max(0, int(td.total_seconds()))
+    d, r = divmod(s, 86400)
+    h, r = divmod(r, 3600)
+    m, s = divmod(r, 60)
+    if d > 0:
+        return f"{d}d {h:02d}:{m:02d}:{s:02d}"
+    return f"{h:02d}:{m:02d}:{s:02d}"
 
 def limpar_pasta_downloads():
     os.makedirs(DOWNLOAD_PATH, exist_ok=True)
-    for extensao in ["*.csv", "*.xlsx", "*.crdownload", "*.png", "*_temp.xlsx"]:
-        for arquivo in glob.glob(os.path.join(DOWNLOAD_PATH, extensao)):
-            try: os.remove(arquivo)
+    for pat in ["*.crdownload", "relatorio_chats_temp*", "*_temp.xlsx"]:
+        for f in glob.glob(os.path.join(DOWNLOAD_PATH, pat)):
+            try: os.remove(f)
             except: pass
-    print("🧹 Pasta de downloads limpa para a nova extração.")
+    print("🧹 Lixo temporário limpo. Mantendo bases originais ativas.")
 
 # ==========================================
-# 3. MÓDULO DE EXTRAÇÃO (PLAYWRIGHT)
+# 3. EXTRAÇÃO (PLAYWRIGHT)
 # ==========================================
 def extrair_relatorio_metabase():
-    print("\n" + "="*50)
-    print("🚀 FASE 1: EXTRAÇÃO DE DADOS EM BACKGROUND (POLI DIGITAL)")
-    print("="*50)
-    
+    print("\n" + "="*55)
+    print("🚀 FASE 1: EXTRAÇÃO DE DADOS (POLI DIGITAL)")
+    print("="*55)
     sucesso = False
 
     try:
-        with sync_playwright() as playwright:
-            browser = playwright.chromium.launch(
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(
                 headless=True,
-                args=['--disable-notifications', '--ignore-certificate-errors', '--no-sandbox', '--disable-dev-shm-usage', '--window-size=1920,1080']
+                args=['--disable-notifications', '--ignore-certificate-errors',
+                      '--no-sandbox', '--disable-dev-shm-usage',
+                      '--window-size=1920,1080', '--disable-gpu']
             )
-            context = browser.new_context(viewport={'width': 1920, 'height': 1080}, accept_downloads=True)
-            page = context.new_page()
+            ctx  = browser.new_context(
+                viewport={'width': 1920, 'height': 1080},
+                accept_downloads=True,
+                ignore_https_errors=True,
+            )
+            page = ctx.new_page()
 
             try:
-                print("🔑 Realizando login no Poli Digital...")
-                page.goto("https://app-spa.poli.digital/login", wait_until="load", timeout=60000)
-                
-                page.locator("xpath=//*[@id='root']/div/div/div/div/div[2]/div/form/input").first.fill(LOGIN_USER)
-                page.locator("xpath=//*[@id='root']/div/div/div/div/div[2]/div/form/div[3]/div/input").first.fill(PASSWORD_USER)
-                
-                btn_entrar = page.locator("xpath=//*[@id='root']/div/div/div/div/div[2]/div/form/div[6]/button").first
-                btn_entrar.wait_for(state="visible", timeout=30000)
-                btn_entrar.evaluate("node => node.click()")
+                print(f"🔑 Login em {LOGIN_URL}...")
+                page.goto(LOGIN_URL, wait_until="domcontentloaded", timeout=T_NAV)
+                page.wait_for_timeout(2_000)
 
-                print("⏳ Aguardando redirecionamento de segurança do Poli Digital...")
-                page.wait_for_timeout(5000) 
+                email_input = page.locator("input[name='email'], input[type='email'], #email").first
+                email_input.wait_for(state="visible", timeout=20_000)
+                email_input.fill(LOGIN_USER)
 
-                print("👉 Navegando diretamente para a página de Relatórios...")
-                page.goto("https://app-spa.poli.digital/relatorio", wait_until="load", timeout=60000)
-                
-                print("⏳ A aguardar o Metabase carregar (Isto pode demorar alguns segundos)...")
-                page.wait_for_timeout(8000) # Pausa estratégica para o iframe nascer no DOM
+                senha_input = page.locator("input[name='password'], input[type='password'], #password").first
+                senha_input.wait_for(state="visible", timeout=10_000)
+                senha_input.fill(PASSWORD_USER)
 
-                # =======================================================
-                # CORREÇÃO: Frame Locator Inteligente
-                # =======================================================
-                metabase_frame = page.frame_locator("iframe").first
+                btn_login = page.locator("button[type='submit']").first
+                btn_login.wait_for(state="visible", timeout=10_000)
+                btn_login.click()
+
+                print("⏳ Aguardando redirecionamento pós-login (8s)...")
+                page.wait_for_timeout(8_000)
+
+                print("📄 Localizando botão 'Relatório' no menu lateral...")
+                link_relatorio = page.locator("a[href='/relatorio'], a[href*='relatorio']").first
+                link_relatorio.wait_for(state="attached", timeout=30_000)
                 
+                print("🖱️ Forçando clique no link de relatório...")
+                link_relatorio.click(force=True)
+
+                print("⏳ Aguardando Metabase renderizar a aba após o clique (12s)...")
+                page.wait_for_timeout(12_000)
+
+                print("🔍 Procurando iframe principal do Metabase...")
                 try:
-                    aba_visao = metabase_frame.locator("xpath=//div[@role='tab' and @aria-label='Visão Geral']").first
-                    # Aumentado para 60 segundos porque o Metabase é pesado a processar a primeira renderização
-                    aba_visao.wait_for(state="visible", timeout=60000)
-                    aba_visao.scroll_into_view_if_needed()
-                    aba_visao.evaluate("node => node.click()")
-                    time.sleep(2)
-                    frame_ativo = metabase_frame
-                    print("✅ Iframe do Metabase acedido com sucesso.")
+                    iframe_el = page.locator("iframe[title*='Metabase']").first
+                    try:
+                        iframe_el.wait_for(state="attached", timeout=10_000)
+                        mf = page.frame_locator("iframe[title*='Metabase']").first
+                    except:
+                        mf = page.frame_locator("iframe").last
+                    
+                    frame_ativo = mf
+                    print("✅ Iframe localizado com sucesso!")
                 except Exception as e:
-                    print("⚠️ Iframe falhou. A tentar na página nativa principal...")
-                    frame_ativo = page
-                    aba_visao = frame_ativo.locator("xpath=//div[@role='tab' and @aria-label='Visão Geral']").first
-                    aba_visao.wait_for(state="visible", timeout=30000)
-                    aba_visao.scroll_into_view_if_needed()
-                    aba_visao.evaluate("node => node.click()")
-                    time.sleep(2)
+                    raise RuntimeError(f"Nenhum iframe encontrado na página. Erro: {e}")
 
-                def clicar_dinamico(xpath, descricao="elemento", delay=0.5):
-                    print(f"👉 A clicar em: {descricao}")
-                    el = frame_ativo.locator(f"xpath={xpath}").first
-                    el.wait_for(state="visible", timeout=30000)
-                    el.scroll_into_view_if_needed()
-                    el.evaluate("node => node.click()")
+                print("🔍 Procurando aba 'Visão Geral'...")
+                try:
+                    aba = frame_ativo.locator("div[role='tab'][aria-label*='Visão'], div[role='tab']:has-text('Visão')").first
+                    aba.wait_for(state="attached", timeout=15_000)
+                    aba.click(force=True)
+                    print("✅ Aba 'Visão Geral' ativada!")
+                    time.sleep(2)
+                except Exception:
+                    print("⚠️ Aba 'Visão Geral' não encontrada. Assumindo que já está na tela correta e prosseguindo...")
+
+                def clicar(seletor, desc="elemento", delay=0.6, by_xpath=False):
+                    print(f"   ▶ Clicando em: {desc}")
+                    sel = f"xpath={seletor}" if by_xpath else seletor
+                    el  = frame_ativo.locator(sel).first
+                    el.wait_for(state="attached", timeout=T_EL)
+                    try: el.scroll_into_view_if_needed()
+                    except: pass
+                    el.click(force=True)
                     time.sleep(delay)
 
-                clicar_dinamico("//button[@aria-label='Data - Período']", "Filtro de Data")
-                try: clicar_dinamico("//*[text()='Atual'] | //*[contains(text(), 'Este mês')]", "Opção 'Este mês'", delay=1)
+                clicar("button[aria-label='Data - Período']", "Filtro de Data")
+
+                try:
+                    frame_ativo.locator("xpath=//*[text()='Atual'] | xpath=//*[contains(text(),'Este mês')]").first.click(force=True)
+                    time.sleep(1)
+                except Exception:
+                    pass
+
+                clicar("xpath=//span[text()='Ano'] | //button[contains(.,'Ano')]", "Seleção 'Ano'")
+
+                print("⏳ Processando dados de 1 ano (22s)...")
+                time.sleep(22)
+
+                print("🔍 Localizando tabela 'Relatório de chats'...")
+                XPATH_TITULO = "xpath=//*[contains(text(),'Relátorio de chats') or contains(text(),'Relatório de chats')]"
+                titulo = frame_ativo.locator(XPATH_TITULO).first
+                titulo.wait_for(state="attached", timeout=T_EL)
+                try: titulo.scroll_into_view_if_needed()
                 except: pass
-                clicar_dinamico("//span[text()='Ano']", "Botão 'Ano'")
-
-                print("⏳ A aguardar o servidor processar os dados de UM ANO (15s)...")
-                time.sleep(15) 
-
-                print("📜 A localizar a tabela 'Relatório de chats'...")
-                xpath_titulo = "//*[contains(text(), 'Relátorio de chats') or contains(text(), 'Relatório de chats')]"
-                titulo_tabela = frame_ativo.locator(f"xpath={xpath_titulo}").first
-                titulo_tabela.wait_for(state="visible", timeout=30000)
-                titulo_tabela.scroll_into_view_if_needed()
-                titulo_tabela.hover()
-                time.sleep(1) 
+                time.sleep(1.5)
 
                 try:
-                    xpath_opcoes = f"{xpath_titulo}/ancestor::div[contains(@class, 'react-grid-item')]//button[@data-testid='public-or-embedded-dashcard-menu']"
-                    clicar_dinamico(xpath_opcoes, "Botão '...' (Opções)")
-                except:
-                    clicar_dinamico("//button[@data-testid='public-or-embedded-dashcard-menu']", "Botão '...' Alternativo")
-                
-                clicar_dinamico("//button[@aria-label='Fazer download de resultados']", "Download de resultados")
-                clicar_dinamico("//input[@value='csv']/following-sibling::label | //label[contains(., '.csv')]", "Formato .csv")
-                
-                try:
-                    formatacao_el = frame_ativo.locator("xpath=//input[@data-testid='keep-data-formatted']").first
-                    if formatacao_el.is_checked():
-                        formatacao_el.evaluate("node => node.click()")
-                        print("✅ Formatação desmarcada com sucesso.")
-                except Exception: pass 
+                    btn_menu = frame_ativo.locator(
+                        f"{XPATH_TITULO}/ancestor::div[contains(@class,'react-grid-item')]"
+                        "//button[@data-testid='public-or-embedded-dashcard-menu']"
+                    ).first
+                    btn_menu.wait_for(state="attached", timeout=10_000)
+                    btn_menu.click(force=True)
+                    time.sleep(0.6)
+                    print("   ▶ Botão '...' (contextual)")
+                except Exception:
+                    clicar("button[data-testid='public-or-embedded-dashcard-menu']", "Botão '...' (fallback)")
 
-                print("📥 A aguardar o download...")
-                with page.expect_download(timeout=300000) as download_info:
-                    clicar_dinamico("//button[@data-testid='download-results-button']", "Botão 'Baixar'", delay=1)
+                clicar("button[aria-label='Fazer download de resultados']", "Opção 'Download de resultados'")
+
+                try:
+                    csv_radio = frame_ativo.locator("input[value='csv']").first
+                    csv_radio.wait_for(state="attached", timeout=10_000)
+                    if not csv_radio.is_checked():
+                        csv_radio.click(force=True)
+                    time.sleep(0.5)
+                    print("   ▶ Formato .csv selecionado")
+                except Exception:
+                    clicar(
+                        "//input[@value='csv']/following-sibling::label | //label[contains(.,'.csv')]",
+                        "Label .csv", by_xpath=True
+                    )
+
+                try:
+                    cb = frame_ativo.locator("input[data-testid='keep-data-formatted']").first
+                    cb.wait_for(state="attached", timeout=5_000)
+                    if cb.is_checked():
+                        cb.click(force=True)
+                        print("   ▶ Formatação desmarcada")
+                except Exception:
+                    pass
+
+                print("📥 Aguardando download...")
+                with page.expect_download(timeout=T_DOWNLOAD) as dl_info:
+                    clicar("button[data-testid='download-results-button']", "Botão 'Baixar'")
+
+                # Baixa em arquivo TEMPORÁRIO
+                if os.path.exists(ARQUIVO_CSV_TMP):
+                    os.remove(ARQUIVO_CSV_TMP)
+                dl_info.value.save_as(ARQUIVO_CSV_TMP)
                 
-                if os.path.exists(ARQUIVO_CSV): os.remove(ARQUIVO_CSV)
-                download_info.value.save_as(ARQUIVO_CSV)
-                print(f"🎉 DOWNLOAD CONCLUÍDO! Ficheiro salvo como: {NOME_PADRAO_ARQUIVO}")
+                print(f"🎉 DOWNLOAD CONCLUÍDO (TEMP) → {os.path.basename(ARQUIVO_CSV_TMP)}")
                 sucesso = True
 
             except Exception as e:
-                print(f"❌ Falha no processo de extração: {e}")
-
+                print(f"❌ Falha na extração: {e}")
             finally:
                 browser.close()
                 print("🏁 Navegador encerrado.")
 
-    except Exception as e: print(f"❌ Erro crítico: {e}")
+    except Exception as e:
+        print(f"❌ Erro crítico Playwright: {e}")
+
     return sucesso
 
-
 # ==========================================
-# 4. MÓDULO DE TRATAMENTO DE DADOS (PANDAS)
+# 4. TRATAMENTO DE DADOS (JORNADA DO CLIENTE & FORCE CLOSE)
 # ==========================================
 def analisar_e_limpar_dados():
-    print("\n" + "="*50)
-    print("📊 FASE 2: ENGENHARIA DE DADOS E FORMATAÇÃO EXCEL")
-    print("="*50)
-
+    print("\n" + "="*55)
+    print("📊 FASE 2: PROCESSAMENTO E EXCEL")
+    print("="*55)
     try:
-        df = pd.read_csv(ARQUIVO_CSV, sep=',', low_memory=False)
+        # 1. IMPEDE a notação científica nos telefones
+        df = pd.read_csv(ARQUIVO_CSV_TMP, sep=',', dtype=str, low_memory=False)
 
-        colunas_texto = ['Telefone do contato', 'Id do atendimento', 'Id do cliente', 'CPF do contato']
-        for col in colunas_texto:
+        for col in ['Telefone do contato', 'Id do atendimento', 'Id do cliente', 'CPF do contato']:
             if col in df.columns:
-                df[col] = df[col].fillna(-1).astype(str).str.replace(r'\.0$', '', regex=True).replace('-1', '')
+                df[col] = df[col].fillna('').astype(str).str.replace(r'\.0$', '', regex=True).str.replace(',', '').str.upper().replace('NAN', '')
 
-        dt_chegada = pd.to_datetime(df.get('Data de criação do chat'), errors='coerce').dt.tz_localize(None)
-        dt_resposta = pd.to_datetime(df.get('Data de primeira resposta'), errors='coerce').dt.tz_localize(None)
-        dt_fim = pd.to_datetime(df.get('Data de finalização do chat'), errors='coerce').dt.tz_localize(None)
+        # 2. Conversão Inteligente de Datas
+        def parse_timezone(series):
+            dt = pd.to_datetime(series, errors='coerce')
+            if hasattr(dt.dt, 'tz') and dt.dt.tz is not None:
+                dt = dt.dt.tz_convert('America/Sao_Paulo').dt.tz_localize(None)
+            return dt
 
-        def formatar_nome(nome):
-            if pd.isna(nome) or str(nome).strip() in ['', 'null', 'None']: return "Não informado"
-            partes = str(nome).strip().split()
-            return f"{partes[0]} {partes[-1]}" if len(partes) > 1 else partes[0]
-            
-        if 'Atendente' in df.columns: df['Atendente'] = df['Atendente'].apply(formatar_nome)
-        else: df['Atendente'] = "Não informado"
+        dt_ch  = parse_timezone(df.get('Data de criação do chat'))
+        dt_res = parse_timezone(df.get('Data de primeira resposta'))
+        dt_fim = parse_timezone(df.get('Data de finalização do chat'))
 
-        if 'Fechado por' in df.columns: df['Fechado por'] = df['Fechado por'].apply(formatar_nome)
-        else: df['Fechado por'] = "Não informado"
+        df['_dt_ch'] = dt_ch
+        df['_dt_fim'] = dt_fim
 
-        df['Dentro do Expediente?'] = dt_chegada.apply(lambda dt: "Sim" if pd.notna(dt) and dt.dayofweek < 5 and (8*60+1) <= (dt.hour*60+dt.minute) <= (17*60+59) else "Não")
+        df['Tempo de Espera (Fila)']          = (dt_res - dt_ch).apply(formatar_tempo_exato)
+        df['Tempo de Conversa (Atendimento)'] = (dt_fim - dt_res).apply(formatar_tempo_exato)
+        df['Tempo Total (Início ao Fim)']     = (dt_fim - dt_ch).apply(formatar_tempo_exato)
 
-        def diagnosticar(resp, fim):
-            if pd.isna(resp): return "Aguardando Atendimento" if pd.isna(fim) else "Sem Interação"
+        # Disparador -> Chatbot
+        def fmt_nome(n):
+            val = str(n).strip()
+            if pd.isna(n) or val in ['', 'null', 'None', 'Não informado'] or 'disparador' in val.lower(): 
+                return "Chatbot"
+            p = val.split()
+            return f"{p[0]} {p[-1]}" if len(p) > 1 else p[0]
+
+        df['Atendente']   = df['Atendente'].apply(fmt_nome)   if 'Atendente'   in df.columns else "Chatbot"
+        df['Fechado por'] = df['Fechado por'].apply(fmt_nome) if 'Fechado por' in df.columns else "Chatbot"
+
+        # 3. LÓGICA DE INFERÊNCIA: TRANSFERÊNCIAS E FORCE CLOSE
+        df = df.sort_values(by=['Telefone do contato', '_dt_ch'])
+
+        df['_next_dt_ch'] = df.groupby('Telefone do contato')['_dt_ch'].shift(-1)
+        df['_next_atendente'] = df.groupby('Telefone do contato')['Atendente'].shift(-1)
+        df['_next_tempo_total'] = df.groupby('Telefone do contato')['Tempo Total (Início ao Fim)'].shift(-1)
+
+        condicao_transferencia = (
+            (df['Fechado por'] == 'Chatbot') & 
+            (df['_next_dt_ch'].notna()) &
+            (df['_dt_fim'].notna()) &
+            ((df['_next_dt_ch'] - df['_dt_fim']).dt.total_seconds().abs() <= 120) 
+        )
+        
+        df['Transferido Para'] = ""
+        df['Tempo Final (Após Transf)'] = ""
+
+        df.loc[condicao_transferencia, 'Transferido Para'] = df.loc[condicao_transferencia, '_next_atendente']
+        df.loc[condicao_transferencia, 'Tempo Final (Após Transf)'] = df.loc[condicao_transferencia, '_next_tempo_total']
+        df.loc[condicao_transferencia, 'Fechado por'] = 'Transferido'
+
+        cond_fechado_por_colega = (
+            (df['Atendente'] != 'Chatbot') &
+            (df['Fechado por'] != 'Chatbot') &
+            (df['Fechado por'] != 'Transferido') &
+            (df['Atendente'] != df['Fechado por']) &
+            (df['Fechado por'] != df['_next_atendente']) 
+        )
+        df.loc[cond_fechado_por_colega, 'Fechado por'] = df.loc[cond_fechado_por_colega, 'Atendente']
+
+        # 4. Separação explícita de Data e Hora para o Excel
+        df['Data de criação do chat'] = dt_ch.dt.strftime('%d/%m/%Y')
+        df['Hora de criação do chat']   = dt_ch.dt.strftime('%H:%M:%S')
+
+        df['Data de primeira resposta'] = dt_res.dt.strftime('%d/%m/%Y')
+        df['Hora de primeira resposta']   = dt_res.dt.strftime('%H:%M:%S')
+
+        df['Data de finalização do chat'] = dt_fim.dt.strftime('%d/%m/%Y')
+        df['Hora de finalização do chat']   = dt_fim.dt.strftime('%H:%M:%S')
+
+        def diagnosticar(r, f):
+            if pd.isna(r): return "Aguardando Atendimento" if pd.isna(f) else "Sem Interação"
             return "Em Atendimento"
-        df['Diagnóstico da Conversa'] = [diagnosticar(r, f) for r, f in zip(dt_resposta, dt_fim)]
-        
-        data_limite_espera = dt_resposta.fillna(dt_fim)
-        df['Tempo de Espera (Fila)'] = (data_limite_espera - dt_chegada).apply(formatar_tempo_exato)
-        df['Tempo de Conversa (Atendimento)'] = np.where(dt_resposta.notna(), (dt_fim - dt_resposta).apply(formatar_tempo_exato), "")
-        df['Tempo Total (Início ao Fim)'] = (dt_fim - dt_chegada).apply(formatar_tempo_exato)
+        df['Diagnóstico da Conversa'] = [diagnosticar(r, f) for r, f in zip(dt_res, dt_fim)]
 
-        ordem_historia = [
-            'Cliente', 'Telefone do contato', 'Data de criação do chat', 'Hora de criação do chat', 
-            'Houve redirecionamento', 'Atendente', 'Tempo de Espera (Fila)', 
+        ordem = [
+            'Cliente', 'Telefone do contato', 'Data de criação do chat', 'Hora de criação do chat',
+            'Houve redirecionamento', 'Atendente', 'Tempo de Espera (Fila)',
             'Data de primeira resposta', 'Hora de primeira resposta', 'Tempo de Conversa (Atendimento)',
-            'Data de finalização do chat', 'Hora de finalização do chat', 'Fechado por', 'Tempo Total (Início ao Fim)', 
-            'Status do Atendimento'
+            'Data de finalização do chat', 'Hora de finalização do chat', 'Fechado por',
+            'Tempo Total (Início ao Fim)', 'Status do Atendimento',
+            'Transferido Para', 'Tempo Final (Após Transf)' 
         ]
+        df_final = df[[c for c in ordem if c in df.columns]].copy()
 
-        colunas_finais = [col for col in ordem_historia if col in df.columns]
-        df_final = df[colunas_finais].copy()
-
-        print("🎨 A criar o ficheiro Excel temporário...")
-        ARQUIVO_TEMP = ARQUIVO_EXCEL.replace('.xlsx', '_temp.xlsx')
-        
-        writer = pd.ExcelWriter(ARQUIVO_TEMP, engine='xlsxwriter', datetime_format='dd/mm/yyyy', engine_kwargs={'options': {'strings_to_urls': False}})
-        nome_aba = 'Relatorio_Chats'
-        
-        df_final.to_excel(writer, index=False, header=False, startrow=1, sheet_name=nome_aba)
-        workbook = writer.book
-        ws = writer.sheets[nome_aba]
-        
+        writer = pd.ExcelWriter(ARQUIVO_EXCEL_TMP, engine='xlsxwriter',
+                                datetime_format='dd/mm/yyyy',
+                                engine_kwargs={'options': {'strings_to_urls': False}})
+        aba = 'Relatorio_Chats'
+        df_final.to_excel(writer, index=False, header=False, startrow=1, sheet_name=aba)
+        ws = writer.sheets[aba]
         if df_final.shape[0] > 0:
-            ws.add_table(0, 0, df_final.shape[0], df_final.shape[1] - 1, {
+            ws.add_table(0, 0, df_final.shape[0], df_final.shape[1]-1, {
                 'columns': [{'header': str(c)} for c in df_final.columns],
                 'style': 'Table Style Medium 9', 'name': 'Tab_Chats'
             })
-
         for i, col in enumerate(df_final.columns):
-            try: tam = int(df_final[col].fillna("").astype(str).str.len().max())
-            except: tam = 10
-            ws.set_column(i, i, min(max(tam, len(str(col))) + 2, 45))
-
+            try: t = int(df_final[col].fillna("").astype(str).str.len().max())
+            except: t = 10
+            ws.set_column(i, i, min(max(t, len(str(col)))+2, 45))
         writer.close()
-        
-        if os.path.exists(ARQUIVO_EXCEL): os.remove(ARQUIVO_EXCEL)
-        os.rename(ARQUIVO_TEMP, ARQUIVO_EXCEL)
-        
-        print(f"🏆 SUCESSO TOTAL! Ficheiro final atualizado: {os.path.basename(ARQUIVO_EXCEL)}")
-        return True
 
+        # >>> GERAÇÃO NATIVA DO PICKLE DE ALTA VELOCIDADE <<<
+        ARQUIVO_PICKLE_TMP = os.path.join(DOWNLOAD_PATH, "cache_dataframe_temp.pkl")
+        ARQUIVO_PICKLE = os.path.join(DOWNLOAD_PATH, "cache_dataframe.pkl")
+        df_final.to_pickle(ARQUIVO_PICKLE_TMP)
+
+        if os.path.exists(ARQUIVO_CSV): shutil.copy2(ARQUIVO_CSV, ARQUIVO_CSV_BKP)
+        if os.path.exists(ARQUIVO_EXCEL): shutil.copy2(ARQUIVO_EXCEL, ARQUIVO_EXCEL_BKP)
+
+        os.replace(ARQUIVO_CSV_TMP, ARQUIVO_CSV)
+        os.replace(ARQUIVO_EXCEL_TMP, ARQUIVO_EXCEL)
+        os.replace(ARQUIVO_PICKLE_TMP, ARQUIVO_PICKLE) # Substitui atômico o cache do Django
+
+        print(f"🏆 SUCESSO! Base atualizada. Pickle ultra-rápido gerado.")
+        return True
     except Exception as e:
-        print(f"❌ Ocorreu um erro no tratamento de dados: {e}")
+        print(f"❌ Erro no processamento: {e}")
         return False
 
 # ==========================================
-# 5. ORQUESTRADOR PRINCIPAL
+# 5. ORQUESTRADOR
 # ==========================================
 def executar_pipeline():
     limpar_pasta_downloads()
-    if extrair_relatorio_metabase(): return analisar_e_limpar_dados()
-    else: return False
+    if extrair_relatorio_metabase():
+        return analisar_e_limpar_dados()
+    return False
+
+if __name__ == "__main__":
+    executar_pipeline()

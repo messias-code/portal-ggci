@@ -4,7 +4,7 @@
     "pk": 1,
     "fields": {
         "password": "argon2$argon2id$v=19$m=102400,t=2,p=8$V0dxWHcxemJwTGNXMm9Ja25yTDY0Nw$ulHNsi62SIjPnU7CZrJS5e9voiyEVG/sNy8JKZBx1xo",
-        "last_login": "2026-04-24T17:48:10.134Z",
+        "last_login": "2026-04-29T20:05:27.828Z",
         "nome": "Administrador",
         "usuario": "admin@ovg.org.br",
         "perfil": "administrador",
@@ -14,6 +14,8 @@
         "p_automacoes": false,
         "p_analise_ia": false,
         "p_documentacoes": false,
+        "p_dashboards": false,
+        "p_gestao_polichat": false,
         "is_active": true,
         "is_staff": true,
         "is_superuser": true
@@ -34,6 +36,8 @@
         "p_automacoes": false,
         "p_analise_ia": false,
         "p_documentacoes": false,
+        "p_dashboards": false,
+        "p_gestao_polichat": false,
         "is_active": true,
         "is_staff": false,
         "is_superuser": false
@@ -54,6 +58,8 @@
         "p_automacoes": true,
         "p_analise_ia": true,
         "p_documentacoes": false,
+        "p_dashboards": false,
+        "p_gestao_polichat": false,
         "is_active": true,
         "is_staff": false,
         "is_superuser": false
@@ -74,6 +80,8 @@
         "p_automacoes": true,
         "p_analise_ia": true,
         "p_documentacoes": true,
+        "p_dashboards": false,
+        "p_gestao_polichat": false,
         "is_active": true,
         "is_staff": false,
         "is_superuser": false
@@ -94,6 +102,8 @@
         "p_automacoes": true,
         "p_analise_ia": true,
         "p_documentacoes": true,
+        "p_dashboards": false,
+        "p_gestao_polichat": false,
         "is_active": true,
         "is_staff": false,
         "is_superuser": false
@@ -114,6 +124,8 @@
         "p_automacoes": true,
         "p_analise_ia": true,
         "p_documentacoes": true,
+        "p_dashboards": true,
+        "p_gestao_polichat": true,
         "is_active": true,
         "is_staff": false,
         "is_superuser": false
@@ -124,7 +136,7 @@
     "pk": 7,
     "fields": {
         "password": "argon2$argon2id$v=19$m=102400,t=2,p=8$QWhVWnVGeUhaMGhPZnZ4Z2hpV3h5TQ$oxgRUTnI4zaf6nft+XokMs/IuMcgJrK8h09JiIDYA0k",
-        "last_login": "2026-04-23T16:32:01.489Z",
+        "last_login": "2026-04-29T16:04:20.965Z",
         "nome": "Rafael Gomes Pimentel",
         "usuario": "rafael.pimentel@ovg.org.br",
         "perfil": "comum",
@@ -134,6 +146,8 @@
         "p_automacoes": true,
         "p_analise_ia": true,
         "p_documentacoes": true,
+        "p_dashboards": true,
+        "p_gestao_polichat": true,
         "is_active": true,
         "is_staff": false,
         "is_superuser": false
@@ -154,6 +168,30 @@
         "p_automacoes": true,
         "p_analise_ia": true,
         "p_documentacoes": true,
+        "p_dashboards": false,
+        "p_gestao_polichat": false,
+        "is_active": true,
+        "is_staff": false,
+        "is_superuser": false
+    }
+},
+{
+    "model": "usuarios.usuario",
+    "pk": 9,
+    "fields": {
+        "password": "argon2$argon2id$v=19$m=102400,t=2,p=8$SHUyaEF0S0hZb2lrRjJLajN5Nm1VcQ$Ovj+4NNpM8J7MtIQoH4YgStaG/UFq8Ac1vgzS0HonvQ",
+        "last_login": null,
+        "nome": "Ana Paula Borges Bulhões",
+        "usuario": "ana.bulhoes@ovg.org.br",
+        "perfil": "comum",
+        "p_ferramentas": false,
+        "p_formatador_listas": false,
+        "p_formatador_dados": false,
+        "p_automacoes": false,
+        "p_analise_ia": false,
+        "p_documentacoes": false,
+        "p_dashboards": true,
+        "p_gestao_polichat": true,
         "is_active": true,
         "is_staff": false,
         "is_superuser": false
