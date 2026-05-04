@@ -1,116 +1,121 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestão Polichat - Portal GGCI</title>
-
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>tailwind.config = { darkMode: 'class', };</script>
-
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    <link rel="stylesheet" href="{% static 'menu/dashboards/gestao_polichat/style.css' %}">
+    <title>Gestão Polichat · Portal GGCI</title>
+    <meta name="description" content="Painel de gestão de atendimentos Polichat — Portal GGCI">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <!-- Flatpickr for Modern Datepicker -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/pt.js"></script>
+    
+    <link rel="stylesheet" href="{% static 'menu/dashboards/gestao_polichat/style.css' %}?v=16">
 </head>
+<body>
 
-<body class="bg-[#f8f6fb] text-gray-800 fixed inset-0 p-4 lg:p-6 flex transition-colors duration-500 overflow-hidden">
+<!-- Background blobs -->
+<div class="bg-blob blob-1"></div>
+<div class="bg-blob blob-2"></div>
+<div class="bg-blob blob-3"></div>
+<div class="bg-blob blob-4"></div>
 
-    <!-- Bolhas de fundo animadas -->
-    <div class="bg-color-1 absolute top-[-15%] left-[-10%] w-[65vw] h-[65vh] bg-pink-500/70 rounded-full blur-[140px] pointer-events-none z-0"></div>
-    <div class="bg-color-2 absolute bottom-[-15%] left-[10%] w-[60vw] h-[60vh] bg-purple-600/70 rounded-full blur-[140px] pointer-events-none z-0"></div>
-    <div class="bg-color-3 absolute top-[-5%] right-[-10%] w-[60vw] h-[60vh] bg-yellow-400/60 rounded-full blur-[140px] pointer-events-none z-0"></div>
-    <div class="bg-color-4 absolute bottom-[-10%] right-[5%] w-[65vw] h-[65vh] bg-teal-400/60 rounded-full blur-[140px] pointer-events-none z-0"></div>
-
-    <!-- Container principal (página inteira, sem sidebar) -->
-    <div class="w-full h-full bg-white/70 backdrop-blur-2xl border border-white/80 rounded-[2rem] shadow-2xl flex flex-col overflow-hidden relative z-10">
-
-        <!-- ==========================================
-             HEADER
-             ========================================== -->
-        <header class="h-24 px-8 lg:px-10 flex justify-between items-center border-b border-pink-100/50 bg-white/40 backdrop-blur-md shrink-0 z-10">
-            <div class="flex items-center gap-5">
-                <div class="w-16 h-16 bg-gradient-to-br from-pink-100 to-fuchsia-100 text-pink-600 rounded-2xl flex items-center justify-center border border-pink-200 shadow-sm">
-                    <i class="fa-solid fa-bezier-curve text-3xl"></i>
-                </div>
-                <div>
-                    <h2 class="text-2xl font-black text-gray-800 tracking-tight">Gestão Polichat</h2>
-                    <p class="text-[14px] text-gray-500 font-semibold mt-0.5">Acompanhamento de atendimentos e desempenho</p>
+<div class="app">
+    <!-- ═══ HEADER ═══ -->
+    <header class="header">
+        <div class="header-inner">
+            <div class="header-brand">
+                <div class="brand-icon"><i class="fa-solid fa-bezier-curve"></i></div>
+                <div class="brand-info">
+                    <div class="brand-title">Gestão <span>Polichat</span></div>
+                    <div class="sync-badge" id="sync-status"><div class="sync-dot" id="sync-dot"></div><span id="sync-text">Sincronização ativa</span></div>
                 </div>
             </div>
-            <a href="{% url 'dashboards' %}"
-                class="px-5 py-2.5 bg-white/80 hover:bg-pink-50 text-pink-600 font-bold rounded-xl transition-all shadow-sm border border-pink-100 flex items-center gap-2 text-sm">
-                <i class="fa-solid fa-arrow-left"></i> Voltar
-            </a>
-        </header>
 
-        <!-- ==========================================
-             CONTEÚDO PRINCIPAL
-             ========================================== -->
-        <div class="flex-1 p-4 lg:p-6 flex flex-col gap-3 overflow-hidden relative z-10">
+            <div class="header-filters">
+                <div class="filter-card">
+                    <div class="filter-label"><i class="fa-solid fa-user-tie"></i> Agente</div>
+                    <div class="filter-field">
+                        <select id="filtro-agente" style="display:none">
+                            <option value="">— Selecione seu nome —</option>
+                        </select>
+                        <div class="custom-select" id="custom-select-agente">
+                            <div class="cs-display" id="cs-display">
+                                <span class="cs-text">— Selecione seu nome —</span>
+                                <i class="fa-solid fa-chevron-down cs-arrow"></i>
+                            </div>
+                            <div class="cs-dropdown" id="cs-dropdown">
+                                <div class="cs-search-wrap">
+                                    <i class="fa-solid fa-magnifying-glass"></i>
+                                    <input type="text" class="cs-search" id="cs-search" placeholder="Buscar agente..." autocomplete="off">
+                                </div>
+                                <div class="cs-options" id="cs-options"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="filter-card">
+                    <div class="filter-label" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                        <span><i class="fa-regular fa-calendar-days"></i> Período</span>
+                        <div class="quick-dates">
+                            <button class="qd-btn" data-qd="hoje">Hoje</button>
+                            <button class="qd-btn" data-qd="mes">Mês</button>
+                            <button class="qd-btn" data-qd="ano">Ano</button>
+                        </div>
+                    </div>
+                    <div class="filter-field filter-dates">
+                        <input type="date" id="filtro-inicio" min="2020-01-01" max="2030-12-31">
+                        <span class="date-sep"><i class="fa-solid fa-arrow-right"></i></span>
+                        <input type="date" id="filtro-fim" min="2020-01-01" max="2030-12-31">
+                    </div>
+                </div>
+            </div>
 
-            <!-- Barra de ações -->
-            <div class="bg-white/90 backdrop-blur-xl border border-white/80 p-2 rounded-[1rem] shadow-[0_8px_20px_rgb(0,0,0,0.03)] flex items-center shrink-0">
-
-                <button id="btn-atualizar"
-                    class="text-white bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-purple-300 shadow-lg shadow-purple-500/40 font-bold rounded-xl text-[13px] px-5 py-2.5 tracking-widest uppercase flex items-center justify-center gap-2 w-64 transition-all">
-                    <i class="fa-solid fa-rotate"></i><span>Atualizar Dashboard</span>
+            <div class="header-actions">
+                <button class="btn-sync" id="btn-sync-manual">
+                    <i class="fa-solid fa-rotate-right"></i>
+                    <span>Atualizar agora</span>
                 </button>
-
-                <div class="flex-1 mx-4 bg-gray-100 rounded-lg h-7 border border-gray-200 shadow-inner relative flex items-center justify-center overflow-hidden">
-                    <div id="progress-bar"
-                        class="absolute top-0 left-0 h-full bg-gradient-to-r from-pink-400 to-purple-500 transition-all duration-500 ease-out"
-                        style="width: 0%;"></div>
-                    <span id="progress-text"
-                        class="relative z-10 text-[13px] font-black text-gray-700 tracking-wide drop-shadow-[0_0_2px_rgba(255,255,255,0.8)]">0%</span>
-                </div>
-
-                <button id="btn-download"
-                    class="text-gray-500 bg-gradient-to-r from-gray-100 via-gray-200 to-gray-300 shadow-sm font-bold rounded-xl text-[13px] px-5 py-2.5 tracking-widest uppercase flex items-center justify-center gap-2 w-64 transition-all cursor-not-allowed"
-                    disabled>
-                    <i class="fa-solid fa-download"></i><span>Baixar Excel</span>
-                </button>
-
+                <a href="{% url 'dashboards' %}" class="btn-back">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    <span>Voltar</span>
+                </a>
             </div>
+        </div>
+    </header>
 
-            <!-- Console de logs (terminal) -->
-            <div class="flex-1 min-h-[150px] bg-[#111116] border border-gray-800 rounded-[1.5rem] shadow-2xl flex flex-col overflow-hidden">
-                <div class="bg-[#1a1b26] px-5 py-2.5 flex items-center justify-between border-b border-gray-800 shrink-0">
-                    <div class="flex space-x-2.5">
-                        <div class="w-3.5 h-3.5 rounded-full bg-[#ff5f56] shadow-sm"></div>
-                        <div class="w-3.5 h-3.5 rounded-full bg-[#ffbd2e] shadow-sm"></div>
-                        <div class="w-3.5 h-3.5 rounded-full bg-[#27c93f] shadow-sm"></div>
-                    </div>
-                    <span class="text-gray-400 text-[11px] font-mono tracking-widest font-bold flex items-center gap-2">
-                        <i class="fa-solid fa-terminal text-gray-500"></i> CONSOLE — POLICHAT
-                    </span>
-                    <div class="w-10"></div>
-                </div>
-
-                <div id="console-logs"
-                    class="p-6 flex-1 overflow-y-auto font-mono text-[13px] leading-relaxed custom-scrollbar-dark bg-[#0d0d12] text-gray-300">
-                    <div class="flex gap-2 mb-1">
-                        <span class="text-pink-500 font-bold">ovg@polichat:</span>
-                        <span class="text-purple-400">~</span>
-                        <span class="text-white">$</span>
-                        <span class="text-gray-300 animate-pulse">atualizar_dashboard --verbose</span>
-                    </div>
-
-                    <div class="text-pink-500/80 italic mb-2">
-                        <i class="fa-solid fa-angle-right"></i> Aguardando início...
-                    </div>
-
-                    <div class="inline-block w-2 h-4 bg-pink-500 ml-1 align-middle animate-bounce"></div>
-                </div>
+    <!-- ═══ MAIN ═══ -->
+    <div class="main" style="position:relative">
+        <div id="prompt-inicial"><div class="prompt-box"><div class="p-emoji">👆</div><h3>Selecione seu perfil</h3><p>Escolha seu nome no filtro acima para carregar sua mesa de trabalho.</p><div class="arrow-up"><i class="fa-solid fa-arrow-up"></i> Filtro de agente</div></div></div>
+        <div class="kpi-strip">
+            <div class="kpi-card" data-tab-target="aguardando"><div class="kpi-icon amber"><i class="fa-solid fa-hourglass-half"></i></div><div class="kpi-body"><div class="kpi-label">Aguardando</div><div class="kpi-value amber" id="kpi-aguardando">0</div></div></div>
+            <div class="kpi-card" data-tab-target="andamento"><div class="kpi-icon blue"><i class="fa-solid fa-headset"></i></div><div class="kpi-body"><div class="kpi-label">Em Andamento</div><div class="kpi-value blue" id="kpi-andamento">0</div></div></div>
+            <div class="kpi-card" data-tab-target="mim"><div class="kpi-icon green"><i class="fa-solid fa-trophy"></i></div><div class="kpi-body"><div class="kpi-label">Fechados por Mim</div><div class="kpi-value green" id="kpi-fechados-mim">0</div></div></div>
+            <div class="kpi-card" data-tab-target="outro"><div class="kpi-icon rose"><i class="fa-solid fa-people-arrows"></i></div><div class="kpi-body"><div class="kpi-label">Fechados por Outro</div><div class="kpi-value rose" id="kpi-fechados-outro">0</div></div></div>
+            <div class="kpi-card"><div class="kpi-icon purple"><i class="fa-solid fa-stopwatch"></i></div><div class="kpi-body"><div class="kpi-label">TMA (Fechados)</div><div class="kpi-value purple mono" id="kpi-tma" style="font-size:20px;margin-top:4px">--:--</div></div></div>
+        </div>
+        <div class="master-panel">
+            <div class="master-tabs">
+                <button class="mtab active" data-tab="aguardando"><i class="fa-solid fa-clock"></i> Aguardando <span class="mtab-count amber-c" id="cnt-aguardando">0</span></button>
+                <button class="mtab" data-tab="andamento"><i class="fa-solid fa-circle-play"></i> Em Atendimento <span class="mtab-count blue-c" id="cnt-andamento">0</span></button>
+                <button class="mtab" data-tab="mim"><i class="fa-solid fa-check-circle"></i> Fechados por Mim <span class="mtab-count green-c" id="cnt-mim">0</span></button>
+                <button class="mtab" data-tab="outro"><i class="fa-solid fa-person-walking-arrow-right"></i> Fechados por Outro <span class="mtab-count rose-c" id="cnt-outro">0</span></button>
+                <button class="mtab" data-tab="retorno"><i class="fa-solid fa-reply-all"></i> Retorno <span class="mtab-count purple-c" id="cnt-retorno">0</span></button>
+                <div class="mtab-search" id="search-wrap" style="display:none"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="search-input" placeholder="Buscar cliente ou telefone..."></div>
             </div>
-
+            <div class="tab-pane active" id="pane-aguardando"><div class="card-list" id="list-aguardando"><div class="empty-state"><div class="empty-icon">🎉</div><p>Nenhum cliente aguardando.</p></div></div></div>
+            <div class="tab-pane" id="pane-andamento"><div class="card-list" id="list-andamento"><div class="empty-state"><div class="empty-icon">💤</div><p>Nenhum em atendimento.</p></div></div></div>
+            <div class="tab-pane" id="pane-mim"><div class="card-list" id="list-mim"></div><div class="list-footer"><div class="list-info" id="info-mim">0 registros</div><div class="pag" id="pag-mim"></div></div></div>
+            <div class="tab-pane" id="pane-outro"><div class="card-list" id="list-outro"></div><div class="list-footer"><div class="list-info" id="info-outro">0 registros</div><div class="pag" id="pag-outro"></div></div></div>
+            <div class="tab-pane" id="pane-retorno"><div class="card-list" id="list-retorno"><div class="empty-state"><div class="empty-icon">✅</div><p>Nenhum chat de retorno.</p></div></div></div>
         </div>
     </div>
-
-    <script src="{% static 'menu/dashboards/gestao_polichat/script.js' %}"></script>
+</div>
+<script src="{% static 'menu/dashboards/gestao_polichat/script.js' %}?v=15"></script>
 </body>
-
 </html>

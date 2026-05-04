@@ -282,8 +282,7 @@
          ========================================================================== -->
     <script>
         // Define se o usuário atual é o admin@ovg.org.br (que possui poderes supremos de exclusão)
-        const IS_MASTER_ADMIN = {{ is_master_admin| yesno: "true,false" }};
-
+        const IS_MASTER_ADMIN = {{ is_master_admin|yesno:"true,false" }};
         // Token necessário para enviar os dados dos formulários do modal com segurança
         const CSRF_TOKEN = '{{ csrf_token }}';
     </script>
