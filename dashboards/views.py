@@ -17,7 +17,6 @@ def iniciar_extracao_polichat(request):
     if request.method == 'POST':
         force = request.GET.get('force') == 'true' or request.POST.get('force') == 'true'
         robos_ativos = ProcessamentoPolichat.objects.filter(status__in=['PENDENTE', 'PROCESSANDO']).order_by('-id')
-        
         if robos_ativos.exists():
             if force:
                 robos_ativos.update(status='FALHA', log='Cancelado pelo usuário. Nova sincronização forçada.')
@@ -28,7 +27,7 @@ def iniciar_extracao_polichat(request):
         comando = [sys.executable, 'manage.py', 'executar_polichat', str(processo.id)]
         subprocess.Popen(comando)
         return JsonResponse({'status': 'ok', 'processo_id': processo.id})
-        
+
     return JsonResponse({'status': 'erro', 'mensagem': 'Método inválido'}, status=400)
 
 
@@ -68,8 +67,7 @@ def api_polichat_dados(request):
         data_inicio_str = request.GET.get('inicio', '').strip()
         data_fim_str    = request.GET.get('fim', '').strip()
         agente_filtro   = request.GET.get('agente', '').strip()
-        
-        force_refresh = request.GET.get('force') == '1'
+        force_refresh   = request.GET.get('force') == '1'
 
         def parse_data_segura(s):
             if not s: return None
@@ -78,7 +76,7 @@ def api_polichat_dados(request):
                 if not (2000 <= dt.year <= 2099): return False
                 return dt
             except:
-                return False  
+                return False
 
         dt_inicio = parse_data_segura(data_inicio_str)
         dt_fim    = parse_data_segura(data_fim_str)
@@ -87,7 +85,7 @@ def api_polichat_dados(request):
             return JsonResponse({'status': 'erro', 'mensagem': 'Data inválida.'}, status=400)
 
         df = pd.DataFrame()
-        tem_excel = os.path.exists(arquivo_excel)
+        tem_excel  = os.path.exists(arquivo_excel)
         tem_pickle = os.path.exists(arquivo_pickle)
 
         def carregar_do_excel():
@@ -118,29 +116,30 @@ def api_polichat_dados(request):
 
         EMPTY_RESPONSE = {
             'status': 'ok', 'mensagem': 'Base vazia.',
-            'kpis': {'fechados_por_mim': 0, 'fechados_por_outro': 0, 'em_andamento': 0, 'aguardando': 0, 'tma': '--:--'},
-            'tabelas': {'aguardando': [], 'em_andamento': [], 'fechados_por_mim': [], 'fechados_por_outro': []},
+            'kpis': {'fechados_por_mim': 0, 'fechados_por_outro': 0, 'em_andamento': 0,
+                     'aguardando': 0, 'retorno': 0, 'tma': '--:--'},
+            'tabelas': {'aguardando': [], 'em_andamento': [], 'fechados_por_mim': [],
+                        'fechados_por_outro': [], 'retorno': []},
             'filtros_disponiveis': {'agentes': []}
         }
 
         if df is None or df.empty:
             return JsonResponse(EMPTY_RESPONSE)
 
-        # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-        # AUTO-CURA DO PANDAS (BLINDAGEM CONTRA O KEYERROR)
-        # Se o Extrator mandou o Pickle sem o Data_Filtro, recriamos instantaneamente!
-        # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+        # Auto-cura do Data_Filtro se pickle antigo não o tiver
         if 'Data_Filtro' not in df.columns and 'Data de criação do chat' in df.columns:
             str_dates = df['Data de criação do chat'].astype(str).str.strip().str[:10]
             df['Data_Filtro'] = pd.to_datetime(str_dates, format='%d/%m/%Y', errors='coerce')
 
-        for col in ['Atendente', 'Fechado por', 'Tempo Total (Início ao Fim)', 'Tempo de Conversa (Atendimento)', 'Tempo de Espera (Fila)', 'Transferido Para', 'Tempo Final (Após Transf)']:
+        for col in ['Atendente', 'Fechado por', 'Tempo Total (Início ao Fim)',
+                    'Tempo de Conversa (Atendimento)', 'Tempo de Espera (Fila)',
+                    'Transferido Para', 'Tempo Final (Após Transf)']:
             if col not in df.columns: df[col] = ''
 
-        _todos_atend   = set(df['Atendente'].dropna().astype(str).str.strip().unique())
-        _todos_fecham  = set(df['Fechado por'].dropna().astype(str).str.strip().unique())
-        _excluir       = {'chatbot', 'não informado', 'nan', 'administração', '', 'transferido', 'disparador'}
-        
+        # Lista de agentes extraída do DF COMPLETO (antes do filtro de data)
+        _todos_atend  = set(df['Atendente'].dropna().astype(str).str.strip().unique())
+        _todos_fecham = set(df['Fechado por'].dropna().astype(str).str.strip().unique())
+        _excluir      = {'chatbot', 'não informado', 'nan', 'administração', '', 'transferido', 'disparador'}
         lista_agentes_total = sorted([
             a for a in _todos_atend.union(_todos_fecham)
             if a.lower() not in _excluir
@@ -153,7 +152,7 @@ def api_polichat_dados(request):
                 df['Data_Filtro'] = pd.to_datetime(df['Data_Filtro'], format='%d/%m/%Y', errors='coerce')
             try: df['Data_Filtro'] = df['Data_Filtro'].dt.tz_localize(None)
             except: pass
-                
+
             mask = pd.Series(True, index=df.index)
             if dt_inicio: mask &= (df['Data_Filtro'] >= dt_inicio.replace(tzinfo=None))
             if dt_fim:    mask &= (df['Data_Filtro'] <= (dt_fim + pd.Timedelta(hours=23, minutes=59, seconds=59)).replace(tzinfo=None))
@@ -171,11 +170,13 @@ def api_polichat_dados(request):
             (df['Fechado por'].astype(str).str.strip().str.lower() == ag_lower)
         ].copy()
 
-        # Ordenação Absoluta
-        df_view = df_view.sort_values(by=['Data_Filtro', 'Hora de criação do chat'], ascending=[False, False])
+        df_view = df_view.sort_values(
+            by=['Data_Filtro', 'Hora de criação do chat'],
+            ascending=[False, False]
+        )
 
         agora = pd.Timestamp.now('America/Sao_Paulo').tz_localize(None)
-        
+
         dt_c_full = df_view['Data de criação do chat'].astype(str) + ' ' + df_view['Hora de criação do chat'].astype(str)
         df_view['__dt_criacao_calc'] = pd.to_datetime(dt_c_full, format='%d/%m/%Y %H:%M:%S', errors='coerce')
 
@@ -184,6 +185,26 @@ def api_polichat_dados(request):
 
         df_view['__live_espera_seg'] = (agora - df_view['__dt_criacao_calc']).dt.total_seconds().fillna(-1).astype(int)
         df_view['__live_atend_seg']  = (agora - df_view['__dt_resp_calc']).dt.total_seconds().fillna(-1).astype(int)
+
+        # ──────────────────────────────────────────────────────────────────
+        # DETECÇÃO DE CHATS DE RETORNO
+        # Telefones que já têm pelo menos 1 chat finalizado no período.
+        # Qualquer novo chat "aguardando" desse mesmo telefone é retorno.
+        # ──────────────────────────────────────────────────────────────────
+        def _is_finalizado(st, data_fim):
+            st_l = str(st).lower()
+            return ('finalizado' in st_l or 'encerrado' in st_l or bool(str(data_fim).strip() and str(data_fim).strip() not in ['nan', '']))
+
+        # Considera o DF inteiro do período (não só do agente) para detectar
+        # se o telefone já teve interação encerrada por qualquer atendente.
+        telefones_com_historico_fechado = set(
+            df[
+                df.apply(lambda r: _is_finalizado(
+                    r.get('Status do Atendimento', ''),
+                    r.get('Data de finalização do chat', '')
+                ), axis=1)
+            ]['Telefone do contato'].astype(str).str.strip().unique()
+        )
 
         df_view = df_view.fillna('')
         records = df_view.to_dict('records')
@@ -213,48 +234,80 @@ def api_polichat_dados(request):
             if m > 0: return f"{m}m {s}s"
             return f"{s}s"
 
-        def parse_br_time(d_str, h_str):
-            try: return datetime.strptime(f"{d_str} {h_str}", "%d/%m/%Y %H:%M:%S")
-            except: return None
+        lista_aguardando      = []
+        lista_em_andamento    = []
+        lista_fechados_por_mim   = []
+        lista_fechados_por_outro = []
+        lista_retorno            = []   # ← novo painel
 
-        lista_aguardando, lista_em_andamento, lista_fechados_por_mim, lista_fechados_por_outro = [], [], [], []
-        contagem_aguardando = contagem_em_andamento = contagem_fechados_por_mim = contagem_fechados_por_outro = soma_atendimento = 0
+        contagem_aguardando      = 0
+        contagem_em_andamento    = 0
+        contagem_fechados_por_mim   = 0
+        contagem_fechados_por_outro = 0
+        contagem_retorno            = 0
+        soma_atendimento            = 0
+
+        # ── LOOKUP DE TRANSFERÊNCIAS ──────────────────────────────────────
+        # Usa o DF COMPLETO (todos os agentes) para mapear transferências.
+        # Para cada chat transferido, mapeamos:
+        #   chave: telefone + data/hora que o colega recebeu (= data_finalização do transferidor)
+        #   valor: { 'de': nome do transferidor, 'tempo_seg': tempo que ficou com ele }
+        # Isso permite que, quando o colega fecha esse chat, ele saiba de onde veio.
+        transferencias_lookup = {}
+        df_transf = df[df['Transferido Para'].astype(str).str.strip() != '']
+        for _, row_t in df_transf.iterrows():
+            t_para = str(row_t.get('Transferido Para', '')).strip()
+            telefone = str(row_t.get('Telefone do contato', '')).replace('.0', '').strip()
+            data_fim_t = str(row_t.get('Data de finalização do chat', '')).strip()
+            hora_fim_t = str(row_t.get('Hora de finalização do chat', '')).strip()
+            dt_transf = f"{data_fim_t} {hora_fim_t}".strip()
+            atend_nome = str(row_t.get('Atendente', '')).strip()
+            seg_total_t = tempo_para_segundos(row_t.get('Tempo Total (Início ao Fim)'))
+            if telefone and dt_transf:
+                chave = f"{telefone}|{dt_transf}"
+                transferencias_lookup[chave] = {
+                    'de': atend_nome.title(),
+                    'tempo_seg': seg_total_t,
+                    'tempo_fmt': formatar_segundos_legivel(seg_total_t),
+                }
 
         for row in records:
-            st_raw = str(row.get('Status do Atendimento', '')).strip()
+            st_raw   = str(row.get('Status do Atendimento', '')).strip()
             st_lower = st_raw.lower()
-            
-            data_ent = str(row.get('Data de criação do chat', '')).strip()
-            hora_ent = str(row.get('Hora de criação do chat', '')).strip()
+
+            data_ent  = str(row.get('Data de criação do chat', '')).strip()
+            hora_ent  = str(row.get('Hora de criação do chat', '')).strip()
             data_entrada_fmt = f"{data_ent} {hora_ent}".strip() if data_ent else '-'
 
             data_resp = str(row.get('Data de primeira resposta', '')).strip()
             hora_resp = str(row.get('Hora de primeira resposta', '')).strip()
             primeira_resposta_fmt = f"{data_resp} {hora_resp}".strip() if data_resp else '-'
 
-            data_fim = str(row.get('Data de finalização do chat', '')).strip()
-            hora_fim = str(row.get('Hora de finalização do chat', '')).strip()
+            data_fim  = str(row.get('Data de finalização do chat', '')).strip()
+            hora_fim  = str(row.get('Hora de finalização do chat', '')).strip()
             data_fechamento_fmt = f"{data_fim} {hora_fim}".strip() if data_fim else '-'
 
-            if 'finalizado' in st_lower or 'encerrado' in st_lower or bool(data_fim):
+            telefone_str = str(row.get('Telefone do contato', '')).replace('.0', '').strip()
+
+            if _is_finalizado(st_raw, data_fim):
                 is_finalizado, is_aguardando, is_em_atendimento, st_raw = True, False, False, "Finalizado"
             elif 'aguardando' in st_lower or (not bool(data_resp) and not bool(data_fim)):
                 is_finalizado, is_aguardando, is_em_atendimento, st_raw = False, True, False, "Aguardando"
             else:
                 is_finalizado, is_aguardando, is_em_atendimento, st_raw = False, False, True, "Em Atendimento"
 
-            atend = str(row.get('Atendente', '')).strip()
+            atend      = str(row.get('Atendente', '')).strip()
             fechado_por = str(row.get('Fechado por', '')).strip()
             is_minha_abertura = atend.lower() == ag_lower
             is_meu_fechamento = fechado_por.lower() == ag_lower
 
             calc_espera = row.get('__live_espera_seg', -1)
-            seg_espera = calc_espera if (is_aguardando and calc_espera >= 0) else tempo_para_segundos(row.get('Tempo de Espera (Fila)'))
+            seg_espera  = calc_espera if (is_aguardando and calc_espera >= 0) else tempo_para_segundos(row.get('Tempo de Espera (Fila)'))
 
             obj_base = {
                 'status': st_raw,
                 'cliente': str(row.get('Cliente', '')).strip().title() or 'Desconhecido',
-                'telefone': str(row.get('Telefone do contato', '')).replace('.0', '').strip(),
+                'telefone': telefone_str,
                 'atendente': atend.title(),
                 'data_entrada': data_entrada_fmt,
                 'primeira_resposta': primeira_resposta_fmt,
@@ -269,8 +322,9 @@ def api_polichat_dados(request):
                 if seg_atend == 0 and seg_total > 0:
                     seg_atend = seg_total - seg_espera if seg_total >= seg_espera else 0
 
-                t_para = str(row.get('Transferido Para', '')).strip()
+                t_para  = str(row.get('Transferido Para', '')).strip()
                 t_final = str(row.get('Tempo Final (Após Transf)', '')).strip()
+                seg_final = tempo_para_segundos(t_final) if t_final else 0
 
                 obj_base.update({
                     'fechado_por': t_para.title() if t_para else fechado_por.title(),
@@ -279,9 +333,23 @@ def api_polichat_dados(request):
                     'tempo_total': formatar_segundos_legivel(seg_total),
                     'tempo_atendimento_seg': seg_atend,
                     'tempo_total_seg': seg_total,
-                    'tempo_espera_transferencia': formatar_segundos_legivel(seg_total),
-                    'tempo_total_final': t_final if t_final else '--',
                 })
+
+                # ── ENRIQUECIMENTO DE TRANSFERÊNCIA ──────────────────────
+                if t_para:
+                    # Quem transferiu (Fechados por Outro): calcular tempos
+                    seg_com_colega = seg_final if seg_final > 0 else 0
+                    seg_total_chat = seg_total + seg_com_colega
+                    obj_base['tempo_com_colega'] = formatar_segundos_legivel(seg_com_colega)
+                    obj_base['tempo_total_chat'] = formatar_segundos_legivel(seg_total_chat)
+
+                # Quem recebeu (Fechados por Mim): verificar se veio de transferência
+                chave_lookup = f"{telefone_str}|{data_entrada_fmt}"
+                info_transf = transferencias_lookup.get(chave_lookup)
+                if info_transf:
+                    obj_base['veio_de'] = info_transf['de']
+                    obj_base['tempo_anterior'] = info_transf['tempo_fmt']
+                    obj_base['tempo_anterior_seg'] = info_transf['tempo_seg']
 
                 if is_meu_fechamento:
                     contagem_fechados_por_mim += 1
@@ -292,33 +360,54 @@ def api_polichat_dados(request):
                     lista_fechados_por_outro.append(obj_base)
 
             elif is_aguardando and is_minha_abertura:
-                contagem_aguardando += 1
+                # ── DETECÇÃO DE RETORNO ───────────────────────────────────
+                # Se o telefone já tem histórico fechado → chat de retorno
+                eh_retorno = telefone_str in telefones_com_historico_fechado
+
                 obj_base['tempo_atendimento'] = '-'
-                lista_aguardando.append(obj_base)
+
+                if eh_retorno:
+                    contagem_retorno += 1
+                    lista_retorno.append(obj_base)
+                else:
+                    contagem_aguardando += 1
+                    lista_aguardando.append(obj_base)
 
             elif is_em_atendimento and is_minha_abertura:
                 contagem_em_andamento += 1
                 calc_atend = row.get('__live_atend_seg', -1)
                 if calc_atend >= 0:
-                    obj_base['tempo_atendimento'] = formatar_segundos_legivel(calc_atend)
+                    obj_base['tempo_atendimento']     = formatar_segundos_legivel(calc_atend)
                     obj_base['tempo_atendimento_seg'] = calc_atend
                 else:
-                    obj_base['tempo_atendimento'] = 'Em curso...'
+                    obj_base['tempo_atendimento']     = 'Em curso...'
                     obj_base['tempo_atendimento_seg'] = 0
                 lista_em_andamento.append(obj_base)
 
-        tma_calc = formatar_segundos_legivel(soma_atendimento // contagem_fechados_por_mim) if contagem_fechados_por_mim > 0 else '--:--'
+        tma_calc = formatar_segundos_legivel(
+            soma_atendimento // contagem_fechados_por_mim
+        ) if contagem_fechados_por_mim > 0 else '--:--'
 
         return JsonResponse({
             'status': 'ok',
             'kpis': {
-                'fechados_por_mim': contagem_fechados_por_mim, 'fechados_por_outro': contagem_fechados_por_outro,
-                'em_andamento': contagem_em_andamento, 'aguardando': contagem_aguardando, 'tma': tma_calc,
-                'fechados': contagem_fechados_por_mim, 'andamento': contagem_em_andamento, 'passados_outro': contagem_fechados_por_outro,
+                'fechados_por_mim':    contagem_fechados_por_mim,
+                'fechados_por_outro':  contagem_fechados_por_outro,
+                'em_andamento':        contagem_em_andamento,
+                'aguardando':          contagem_aguardando,
+                'retorno':             contagem_retorno,
+                'tma':                 tma_calc,
+                # retrocompatibilidade
+                'fechados':        contagem_fechados_por_mim,
+                'andamento':       contagem_em_andamento,
+                'passados_outro':  contagem_fechados_por_outro,
             },
             'tabelas': {
-                'aguardando': lista_aguardando[:150], 'em_andamento': lista_em_andamento[:150],
-                'fechados_por_mim': lista_fechados_por_mim[:150], 'fechados_por_outro': lista_fechados_por_outro[:150],
+                'aguardando':          lista_aguardando[:150],
+                'em_andamento':        lista_em_andamento[:150],
+                'fechados_por_mim':    lista_fechados_por_mim[:150],
+                'fechados_por_outro':  lista_fechados_por_outro[:150],
+                'retorno':             lista_retorno[:150],
             },
             'filtros_disponiveis': {'agentes': lista_agentes_total}
         })
