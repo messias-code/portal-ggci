@@ -1,6 +1,12 @@
 /**
- * Mesa de Trabalho Individual - script.js (v12)
+ * Mesa de Trabalho Individual - script.js (v13)
  * Card-row layout for all tabs
+ * ── Correções v13 ──
+ * • AbortController elimina race-conditions entre requests
+ * • Flag isLoading impede sobreposição de requests
+ * • Removido listener 'input' das datas (change basta p/ type=date)
+ * • Auto-refresh protegido
+ * • Lista de agentes recarregada ao mudar período
  */
 document.addEventListener('DOMContentLoaded', () => {
     const inputInicio = document.getElementById('filtro-inicio');
@@ -13,10 +19,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.getElementById('search-input');
     const searchWrap = document.getElementById('search-wrap');
 
-    let agentesCarregados = false, isSyncing = false, ultimoAgente = '';
+    // ── Custom Select refs ───────────────────────────────────────────
+    const csWrap = document.getElementById('custom-select-agente');
+    const csDisplay = document.getElementById('cs-display');
+    const csText = csDisplay ? csDisplay.querySelector('.cs-text') : null;
+    const csDropdown = document.getElementById('cs-dropdown');
+    const csSearch = document.getElementById('cs-search');
+    const csOptions = document.getElementById('cs-options');
+
+    let isSyncing = false, ultimoAgente = '';
     let dadosMim = [], dadosOutro = [], dadosRetorno = [];
     let pagMim = 1, pagOutro = 1;
     const PER_PAGE = 50;
+
+    // ── Estado de request ────────────────────────────────────────────
+    let currentController = null;   // AbortController da request ativa
+    let isLoading = false;          // flag anti-sobreposição
+    let requestId = 0;              // ID monotônico p/ descartar respostas stale
 
     if (!inputInicio || !inputFim || !selectAgente) return;
 
@@ -25,16 +44,159 @@ document.addEventListener('DOMContentLoaded', () => {
     inputInicio.value = hoje; inputFim.value = hoje;
     carregarDados(hoje, hoje, '');
 
-    let debounceTimer = null;
     function dataValida(s) { if (!s || s.length !== 10) return false; const d = new Date(s); return !isNaN(d.getTime()) && d.getFullYear() >= 2000 && d.getFullYear() <= 2099; }
-    function runFilter() { const i = inputInicio.value, f = inputFim.value; if (i && !dataValida(i)) return; if (f && !dataValida(f)) return; carregarDados(i, f, selectAgente.value); }
-    function runFilterDebounced() { clearTimeout(debounceTimer); debounceTimer = setTimeout(runFilter, 500); }
 
-    inputInicio.addEventListener('change', runFilter);
-    inputFim.addEventListener('change', runFilter);
-    inputInicio.addEventListener('input', runFilterDebounced);
-    inputFim.addEventListener('input', runFilterDebounced);
-    selectAgente.addEventListener('change', () => { ultimoAgente = selectAgente.value; runFilter(); });
+    function runFilter() {
+        const i = inputInicio.value, f = inputFim.value;
+        if (i && !dataValida(i)) return;
+        if (f && !dataValida(f)) return;
+        carregarDados(i, f, selectAgente.value);
+    }
+
+    // ── Listeners de filtro ──────────────────────────────────────────
+    // Flatpickr initialization
+    if (typeof flatpickr !== 'undefined') {
+        const fpConfig = {
+            locale: "pt",
+            dateFormat: "Y-m-d",
+            altInput: true,
+            altFormat: "d/m/Y",
+            onChange: runFilter,
+            disableMobile: "true"
+        };
+        flatpickr(inputInicio, fpConfig);
+        flatpickr(inputFim, fpConfig);
+    } else {
+        inputInicio.addEventListener('change', runFilter);
+        inputFim.addEventListener('change', runFilter);
+    }
+
+    // ── Botões de Data Rápida ─────────────────────────────────────────
+    document.querySelectorAll('.qd-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tzOff = (new Date()).getTimezoneOffset() * 60000;
+            const agora = new Date(Date.now() - tzOff);
+            let dIni = new Date(agora);
+            let dFim = new Date(agora);
+            
+            const tipo = btn.dataset.qd;
+            if (tipo === 'mes') {
+                dIni.setDate(1);
+                dFim.setMonth(dFim.getMonth() + 1);
+                dFim.setDate(0);
+            } else if (tipo === 'ano') {
+                dIni.setMonth(0, 1);
+                dFim.setMonth(11, 31);
+            }
+            // 'hoje' não precisa mudar as datas, já são hoje
+            
+            const sIni = dIni.toISOString().split('T')[0];
+            const sFim = dFim.toISOString().split('T')[0];
+            
+            inputInicio.value = sIni;
+            inputFim.value = sFim;
+            
+            if (inputInicio._flatpickr) inputInicio._flatpickr.setDate(sIni);
+            if (inputFim._flatpickr) inputFim._flatpickr.setDate(sFim);
+            
+            runFilter();
+        });
+    });
+
+    selectAgente.addEventListener('change', () => {
+        ultimoAgente = selectAgente.value;
+        syncCustomSelectDisplay();
+        runFilter();
+    });
+
+    // ── Custom Select logic ──────────────────────────────────────────
+    function syncCustomSelectDisplay() {
+        if (!csText) return;
+        const v = selectAgente.value;
+        if (v) {
+            csText.textContent = v;
+            csText.classList.remove('placeholder');
+        } else {
+            csText.textContent = '— Selecione seu nome —';
+            csText.classList.add('placeholder');
+        }
+        // Atualiza active no dropdown
+        if (csOptions) csOptions.querySelectorAll('.cs-option').forEach(o => {
+            o.classList.toggle('active', o.dataset.value === v);
+        });
+    }
+
+    function buildCustomOptions() {
+        if (!csOptions) return;
+        csOptions.innerHTML = '';
+        Array.from(selectAgente.options).forEach(opt => {
+            const div = document.createElement('div');
+            div.className = 'cs-option' + (opt.value === selectAgente.value ? ' active' : '');
+            
+            if (!opt.value) {
+                div.classList.add('cs-placeholder-opt');
+                div.innerHTML = `<i class="fa-solid fa-arrow-left"></i> Voltar ao painel inicial`;
+                div.style.color = "var(--pink)";
+                div.style.fontWeight = "600";
+                div.style.borderBottom = "1px solid rgba(236, 72, 153, 0.1)";
+                div.style.marginBottom = "4px";
+            } else {
+                div.textContent = opt.value;
+            }
+            
+            div.dataset.value = opt.value;
+            div.addEventListener('click', () => {
+                selectAgente.value = div.dataset.value;
+                selectAgente.dispatchEvent(new Event('change'));
+                closeCustomSelect();
+            });
+            csOptions.appendChild(div);
+        });
+    }
+
+    function openCustomSelect() {
+        if (!csWrap) return;
+        csWrap.classList.add('open');
+        if (csSearch) { csSearch.value = ''; filterCustomOptions(''); }
+        setTimeout(() => { if (csSearch) csSearch.focus(); }, 50);
+    }
+
+    function closeCustomSelect() {
+        if (!csWrap) return;
+        csWrap.classList.remove('open');
+    }
+
+    function filterCustomOptions(q) {
+        if (!csOptions) return;
+        const lower = q.toLowerCase().trim();
+        let count = 0;
+        csOptions.querySelectorAll('.cs-option').forEach(o => {
+            const match = !lower || o.textContent.toLowerCase().includes(lower);
+            o.classList.toggle('hidden', !match);
+            if (match) count++;
+        });
+        // Remove empty msg anterior
+        const old = csOptions.querySelector('.cs-empty');
+        if (old) old.remove();
+        if (count === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'cs-empty';
+            empty.textContent = 'Nenhum agente encontrado';
+            csOptions.appendChild(empty);
+        }
+    }
+
+    if (csDisplay) csDisplay.addEventListener('click', (e) => {
+        e.stopPropagation();
+        csWrap.classList.contains('open') ? closeCustomSelect() : openCustomSelect();
+    });
+    if (csSearch) csSearch.addEventListener('input', () => filterCustomOptions(csSearch.value));
+    if (csSearch) csSearch.addEventListener('click', (e) => e.stopPropagation());
+    if (csDropdown) csDropdown.addEventListener('click', (e) => e.stopPropagation());
+
+    // Fechar ao clicar fora
+    document.addEventListener('click', () => closeCustomSelect());
+
     if (btnSync) btnSync.addEventListener('click', () => sincronizarBase(true));
 
     // Tabs
@@ -46,7 +208,10 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('pane-' + btn.dataset.tab).classList.add('active');
             const isSearchable = btn.dataset.tab === 'mim' || btn.dataset.tab === 'outro' || btn.dataset.tab === 'retorno';
             if (searchWrap) searchWrap.style.display = isSearchable ? 'flex' : 'none';
-            if (searchInput) searchInput.value = '';
+            // Re-renderiza a aba ativa com o filtro de busca atual
+            if (btn.dataset.tab === 'mim') { pagMim = 1; renderPaginated('mim'); }
+            else if (btn.dataset.tab === 'outro') { pagOutro = 1; renderPaginated('outro'); }
+            else if (btn.dataset.tab === 'retorno') renderRetorno();
         });
     });
 
@@ -74,7 +239,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let tempoParaSync = 300, syncProgress = 0;
 
-    setInterval(() => { if (selectAgente.value && !isSyncing) runFilter(); }, 60000);
+    // Auto-refresh a cada 60s — protegido contra sobreposição
+    setInterval(() => {
+        if (selectAgente.value && !isSyncing && !isLoading) runFilter();
+    }, 60000);
 
     // Timer principal: 1s — live timers + contagem regressiva sync + progresso sync
     setInterval(() => {
@@ -108,11 +276,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Toast
     function toast(msg, tipo = 'ok') {
         let tc = document.getElementById('_toast_c');
-        if (!tc) { tc = document.createElement('div'); tc.id = '_toast_c'; tc.style.cssText = 'position:fixed;bottom:22px;right:22px;z-index:9999;display:flex;flex-direction:column;gap:8px;align-items:flex-end;'; document.body.appendChild(tc); }
+        if (!tc) { tc = document.createElement('div'); tc.id = '_toast_c'; tc.style.cssText = 'position:fixed;top:80px;right:22px;z-index:9999;display:flex;flex-direction:column;gap:8px;align-items:flex-end;'; document.body.appendChild(tc); }
         const p = { ok: ['#ecfdf5', '#a7f3d0', '#065f46', 'fa-circle-check'], erro: ['#fff1f2', '#fecdd3', '#be123c', 'fa-circle-xmark'], info: ['#eff6ff', '#bfdbfe', '#1d4ed8', 'fa-circle-info'], loading: ['#f5f3ff', '#ddd6fe', '#7c3aed', 'fa-arrows-rotate'] };
         const [bg, bd, clr, ico] = p[tipo] || p.ok;
         const el = document.createElement('div');
-        el.style.cssText = `display:flex;align-items:center;gap:10px;background:${bg};border:1px solid ${bd};color:${clr};padding:10px 16px;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.09);opacity:0;transform:translateY(6px);transition:opacity .18s,transform .18s;max-width:300px;`;
+        el.style.cssText = `display:flex;align-items:center;gap:10px;background:${bg};border:1px solid ${bd};color:${clr};padding:10px 16px;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.09);opacity:0;transform:translateY(-6px);transition:opacity .18s,transform .18s;max-width:300px;`;
         if (!document.getElementById('_tspin_s')) { const s = document.createElement('style'); s.id = '_tspin_s'; s.textContent = '@keyframes _tspin{to{transform:rotate(360deg)}}'; document.head.appendChild(s); }
         const sp = tipo === 'loading' ? 'style="animation:_tspin 1s linear infinite;"' : '';
         el.innerHTML = `<i class="fa-solid ${ico}" ${sp}></i><span>${msg}</span>`;
@@ -144,34 +312,70 @@ document.addEventListener('DOMContentLoaded', () => {
     function setSyncUI(e) { if (!syncDot || !syncText) return; const s = e === 'syncing'; syncDot.style.background = s ? '#f59e0b' : '#10b981'; syncDot.style.animation = s ? 'none' : ''; syncText.textContent = s ? 'Sincronizando...' : 'Sincronização ativa'; syncText.style.color = s ? '#f59e0b' : ''; }
     function setBtnSync(l) { if (!btnSync) return; btnSync.disabled = l; btnSync.classList.toggle('spinning', l); btnSync.innerHTML = l ? '<i class="fa-solid fa-rotate-right"></i> Atualizando...' : '<i class="fa-solid fa-rotate-right"></i> Atualizar agora'; }
 
-    // Data
+    // ══════════════════════════════════════════════════════════════════
+    // Data — com AbortController para eliminar race conditions
+    // ══════════════════════════════════════════════════════════════════
     function carregarDados(inicio, fim, agente) {
+        // Aborta request anterior se ainda estiver em vôo
+        if (currentController) {
+            currentController.abort();
+            currentController = null;
+        }
+
+        const thisRequest = ++requestId;
+        const controller = new AbortController();
+        currentController = controller;
+        isLoading = true;
+
         let url = `/dashboards/api/polichat/dados/?t=${Date.now()}&inicio=${inicio}&fim=${fim}`;
         if (agente) url += `&agente=${encodeURIComponent(agente)}`;
-        fetch(url).then(r => r.json()).then(data => {
-            if (data.status !== 'ok') return;
-            if (!agentesCarregados && data.filtros_disponiveis?.agentes?.length) { popularSelect(data.filtros_disponiveis.agentes); agentesCarregados = true; if (ultimoAgente) selectAgente.value = ultimoAgente; }
-            if (!agente) { mostrarPrompt(true); zerarKPIs(); return; }
-            mostrarPrompt(false);
-            atualizarKPIs(data.kpis);
-            renderSimple('list-aguardando', data.tabelas.aguardando || [], 'aguardando');
-            renderSimple('list-andamento', data.tabelas.em_andamento || [], 'andamento');
-            document.getElementById('cnt-aguardando').textContent = (data.tabelas.aguardando || []).length;
-            document.getElementById('cnt-andamento').textContent = (data.tabelas.em_andamento || []).length;
-            dadosMim = data.tabelas.fechados_por_mim || data.tabelas.fechados || [];
-            dadosOutro = data.tabelas.fechados_por_outro || [];
-            dadosRetorno = data.tabelas.retorno || [];
-            document.getElementById('cnt-mim').textContent = dadosMim.length;
-            document.getElementById('cnt-outro').textContent = dadosOutro.length;
-            document.getElementById('cnt-retorno').textContent = dadosRetorno.length;
-            pagMim = 1; pagOutro = 1;
-            renderPaginated('mim'); renderPaginated('outro'); renderRetorno();
-        }).catch(err => console.error('[Mesa]', err));
+
+        fetch(url, { signal: controller.signal })
+            .then(r => r.json())
+            .then(data => {
+                // Descarta resposta se já houve request mais recente
+                if (thisRequest !== requestId) return;
+
+                if (data.status !== 'ok') return;
+
+                // Sempre atualiza a lista de agentes quando disponível
+                if (data.filtros_disponiveis?.agentes?.length) {
+                    popularSelect(data.filtros_disponiveis.agentes);
+                    if (ultimoAgente) selectAgente.value = ultimoAgente;
+                }
+
+                if (!agente) { mostrarPrompt(true); zerarKPIs(); return; }
+                mostrarPrompt(false);
+                atualizarKPIs(data.kpis);
+                renderSimple('list-aguardando', data.tabelas.aguardando || [], 'aguardando');
+                renderSimple('list-andamento', data.tabelas.em_andamento || [], 'andamento');
+                document.getElementById('cnt-aguardando').textContent = (data.tabelas.aguardando || []).length;
+                document.getElementById('cnt-andamento').textContent = (data.tabelas.em_andamento || []).length;
+                dadosMim = data.tabelas.fechados_por_mim || data.tabelas.fechados || [];
+                dadosOutro = data.tabelas.fechados_por_outro || [];
+                dadosRetorno = data.tabelas.retorno || [];
+                document.getElementById('cnt-mim').textContent = dadosMim.length;
+                document.getElementById('cnt-outro').textContent = dadosOutro.length;
+                document.getElementById('cnt-retorno').textContent = dadosRetorno.length;
+                pagMim = 1; pagOutro = 1;
+                renderPaginated('mim'); renderPaginated('outro'); renderRetorno();
+            })
+            .catch(err => {
+                // Ignora erros de abort (são intencionais)
+                if (err.name === 'AbortError') return;
+                console.error('[Mesa]', err);
+            })
+            .finally(() => {
+                if (thisRequest === requestId) {
+                    isLoading = false;
+                    currentController = null;
+                }
+            });
     }
 
     function mostrarPrompt(v) { if (promptInicial) promptInicial.style.display = v ? 'flex' : 'none'; }
     function zerarKPIs() { ['kpi-aguardando', 'kpi-andamento', 'kpi-fechados-mim', 'kpi-fechados-outro'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '0'; }); const t = document.getElementById('kpi-tma'); if (t) t.textContent = '--:--'; }
-    function popularSelect(lista) { const v = selectAgente.value; selectAgente.innerHTML = '<option value="">— Selecione seu nome —</option>'; lista.forEach(ag => { const o = document.createElement('option'); o.value = ag; o.textContent = ag; selectAgente.appendChild(o); }); if (v) selectAgente.value = v; }
+    function popularSelect(lista) { const v = selectAgente.value; selectAgente.innerHTML = '<option value="">— Selecione seu nome —</option>'; lista.forEach(ag => { const o = document.createElement('option'); o.value = ag; o.textContent = ag; selectAgente.appendChild(o); }); if (v) selectAgente.value = v; buildCustomOptions(); syncCustomSelectDisplay(); }
     function atualizarKPIs(k) { if (!k) return; setK('kpi-aguardando', k.aguardando ?? 0); setK('kpi-andamento', k.em_andamento ?? k.andamento ?? 0); setK('kpi-fechados-mim', k.fechados_por_mim ?? k.fechados ?? 0); setK('kpi-fechados-outro', k.fechados_por_outro ?? k.passados_outro ?? 0); setK('kpi-tma', k.tma || '--:--'); }
     function setK(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
 
@@ -206,7 +410,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const veioDe = c.veio_de ? `<span class="chip redir"><i class="fa-solid fa-shuffle"></i> Veio de ${esc(c.veio_de)} (ficou ${esc(c.tempo_anterior || '--')} com ele)</span>` : '';
             d.innerHTML = `<div class="ic-identity"><div class="ic-name" title="${nm}">${nm}</div><div class="ic-phone">${tel}</div></div><div class="ic-status"><span class="status-pill fechado">Fechado por mim</span></div><div class="ic-meta">${veioDe}<span class="chip neutral"><i class="fa-regular fa-clock"></i> Entrada: <span class="mono">${ent}</span></span><span class="chip neutral"><i class="fa-solid fa-flag-checkered"></i> Fechamento: <span class="mono">${esc(c.data_fechamento || '—')}</span></span><span class="chip amber"><i class="fa-solid fa-hourglass-half"></i> Espera: ${esc(c.tempo_espera || '--')}</span><span class="chip blue"><i class="fa-solid fa-headset"></i> Atend.: ${esc(c.tempo_atendimento || '--')}</span></div><div class="ic-time"><div class="ic-time-label">Total</div><div class="ic-time-val" style="background:var(--c-green-bg);color:#065f46">${esc(c.tempo_total || '--')}</div></div>`;
         } else if (tipo === 'fechados_outro') {
-            d.innerHTML = `<div class="ic-identity"><div class="ic-name" title="${nm}">${nm}</div><div class="ic-phone">${tel}</div></div><div class="ic-status"><span class="status-pill fechado-outro">Fechado por outro</span></div><div class="ic-meta"><span class="chip neutral"><i class="fa-regular fa-clock"></i> Entrada: <span class="mono">${ent}</span></span><span class="chip neutral"><i class="fa-solid fa-right-from-bracket"></i> Transferido em: <span class="mono">${esc(c.data_fechamento || '—')}</span></span><span class="chip rose"><i class="fa-solid fa-user-group"></i> Transferido para: ${esc(c.fechado_por || '—')}</span><span class="chip amber"><i class="fa-solid fa-stopwatch"></i> Tempo comigo: ${esc(c.tempo_total || '--')}</span><span class="chip blue"><i class="fa-solid fa-user"></i> Tempo com colega: ${esc(c.tempo_com_colega || '--')}</span><span class="chip purple"><i class="fa-solid fa-clock-rotate-left"></i> Tempo total do chat: ${esc(c.tempo_total_chat || '--')}</span></div></div>`;
+            d.innerHTML = `<div class="ic-identity"><div class="ic-name" title="${nm}">${nm}</div><div class="ic-phone">${tel}</div></div><div class="ic-status"><span class="status-pill fechado-outro">Fechado por outro</span></div><div class="ic-meta"><span class="chip neutral"><i class="fa-regular fa-clock"></i> Entrada: <span class="mono">${ent}</span></span><span class="chip neutral"><i class="fa-solid fa-right-from-bracket"></i> Transferido em: <span class="mono">${esc(c.data_fechamento || '—')}</span></span><span class="chip rose"><i class="fa-solid fa-user-group"></i> Transferido para: ${esc(c.fechado_por || '—')}</span><span class="chip amber"><i class="fa-solid fa-stopwatch"></i> Tempo comigo: ${esc(c.tempo_total || '--')}</span><span class="chip blue"><i class="fa-solid fa-user"></i> Tempo com colega: ${esc(c.tempo_com_colega || '--')}</span></div><div class="ic-time"><div class="ic-time-label">Total</div><div class="ic-time-val" style="background:var(--c-purple-bg);color:var(--c-purple)">${esc(c.tempo_total_chat || '--')}</div></div>`;
         } else if (tipo === 'retorno') {
             const seg = c.tempo_espera_seg || 0;
             const cls = seg > 3600 ? 'rose' : seg > 900 ? 'amber' : 'purple';
@@ -217,9 +421,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Paginated list (fechados)
     function filterData(data) {
-        const q = (searchInput?.value || '').toLowerCase().trim();
-        if (!q) return data;
-        return data.filter(c => ((c.cliente || '') + ' ' + (c.telefone || '')).toLowerCase().includes(q));
+        const sVal = searchInput ? searchInput.value.toLowerCase().trim() : '';
+        if (sVal) {
+            data = data.filter(d => 
+                (d.cliente || '').toLowerCase().includes(sVal) || 
+                (d.telefone || '').toLowerCase().includes(sVal)
+            );
+        }
+        return data;
     }
 
     function renderPaginated(tipo) {
@@ -237,7 +446,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         listEl.innerHTML = '';
         if (!slice.length) {
-            listEl.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><p>${total === 0 ? 'Nenhum registro no período.' : 'Nenhum resultado para a busca.'}</p></div>`;
+            const sVal = searchInput ? searchInput.value.toLowerCase().trim() : '';
+            listEl.innerHTML = `<div class="empty-state"><div class="empty-icon">${sVal ? '🔍' : '📭'}</div><p>${sVal ? 'Nenhum resultado para a busca.' : 'Nenhum registro no período.'}</p></div>`;
         } else {
             const cardType = tipo === 'mim' ? 'fechados_mim' : 'fechados_outro';
             const f = document.createDocumentFragment();

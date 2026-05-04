@@ -158,6 +158,19 @@ def api_polichat_dados(request):
             if dt_fim:    mask &= (df['Data_Filtro'] <= (dt_fim + pd.Timedelta(hours=23, minutes=59, seconds=59)).replace(tzinfo=None))
             df = df[mask]
 
+        # ── CORREÇÃO: Fechamento por colega sem novo chat ────────────────
+        # Quando um colega apenas fecha o chat de outro agente (sem responder
+        # e sem criar novo atendimento), o mérito fica com o atendente original.
+        # Indicador: Atendente ≠ Fechado por, mas Transferido Para está vazio.
+        _nao_eh_agente_real = {'chatbot', 'nan', '', 'transferido', 'não informado'}
+        mask_correcao = (
+            ~df['Atendente'].astype(str).str.strip().str.lower().isin(_nao_eh_agente_real) &
+            ~df['Fechado por'].astype(str).str.strip().str.lower().isin(_nao_eh_agente_real) &
+            (df['Atendente'].astype(str).str.strip().str.lower() != df['Fechado por'].astype(str).str.strip().str.lower()) &
+            (df['Transferido Para'].astype(str).str.strip() == '')
+        )
+        df.loc[mask_correcao, 'Fechado por'] = df.loc[mask_correcao, 'Atendente']
+
         if not agente_filtro:
             r = EMPTY_RESPONSE.copy()
             r['mensagem'] = 'Selecione um agente'
@@ -187,23 +200,33 @@ def api_polichat_dados(request):
         df_view['__live_atend_seg']  = (agora - df_view['__dt_resp_calc']).dt.total_seconds().fillna(-1).astype(int)
 
         # ──────────────────────────────────────────────────────────────────
-        # DETECÇÃO DE CHATS DE RETORNO
-        # Telefones que já têm pelo menos 1 chat finalizado no período.
-        # Qualquer novo chat "aguardando" desse mesmo telefone é retorno.
+        # DETECÇÃO DE CHATS DE RETORNO (MESMO DIA)
+        # Retorno = mesmo telefone teve chat fechado por agente real
+        # NO MESMO DIA e depois abriu novo chat. Fechamentos por chatbot,
+        # sistema ou em dias diferentes NÃO contam.
         # ──────────────────────────────────────────────────────────────────
         def _is_finalizado(st, data_fim):
             st_l = str(st).lower()
             return ('finalizado' in st_l or 'encerrado' in st_l or bool(str(data_fim).strip() and str(data_fim).strip() not in ['nan', '']))
 
-        # Considera o DF inteiro do período (não só do agente) para detectar
-        # se o telefone já teve interação encerrada por qualquer atendente.
-        telefones_com_historico_fechado = set(
-            df[
-                df.apply(lambda r: _is_finalizado(
-                    r.get('Status do Atendimento', ''),
-                    r.get('Data de finalização do chat', '')
-                ), axis=1)
-            ]['Telefone do contato'].astype(str).str.strip().unique()
+        _nao_conta_como_agente = {'chatbot', 'nan', '', 'transferido', 'não informado'}
+
+        df_fechados_agente = df[
+            df.apply(lambda r: _is_finalizado(
+                r.get('Status do Atendimento', ''),
+                r.get('Data de finalização do chat', '')
+            ), axis=1)
+        ].copy()
+        df_fechados_agente = df_fechados_agente[
+            ~df_fechados_agente['Fechado por'].astype(str).str.strip().str.lower().isin(_nao_conta_como_agente)
+        ]
+
+        # Lookup: set de (telefone, data_fechamento) → matching por dia
+        retorno_mesmo_dia = set(
+            zip(
+                df_fechados_agente['Telefone do contato'].astype(str).str.replace('.0', '', regex=False).str.strip(),
+                df_fechados_agente['Data de finalização do chat'].astype(str).str.strip()
+            )
         )
 
         df_view = df_view.fillna('')
@@ -360,9 +383,9 @@ def api_polichat_dados(request):
                     lista_fechados_por_outro.append(obj_base)
 
             elif is_aguardando and is_minha_abertura:
-                # ── DETECÇÃO DE RETORNO ───────────────────────────────────
-                # Se o telefone já tem histórico fechado → chat de retorno
-                eh_retorno = telefone_str in telefones_com_historico_fechado
+                # ── DETECÇÃO DE RETORNO (MESMO DIA) ───────────────────────
+                # Retorno se o telefone teve chat fechado no MESMO DIA
+                eh_retorno = (telefone_str, data_ent) in retorno_mesmo_dia
 
                 obj_base['tempo_atendimento'] = '-'
 
@@ -385,8 +408,15 @@ def api_polichat_dados(request):
                 lista_em_andamento.append(obj_base)
 
         tma_calc = formatar_segundos_legivel(
-            soma_atendimento // contagem_fechados_por_mim
+            soma_atendimento / contagem_fechados_por_mim
         ) if contagem_fechados_por_mim > 0 else '--:--'
+
+        # Ordenar listas do mais demorado para o mais recente
+        lista_aguardando.sort(key=lambda x: x.get('tempo_espera_seg', 0), reverse=True)
+        lista_retorno.sort(key=lambda x: x.get('tempo_espera_seg', 0), reverse=True)
+        lista_em_andamento.sort(key=lambda x: x.get('tempo_atendimento_seg', 0), reverse=True)
+        lista_fechados_por_mim.sort(key=lambda x: x.get('tempo_total_seg', 0), reverse=True)
+        lista_fechados_por_outro.sort(key=lambda x: x.get('tempo_total_seg', 0), reverse=True)
 
         return JsonResponse({
             'status': 'ok',
@@ -403,11 +433,11 @@ def api_polichat_dados(request):
                 'passados_outro':  contagem_fechados_por_outro,
             },
             'tabelas': {
-                'aguardando':          lista_aguardando[:150],
-                'em_andamento':        lista_em_andamento[:150],
-                'fechados_por_mim':    lista_fechados_por_mim[:150],
-                'fechados_por_outro':  lista_fechados_por_outro[:150],
-                'retorno':             lista_retorno[:150],
+                'aguardando':          lista_aguardando,
+                'em_andamento':        lista_em_andamento,
+                'fechados_por_mim':    lista_fechados_por_mim,
+                'fechados_por_outro':  lista_fechados_por_outro,
+                'retorno':             lista_retorno,
             },
             'filtros_disponiveis': {'agentes': lista_agentes_total}
         })
