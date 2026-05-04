@@ -66,7 +66,7 @@ def checar_status_ia(request, processo_id):
         return JsonResponse({'status': 'erro', 'mensagem': 'Processo não encontrado'}, status=404)
 
 import os
-from django.http import FileResponse, Http404
+from django.http import FileResponse, Http404, HttpResponse
 
 def baixar_resultado_ia(request, processo_id):
     try:
@@ -78,7 +78,10 @@ def baixar_resultado_ia(request, processo_id):
         caminho_arquivo = os.path.join(os.getcwd(), processo.arquivo_resultado)
         
         if os.path.exists(caminho_arquivo):
-            return FileResponse(open(caminho_arquivo, 'rb'), as_attachment=True, filename=processo.arquivo_resultado)
+            with open(caminho_arquivo, 'rb') as f:
+                response = HttpResponse(f.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+                response['Content-Disposition'] = f'attachment; filename="{processo.arquivo_resultado}"'
+                return response
         else:
             raise Http404("Arquivo físico não encontrado no servidor.")
             

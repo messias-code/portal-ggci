@@ -272,15 +272,17 @@ document.addEventListener('DOMContentLoaded', () => {
                                             const textoOriginal = btnDownload.innerHTML;
                                             btnDownload.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Salvando...</span>';
 
-                                            // 3. Faz o download e salva
+                                            // 3. Adquire o handler de escrita IMEDIATAMENTE (antes que a ativação do usuário expire)
+                                            const writable = await handle.createWritable();
+
+                                            // 4. Faz o download e salva direto pro disco (stream)
                                             const response = await fetch(downloadUrl);
                                             if (!response.ok) throw new Error("Falha HTTP ao baixar arquivo.");
-                                            const buffer = await response.arrayBuffer();
-                                            const writable = await handle.createWritable();
-                                            await writable.write(buffer);
-                                            await writable.close();
+                                            
+                                            // Faz o pipe do stream diretamente para o disco, economiza RAM e evita erro de timeout de ativação
+                                            await response.body.pipeTo(writable);
 
-                                            // 4. Feedback visual: Sucesso!
+                                            // 5. Feedback visual: Sucesso!
                                             btnDownload.innerHTML = '<i class="fa-solid fa-check-double"></i><span>Salvo com Sucesso!</span>';
                                             btnDownload.classList.replace('from-green-500', 'from-teal-500');
                                             btnDownload.classList.replace('to-green-700', 'to-teal-700');
