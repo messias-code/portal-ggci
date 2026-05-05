@@ -78,10 +78,21 @@ def baixar_resultado_ia(request, processo_id):
         caminho_arquivo = os.path.join(os.getcwd(), processo.arquivo_resultado)
         
         if os.path.exists(caminho_arquivo):
+            # 1. Pega o tamanho exato do arquivo no SSD
+            tamanho_arquivo = os.path.getsize(caminho_arquivo)
+            
+            # 2. Lê o arquivo inteiro de uma vez (ideal para arquivos até uns 50MB-100MB)
             with open(caminho_arquivo, 'rb') as f:
-                response = HttpResponse(f.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-                response['Content-Disposition'] = f'attachment; filename="{processo.arquivo_resultado}"'
-                return response
+                dados_arquivo = f.read()
+                
+            # 3. Monta a resposta sólida (sem stream)
+            response = HttpResponse(dados_arquivo, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            response['Content-Disposition'] = f'attachment; filename="{processo.arquivo_resultado}"'
+            
+            # 4. A CHAVE DE OURO: Informa ao navegador e ao Serveo exatamente o tamanho do pacote
+            response['Content-Length'] = tamanho_arquivo
+            
+            return response
         else:
             raise Http404("Arquivo físico não encontrado no servidor.")
             

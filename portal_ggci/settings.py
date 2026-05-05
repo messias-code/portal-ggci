@@ -11,6 +11,7 @@ para Produção), os ajustes ocorrerão aqui.
 """
 
 from pathlib import Path
+import os
 
 # ==========================================================================
 # 1. DIRETÓRIO BASE (CAMINHOS DO SISTEMA)
@@ -39,8 +40,7 @@ ALLOWED_HOSTS = ['*']
 
 # Diz ao Django para confiar nos formulários de login enviados por esse link
 CSRF_TRUSTED_ORIGINS = [
-    'https://portal-ggci.serveousercontent.com',
-    'https://anthem-motocross-swimsuit.ngrok-free.dev',
+    'http://100.105.241.124:8000',
     'http://localhost:8000',
     'http://127.0.0.1:8000'
 ]
@@ -68,6 +68,7 @@ INSTALLED_APPS = [
 # e gerenciam a autenticação da sessão do usuário antes de carregar a tela.
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -156,11 +157,18 @@ USE_TZ = True
 # 8. ARQUIVOS ESTÁTICOS E CUSTOM MODEL
 # ==========================================================================
 # Diz ao Django como montar os links dos arquivos estáticos na tag {% static %}
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 
 # Diz ao Django onde estão fisicamente nossos arquivos CSS, JS e Imagens
 # -> Pasta referenciada: /static/
-STATICFILES_DIRS = [BASE_DIR / 'static']
+STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 # ⚠️ CONFIGURAÇÃO CRÍTICA DO SISTEMA:
 # Informa ao Django que ele NÃO DEVE usar a tabela padrão de usuários dele.

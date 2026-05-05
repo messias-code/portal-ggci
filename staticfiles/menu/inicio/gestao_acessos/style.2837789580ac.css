@@ -1,0 +1,76 @@
+/* ==========================================================================
+   CONFIGURAÇÕES GLOBAIS - GESTÃO DE ACESSOS
+   ========================================================================== */
+
+/* Define a tipografia padrão para toda a página (Fonte Poppins importada no HTML) */
+body { font-family: 'Poppins', sans-serif; }
+
+
+/* ==========================================================================
+   ANIMAÇÕES DO PLANO DE FUNDO (BOLHAS FLUTUANTES)
+   Onde editar no HTML: divs com classes .bg-color-1 a .bg-color-4 no fundo
+   da página principal em 'templates/gestao_acessos/index.html'.
+   ========================================================================== */
+
+/* Efeito Drift: Movimenta as bolhas nos eixos X e Y e altera a escala (tamanho) 
+   suavemente para criar a sensação de flutuação orgânica. */
+@keyframes drift-1 { 
+    0%, 100% { transform: translate(0px, 0px) scale(1); } 
+    33%      { transform: translate(3vw, -3vh) scale(1.05); } 
+    66%      { transform: translate(-2vw, 2vh) scale(0.98); } 
+}
+@keyframes drift-2 { 
+    0%, 100% { transform: translate(0px, 0px) scale(1); } 
+    33%      { transform: translate(-3vw, 4vh) scale(1.02); } 
+    66%      { transform: translate(3vw, -3vh) scale(0.96); } 
+}
+@keyframes drift-3 { 
+    0%, 100% { transform: translate(0px, 0px) scale(1); } 
+    33%      { transform: translate(2vw, 3vh) scale(0.98); } 
+    66%      { transform: translate(-3vw, -2vh) scale(1.05); } 
+}
+
+/* Aplica as animações com longa duração (20s-35s) para que o efeito seja muito sutil e não distraia o usuário */
+.bg-color-1 { animation: drift-1 20s ease-in-out infinite; }
+.bg-color-2 { animation: drift-2 25s ease-in-out infinite; }
+.bg-color-3 { animation: drift-3 30s ease-in-out infinite; }
+.bg-color-4 { animation: drift-1 35s ease-in-out infinite reverse; } /* Reaproveita a animação 1 de trás para frente */
+
+
+/* ==========================================================================
+   ESTILIZAÇÃO DA BARRA DE ROLAGEM (SCROLLBAR CUSTOMIZADA)
+   Onde aplicar: Adicione a classe .custom-scrollbar nas divs que precisam 
+   de rolagem, como a área principal em 'gestao_acessos/index.html' e também 
+   no modal de cadastro em 'modals/form_usuario.html'.
+   ========================================================================== */
+
+/* Afina a barra de rolagem (design mais moderno) */
+.custom-scrollbar::-webkit-scrollbar { width: 6px; }
+
+/* Deixa o fundo (trilho) transparente para manter a estética Glassmorphism */
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+
+/* Pinta o cursor da barra de rolagem com um tom Roxo translúcido (padrão deste módulo) */
+.custom-scrollbar::-webkit-scrollbar-thumb { 
+    background: rgba(168, 85, 247, 0.4); 
+    border-radius: 10px; 
+}
+
+/* Escurece a cor do cursor quando o mouse passa por cima */
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { 
+    background: rgba(168, 85, 247, 0.8); 
+}
+
+
+/* ==========================================================================
+   AJUSTES DA TABELA DE USUÁRIOS
+   Referência: <table class="w-full text-sm..."> em 'gestao_acessos/index.html'
+   ========================================================================== */
+
+/* Separa as bordas da tabela. Isso é essencial para permitir que as linhas (<tr>) 
+   recebam efeitos de hover e bordas arredondadas (rounded-xl) do Tailwind. */
+table { border-collapse: separate; border-spacing: 0; }
+
+/* Remove o fundo padrão das linhas para garantir que o efeito visual de destaque 
+   (ao passar o mouse ou na busca via JS) funcione perfeitamente. */
+tbody tr { background-color: transparent; }

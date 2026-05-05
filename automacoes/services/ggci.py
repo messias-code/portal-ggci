@@ -34,16 +34,17 @@ COLS_MOEDA = [
     'Gemini Mensalidade S/ Desconto', 'Gemini Mensalidade C/ Desconto', 
     'Gemini Valor Beneficio', 'Gemini Valor Financiado', 
     'Gemini Matricula Sem Desconto', 'Gemini Matricula Com Desconto', 
-    'valor_beneficio', 'valor_financiamento', 
+    'valor_beneficio', 'soma_valor_beneficio', 'valor_financiamento', 'soma_valor_financiamento', 
     'valor_ultima_bolsa_paga', 'total bolsa paga', 
     'MSD_SOMA', 'G_MSD_SOMA', 'MCD_SOMA', 'G_MCD_SOMA', 
     '[1] OVG PAGOU (Bolsa Mês)',
     '[2] OVG DEVERIA PAGAR (SISTEMA)', 
     '[3] OVG DEVERIA PAGAR (IA)', 
-    '[4] SALDO RESTANTE (MCD_IA - Benefícios)', 
-    '[5] PREJUÍZO DA OVG (R$)', 
-    '[6] LUCRO INDEVIDO IES (R$)',
-    '[7] ECONOMIA DA OVG (R$)'
+    '[4] SOMA OVG DEVERIA PAGAR (IA)', 
+    '[5] SALDO RESTANTE (MCD_IA - Benefícios)', 
+    '[6] PREJUÍZO DA OVG (R$)', 
+    '[7] LUCRO INDEVIDO IES (R$)',
+    '[8] ECONOMIA DA OVG (R$)'
 ]
 
 DOC_CONTRATO = "CONTRATO DE PRESTAÇÃO DE SERVIÇOS EDUCACIONAIS OU COMPROVANTE DE MATRÍCULA"
@@ -164,11 +165,11 @@ def aplicar_formatacao_visual(writer, nome_aba, df):
             worksheet.conditional_format(1, i, max_row, i, {'type': 'text', 'criteria': 'containing', 'value': 'não realizado', 'format': f_cinza})
 
         # Alertas de OVG DEVERIA PAGAR (Pinta de vermelho o bloco se for menor que 0)
-        elif col in ['[2] OVG DEVERIA PAGAR (SISTEMA)', '[3] OVG DEVERIA PAGAR (IA)']:
+        elif col in ['[2] OVG DEVERIA PAGAR (SISTEMA)', '[3] OVG DEVERIA PAGAR (IA)', '[4] SOMA OVG DEVERIA PAGAR (IA)']:
             worksheet.conditional_format(1, i, max_row, i, {'type': 'cell', 'criteria': '<', 'value': 0, 'format': f_verm})
 
-        # [4] SALDO RESTANTE (Fica Vermelho para QUALQUER valor positivo ou negativo, exceto zero exato)
-        elif col == '[4] SALDO RESTANTE (MCD_IA - Benefícios)':
+        # [5] SALDO RESTANTE (Fica Vermelho para QUALQUER valor positivo ou negativo, exceto zero exato)
+        elif col == '[5] SALDO RESTANTE (MCD_IA - Benefícios)':
             worksheet.conditional_format(1, i, max_row, i, {'type': 'cell', 'criteria': '!=', 'value': 0, 'format': f_verm})
 
         # Alerta para Diferenças de Mensalidade (Qualquer divergência acende o bloco vermelho)
@@ -176,11 +177,11 @@ def aplicar_formatacao_visual(writer, nome_aba, df):
             worksheet.conditional_format(1, i, max_row, i, {'type': 'cell', 'criteria': '!=', 'value': 0, 'format': f_verm})
         
         # Alerta Financeiro Vermelho (Prejuízos e Lucros Indevidos gritam em vermelho se for maior que 0)
-        elif col in ['[5] PREJUÍZO DA OVG (R$)', '[6] LUCRO INDEVIDO IES (R$)']:
+        elif col in ['[6] PREJUÍZO DA OVG (R$)', '[7] LUCRO INDEVIDO IES (R$)']:
             worksheet.conditional_format(1, i, max_row, i, {'type': 'cell', 'criteria': '>', 'value': 0, 'format': f_verm})
             
         # NOVA COLUNA: Economia da OVG (Grita em VERDE se for maior que 0)
-        elif col == '[7] ECONOMIA DA OVG (R$)':
+        elif col == '[8] ECONOMIA DA OVG (R$)':
             worksheet.conditional_format(1, i, max_row, i, {'type': 'cell', 'criteria': '>', 'value': 0, 'format': f_verde})
 
 # ==========================================
@@ -574,18 +575,20 @@ def calcular_auditoria_ia(df):
     g_bolsa_final = np.maximum(g_bolsa_final, 0.0)
 
     df['[3] OVG DEVERIA PAGAR (IA)'] = np.where(is_contrato & (~mask_ignorar_math), g_bolsa_final, 0.0)
+    df['[4] SOMA OVG DEVERIA PAGAR (IA)'] = df['[3] OVG DEVERIA PAGAR (IA)'] * df['qtd_pagtos']
 
     cond_falha_leitura = (mcd_ia == 0)
     saldo_restante = mcd_ia - beneficios
-    df['[4] SALDO RESTANTE (MCD - Benefícios)'] = np.where(is_contrato & (~mask_ignorar_math) & (~cond_falha_leitura), saldo_restante, 0.0)
+    
+    df['[5] SALDO RESTANTE (MCD_IA - Benefícios)'] = np.where(is_contrato & (~mask_ignorar_math) & (~cond_falha_leitura), saldo_restante, 0.0)
 
     prejuizo_ovg = np.maximum(paga - g_bolsa_final, 0.0)
     lucro_ies = np.maximum((paga + beneficios) - mcd_ia, 0.0)
     economia_ovg = np.maximum(g_bolsa_final - paga, 0.0)
 
-    df['[5] PREJUÍZO DA OVG (R$)'] = np.where(is_contrato & (~mask_ignorar_math) & (~cond_falha_leitura), prejuizo_ovg, 0.0)
-    df['[6] LUCRO INDEVIDO IES (R$)'] = np.where(is_contrato & (~mask_ignorar_math) & (~cond_falha_leitura), lucro_ies, 0.0)
-    df['[7] ECONOMIA DA OVG (R$)'] = np.where(is_contrato & (~mask_ignorar_math) & (~cond_falha_leitura), economia_ovg, 0.0)
+    df['[6] PREJUÍZO DA OVG (R$)'] = np.where(is_contrato & (~mask_ignorar_math) & (~cond_falha_leitura), prejuizo_ovg, 0.0)
+    df['[7] LUCRO INDEVIDO IES (R$)'] = np.where(is_contrato & (~mask_ignorar_math) & (~cond_falha_leitura), lucro_ies, 0.0)
+    df['[8] ECONOMIA DA OVG (R$)'] = np.where(is_contrato & (~mask_ignorar_math) & (~cond_falha_leitura), economia_ovg, 0.0)
 
     cond_ignorar = (~is_contrato) | mask_ignorar_math
     df['Diagnóstico Financeiro Final'] = np.select(
@@ -673,27 +676,32 @@ def calcular_auditoria_ia(df):
         
     df['Validação Financeira'] = df.apply(get_val_fin, axis=1)
 
+    qtd = pd.to_numeric(df.get('qtd_pagtos', 0), errors='coerce').fillna(0).astype(int)
+    val_ben = pd.to_numeric(df.get('valor_beneficio', 0), errors='coerce').fillna(0.0)
+    val_fin = pd.to_numeric(df.get('valor_financiamento', 0), errors='coerce').fillna(0.0)
+    
+    df['soma_valor_beneficio'] = val_ben * qtd
+    df['soma_valor_financiamento'] = val_fin * qtd
+
     ordem_desejada = [
         'Status_IA', 'Auditoria IA', 'Validação Financeira', 'Status_Vínculo', 
         'Mudou IES?', 'IES Anterior', 'IES Posterior', 'Mudou Bolsa?', 'Bolsa Anterior', 'Bolsa Posterior', 
         'Semestre', 'Gemini Semestre', 'Inscrição', 'Inscrição Anterior', 'Inscrição Posterior', 
         'Bolsista', 'CPF', 'Gemini CPF', 'Gemini Inconsistencias', 'Faculdade', 'Curso', 
         'tipo_bolsa_final', 'qtd_pagtos', 'valor_ultima_bolsa_paga', 'total bolsa paga', 
-        
         'Mensalidade S/ Desconto', 'Gemini Mensalidade S/ Desconto', 'Dif. s/Desc.', 'Total Dif. s/Desc.', 'MSD_SOMA', 'G_MSD_SOMA', 'MSD_DOC', 
-        
         'Mensalidade C/ Desconto', 'Gemini Mensalidade C/ Desconto', 'Dif. c/Desc.', 'Total Dif. c/Desc.', 'MCD_SOMA', 'G_MCD_SOMA', 'MCD_DOC', 
-        
         '[1] OVG PAGOU (Bolsa Mês)',
         '[2] OVG DEVERIA PAGAR (SISTEMA)', 
         '[3] OVG DEVERIA PAGAR (IA)', 
-        '[4] SALDO RESTANTE (MCD - Benefícios)', 
-        '[5] PREJUÍZO DA OVG (R$)', 
-        '[6] LUCRO INDEVIDO IES (R$)', 
-        '[7] ECONOMIA DA OVG (R$)',
+        '[4] SOMA OVG DEVERIA PAGAR (IA)', 
+        '[5] SALDO RESTANTE (MCD_IA - Benefícios)', 
+        '[6] PREJUÍZO DA OVG (R$)', 
+        '[7] LUCRO INDEVIDO IES (R$)', 
+        '[8] ECONOMIA DA OVG (R$)',
         'Diagnóstico Financeiro Final',
-        
-        'valor_beneficio', 'qual_beneficio', 'valor_financiamento', 'qual_financiamento', 'data_coleta',
+        'valor_beneficio', 'soma_valor_beneficio', 'qual_beneficio', 
+        'valor_financiamento', 'soma_valor_financiamento', 'qual_financiamento', 'data_coleta',
         'Documento Tipo', 'Check Contrato', 'Check Financiamento', 'Check Benefícios', 'Check RIAF', 
         'Processar', 'Processado', 'Data Processamento', 'Coleta ID'
     ]
@@ -806,6 +814,13 @@ def gerar_aba_relatorio_ies(writer, df_docs, ano):
     fmt_pct_cinza = workbook.add_format({'bg_color': '#d9d9d9', 'border': 1, 'valign': 'vcenter', 'align': 'center', 'num_format': '0.00%'})
     fmt_money_cinza = workbook.add_format({'bg_color': '#d9d9d9', 'border': 1, 'valign': 'vcenter', 'align': 'center', 'num_format': 'R$ #,##0.00'})
 
+    # 4. Bege/Caqui (Benefícios Extras)
+    fmt_header_bege = workbook.add_format({'bold': True, 'bg_color': '#c4bd97', 'font_color': '#000000', 'valign': 'vcenter', 'align': 'center', 'border': 1})
+    fmt_cell_bege = workbook.add_format({'bg_color': '#ddd9c4', 'border': 1, 'valign': 'vcenter'})
+    fmt_cell_center_bege = workbook.add_format({'bg_color': '#ddd9c4', 'border': 1, 'valign': 'vcenter', 'align': 'center'})
+    fmt_pct_bege = workbook.add_format({'bg_color': '#ddd9c4', 'border': 1, 'valign': 'vcenter', 'align': 'center', 'num_format': '0.00%'})
+    fmt_money_bege = workbook.add_format({'bg_color': '#ddd9c4', 'border': 1, 'valign': 'vcenter', 'align': 'center', 'num_format': 'R$ #,##0.00'})
+
     # --- 2. Ajuste de Largura e Altura ---
     worksheet.set_column('A:A', 65) 
     worksheet.set_column('B:D', 20) 
@@ -844,8 +859,36 @@ def gerar_aba_relatorio_ies(writer, df_docs, ano):
             'input_message': 'Selecione a instituição na lista.'
         })
 
-    # --- 5. Mapeamento das Colunas da Aba Resumo_Quantitativo ---
-    mapa_colunas = {
+    # --- 5. MAPEAMENTO DINÂMICO DE COLUNAS ---
+    from openpyxl.utils import get_column_letter
+    
+    def get_col(col_name):
+        if col_name in df_docs.columns:
+            return get_column_letter(df_docs.columns.get_loc(col_name) + 1)
+        return 'A'
+
+    col_status_ia = get_col('Status_IA')
+    col_faculdade = get_col('Faculdade')
+    col_semestre = get_col('Semestre')
+    col_doc_tipo = get_col('Documento Tipo')
+    col_inc = get_col('Gemini Inconsistencias')
+    col_total_bolsa = get_col('total bolsa paga')
+    
+    col_bolsa_ia = get_col('[4] SOMA OVG DEVERIA PAGAR (IA)')
+    col_soma_ben = get_col('soma_valor_beneficio')
+    col_soma_fin = get_col('soma_valor_financiamento')
+
+    col_msd_sys = get_col('MSD_SOMA')
+    col_msd_ia = get_col('G_MSD_SOMA')
+    col_msd_doc = get_col('MSD_DOC')
+
+    col_mcd_sys = get_col('MCD_SOMA')
+    col_mcd_ia = get_col('G_MCD_SOMA')
+    col_mcd_doc = get_col('MCD_DOC')
+
+    doc_cond = f'Documentos!{col_doc_tipo}:{col_doc_tipo}, "CONTRATO DE PRESTAÇÃO DE SERVIÇOS EDUCACIONAIS OU COMPROVANTE DE MATRÍCULA"'
+
+    mapa_colunas_resumo = {
         "Beneficiários Ativos": "D",
         "Beneficiários Inativos": "E",
         "Quantidade de Contratos": "F",
@@ -876,7 +919,7 @@ def gerar_aba_relatorio_ies(writer, df_docs, ano):
         ("Soma na Coleta de Dados de Contratos Enviados", False, 2),
         ("Soma no Contrato", False, 2),
         ("Diferença entre Contrato e Coleta", False, 2),
-        ("Porcentagem de Variação entre Contrato e Coleta de Contratos Enviados", False, 2),
+        ("Porcentagem de Diferença entre Coleta de Dados (enviados) e Contrato", False, 2),
         ("Qtd. de Contratos com Valores de Acordo com a Coleta de Dados", False, 2),
         ("Qtd. de Contratos com Valor Não Localizado", False, 2),
         ("Qtd. de Contratos com Valor Maior que a Coleta", False, 2),
@@ -888,13 +931,19 @@ def gerar_aba_relatorio_ies(writer, df_docs, ano):
         ("Soma na Coleta de Dados de Contratos Enviados", False, 2),
         ("Soma no Contrato", False, 2),
         ("Diferença entre Contrato e Coleta", False, 2),
-        ("Porcentagem de Variação entre Contrato e Coleta de Contratos Enviados", False, 2),
+        ("Porcentagem de Diferença entre Coleta de Dados (enviados) e Contrato", False, 2),
         ("Soma Valor de Bolsas Calculadas conforme o Contrato", False, 2),
         ("Qtd. de Contratos com Valores de Acordo com a Coleta de Dados", False, 2),
         ("Qtd. de Contratos com Valor Não Localizado", False, 2),
         ("Qtd. de Contratos com Valor Maior que a Coleta", False, 2),
         ("Qtd. de Contratos com Valor Menor que a Coleta", False, 2),
         ("", False, 0),
+        
+        ("Benefícios Extras", True, 4),
+        ("Soma de Financiamento", False, 4),
+        ("Soma de Outros Benefícios", False, 4),
+        ("", False, 0),
+
         ("Inconsistências", True, 3),
         ("Qtd. de Contratos com Inconsistências de CPF", False, 3),
         ("Qtd. de Contratos com Inconsistências de Semestre Letivo", False, 3)
@@ -911,13 +960,14 @@ def gerar_aba_relatorio_ies(writer, df_docs, ano):
             row_idx += 1
             continue
             
-        # Define a paleta de cores correta para a linha
         if id_cor == 1:
             cur_fmt_header, cur_fmt_cell, cur_fmt_center, cur_fmt_pct, cur_fmt_money = fmt_header_azul1, fmt_cell_azul1, fmt_cell_center_azul1, fmt_pct_azul1, fmt_money_azul1
         elif id_cor == 2:
             cur_fmt_header, cur_fmt_cell, cur_fmt_center, cur_fmt_pct, cur_fmt_money = fmt_header_roxo, fmt_cell_roxo, fmt_cell_center_roxo, fmt_pct_roxo, fmt_money_roxo
         elif id_cor == 3:
             cur_fmt_header, cur_fmt_cell, cur_fmt_center, cur_fmt_pct, cur_fmt_money = fmt_header_cinza, fmt_cell_cinza, fmt_cell_center_cinza, fmt_pct_cinza, fmt_money_cinza
+        elif id_cor == 4:
+            cur_fmt_header, cur_fmt_cell, cur_fmt_center, cur_fmt_pct, cur_fmt_money = fmt_header_bege, fmt_cell_bege, fmt_cell_center_bege, fmt_pct_bege, fmt_money_bege
 
         if is_header:
             worksheet.write(row_idx, 0, label, cur_fmt_header)
@@ -925,13 +975,11 @@ def gerar_aba_relatorio_ies(writer, df_docs, ano):
             worksheet.write(row_idx, 2, f'{ano}-2', cur_fmt_header)
             worksheet.write(row_idx, 3, 'Variação', cur_fmt_header)
         else:
-            excel_row = row_idx + 1 # Linha real no Excel
+            excel_row = row_idx + 1 
             worksheet.write(row_idx, 0, label, cur_fmt_cell)
             
-            # FÓRMULA DE VARIAÇÃO À PROVA DE FALHAS E DIVISÃO POR ZERO
             form_var = f'=IF($A$3="Selecione a IES...", "", IFERROR(IF(AND(B{excel_row}=0,C{excel_row}=0),0,IF(B{excel_row}=0,1,(C{excel_row}-B{excel_row})/B{excel_row})),""))'
 
-            # 1. Quantidade de Beneficiários
             if label == "Quantidade de Beneficiários":
                 form_1 = f'=IF($A$3="Selecione a IES...", "", SUM(B{excel_row+1}:B{excel_row+2}))'
                 form_2 = f'=IF($A$3="Selecione a IES...", "", SUM(C{excel_row+1}:C{excel_row+2}))'
@@ -939,82 +987,74 @@ def gerar_aba_relatorio_ies(writer, df_docs, ano):
                 worksheet.write_formula(row_idx, 2, form_2, cur_fmt_center)
                 worksheet.write_formula(row_idx, 3, form_var, cur_fmt_pct)
                 
-            # 2. Valor Total de Bolsas Pagas
             elif label == "Valor Total de Bolsas Pagas":
-                form_1 = f'=IF($A$3="Selecione a IES...", "", SUMIFS(Documentos!Y:Y, Documentos!T:T, $A$3, Documentos!K:K, "{ano}-1", Documentos!BA:BA, "CONTRATO DE PRESTAÇÃO DE SERVIÇOS EDUCACIONAIS OU COMPROVANTE DE MATRÍCULA"))'
-                form_2 = f'=IF($A$3="Selecione a IES...", "", SUMIFS(Documentos!Y:Y, Documentos!T:T, $A$3, Documentos!K:K, "{ano}-2", Documentos!BA:BA, "CONTRATO DE PRESTAÇÃO DE SERVIÇOS EDUCACIONAIS OU COMPROVANTE DE MATRÍCULA"))'
+                form_1 = f'=IF($A$3="Selecione a IES...", "", SUMIFS(Documentos!{col_total_bolsa}:{col_total_bolsa}, Documentos!{col_faculdade}:{col_faculdade}, $A$3, Documentos!{col_semestre}:{col_semestre}, "{ano}-1", {doc_cond}))'
+                form_2 = f'=IF($A$3="Selecione a IES...", "", SUMIFS(Documentos!{col_total_bolsa}:{col_total_bolsa}, Documentos!{col_faculdade}:{col_faculdade}, $A$3, Documentos!{col_semestre}:{col_semestre}, "{ano}-2", {doc_cond}))'
                 worksheet.write_formula(row_idx, 1, form_1, cur_fmt_money)
                 worksheet.write_formula(row_idx, 2, form_2, cur_fmt_money)
                 worksheet.write_formula(row_idx, 3, form_var, cur_fmt_pct)
 
-            # 3. Valor Médio da Bolsa (Mensal)
             elif label == "Valor Médio da Bolsa (Mensal)":
-                # Divide o Total de Bolsas Pagas (linha acima) pela Qtd de Beneficiários (que fica engessada na B6/C6 do Excel)
                 form_1 = f'=IF($A$3="Selecione a IES...", "", IFERROR((B{excel_row-1}/B6)/6, 0))'
                 form_2 = f'=IF($A$3="Selecione a IES...", "", IFERROR((C{excel_row-1}/C6)/6, 0))'
                 worksheet.write_formula(row_idx, 1, form_1, cur_fmt_money)
                 worksheet.write_formula(row_idx, 2, form_2, cur_fmt_money)
                 worksheet.write_formula(row_idx, 3, form_var, cur_fmt_pct)
 
-            # 4. Casos diretos mapeados no Resumo_Quantitativo
-            elif label in mapa_colunas:
-                l_col = mapa_colunas[label]
+            elif label in mapa_colunas_resumo:
+                l_col = mapa_colunas_resumo[label]
                 form_1 = f'=IF($A$3="Selecione a IES...", "", SUMIFS(Resumo_Quantitativo!{l_col}:{l_col}, Resumo_Quantitativo!A:A, $A$3, Resumo_Quantitativo!B:B, "{ano}-1"))'
                 form_2 = f'=IF($A$3="Selecione a IES...", "", SUMIFS(Resumo_Quantitativo!{l_col}:{l_col}, Resumo_Quantitativo!A:A, $A$3, Resumo_Quantitativo!B:B, "{ano}-2"))'
                 worksheet.write_formula(row_idx, 1, form_1, cur_fmt_center)
                 worksheet.write_formula(row_idx, 2, form_2, cur_fmt_center)
                 worksheet.write_formula(row_idx, 3, form_var, cur_fmt_pct)
                 
-            # 5. BLOCO: Mensalidade (SEM Desconto e COM Desconto)
             elif label in [
                 "Soma na Coleta de Dados",
                 "Soma na Coleta de Dados de Contratos Não Enviados",
                 "Soma na Coleta de Dados de Contratos Enviados",
                 "Soma no Contrato",
                 "Diferença entre Contrato e Coleta",
-                "Porcentagem de Variação entre Contrato e Coleta de Contratos Enviados",
+                "Porcentagem de Diferença entre Coleta de Dados (enviados) e Contrato",
                 "Soma Valor de Bolsas Calculadas conforme o Contrato",
                 "Qtd. de Contratos com Valores de Acordo com a Coleta de Dados",
                 "Qtd. de Contratos com Valor Não Localizado",
                 "Qtd. de Contratos com Valor Maior que a Coleta",
                 "Qtd. de Contratos com Valor Menor que a Coleta"
             ]:
-                # O Python lê dinamicamente se estamos no bloco 'Mensalidade SEM Desconto' ou 'Mensalidade COM Desconto'
                 if current_category == "Mensalidade SEM Desconto":
-                    col_coleta = "Z"
-                    col_contrato = "AA"
-                    col_doc = "AF"
+                    col_coleta_ativa = col_msd_sys
+                    col_contrato_ativa = col_msd_ia
+                    col_doc_ativa = col_msd_doc
                 else:
-                    col_coleta = "AG"
-                    col_contrato = "AH"
-                    col_doc = "AM"
-                
-                doc_cond = 'Documentos!BA:BA, "CONTRATO DE PRESTAÇÃO DE SERVIÇOS EDUCACIONAIS OU COMPROVANTE DE MATRÍCULA"'
+                    col_coleta_ativa = col_mcd_sys
+                    col_contrato_ativa = col_mcd_ia
+                    col_doc_ativa = col_mcd_doc
                 
                 if label == "Soma na Coleta de Dados":
-                    f1 = f'=IF($A$3="Selecione a IES...", "", SUMIFS(Documentos!{col_coleta}:{col_coleta}, Documentos!T:T, $A$3, Documentos!K:K, "{ano}-1", {doc_cond}))'
-                    f2 = f'=IF($A$3="Selecione a IES...", "", SUMIFS(Documentos!{col_coleta}:{col_coleta}, Documentos!T:T, $A$3, Documentos!K:K, "{ano}-2", {doc_cond}))'
+                    f1 = f'=IF($A$3="Selecione a IES...", "", SUMIFS(Documentos!{col_coleta_ativa}:{col_coleta_ativa}, Documentos!{col_faculdade}:{col_faculdade}, $A$3, Documentos!{col_semestre}:{col_semestre}, "{ano}-1", {doc_cond}))'
+                    f2 = f'=IF($A$3="Selecione a IES...", "", SUMIFS(Documentos!{col_coleta_ativa}:{col_coleta_ativa}, Documentos!{col_faculdade}:{col_faculdade}, $A$3, Documentos!{col_semestre}:{col_semestre}, "{ano}-2", {doc_cond}))'
                     worksheet.write_formula(row_idx, 1, f1, cur_fmt_money)
                     worksheet.write_formula(row_idx, 2, f2, cur_fmt_money)
                     worksheet.write_formula(row_idx, 3, form_var, cur_fmt_pct)
 
                 elif label == "Soma na Coleta de Dados de Contratos Não Enviados":
-                    f1 = f'=IF($A$3="Selecione a IES...", "", SUMIFS(Documentos!{col_coleta}:{col_coleta}, Documentos!A:A, "Ausente", Documentos!T:T, $A$3, Documentos!K:K, "{ano}-1", {doc_cond}))'
-                    f2 = f'=IF($A$3="Selecione a IES...", "", SUMIFS(Documentos!{col_coleta}:{col_coleta}, Documentos!A:A, "Ausente", Documentos!T:T, $A$3, Documentos!K:K, "{ano}-2", {doc_cond}))'
+                    f1 = f'=IF($A$3="Selecione a IES...", "", SUMIFS(Documentos!{col_coleta_ativa}:{col_coleta_ativa}, Documentos!{col_status_ia}:{col_status_ia}, "Ausente", Documentos!{col_faculdade}:{col_faculdade}, $A$3, Documentos!{col_semestre}:{col_semestre}, "{ano}-1", {doc_cond}))'
+                    f2 = f'=IF($A$3="Selecione a IES...", "", SUMIFS(Documentos!{col_coleta_ativa}:{col_coleta_ativa}, Documentos!{col_status_ia}:{col_status_ia}, "Ausente", Documentos!{col_faculdade}:{col_faculdade}, $A$3, Documentos!{col_semestre}:{col_semestre}, "{ano}-2", {doc_cond}))'
                     worksheet.write_formula(row_idx, 1, f1, cur_fmt_money)
                     worksheet.write_formula(row_idx, 2, f2, cur_fmt_money)
                     worksheet.write_formula(row_idx, 3, form_var, cur_fmt_pct)
 
                 elif label == "Soma na Coleta de Dados de Contratos Enviados":
-                    f1 = f'=IF($A$3="Selecione a IES...", "", SUMIFS(Documentos!{col_coleta}:{col_coleta}, Documentos!A:A, "<>Ausente", Documentos!T:T, $A$3, Documentos!K:K, "{ano}-1", {doc_cond}))'
-                    f2 = f'=IF($A$3="Selecione a IES...", "", SUMIFS(Documentos!{col_coleta}:{col_coleta}, Documentos!A:A, "<>Ausente", Documentos!T:T, $A$3, Documentos!K:K, "{ano}-2", {doc_cond}))'
+                    f1 = f'=IF($A$3="Selecione a IES...", "", SUMIFS(Documentos!{col_coleta_ativa}:{col_coleta_ativa}, Documentos!{col_status_ia}:{col_status_ia}, "<>Ausente", Documentos!{col_faculdade}:{col_faculdade}, $A$3, Documentos!{col_semestre}:{col_semestre}, "{ano}-1", {doc_cond}))'
+                    f2 = f'=IF($A$3="Selecione a IES...", "", SUMIFS(Documentos!{col_coleta_ativa}:{col_coleta_ativa}, Documentos!{col_status_ia}:{col_status_ia}, "<>Ausente", Documentos!{col_faculdade}:{col_faculdade}, $A$3, Documentos!{col_semestre}:{col_semestre}, "{ano}-2", {doc_cond}))'
                     worksheet.write_formula(row_idx, 1, f1, cur_fmt_money)
                     worksheet.write_formula(row_idx, 2, f2, cur_fmt_money)
                     worksheet.write_formula(row_idx, 3, form_var, cur_fmt_pct)
 
                 elif label == "Soma no Contrato":
-                    f1 = f'=IF($A$3="Selecione a IES...", "", SUMIFS(Documentos!{col_contrato}:{col_contrato}, Documentos!T:T, $A$3, Documentos!K:K, "{ano}-1", {doc_cond}))'
-                    f2 = f'=IF($A$3="Selecione a IES...", "", SUMIFS(Documentos!{col_contrato}:{col_contrato}, Documentos!T:T, $A$3, Documentos!K:K, "{ano}-2", {doc_cond}))'
+                    f1 = f'=IF($A$3="Selecione a IES...", "", SUMIFS(Documentos!{col_contrato_ativa}:{col_contrato_ativa}, Documentos!{col_faculdade}:{col_faculdade}, $A$3, Documentos!{col_semestre}:{col_semestre}, "{ano}-1", {doc_cond}))'
+                    f2 = f'=IF($A$3="Selecione a IES...", "", SUMIFS(Documentos!{col_contrato_ativa}:{col_contrato_ativa}, Documentos!{col_faculdade}:{col_faculdade}, $A$3, Documentos!{col_semestre}:{col_semestre}, "{ano}-2", {doc_cond}))'
                     worksheet.write_formula(row_idx, 1, f1, cur_fmt_money)
                     worksheet.write_formula(row_idx, 2, f2, cur_fmt_money)
                     worksheet.write_formula(row_idx, 3, form_var, cur_fmt_pct)
@@ -1026,58 +1066,71 @@ def gerar_aba_relatorio_ies(writer, df_docs, ano):
                     worksheet.write_formula(row_idx, 2, f2, cur_fmt_money)
                     worksheet.write_formula(row_idx, 3, form_var, cur_fmt_pct)
 
-                elif label == "Porcentagem de Variação entre Contrato e Coleta de Contratos Enviados":
-                    f1 = f'=IF($A$3="Selecione a IES...", "", IFERROR((B{excel_row-2}-B{excel_row-3})/B{excel_row-2}, 0))'
-                    f2 = f'=IF($A$3="Selecione a IES...", "", IFERROR((C{excel_row-2}-C{excel_row-3})/C{excel_row-2}, 0))'
+                elif label == "Porcentagem de Diferença entre Coleta de Dados (enviados) e Contrato":
+                    f1 = f'=IF($A$3="Selecione a IES...", "", IFERROR(B{excel_row-2}/B{excel_row-3}, 0))'
+                    f2 = f'=IF($A$3="Selecione a IES...", "", IFERROR(C{excel_row-2}/C{excel_row-3}, 0))'
                     worksheet.write_formula(row_idx, 1, f1, cur_fmt_pct)
                     worksheet.write_formula(row_idx, 2, f2, cur_fmt_pct)
                     worksheet.write_formula(row_idx, 3, form_var, cur_fmt_pct)
 
                 elif label == "Soma Valor de Bolsas Calculadas conforme o Contrato":
-                    f1 = f'=IF($A$3="Selecione a IES...", "", SUMIFS(Documentos!AP:AP, Documentos!T:T, $A$3, Documentos!K:K, "{ano}-1", {doc_cond}))'
-                    f2 = f'=IF($A$3="Selecione a IES...", "", SUMIFS(Documentos!AP:AP, Documentos!T:T, $A$3, Documentos!K:K, "{ano}-2", {doc_cond}))'
+                    f1 = f'=IF($A$3="Selecione a IES...", "", SUMIFS(Documentos!{col_bolsa_ia}:{col_bolsa_ia}, Documentos!{col_faculdade}:{col_faculdade}, $A$3, Documentos!{col_semestre}:{col_semestre}, "{ano}-1", {doc_cond}))'
+                    f2 = f'=IF($A$3="Selecione a IES...", "", SUMIFS(Documentos!{col_bolsa_ia}:{col_bolsa_ia}, Documentos!{col_faculdade}:{col_faculdade}, $A$3, Documentos!{col_semestre}:{col_semestre}, "{ano}-2", {doc_cond}))'
                     worksheet.write_formula(row_idx, 1, f1, cur_fmt_money)
                     worksheet.write_formula(row_idx, 2, f2, cur_fmt_money)
                     worksheet.write_formula(row_idx, 3, form_var, cur_fmt_pct)
 
                 elif label == "Qtd. de Contratos com Valores de Acordo com a Coleta de Dados":
-                    f1 = f'=IF($A$3="Selecione a IES...", "", COUNTIFS(Documentos!{col_doc}:{col_doc}, "Coleta de dados conforme documento", Documentos!T:T, $A$3, Documentos!K:K, "{ano}-1", {doc_cond}))'
-                    f2 = f'=IF($A$3="Selecione a IES...", "", COUNTIFS(Documentos!{col_doc}:{col_doc}, "Coleta de dados conforme documento", Documentos!T:T, $A$3, Documentos!K:K, "{ano}-2", {doc_cond}))'
+                    f1 = f'=IF($A$3="Selecione a IES...", "", COUNTIFS(Documentos!{col_doc_ativa}:{col_doc_ativa}, "Coleta de dados conforme documento", Documentos!{col_faculdade}:{col_faculdade}, $A$3, Documentos!{col_semestre}:{col_semestre}, "{ano}-1", {doc_cond}))'
+                    f2 = f'=IF($A$3="Selecione a IES...", "", COUNTIFS(Documentos!{col_doc_ativa}:{col_doc_ativa}, "Coleta de dados conforme documento", Documentos!{col_faculdade}:{col_faculdade}, $A$3, Documentos!{col_semestre}:{col_semestre}, "{ano}-2", {doc_cond}))'
                     worksheet.write_formula(row_idx, 1, f1, cur_fmt_center)
                     worksheet.write_formula(row_idx, 2, f2, cur_fmt_center)
                     worksheet.write_formula(row_idx, 3, form_var, cur_fmt_pct)
 
                 elif label == "Qtd. de Contratos com Valor Não Localizado":
-                    f1 = f'=IF($A$3="Selecione a IES...", "", COUNTIFS(Documentos!{col_doc}:{col_doc}, "Valor não localizado no documento", Documentos!T:T, $A$3, Documentos!K:K, "{ano}-1", {doc_cond}))'
-                    f2 = f'=IF($A$3="Selecione a IES...", "", COUNTIFS(Documentos!{col_doc}:{col_doc}, "Valor não localizado no documento", Documentos!T:T, $A$3, Documentos!K:K, "{ano}-2", {doc_cond}))'
+                    f1 = f'=IF($A$3="Selecione a IES...", "", COUNTIFS(Documentos!{col_doc_ativa}:{col_doc_ativa}, "Valor não localizado no documento", Documentos!{col_faculdade}:{col_faculdade}, $A$3, Documentos!{col_semestre}:{col_semestre}, "{ano}-1", {doc_cond}))'
+                    f2 = f'=IF($A$3="Selecione a IES...", "", COUNTIFS(Documentos!{col_doc_ativa}:{col_doc_ativa}, "Valor não localizado no documento", Documentos!{col_faculdade}:{col_faculdade}, $A$3, Documentos!{col_semestre}:{col_semestre}, "{ano}-2", {doc_cond}))'
                     worksheet.write_formula(row_idx, 1, f1, cur_fmt_center)
                     worksheet.write_formula(row_idx, 2, f2, cur_fmt_center)
                     worksheet.write_formula(row_idx, 3, form_var, cur_fmt_pct)
 
                 elif label == "Qtd. de Contratos com Valor Maior que a Coleta":
-                    f1 = f'=IF($A$3="Selecione a IES...", "", COUNTIFS(Documentos!{col_doc}:{col_doc}, "Valor no documento é Maior", Documentos!T:T, $A$3, Documentos!K:K, "{ano}-1", {doc_cond}))'
-                    f2 = f'=IF($A$3="Selecione a IES...", "", COUNTIFS(Documentos!{col_doc}:{col_doc}, "Valor no documento é Maior", Documentos!T:T, $A$3, Documentos!K:K, "{ano}-2", {doc_cond}))'
+                    f1 = f'=IF($A$3="Selecione a IES...", "", COUNTIFS(Documentos!{col_doc_ativa}:{col_doc_ativa}, "Valor no documento é Maior", Documentos!{col_faculdade}:{col_faculdade}, $A$3, Documentos!{col_semestre}:{col_semestre}, "{ano}-1", {doc_cond}))'
+                    f2 = f'=IF($A$3="Selecione a IES...", "", COUNTIFS(Documentos!{col_doc_ativa}:{col_doc_ativa}, "Valor no documento é Maior", Documentos!{col_faculdade}:{col_faculdade}, $A$3, Documentos!{col_semestre}:{col_semestre}, "{ano}-2", {doc_cond}))'
                     worksheet.write_formula(row_idx, 1, f1, cur_fmt_center)
                     worksheet.write_formula(row_idx, 2, f2, cur_fmt_center)
                     worksheet.write_formula(row_idx, 3, form_var, cur_fmt_pct)
 
                 elif label == "Qtd. de Contratos com Valor Menor que a Coleta":
-                    f1 = f'=IF($A$3="Selecione a IES...", "", COUNTIFS(Documentos!{col_doc}:{col_doc}, "Valor no documento é Menor", Documentos!T:T, $A$3, Documentos!K:K, "{ano}-1", {doc_cond}))'
-                    f2 = f'=IF($A$3="Selecione a IES...", "", COUNTIFS(Documentos!{col_doc}:{col_doc}, "Valor no documento é Menor", Documentos!T:T, $A$3, Documentos!K:K, "{ano}-2", {doc_cond}))'
+                    f1 = f'=IF($A$3="Selecione a IES...", "", COUNTIFS(Documentos!{col_doc_ativa}:{col_doc_ativa}, "Valor no documento é Menor", Documentos!{col_faculdade}:{col_faculdade}, $A$3, Documentos!{col_semestre}:{col_semestre}, "{ano}-1", {doc_cond}))'
+                    f2 = f'=IF($A$3="Selecione a IES...", "", COUNTIFS(Documentos!{col_doc_ativa}:{col_doc_ativa}, "Valor no documento é Menor", Documentos!{col_faculdade}:{col_faculdade}, $A$3, Documentos!{col_semestre}:{col_semestre}, "{ano}-2", {doc_cond}))'
                     worksheet.write_formula(row_idx, 1, f1, cur_fmt_center)
                     worksheet.write_formula(row_idx, 2, f2, cur_fmt_center)
                     worksheet.write_formula(row_idx, 3, form_var, cur_fmt_pct)
 
+            # --- CORREÇÃO AQUI: PUXADOS PARA FORA DA LISTA DE MENSALIDADES ---
+            elif label == "Soma de Financiamento":
+                f1 = f'=IF($A$3="Selecione a IES...", "", SUMIFS(Documentos!{col_soma_fin}:{col_soma_fin}, Documentos!{col_faculdade}:{col_faculdade}, $A$3, Documentos!{col_semestre}:{col_semestre}, "{ano}-1", {doc_cond}))'
+                f2 = f'=IF($A$3="Selecione a IES...", "", SUMIFS(Documentos!{col_soma_fin}:{col_soma_fin}, Documentos!{col_faculdade}:{col_faculdade}, $A$3, Documentos!{col_semestre}:{col_semestre}, "{ano}-2", {doc_cond}))'
+                worksheet.write_formula(row_idx, 1, f1, cur_fmt_money)
+                worksheet.write_formula(row_idx, 2, f2, cur_fmt_money)
+                worksheet.write_formula(row_idx, 3, form_var, cur_fmt_pct)
+
+            elif label == "Soma de Outros Benefícios":
+                f1 = f'=IF($A$3="Selecione a IES...", "", SUMIFS(Documentos!{col_soma_ben}:{col_soma_ben}, Documentos!{col_faculdade}:{col_faculdade}, $A$3, Documentos!{col_semestre}:{col_semestre}, "{ano}-1", {doc_cond}))'
+                f2 = f'=IF($A$3="Selecione a IES...", "", SUMIFS(Documentos!{col_soma_ben}:{col_soma_ben}, Documentos!{col_faculdade}:{col_faculdade}, $A$3, Documentos!{col_semestre}:{col_semestre}, "{ano}-2", {doc_cond}))'
+                worksheet.write_formula(row_idx, 1, f1, cur_fmt_money)
+                worksheet.write_formula(row_idx, 2, f2, cur_fmt_money)
+                worksheet.write_formula(row_idx, 3, form_var, cur_fmt_pct)
+
             # 6. INCONSISTÊNCIAS (Coringas '*')
             elif label == "Qtd. de Contratos com Inconsistências de CPF":
-                doc_cond = 'Documentos!BA:BA, "CONTRATO DE PRESTAÇÃO DE SERVIÇOS EDUCACIONAIS OU COMPROVANTE DE MATRÍCULA"'
-                
-                c1 = f'COUNTIFS(Documentos!S:S, "*CPF do contrato diverge do sistema*", Documentos!T:T, $A$3, Documentos!K:K, "{ano}-1", {doc_cond})'
-                c2 = f'COUNTIFS(Documentos!S:S, "*CPF não localizado no contrato*", Documentos!T:T, $A$3, Documentos!K:K, "{ano}-1", {doc_cond})'
+                c1 = f'COUNTIFS(Documentos!{col_inc}:{col_inc}, "*CPF do contrato diverge do sistema*", Documentos!{col_faculdade}:{col_faculdade}, $A$3, Documentos!{col_semestre}:{col_semestre}, "{ano}-1", {doc_cond})'
+                c2 = f'COUNTIFS(Documentos!{col_inc}:{col_inc}, "*CPF não localizado no contrato*", Documentos!{col_faculdade}:{col_faculdade}, $A$3, Documentos!{col_semestre}:{col_semestre}, "{ano}-1", {doc_cond})'
                 f1 = f'=IF($A$3="Selecione a IES...", "", {c1} + {c2})'
                 
-                c3 = f'COUNTIFS(Documentos!S:S, "*CPF do contrato diverge do sistema*", Documentos!T:T, $A$3, Documentos!K:K, "{ano}-2", {doc_cond})'
-                c4 = f'COUNTIFS(Documentos!S:S, "*CPF não localizado no contrato*", Documentos!T:T, $A$3, Documentos!K:K, "{ano}-2", {doc_cond})'
+                c3 = f'COUNTIFS(Documentos!{col_inc}:{col_inc}, "*CPF do contrato diverge do sistema*", Documentos!{col_faculdade}:{col_faculdade}, $A$3, Documentos!{col_semestre}:{col_semestre}, "{ano}-2", {doc_cond})'
+                c4 = f'COUNTIFS(Documentos!{col_inc}:{col_inc}, "*CPF não localizado no contrato*", Documentos!{col_faculdade}:{col_faculdade}, $A$3, Documentos!{col_semestre}:{col_semestre}, "{ano}-2", {doc_cond})'
                 f2 = f'=IF($A$3="Selecione a IES...", "", {c3} + {c4})'
                 
                 worksheet.write_formula(row_idx, 1, f1, cur_fmt_center)
@@ -1085,21 +1138,19 @@ def gerar_aba_relatorio_ies(writer, df_docs, ano):
                 worksheet.write_formula(row_idx, 3, form_var, cur_fmt_pct)
                 
             elif label == "Qtd. de Contratos com Inconsistências de Semestre Letivo":
-                doc_cond = 'Documentos!BA:BA, "CONTRATO DE PRESTAÇÃO DE SERVIÇOS EDUCACIONAIS OU COMPROVANTE DE MATRÍCULA"'
-                
-                c1 = f'COUNTIFS(Documentos!S:S, "*Semestre letivo não localizado no contrato*", Documentos!T:T, $A$3, Documentos!K:K, "{ano}-1", {doc_cond})'
-                c2 = f'COUNTIFS(Documentos!S:S, "*Semestre letivo do contrato diverge do sistema*", Documentos!T:T, $A$3, Documentos!K:K, "{ano}-1", {doc_cond})'
+                c1 = f'COUNTIFS(Documentos!{col_inc}:{col_inc}, "*Semestre letivo não localizado no contrato*", Documentos!{col_faculdade}:{col_faculdade}, $A$3, Documentos!{col_semestre}:{col_semestre}, "{ano}-1", {doc_cond})'
+                c2 = f'COUNTIFS(Documentos!{col_inc}:{col_inc}, "*Semestre letivo do contrato diverge do sistema*", Documentos!{col_faculdade}:{col_faculdade}, $A$3, Documentos!{col_semestre}:{col_semestre}, "{ano}-1", {doc_cond})'
                 f1 = f'=IF($A$3="Selecione a IES...", "", {c1} + {c2})'
                 
-                c3 = f'COUNTIFS(Documentos!S:S, "*Semestre letivo não localizado no contrato*", Documentos!T:T, $A$3, Documentos!K:K, "{ano}-2", {doc_cond})'
-                c4 = f'COUNTIFS(Documentos!S:S, "*Semestre letivo do contrato diverge do sistema*", Documentos!T:T, $A$3, Documentos!K:K, "{ano}-2", {doc_cond})'
+                c3 = f'COUNTIFS(Documentos!{col_inc}:{col_inc}, "*Semestre letivo não localizado no contrato*", Documentos!{col_faculdade}:{col_faculdade}, $A$3, Documentos!{col_semestre}:{col_semestre}, "{ano}-2", {doc_cond})'
+                c4 = f'COUNTIFS(Documentos!{col_inc}:{col_inc}, "*Semestre letivo do contrato diverge do sistema*", Documentos!{col_faculdade}:{col_faculdade}, $A$3, Documentos!{col_semestre}:{col_semestre}, "{ano}-2", {doc_cond})'
                 f2 = f'=IF($A$3="Selecione a IES...", "", {c3} + {c4})'
                 
                 worksheet.write_formula(row_idx, 1, f1, cur_fmt_center)
                 worksheet.write_formula(row_idx, 2, f2, cur_fmt_center)
                 worksheet.write_formula(row_idx, 3, form_var, cur_fmt_pct)
                 
-            # 7. Linhas vazias de segurança
+            # 7. Linhas vazias de segurança e novo bloco (Benefícios Extras vêm em branco)
             else:
                 worksheet.write(row_idx, 1, '', cur_fmt_center)
                 worksheet.write(row_idx, 2, '', cur_fmt_center)
