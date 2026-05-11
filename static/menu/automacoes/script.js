@@ -1,5 +1,6 @@
 /* ==========================================================================
    SCRIPT: MÓDULO DE AUTOMAÇÕES
+   v2.0 — Barra de Progresso Inteligente com Suavização Adaptativa
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -15,9 +16,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let pollInterval = null;
     let autoScroll = true;
 
-    let targetProgress = 0;
-    let displayedProgress = 0;
-    let idleTicks = 0;
+    // === ESTADO DO PROGRESSO INTELIGENTE ===
+    let targetProgress = 0;       // Progresso real vindo do backend
+    let displayedProgress = 0;    // Progresso visual mostrado ao usuário
+    let idleTicks = 0;            // Ticks sem atualização do backend
+    let lastTargetUpdate = 0;     // Timestamp do último update real
     let smoothInterval = null;
     let spinnerInterval = null;
     const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
@@ -43,27 +46,44 @@ document.addEventListener('DOMContentLoaded', () => {
         targetProgress = 0;
         displayedProgress = 0;
         idleTicks = 0;
-        progressBar.style.transition = 'width 0.2s ease-out';
+        lastTargetUpdate = Date.now();
+        progressBar.style.transition = 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
         progressBar.classList.replace('from-red-500', 'from-pink-400');
         progressBar.classList.replace('to-red-600', 'to-purple-500');
         progressBar.style.width = '0%';
         progressText.innerText = '0%';
 
+        // === ALGORITMO DE SUAVIZAÇÃO ADAPTATIVA v2 ===
         if (smoothInterval) clearInterval(smoothInterval);
         smoothInterval = setInterval(() => {
             if (displayedProgress < targetProgress) {
-                displayedProgress += 1;
+                // --- MODO ALCANÇAR: o backend avançou, correr para acompanhar ---
+                const gap = targetProgress - displayedProgress;
+                // Velocidade proporcional ao gap: quanto maior a distância, mais rápido
+                const speed = Math.max(0.1, gap * 0.08);
+                displayedProgress = Math.min(targetProgress, displayedProgress + speed);
                 idleTicks = 0;
-            } else if (displayedProgress >= targetProgress && displayedProgress < 98) {
+            } else if (displayedProgress < 99 && targetProgress > 0) {
+                // --- MODO FAKE SMOOTHING: backend parou, manter sensação de movimento ---
                 idleTicks++;
-                if (idleTicks >= 16) {
-                    displayedProgress += 1;
-                    idleTicks = 0;
+                
+                if (idleTicks > 15) {  // ~750ms sem update real
+                    // Teto dinâmico: nunca ultrapassar target + 8%
+                    const maxFake = Math.min(99, targetProgress + 8);
+                    
+                    if (displayedProgress < maxFake) {
+                        // Curva logarítmica: começa rápido, freia perto do teto
+                        const distanceToMax = maxFake - displayedProgress;
+                        const fakeSpeed = Math.max(0.02, distanceToMax * 0.012);
+                        displayedProgress += fakeSpeed;
+                    }
                 }
             }
-            progressBar.style.width = `${displayedProgress}%`;
-            progressText.innerText = `${displayedProgress}%`;
-        }, 150);
+            
+            const floorProgress = Math.floor(displayedProgress);
+            progressBar.style.width = `${floorProgress}%`;
+            progressText.innerText = `${floorProgress}%`;
+        }, 50);
 
         if (spinnerInterval) clearInterval(spinnerInterval);
         spinnerInterval = setInterval(() => {
@@ -201,13 +221,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     rawLog = rawLog.replace(/✅ Gerado com sucesso e colunas ordenadas: .*?[\\/]([^\\/]+\.xlsx)/g, `<div class="ml-4 my-0.5 text-[13px] text-gray-300"><span class="text-teal-400">💾</span> $1 <span class="text-gray-500">→</span> salvo</div>`);
 
                     rawLog = rawLog.replace(/🚀 Iniciando GGCI - Gerando Relatório Geral\.\.\./g, '');
-                    rawLog = rawLog.replace(/📥 Lido: (.*?)\s*→\s*(.*)/g, `<div class="ml-4 my-0.5 text-[13px] text-gray-300"><span class="text-yellow-400">📥</span> $1 <span class="text-gray-500">→</span> $2</div>`);
+                    rawLog = rawLog.replace(/📥 Lido: (.*?)\s*→\s*(.*)/g, `<div class="ml-4 my-0.5 text-[13px] text-gray-300"><span class="text-yellow-400">📥</span> Lido: $1 <span class="text-gray-500">→</span> $2</div>`);
                     rawLog = rawLog.replace(/🔍 Identificando bolsistas sem documentação entregue\.\.\./g, `<div class="ml-4 my-0.5 text-[13px] text-gray-400">↳ Identificando bolsistas com pendências...</div>`);
                     rawLog = rawLog.replace(/🗄️ Buscando dados financeiros dos bolsistas\.\.\./g, `<div class="ml-4 my-0.5 text-[13px] text-gray-400">↳ Buscando dados financeiros dos bolsistas...</div>`);
                     rawLog = rawLog.replace(/🗄️ Conectando ao sistema de pagamentos\.\.\./g, `<div class="ml-6 my-0.5 text-[13px] text-gray-400">↳ Conectando ao sistema de pagamentos...</div>`);
                     rawLog = rawLog.replace(/🤖 Calculando auditorias e cruzando dados financeiros \(Documentos\)\.\.\./g, `<div class="ml-4 my-0.5 text-[13px] text-gray-400">↳ Cruzando dados financeiros — Documentos...</div>`);
                     rawLog = rawLog.replace(/🤖 Calculando auditorias e cruzando dados financeiros \(RIAF\)\.\.\./g, `<div class="ml-4 my-0.5 text-[13px] text-gray-400">↳ Cruzando dados financeiros — RIAF...</div>`);
                     rawLog = rawLog.replace(/💾 Finalizando e gerando o Relatório Geral\.\.\./g, `<div class="ml-4 my-0.5 text-[13px] text-gray-400">↳ Finalizando relatório geral...</div>`);
+
+                    // === NOVAS MENSAGENS GRANULARES DO GGCI ===
+                    rawLog = rawLog.replace(/💾 Inicializando conversor e motor do Excel\.\.\./g, `<div class="ml-4 my-0.5 text-[13px] text-gray-400">↳ Inicializando motor do Excel...</div>`);
+                    rawLog = rawLog.replace(/💾 Gerando aba Documentos \((\d+) linhas\)\.\.\./g, `<div class="ml-6 my-0.5 text-[13px] text-gray-300">↳ Gerando aba Documentos <span class="text-gray-500">→</span> <span class="text-emerald-400">$1 linhas</span></div>`);
+                    rawLog = rawLog.replace(/💾 Gerando aba Riaf \((\d+) linhas\)\.\.\./g, `<div class="ml-6 my-0.5 text-[13px] text-gray-300">↳ Gerando aba RIAF <span class="text-gray-500">→</span> <span class="text-emerald-400">$1 linhas</span></div>`);
+                    rawLog = rawLog.replace(/💾 Processando Resumo Quantitativo\.\.\./g, `<div class="ml-6 my-0.5 text-[13px] text-gray-300">↳ Processando Resumo Quantitativo...</div>`);
+                    rawLog = rawLog.replace(/💾 Gerando Abas Gerenciais \(Relatório IES\)\.\.\./g, `<div class="ml-6 my-0.5 text-[13px] text-gray-300">↳ Gerando Relatório IES...</div>`);
+                    rawLog = rawLog.replace(/💾 Salvando e compilando arquivo físico\.\.\./g, `<div class="ml-6 my-0.5 text-[13px] text-gray-300">↳ Salvando arquivo físico...</div>`);
+
+                    // === TIMING REPORT (escondido do log visual) ===
+                    rawLog = rawLog.replace(/📊 Timing por bloco:[\s\S]*?(?=\n🎉|\n❌|$)/g, '');
+                    rawLog = rawLog.replace(/⏱ .*/g, '');
 
                     rawLog = rawLog.replace(/➕ Injetados (\d+) registros 'Ausentes' \(Docs\)\./g, `<div class="ml-6 my-0.5 text-[13px] text-gray-300">↳ <span class="text-green-400 font-bold">+$1</span> bolsistas pendentes (Docs)</div>`);
                     rawLog = rawLog.replace(/➕ Injetados (\d+) registros 'Ausentes' \(Riaf\)\./g, `<div class="ml-6 my-0.5 text-[13px] text-gray-300">↳ <span class="text-green-400 font-bold">+$1</span> bolsistas pendentes (RIAF)</div>`);
@@ -233,20 +265,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     if (autoScroll) consoleLogs.scrollTop = consoleLogs.scrollHeight;
 
-                    targetProgress = data.progresso || 0;
+                    // === ATUALIZAÇÃO DO PROGRESSO REAL ===
+                    const newTarget = data.progresso || 0;
+                    if (newTarget > targetProgress) {
+                        targetProgress = newTarget;
+                        idleTicks = 0;  // Reset do idle ao receber progresso real
+                        lastTargetUpdate = Date.now();
+                    }
 
                     if (data.status_codigo === 'CONCLUIDO' || data.status_codigo === 'FALHA') {
                         clearInterval(pollInterval);
-                        clearInterval(smoothInterval);
-                        clearInterval(spinnerInterval);
-
+                        
+                        // Finalização suave: acelera o smoothInterval para terminar rápido
                         targetProgress = 100;
-                        displayedProgress = 100;
-                        progressBar.style.width = '100%';
-                        progressText.innerText = '100%';
-
-                        const cursor = consoleLogs.querySelector('.loading-spinner');
-                        if (cursor) cursor.remove();
+                        if (smoothInterval) clearInterval(smoothInterval);
+                        smoothInterval = setInterval(() => {
+                                if (displayedProgress < 100) {
+                                    displayedProgress += 1.5;
+                                    const floorProgress = Math.min(100, Math.floor(displayedProgress));
+                                    progressBar.style.width = `${floorProgress}%`;
+                                    progressText.innerText = `${floorProgress}%`;
+                                } else {
+                                    // Garantir 100% visual
+                                    progressBar.style.width = '100%';
+                                    progressText.innerText = '100%';
+                                    clearInterval(smoothInterval);
+                                    smoothInterval = null;
+                                    clearInterval(spinnerInterval);
+                                    spinnerInterval = null;
+                                    const cursor = consoleLogs.querySelector('.loading-spinner');
+                                    if (cursor) cursor.remove();
+                                }
+                        }, 20);
 
                         if (data.status_codigo === 'CONCLUIDO') {
 
@@ -285,7 +335,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             progressBar.classList.replace('to-purple-500', 'to-red-600');
                         }
 
-                        resetarBotoesFalha();
+                        // Liberar botões sem matar a animação de finalização
+                        btnStart.disabled = false;
+                        btnStart.classList.remove('opacity-50', 'cursor-not-allowed');
                         btnStop.innerHTML = '<i class="fa-solid fa-stop"></i><span>Parar</span>';
                         btnStop.classList.add('opacity-90', 'cursor-not-allowed');
                         btnStop.disabled = true;

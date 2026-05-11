@@ -10,12 +10,24 @@ from django.http import JsonResponse, FileResponse, Http404
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from .models import ProcessamentoPolichat
+from automacoes.models import ProcessamentoAnaliseIA
 
 
 @csrf_exempt
 def iniciar_extracao_polichat(request):
     if request.method == 'POST':
         force = request.GET.get('force') == 'true' or request.POST.get('force') == 'true'
+        
+        # ── TRAVA DE CONCORRÊNCIA: Não disputar recursos com o motor IA ──
+        ia_ativa = ProcessamentoAnaliseIA.objects.filter(
+            status__in=['PENDENTE', 'EXTRAINDO', 'CONSOLIDANDO', 'CRUZANDO']
+        ).exists()
+        if ia_ativa and not force:
+            return JsonResponse({
+                'status': 'adiado',
+                'msg': 'Motor IA em execução. Sincronização adiada automaticamente.'
+            })
+        
         robos_ativos = ProcessamentoPolichat.objects.filter(status__in=['PENDENTE', 'PROCESSANDO']).order_by('-id')
         if robos_ativos.exists():
             if force:

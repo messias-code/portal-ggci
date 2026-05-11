@@ -121,6 +121,24 @@ configs = [
             'Gemini Periodo', 'Gemini Quantidade Periodos', 'Gemini Tipo Bolsa', 
             'Documento Tipo', 'Coleta ID', 'Data Processamento'
         ]
+    },
+    {
+        'tipo': 'proc_geral',
+        'pasta': 'dados_analise/analise_documentos_processados',
+        'subpastas_alvo': ['BENEFICIOS', 'CONTRATOS', 'FINANCIAMENTO', 'HISTORICO'], # <-- Adicionado aqui
+        'saida': 'consolidado_processados.xlsx',
+        'aba': 'Processados',
+        'ext': '.xlsx',
+        'cols_num': ['Inscrição', 'CPF', 'Coleta ID', 'Gemini CPF'],
+        'cols_moeda': ['Mensalidade S/ Desconto', 'Mensalidade C/ Desconto', 'Gemini Mensalidade S/ Desconto', 'Gemini Mensalidade C/ Desconto', 'Gemini Matricula Sem Desconto', 'Gemini Matricula Com Desconto'],
+        'cols_txt': ['Faculdade', 'Curso', 'Bolsista', 'Bolsistas', 'Documento Tipo'],
+        'ordem_colunas': [
+            'Status_IA', 'Gemini Inconsistencias', 'Inscrição', 'Bolsista', 'Bolsistas', 'CPF', 
+            'Gemini CPF', 'Semestre', 'Gemini Semestre', 'Faculdade', 'Curso', 
+            'Mensalidade S/ Desconto', 'Gemini Mensalidade S/ Desconto', 
+            'Mensalidade C/ Desconto', 'Gemini Mensalidade C/ Desconto', 
+            'Documento Tipo', 'Data Processamento', 'Coleta ID'
+        ]
     }
 ]
 
@@ -160,17 +178,28 @@ def consolidar():
                         if df is not None:
                             df = df.dropna(how='all', axis=0)
                             
-                            for col in cf['cols_num']:
-                                if col in df.columns:
-                                    df[col] = df[col].apply(converter_para_numero_real).astype('Int64')
-
-                            for col in cf['cols_moeda']:
-                                if col in df.columns:
-                                    df[col] = df[col].apply(converter_para_moeda).astype(float)
-
+                            # OTIMIZAÇÃO: Limpeza de Texto Vetorizada
                             for col in cf['cols_txt']:
                                 if col in df.columns:
-                                    df[col] = df[col].apply(limpar_texto_geral)
+                                    # Maiúsculas e remove espaços duplos
+                                    df[col] = df[col].astype(str).str.upper().str.strip()
+                                    # Normaliza acentuação usando encoding vetorizado indireto (ou regex de substituição leve)
+                                    df[col] = df[col].str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('utf-8')
+                                    df[col] = df[col].str.replace(r'\s+', ' ', regex=True)
+
+                            # OTIMIZAÇÃO: Limpeza de Moedas (Corrigido para não corromper floats lidos do Excel)
+                            for col in cf['cols_moeda']:
+                                if col in df.columns:
+                                    df[col] = df[col].apply(converter_para_moeda)
+
+                            # OTIMIZAÇÃO: Limpeza Numérica Vetorizada
+                            for col in cf['cols_num']:
+                                if col in df.columns:
+                                    s = df[col].astype(str).str.strip().str.lower()
+                                    s = s.replace({'nan': '', 'none': '', '<na>': ''})
+                                    s = s.str.replace(r'\.0+$', '', regex=True)  # Remove ".0" isolados
+                                    s = s.str.replace(r'\D', '', regex=True)     # Remove tudo que não for dígito
+                                    df[col] = pd.to_numeric(s, errors='coerce').astype('Int64')
 
                             if cf['tipo'] == 'pag':
                                 df.insert(0, 'SEMESTRE', extrair_semestre(caminho))

@@ -12,7 +12,8 @@ CONFIG_DOCUMENTOS = [
     {"categoria": "CONTRATOS", "filtro_site": "CONTRATO DE PRESTAÇÃO DE SERVIÇOS EDUCACIONAIS OU COMPROVANTE DE MATRÍCULA", "prefixo": "contratos"},
     {"categoria": "FINANCIAMENTO", "filtro_site": "COMPROVANTE DE FINANCIAMENTO", "prefixo": "financiamento"},
     {"categoria": "BENEFICIOS", "filtro_site": "COMPROVANTE OUTROS BENEFÍCIOS", "prefixo": "beneficios"},
-    {"categoria": "RIAF", "filtro_site": "RIAF – Resumo de Informações Acadêmicas e Financeiras", "prefixo": "riaf"}
+    {"categoria": "RIAF", "filtro_site": "RIAF – Resumo de Informações Acadêmicas e Financeiras", "prefixo": "riaf"},
+    {"categoria": "HISTORICO", "filtro_site": "HISTÓRICO ESCOLAR", "prefixo": "historico"}
 ]
 
 SEMESTRES_PADRAO = ["2025-1", "2025-2", "2026-1"]
@@ -296,7 +297,6 @@ def executar(docs_selecionados=None, anos_selecionados=None, periodos_selecionad
     anos_reais_pagamentos = set()
     arquivos_estimados = 0
 
-    # AQUI FICA A INTELIGÊNCIA CENTRAL: Pensa e avisa UMA única vez antes de rodar
     for doc in CONFIG_DOCUMENTOS:
         if doc["categoria"] not in docs_selecionados: continue
         
@@ -308,6 +308,13 @@ def executar(docs_selecionados=None, anos_selecionados=None, periodos_selecionad
                 
                 tag_regra = f"[ REGRA | {doc['categoria']} | {sem} ]"
                 
+                # --- AQUI ESTÃO AS ÚNICAS MUDANÇAS REAIS ---
+                
+                # Regra para HISTÓRICO (Pula os semestres que você sabe que não tem registro)
+                if doc["categoria"] == "HISTORICO" and sem in ["2025-1", "2026-1"]:
+                    print(f"{tag_regra} ⚠️ Ignorado: Sem registros confirmados no sistema.")
+                    continue
+
                 if doc["categoria"] == "RIAF" and ano_int < 2026:
                     print(f"{tag_regra} ⚠️ Ignorado: RIAF só existe a partir de 2026.")
                     continue

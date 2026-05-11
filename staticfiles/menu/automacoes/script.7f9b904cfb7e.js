@@ -53,13 +53,6 @@ document.addEventListener('DOMContentLoaded', () => {
         smoothInterval = setInterval(() => {
             if (displayedProgress < targetProgress) {
                 displayedProgress += 1;
-                idleTicks = 0;
-            } else if (displayedProgress >= targetProgress && displayedProgress < 98) {
-                idleTicks++;
-                if (idleTicks >= 16) {
-                    displayedProgress += 1;
-                    idleTicks = 0;
-                }
             }
             progressBar.style.width = `${displayedProgress}%`;
             progressText.innerText = `${displayedProgress}%`;

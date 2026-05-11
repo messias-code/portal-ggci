@@ -1,10 +1,13 @@
 /**
- * Mesa de Trabalho Individual - script.js (v13)
+ * Mesa de Trabalho Individual - script.js (v14)
  * Card-row layout for all tabs
+ * ── Correções v14 ──
+ * • Page Visibility API: pausa TODOS os timers quando aba inativa
+ * • Trava de concorrência: trata status 'adiado' do backend (motor IA ativo)
+ * • Countdown reinicia ao retornar à aba (evita disparo imediato)
  * ── Correções v13 ──
  * • AbortController elimina race-conditions entre requests
  * • Flag isLoading impede sobreposição de requests
- * • Removido listener 'input' das datas (change basta p/ type=date)
  * • Auto-refresh protegido
  * • Lista de agentes recarregada ao mudar período
  */
@@ -239,13 +242,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let tempoParaSync = 300, syncProgress = 0;
 
-    // Auto-refresh a cada 60s — protegido contra sobreposição
+    // ══════════════════════════════════════════════════════════════════
+    // PAGE VISIBILITY API — Pausa TUDO quando a aba não está visível
+    // Isso impede que timers, syncs e refreshes rodem em background
+    // quando o usuário está em outra página do portal.
+    // ══════════════════════════════════════════════════════════════════
+    let isPageVisible = !document.hidden;
+
+    document.addEventListener('visibilitychange', () => {
+        const wasHidden = !isPageVisible;
+        isPageVisible = !document.hidden;
+
+        if (isPageVisible && wasHidden) {
+            // Voltou para a aba: reinicia countdown para evitar disparo imediato
+            tempoParaSync = 300;
+            // Faz um refresh leve dos dados (não a sync pesada)
+            if (selectAgente.value && !isSyncing && !isLoading) runFilter();
+        }
+    });
+
+    // Auto-refresh a cada 60s — protegido contra sobreposição E visibilidade
     setInterval(() => {
-        if (selectAgente.value && !isSyncing && !isLoading) runFilter();
+        if (isPageVisible && selectAgente.value && !isSyncing && !isLoading) runFilter();
     }, 60000);
 
     // Timer principal: 1s — live timers + contagem regressiva sync + progresso sync
     setInterval(() => {
+        // Se a aba está invisível, não faz NADA (economia total de recursos)
+        if (!isPageVisible) return;
+
         // Live timers em cards de aguardando/andamento
         document.querySelectorAll('.live-timer').forEach(el => {
             let sec = parseInt(el.getAttribute('data-seconds'), 10);
@@ -298,7 +323,15 @@ document.addEventListener('DOMContentLoaded', () => {
         let tL = manual ? toast('Buscando dados...', 'loading') : null;
         if (manual) setBtnSync(true);
         fetch('/dashboards/api/polichat/iniciar/', { method: 'POST' })
-            .then(r => r.json()).then(d => { if (d.status === 'ok') monitorar(d.processo_id, manual, tL); else finSync(manual, tL, false); })
+            .then(r => r.json()).then(d => {
+                // ── TRAVA DE CONCORRÊNCIA: Motor IA está rodando ──
+                if (d.status === 'adiado') {
+                    finSync(manual, tL, false, true);
+                    return;
+                }
+                if (d.status === 'ok') monitorar(d.processo_id, manual, tL);
+                else finSync(manual, tL, false);
+            })
             .catch(() => finSync(manual, tL, false));
     }
     function monitorar(id, m, tL) {
@@ -308,8 +341,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }).catch(() => { clearInterval(ch); finSync(m, tL, false); });
         }, 2500);
     }
-    function finSync(m, tL, ok) { isSyncing = false; syncProgress = 0; tempoParaSync = 300; setSyncUI('ok'); setBtnSync(false); fecharToast(tL); if (m) toast(ok ? 'Dados atualizados!' : 'Falha ao buscar.', ok ? 'ok' : 'erro'); }
-    function setSyncUI(e) { if (!syncDot || !syncText) return; const s = e === 'syncing'; syncDot.style.background = s ? '#f59e0b' : '#10b981'; syncDot.style.animation = s ? 'none' : ''; syncText.textContent = s ? 'Sincronizando...' : 'Sincronização ativa'; syncText.style.color = s ? '#f59e0b' : ''; }
+    function finSync(m, tL, ok, adiado = false) {
+        isSyncing = false; syncProgress = 0; tempoParaSync = 300; setBtnSync(false); fecharToast(tL);
+        if (adiado) {
+            // Motor IA ativo — mostra mensagem suave e tenta de novo em 5 min
+            setSyncUI('adiado');
+            if (m) toast('Sincronização adiada (IA em execução)', 'info');
+        } else {
+            setSyncUI('ok');
+            if (m) toast(ok ? 'Dados atualizados!' : 'Falha ao buscar.', ok ? 'ok' : 'erro');
+        }
+    }
+    function setSyncUI(e) { if (!syncDot || !syncText) return; if (e === 'syncing') { syncDot.style.background = '#f59e0b'; syncDot.style.animation = 'none'; syncText.textContent = 'Sincronizando...'; syncText.style.color = '#f59e0b'; } else if (e === 'adiado') { syncDot.style.background = '#8b5cf6'; syncDot.style.animation = ''; syncText.textContent = 'Sync adiada (IA em execução)'; syncText.style.color = '#8b5cf6'; } else { syncDot.style.background = '#10b981'; syncDot.style.animation = ''; syncText.textContent = 'Sincronização ativa'; syncText.style.color = ''; } }
     function setBtnSync(l) { if (!btnSync) return; btnSync.disabled = l; btnSync.classList.toggle('spinning', l); btnSync.innerHTML = l ? '<i class="fa-solid fa-rotate-right"></i> Atualizando...' : '<i class="fa-solid fa-rotate-right"></i> Atualizar agora'; }
 
     // ══════════════════════════════════════════════════════════════════
