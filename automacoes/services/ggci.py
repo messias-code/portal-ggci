@@ -35,7 +35,7 @@ COLS_MOEDA = [
     'Gemini Valor Beneficio', 'Gemini Valor Financiado', 
     'Gemini Matricula Sem Desconto', 'Gemini Matricula Com Desconto', 
     'valor_beneficio', 'valor_financiamento', 
-    'valor_ultima_bolsa_paga', 'total bolsa paga', 
+    'valor_calculo_bolsa_paga', 'total bolsa paga', 
     'MSD_SOMA', 'G_MSD_SOMA', 'MCD_SOMA', 'G_MCD_SOMA', 
     '[1] OVG PAGOU (Bolsa Mês)',
     '[2] OVG DEVERIA PAGAR (SISTEMA)', 
@@ -201,7 +201,7 @@ def buscar_dados_financeiros_sql(semestres_presentes):
     
     query = f"""
         SELECT 
-            uni_codigo, semestre, tipo_bolsa_final, qtd_pagtos, valor_ultima_bolsa_paga,
+            uni_codigo, semestre, tipo_bolsa_final, qtd_pagtos, valor_ultima_bolsa_paga AS valor_calculo_bolsa_paga,
             valor_mensalidade_sem_desconto, valor_mensalidade_com_desconto,
             situacao, situacao_atual_sistema, sit_data_atual_sistema, sit_tipo_atual_sistema, sit_obs_atual_sistema,
             valor_beneficio, qual_beneficio, valor_financiamento, qual_financiamento,
@@ -239,7 +239,7 @@ def buscar_dados_financeiros_sql(semestres_presentes):
                     df_merged[col] = df_merged.groupby('uni_codigo')[col].transform(lambda x: x.ffill().bfill())
                 
             valores_para_zerar = {
-                'qtd_pagtos': 0, 'valor_ultima_bolsa_paga': 0.0,
+                'qtd_pagtos': 0, 'valor_calculo_bolsa_paga': 0.0,
                 'valor_mensalidade_sem_desconto': 0.0, 'valor_mensalidade_com_desconto': 0.0,
                 'situacao': '', 'situacao_atual_sistema': '',
                 'sit_data_atual_sistema': '', 'sit_tipo_atual_sistema': '', 'sit_obs_atual_sistema': '',
@@ -259,7 +259,7 @@ def buscar_dados_financeiros_sql(semestres_presentes):
             
             df_sql['semestre'] = df_sql['semestre'].str.replace('/', '-')
             df_sql['qtd_pagtos'] = pd.to_numeric(df_sql['qtd_pagtos'], errors='coerce').fillna(0).astype(int)
-            df_sql['valor_ultima_bolsa_paga'] = pd.to_numeric(df_sql['valor_ultima_bolsa_paga'], errors='coerce').fillna(0.0)
+            df_sql['valor_calculo_bolsa_paga'] = pd.to_numeric(df_sql['valor_calculo_bolsa_paga'], errors='coerce').fillna(0.0)
             df_sql['valor_mensalidade_sem_desconto'] = pd.to_numeric(df_sql['valor_mensalidade_sem_desconto'], errors='coerce').fillna(0.0)
             df_sql['valor_mensalidade_com_desconto'] = pd.to_numeric(df_sql['valor_mensalidade_com_desconto'], errors='coerce').fillna(0.0)
             
@@ -277,7 +277,7 @@ def buscar_dados_financeiros_sql(semestres_presentes):
         print("   Abortando a execução do GGCI pois os dados do banco são indispensáveis para o relatório.")
         sys.exit(1)
 
-def mesclar_sql_e_reordenar(df, df_sql):
+def mesclar_sql_e_reordenar(df, df_sql, df_pag=None):
     if df.empty: return df
     
     if not df_sql.empty:
@@ -290,13 +290,47 @@ def mesclar_sql_e_reordenar(df, df_sql):
         df = pd.merge(df, df_sql, left_on=['Inscrição', 'Semestre'], right_on=['uni_codigo', 'semestre'], how='left')
         df.drop(columns=['uni_codigo', 'semestre'], errors='ignore', inplace=True)
         
-    for col in ['tipo_bolsa_final', 'qtd_pagtos', 'valor_ultima_bolsa_paga']:
+    for col in ['tipo_bolsa_final', 'qtd_pagtos', 'valor_calculo_bolsa_paga']:
         if col not in df.columns: df[col] = "SEM DADOS" if col == 'tipo_bolsa_final' else 0
 
     df['tipo_bolsa_final'] = df.groupby('Inscrição')['tipo_bolsa_final'].transform(lambda x: x.ffill().bfill()).fillna("SEM DADOS")
     df['qtd_pagtos'] = pd.to_numeric(df['qtd_pagtos'], errors='coerce').fillna(0).astype(int)
-    df['valor_ultima_bolsa_paga'] = pd.to_numeric(df['valor_ultima_bolsa_paga'], errors='coerce').fillna(0.0)
-    df['total bolsa paga'] = df['qtd_pagtos'] * df['valor_ultima_bolsa_paga']
+    df['valor_calculo_bolsa_paga'] = pd.to_numeric(df['valor_calculo_bolsa_paga'], errors='coerce').fillna(0.0)
+    
+    # --- RECALCULAR pagamentos a partir do consolidado, ignorando cancelamentos (LAN_VALBOLSA = 0) ---
+    if df_pag is not None and not df_pag.empty and 'LAN_VALBOLSA' in df_pag.columns:
+        print("   📊 Recalculando pagamentos efetivos (excluindo cancelamentos com LAN_VALBOLSA=0)...")
+        df_pag_calc = df_pag.copy()
+        df_pag_calc['UNI_CODIGO'] = pd.to_numeric(df_pag_calc['UNI_CODIGO'], errors='coerce').astype('Int64')
+        df_pag_calc['SEMESTRE'] = df_pag_calc['SEMESTRE'].astype(str).str.strip().str.replace('/', '-')
+        df_pag_calc['LAN_VALBOLSA'] = pd.to_numeric(df_pag_calc['LAN_VALBOLSA'], errors='coerce').fillna(0.0)
+        
+        # Filtra apenas pagamentos efetivos (LAN_VALBOLSA > 0)
+        df_pag_efetivos = df_pag_calc[df_pag_calc['LAN_VALBOLSA'] > 0].copy()
+        
+        # Agrupa por aluno + semestre: conta pagamentos, pega último valor e SOMA REAL
+        df_pag_resumo = df_pag_efetivos.groupby(['UNI_CODIGO', 'SEMESTRE']).agg(
+            qtd_pagtos_real=('LAN_VALBOLSA', 'count'),
+            valor_calculo_real=('LAN_VALBOLSA', 'last'),
+            total_bolsa_real=('LAN_VALBOLSA', 'sum')
+        ).reset_index()
+        
+        # Merge com o DataFrame principal e substitui os valores do SQL pelos recalculados
+        df = pd.merge(df, df_pag_resumo, left_on=['Inscrição', 'Semestre'], right_on=['UNI_CODIGO', 'SEMESTRE'], how='left')
+        
+        # Onde temos dados do consolidado, usa os valores recalculados; senão mantém o SQL
+        mask_tem_pag = df['qtd_pagtos_real'].notna()
+        df.loc[mask_tem_pag, 'qtd_pagtos'] = df.loc[mask_tem_pag, 'qtd_pagtos_real'].astype(int)
+        df.loc[mask_tem_pag, 'valor_calculo_bolsa_paga'] = df.loc[mask_tem_pag, 'valor_calculo_real']
+        
+        # total bolsa paga = SOMA REAL dos pagamentos efetivos (não qtd × valor)
+        df['total bolsa paga'] = df['qtd_pagtos'] * df['valor_calculo_bolsa_paga']  # fallback
+        df.loc[mask_tem_pag, 'total bolsa paga'] = df.loc[mask_tem_pag, 'total_bolsa_real']
+        
+        df.drop(columns=['UNI_CODIGO', 'SEMESTRE', 'qtd_pagtos_real', 'valor_calculo_real', 'total_bolsa_real'], errors='ignore', inplace=True)
+    else:
+        # Fallback quando não há consolidado: usa multiplicação simples
+        df['total bolsa paga'] = df['qtd_pagtos'] * df['valor_calculo_bolsa_paga']
 
     if 'Status_IA' in df.columns:
         mask_ausente = df['Status_IA'].isin(['Ausente', 'Ausentes'])
@@ -318,7 +352,7 @@ def mesclar_sql_e_reordenar(df, df_sql):
             
     col_tipo = df.pop('tipo_bolsa_final')
     col_qtd = df.pop('qtd_pagtos')
-    col_val = df.pop('valor_ultima_bolsa_paga')
+    col_val = df.pop('valor_calculo_bolsa_paga')
     col_tot = df.pop('total bolsa paga')
     
     try: idx_curso = df.columns.get_loc('Curso')
@@ -326,7 +360,7 @@ def mesclar_sql_e_reordenar(df, df_sql):
         
     df.insert(idx_curso + 1, 'tipo_bolsa_final', col_tipo)
     df.insert(idx_curso + 2, 'qtd_pagtos', col_qtd)
-    df.insert(idx_curso + 3, 'valor_ultima_bolsa_paga', col_val)
+    df.insert(idx_curso + 3, 'valor_calculo_bolsa_paga', col_val)
     df.insert(idx_curso + 4, 'total bolsa paga', col_tot)
     
     return df
@@ -442,7 +476,7 @@ def calcular_auditoria_ia(df):
         # --- A NOVA REGRA DE NEGÓCIO: FALSO AUSENTE ---
         insc_post = str(row.get('Inscrição Posterior', '')).strip()
         has_insc_post = pd.notna(row.get('Inscrição Posterior')) and insc_post not in ['', 'nan', '<NA>', 'None', '-']
-        val_ultima = pd.to_numeric(row.get('valor_ultima_bolsa_paga', 0), errors='coerce')
+        val_ultima = pd.to_numeric(row.get('valor_calculo_bolsa_paga', 0), errors='coerce')
         if pd.isna(val_ultima): val_ultima = 0.0
         
         # Se a IA listou como Ausente, mas migrou de IES e o pgto é retroativo/zero -> Falso Ausente!
@@ -553,7 +587,7 @@ def calcular_auditoria_ia(df):
     curso_str = df.get('Curso', pd.Series(['']*len(df), index=df.index)).astype(str).str.strip().str.upper()
     bolsa_str = df.get('tipo_bolsa_final', pd.Series(['']*len(df), index=df.index)).astype(str).str.strip().str.upper()
     beneficios = pd.to_numeric(df.get('valor_beneficio', 0), errors='coerce').fillna(0.0)
-    paga = pd.to_numeric(df.get('valor_ultima_bolsa_paga', 0), errors='coerce').fillna(0.0)
+    paga = pd.to_numeric(df.get('valor_calculo_bolsa_paga', 0), errors='coerce').fillna(0.0)
     
     df['[1] OVG PAGOU (Bolsa Mês)'] = paga
 
@@ -686,7 +720,7 @@ def calcular_auditoria_ia(df):
         'Mudou IES?', 'IES Anterior', 'IES Posterior', 'Mudou Bolsa?', 'Bolsa Anterior', 'Bolsa Posterior', 
         'Semestre', 'Gemini Semestre', 'Inscrição', 'Inscrição Anterior', 'Inscrição Posterior', 
         'Bolsista', 'CPF', 'Gemini CPF', 'Gemini Inconsistencias', 'Faculdade', 'Curso', 
-        'tipo_bolsa_final', 'qtd_pagtos', 'valor_ultima_bolsa_paga', 'total bolsa paga', 
+        'tipo_bolsa_final', 'qtd_pagtos', 'valor_calculo_bolsa_paga', 'total bolsa paga', 
         
         'Mensalidade S/ Desconto', 'Gemini Mensalidade S/ Desconto', 'Dif. s/Desc.', '% Dif. s/Desc.', 'Total Dif. s/Desc.', 'MSD_SOMA', 'G_MSD_SOMA', 'MSD_DOC', 
         
@@ -836,6 +870,10 @@ def gerar_aba_relatorio_ies(writer, df_docs, ano):
     # Bolsa calculada conforme contrato = [2] OVG DEVERIA PAGAR (SISTEMA)
     COL_BOLSA_CALC = get_col('[4] SOMA OVG DEVERIA PAGAR (IA)') or 'AQ'
     
+    # Tipo de Bolsa e CPF
+    COL_TIPO_BOLSA = get_col('tipo_bolsa_final') or 'V'
+    COL_CPF = get_col('CPF') or 'Q'
+    
     # Benefícios Extras
     COL_VALOR_FINANC = get_col('valor_financiamento') or 'AZ'
     COL_VALOR_BENEF = get_col('valor_beneficio') or 'AX'
@@ -924,6 +962,8 @@ def gerar_aba_relatorio_ies(writer, df_docs, ano):
         ("Beneficiários Inativos", False, 1),
         ("Valor Total de Bolsas Pagas", False, 1),
         ("Valor Médio da Bolsa (Mensal)", False, 1),
+        ("Quantidade de Parciais", False, 1),
+        ("Quantidade de Integrais", False, 1),
         ("", False, 0),
         ("Arquivos Enviados", True, 1),
         ("Quantidade de Contratos", False, 1),
@@ -968,6 +1008,7 @@ def gerar_aba_relatorio_ies(writer, df_docs, ano):
 
     row_idx = 3 
     current_category = ""
+    row_valor_total_bolsas = None  # Rastreia a linha do "Valor Total de Bolsas Pagas" para referências dinâmicas
     
     for label, is_header, id_cor in estrutura:
         if is_header:
@@ -1007,6 +1048,7 @@ def gerar_aba_relatorio_ies(writer, df_docs, ano):
                 
             # 2. Valor Total de Bolsas Pagas
             elif label == "Valor Total de Bolsas Pagas":
+                row_valor_total_bolsas = excel_row  # Salva para referência dinâmica
                 form_1 = f'=IF($A$3="Selecione a IES...", "", SUMIFS(Documentos!{COL_TOTAL_BOLSA}:{COL_TOTAL_BOLSA}, Documentos!{COL_FACULDADE}:{COL_FACULDADE}, $A$3, Documentos!{COL_SEMESTRE}:{COL_SEMESTRE}, "{ano}-1", Documentos!{COL_DOC_TIPO}:{COL_DOC_TIPO}, "CONTRATO DE PRESTAÇÃO DE SERVIÇOS EDUCACIONAIS OU COMPROVANTE DE MATRÍCULA"))'
                 form_2 = f'=IF($A$3="Selecione a IES...", "", SUMIFS(Documentos!{COL_TOTAL_BOLSA}:{COL_TOTAL_BOLSA}, Documentos!{COL_FACULDADE}:{COL_FACULDADE}, $A$3, Documentos!{COL_SEMESTRE}:{COL_SEMESTRE}, "{ano}-2", Documentos!{COL_DOC_TIPO}:{COL_DOC_TIPO}, "CONTRATO DE PRESTAÇÃO DE SERVIÇOS EDUCACIONAIS OU COMPROVANTE DE MATRÍCULA"))'
                 worksheet.write_formula(row_idx, 1, form_1, cur_fmt_money)
@@ -1020,6 +1062,19 @@ def gerar_aba_relatorio_ies(writer, df_docs, ano):
                 form_2 = f'=IF($A$3="Selecione a IES...", "", IFERROR((C{excel_row-1}/C6)/6, 0))'
                 worksheet.write_formula(row_idx, 1, form_1, cur_fmt_money)
                 worksheet.write_formula(row_idx, 2, form_2, cur_fmt_money)
+                worksheet.write_formula(row_idx, 3, form_var, cur_fmt_pct)
+
+            # 3b. Quantidade de Parciais / Integrais (por CPF único, apenas Ausente/Válido/Inválido)
+            elif label in ["Quantidade de Parciais", "Quantidade de Integrais"]:
+                tipo_valor = "PARCIAL" if label == "Quantidade de Parciais" else "INTEGRAL"
+                doc_cond_bolsa = f'Documentos!{COL_DOC_TIPO}:{COL_DOC_TIPO}, "CONTRATO DE PRESTAÇÃO DE SERVIÇOS EDUCACIONAIS OU COMPROVANTE DE MATRÍCULA"'
+                # COUNTIFS por status (Ausente + Válido + Inválido) para ignorar Falso Ausente
+                def _count_tipo(per, st):
+                    return f'COUNTIFS(Documentos!{COL_TIPO_BOLSA}:{COL_TIPO_BOLSA}, "*{tipo_valor}*", Documentos!{COL_FACULDADE}:{COL_FACULDADE}, $A$3, Documentos!{COL_SEMESTRE}:{COL_SEMESTRE}, "{ano}-{per}", {doc_cond_bolsa}, Documentos!{COL_STATUS_IA}:{COL_STATUS_IA}, "{st}")'
+                form_1 = f'=IF($A$3="Selecione a IES...", "", {_count_tipo(1, "Ausente")} + {_count_tipo(1, "Válido")} + {_count_tipo(1, "Inválido")})'
+                form_2 = f'=IF($A$3="Selecione a IES...", "", {_count_tipo(2, "Ausente")} + {_count_tipo(2, "Válido")} + {_count_tipo(2, "Inválido")})'
+                worksheet.write_formula(row_idx, 1, form_1, cur_fmt_center)
+                worksheet.write_formula(row_idx, 2, form_2, cur_fmt_center)
                 worksheet.write_formula(row_idx, 3, form_var, cur_fmt_pct)
 
             # 4. Casos diretos mapeados no Resumo_Quantitativo
@@ -1097,23 +1152,24 @@ def gerar_aba_relatorio_ies(writer, df_docs, ano):
                     worksheet.write_formula(row_idx, 3, form_var, cur_fmt_pct)
 
                 elif label == "Diferença entre Contrato e Coleta":
-                    f1 = f'=IF($A$3="Selecione a IES...", "", B{excel_row-3}-B{excel_row-2})'
-                    f2 = f'=IF($A$3="Selecione a IES...", "", C{excel_row-3}-C{excel_row-2})'
+                    f1 = f'=IF($A$3="Selecione a IES...", "", B{excel_row-1}-B{excel_row-2})'
+                    f2 = f'=IF($A$3="Selecione a IES...", "", C{excel_row-1}-C{excel_row-2})'
                     worksheet.write_formula(row_idx, 1, f1, cur_fmt_money)
                     worksheet.write_formula(row_idx, 2, f2, cur_fmt_money)
                     worksheet.write_formula(row_idx, 3, form_var, cur_fmt_pct)
 
                 elif label == "Porcentagem de Diferença entre Coleta de Dados (enviados) e Contrato":
-                    f1 = f'=IF($A$3="Selecione a IES...", "", IFERROR((B{excel_row-3}-B{excel_row-2})/B{excel_row-2}, 0))'
-                    f2 = f'=IF($A$3="Selecione a IES...", "", IFERROR((C{excel_row-3}-C{excel_row-2})/C{excel_row-2}, 0))'
+                    f1 = f'=IF($A$3="Selecione a IES...", "", IFERROR((B{excel_row-2}-B{excel_row-3})/B{excel_row-3}, 0))'
+                    f2 = f'=IF($A$3="Selecione a IES...", "", IFERROR((C{excel_row-2}-C{excel_row-3})/C{excel_row-3}, 0))'
                     worksheet.write_formula(row_idx, 1, f1, cur_fmt_pct)
                     worksheet.write_formula(row_idx, 2, f2, cur_fmt_pct)
                     worksheet.write_formula(row_idx, 3, form_var, cur_fmt_pct)
 
                 elif label == "Porcentagem do Total Pago acima do Valor do Contrato":
-                    # Encontra a linha do "Valor Total de Bolsas Pagas" (sempre na linha 9 do Excel = row_idx 8)
-                    f1 = f'=IF($A$3="Selecione a IES...", "", IFERROR(1-(B{excel_row-1}/B9), 0))'
-                    f2 = f'=IF($A$3="Selecione a IES...", "", IFERROR(1-(C{excel_row-1}/C9), 0))'
+                    # Referência dinâmica à linha do "Valor Total de Bolsas Pagas"
+                    ref_bolsas = row_valor_total_bolsas or 9
+                    f1 = f'=IF($A$3="Selecione a IES...", "", IFERROR(1-(B{excel_row-1}/B{ref_bolsas}), 0))'
+                    f2 = f'=IF($A$3="Selecione a IES...", "", IFERROR(1-(C{excel_row-1}/C{ref_bolsas}), 0))'
                     worksheet.write_formula(row_idx, 1, f1, cur_fmt_pct)
                     worksheet.write_formula(row_idx, 2, f2, cur_fmt_pct)
                     worksheet.write_formula(row_idx, 3, form_var, cur_fmt_pct)
@@ -1401,14 +1457,14 @@ def gerar_relatorio_geral(docs_selecionados=None, anos_selecionados=None, sems_s
 
     if not df_docs.empty:
         print("🤖 Calculando auditorias e cruzando dados financeiros (Documentos)...")
-        df_docs = mesclar_sql_e_reordenar(df_docs, df_financas)
+        df_docs = mesclar_sql_e_reordenar(df_docs, df_financas, df_pag)
         df_docs = aplicar_transicoes(df_docs, df_pag)
         df_docs = calcular_auditoria_ia(df_docs)
         df_docs = gerar_checks_documentos(df_docs)
         
     if not df_riaf.empty:
         print("🤖 Calculando auditorias e cruzando dados financeiros (RIAF)...")
-        df_riaf = mesclar_sql_e_reordenar(df_riaf, df_financas)
+        df_riaf = mesclar_sql_e_reordenar(df_riaf, df_financas, df_pag)
         df_riaf = aplicar_transicoes(df_riaf, df_pag)
         df_riaf = calcular_auditoria_ia(df_riaf)
         df_riaf = gerar_checks_documentos(df_riaf)

@@ -131,11 +131,6 @@ body {
     color: #fff;
     font-size: 18px;
     box-shadow: 0 4px 16px rgba(236, 72, 153, .30);
-    transition: transform .3s, box-shadow .3s;
-}
-.brand-icon:hover {
-    transform: scale(1.08) rotate(-3deg);
-    box-shadow: 0 6px 24px rgba(236, 72, 153, .40);
 }
 .brand-info { display: flex; flex-direction: column; gap: 1px }
 .brand-title { font-size: 16px; font-weight: 800; letter-spacing: -.4px; color: var(--c-text) }
