@@ -117,7 +117,7 @@ configs = [
     # ... outros 4 blocos de config ...
 ]
 ```
-- **Por que o array `'cols_moeda'`?** Em vez de iterar linha por linha para descobrir o que é número, o Script lê esse dicionário e usa `.apply(converter_para_moeda)` apenas na lista declarada, o que é computacionalmente muito mais barato.
+- **Por que usar `.apply(converter_para_moeda)` e não `str.replace` vetorizado?** Decisão de design arquitetural crítica. O Pandas converte automaticamente colunas para Float quando lê o Excel. Se usássemos vetorização `.astype(str).str.replace(',', '.')`, o Pandas converteria um float perfeito `1500.50` para string, removeria a pontuação de forma burra e destruiria o decimal transformando em `150050`. O método `apply` com a função dedicada preserva nativamente a tipagem dos floats puros e age de forma sanitária somente nas strings problemáticas (ex: `"1.500,50"`).
 - **Por que declarar `ordem_colunas`?** Como estamos juntando dezenas de planilhas de meses diferentes, é possível que a ordem das colunas flutue (a TI adicionou uma coluna em Maio). Se não forçarmos uma matriz padrão no final, o `pd.concat` ficará com colunas fora de lugar. 
 
 ### Exemplo prático

@@ -367,6 +367,10 @@ A célula B15 terá literalmente a string de fórmula:
 `=IF($A$3="Selecione a IES...", "", SUMIFS(Documentos!Y:Y, Documentos!T:T, $A$3, Documentos!K:K, "2025-1", ...))`
 Isso calcula o total de bolsas pagas pela instituição selecionada na aba.
 
+**Regras Lógicas Críticas Injetadas nas Fórmulas:**
+- **Inversão Semântica (Coleta - Contrato):** A variação de R$ não é calculada como `Contrato - Coleta`, mas sim o inverso (`Coleta - Contrato`). Isso garante inteligência visual: se a IES inflou a base cobrando a mais, a equação gera um número POSITIVO (excesso). Se cobrou a menos, gera um NEGATIVO (queda). 
+- **Filtro Cego para Falsos Ausentes:** O sumário principal exige explicitamente apenas `["Válido", "Inválido"]`. Se uma linha for marcada como "Falso Ausente", o Excel a destrói da somatória geral, impedindo a IES de inflar o indicador com registros indevidos.
+
 ### Pseudoalgoritmo
 ```text
 FUNÇÃO gerar_aba_relatorio_ies(planilha, dados_documentos, ano)
