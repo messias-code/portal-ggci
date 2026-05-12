@@ -40,10 +40,11 @@ COLS_MOEDA = [
     '[1] OVG PAGOU (Bolsa Mês)',
     '[2] OVG DEVERIA PAGAR (SISTEMA)', 
     '[3] OVG DEVERIA PAGAR (IA)', 
-    '[4] SALDO RESTANTE (MCD_IA - Benefícios)', 
-    '[5] PREJUÍZO DA OVG (R$)', 
-    '[6] LUCRO INDEVIDO IES (R$)',
-    '[7] ECONOMIA DA OVG (R$)'
+    '[4] SOMA OVG DEVERIA PAGAR (IA)',
+    '[5] SALDO RESTANTE (MCD - Benefícios)', 
+    '[6] PREJUÍZO DA OVG (R$)', 
+    '[7] LUCRO INDEVIDO IES (R$)',
+    '[8] ECONOMIA DA OVG (R$)'
 ]
 
 DOC_CONTRATO = "CONTRATO DE PRESTAÇÃO DE SERVIÇOS EDUCACIONAIS OU COMPROVANTE DE MATRÍCULA"
@@ -171,8 +172,8 @@ def aplicar_formatacao_visual(writer, nome_aba, df):
         elif col in ['[2] OVG DEVERIA PAGAR (SISTEMA)', '[3] OVG DEVERIA PAGAR (IA)']:
             worksheet.conditional_format(1, i, max_row, i, {'type': 'cell', 'criteria': '<', 'value': 0, 'format': f_verm})
 
-        # [4] SALDO RESTANTE (Fica Vermelho para QUALQUER valor positivo ou negativo, exceto zero exato)
-        elif col == '[4] SALDO RESTANTE (MCD_IA - Benefícios)':
+        # [5] SALDO RESTANTE (Fica Vermelho para QUALQUER valor positivo ou negativo, exceto zero exato)
+        elif col == '[5] SALDO RESTANTE (MCD - Benefícios)':
             worksheet.conditional_format(1, i, max_row, i, {'type': 'cell', 'criteria': '!=', 'value': 0, 'format': f_verm})
 
         # Alerta para Diferenças de Mensalidade (Qualquer divergência acende o bloco vermelho)
@@ -180,11 +181,11 @@ def aplicar_formatacao_visual(writer, nome_aba, df):
             worksheet.conditional_format(1, i, max_row, i, {'type': 'cell', 'criteria': '!=', 'value': 0, 'format': f_verm})
         
         # Alerta Financeiro Vermelho (Prejuízos e Lucros Indevidos gritam em vermelho se for maior que 0)
-        elif col in ['[5] PREJUÍZO DA OVG (R$)', '[6] LUCRO INDEVIDO IES (R$)']:
+        elif col in ['[6] PREJUÍZO DA OVG (R$)', '[7] LUCRO INDEVIDO IES (R$)']:
             worksheet.conditional_format(1, i, max_row, i, {'type': 'cell', 'criteria': '>', 'value': 0, 'format': f_verm})
             
         # NOVA COLUNA: Economia da OVG (Grita em VERDE se for maior que 0)
-        elif col == '[7] ECONOMIA DA OVG (R$)':
+        elif col == '[8] ECONOMIA DA OVG (R$)':
             worksheet.conditional_format(1, i, max_row, i, {'type': 'cell', 'criteria': '>', 'value': 0, 'format': f_verde})
 
 # ==========================================
@@ -580,18 +581,19 @@ def calcular_auditoria_ia(df):
     g_bolsa_final = np.maximum(g_bolsa_final, 0.0)
 
     df['[3] OVG DEVERIA PAGAR (IA)'] = np.where(is_contrato & (~mask_ignorar_math), g_bolsa_final, 0.0)
+    df['[4] SOMA OVG DEVERIA PAGAR (IA)'] = df['[3] OVG DEVERIA PAGAR (IA)'] * df['qtd_pagtos'].fillna(0).astype(float)
 
     cond_falha_leitura = (mcd_ia == 0)
     saldo_restante = mcd_ia - beneficios
-    df['[4] SALDO RESTANTE (MCD - Benefícios)'] = np.where(is_contrato & (~mask_ignorar_math) & (~cond_falha_leitura), saldo_restante, 0.0)
+    df['[5] SALDO RESTANTE (MCD - Benefícios)'] = np.where(is_contrato & (~mask_ignorar_math) & (~cond_falha_leitura), saldo_restante, 0.0)
 
     prejuizo_ovg = np.maximum(paga - g_bolsa_final, 0.0)
     lucro_ies = np.maximum((paga + beneficios) - mcd_ia, 0.0)
     economia_ovg = np.maximum(g_bolsa_final - paga, 0.0)
 
-    df['[5] PREJUÍZO DA OVG (R$)'] = np.where(is_contrato & (~mask_ignorar_math) & (~cond_falha_leitura), prejuizo_ovg, 0.0)
-    df['[6] LUCRO INDEVIDO IES (R$)'] = np.where(is_contrato & (~mask_ignorar_math) & (~cond_falha_leitura), lucro_ies, 0.0)
-    df['[7] ECONOMIA DA OVG (R$)'] = np.where(is_contrato & (~mask_ignorar_math) & (~cond_falha_leitura), economia_ovg, 0.0)
+    df['[6] PREJUÍZO DA OVG (R$)'] = np.where(is_contrato & (~mask_ignorar_math) & (~cond_falha_leitura), prejuizo_ovg, 0.0)
+    df['[7] LUCRO INDEVIDO IES (R$)'] = np.where(is_contrato & (~mask_ignorar_math) & (~cond_falha_leitura), lucro_ies, 0.0)
+    df['[8] ECONOMIA DA OVG (R$)'] = np.where(is_contrato & (~mask_ignorar_math) & (~cond_falha_leitura), economia_ovg, 0.0)
 
     cond_ignorar = (~is_contrato) | mask_ignorar_math
     df['Diagnóstico Financeiro Final'] = np.select(
@@ -693,10 +695,11 @@ def calcular_auditoria_ia(df):
         '[1] OVG PAGOU (Bolsa Mês)',
         '[2] OVG DEVERIA PAGAR (SISTEMA)', 
         '[3] OVG DEVERIA PAGAR (IA)', 
-        '[4] SALDO RESTANTE (MCD - Benefícios)', 
-        '[5] PREJUÍZO DA OVG (R$)', 
-        '[6] LUCRO INDEVIDO IES (R$)', 
-        '[7] ECONOMIA DA OVG (R$)',
+        '[4] SOMA OVG DEVERIA PAGAR (IA)',
+        '[5] SALDO RESTANTE (MCD - Benefícios)', 
+        '[6] PREJUÍZO DA OVG (R$)', 
+        '[7] LUCRO INDEVIDO IES (R$)', 
+        '[8] ECONOMIA DA OVG (R$)',
         'Diagnóstico Financeiro Final',
         
         'valor_beneficio', 'qual_beneficio', 'valor_financiamento', 'qual_financiamento', 'data_coleta',
@@ -821,12 +824,14 @@ def gerar_aba_relatorio_ies(writer, df_docs, ano):
     COL_MSD_CONTRATO = get_col('Gemini Mensalidade S/ Desconto') or 'AA'
     COL_MSD_DOC = get_col('MSD_DOC') or 'AG'
     COL_MSD_SOMA = get_col('MSD_SOMA') or 'AE'
+    COL_G_MSD_SOMA = get_col('G_MSD_SOMA') or 'AF'
     
     # Mensalidade COM Desconto (usa valor mensal bruto, não a soma semestral)
     COL_MCD_COLETA = get_col('Mensalidade C/ Desconto') or 'AH'
     COL_MCD_CONTRATO = get_col('Gemini Mensalidade C/ Desconto') or 'AI'
     COL_MCD_DOC = get_col('MCD_DOC') or 'AO'
     COL_MCD_SOMA = get_col('MCD_SOMA') or 'AM'
+    COL_G_MCD_SOMA = get_col('G_MCD_SOMA') or 'AN'
     
     # Bolsa calculada conforme contrato = [2] OVG DEVERIA PAGAR (SISTEMA)
     COL_BOLSA_CALC = get_col('[4] SOMA OVG DEVERIA PAGAR (IA)') or 'AQ'
@@ -1044,11 +1049,11 @@ def gerar_aba_relatorio_ies(writer, df_docs, ano):
                 # O Python lê dinamicamente se estamos no bloco 'Mensalidade SEM Desconto' ou 'Mensalidade COM Desconto'
                 if current_category == "Mensalidade SEM Desconto":
                     col_coleta = COL_MSD_SOMA
-                    col_contrato = COL_MSD_CONTRATO
+                    col_contrato = COL_G_MSD_SOMA
                     col_doc = COL_MSD_DOC
                 else:
                     col_coleta = COL_MCD_SOMA
-                    col_contrato = COL_MCD_CONTRATO
+                    col_contrato = COL_G_MCD_SOMA
                     col_doc = COL_MCD_DOC
                 
                 doc_cond = f'Documentos!{COL_DOC_TIPO}:{COL_DOC_TIPO}, "CONTRATO DE PRESTAÇÃO DE SERVIÇOS EDUCACIONAIS OU COMPROVANTE DE MATRÍCULA"'
@@ -1085,22 +1090,22 @@ def gerar_aba_relatorio_ies(writer, df_docs, ano):
                     worksheet.write_formula(row_idx, 3, form_var, cur_fmt_pct)
 
                 elif label == "Soma no Contrato":
-                    f1 = f'=IF($A$3="Selecione a IES...", "", {_s(col_contrato, 1)})'
-                    f2 = f'=IF($A$3="Selecione a IES...", "", {_s(col_contrato, 2)})'
+                    f1 = f'=IF($A$3="Selecione a IES...", "", {_s(col_contrato, 1, ["Válido", "Inválido"])})'
+                    f2 = f'=IF($A$3="Selecione a IES...", "", {_s(col_contrato, 2, ["Válido", "Inválido"])})'
                     worksheet.write_formula(row_idx, 1, f1, cur_fmt_money)
                     worksheet.write_formula(row_idx, 2, f2, cur_fmt_money)
                     worksheet.write_formula(row_idx, 3, form_var, cur_fmt_pct)
 
                 elif label == "Diferença entre Contrato e Coleta":
-                    f1 = f'=IF($A$3="Selecione a IES...", "", B{excel_row-1}-B{excel_row-2})'
-                    f2 = f'=IF($A$3="Selecione a IES...", "", C{excel_row-1}-C{excel_row-2})'
+                    f1 = f'=IF($A$3="Selecione a IES...", "", B{excel_row-3}-B{excel_row-2})'
+                    f2 = f'=IF($A$3="Selecione a IES...", "", C{excel_row-3}-C{excel_row-2})'
                     worksheet.write_formula(row_idx, 1, f1, cur_fmt_money)
                     worksheet.write_formula(row_idx, 2, f2, cur_fmt_money)
                     worksheet.write_formula(row_idx, 3, form_var, cur_fmt_pct)
 
                 elif label == "Porcentagem de Diferença entre Coleta de Dados (enviados) e Contrato":
-                    f1 = f'=IF($A$3="Selecione a IES...", "", IFERROR(B{excel_row-1}/B{excel_row-2}, 0))'
-                    f2 = f'=IF($A$3="Selecione a IES...", "", IFERROR(C{excel_row-1}/C{excel_row-2}, 0))'
+                    f1 = f'=IF($A$3="Selecione a IES...", "", IFERROR((B{excel_row-3}-B{excel_row-2})/B{excel_row-2}, 0))'
+                    f2 = f'=IF($A$3="Selecione a IES...", "", IFERROR((C{excel_row-3}-C{excel_row-2})/C{excel_row-2}, 0))'
                     worksheet.write_formula(row_idx, 1, f1, cur_fmt_pct)
                     worksheet.write_formula(row_idx, 2, f2, cur_fmt_pct)
                     worksheet.write_formula(row_idx, 3, form_var, cur_fmt_pct)
