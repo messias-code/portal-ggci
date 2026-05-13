@@ -53,7 +53,8 @@ mysql -u root -povg@2026 -e "DROP DATABASE IF EXISTS portal_ggci; CREATE DATABAS
 # --------------------------------------------------------------------------
 echo "🐍 Instalando dependências Python no sistema..."
 python3 -m pip install --break-system-packages --upgrade pip
-python3 -m pip install --break-system-packages django mysqlclient argon2-cffi
+python3 -m pip install --break-system-packages -r requirements.txt
+playwright install --with-deps chromium
 
 # --------------------------------------------------------------------------
 # 5. MIGRAÇÕES E DADOS INICIAIS (DJANGO)
@@ -67,5 +68,5 @@ python3 manage.py loaddata usuarios_iniciais.json
 
 echo "========================================================="
 echo "✅ AMBIENTE CONSTRUÍDO COM SUCESSO! O PORTAL ESTÁ PRONTO."
-echo "   Para iniciar: python3 manage.py runserver 0.0.0.0:8000"
+echo "   Para iniciar: gunicorn portal_ggci.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 300"
 echo "========================================================="

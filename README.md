@@ -158,7 +158,7 @@ A forma mais rápida de colocar o portal em funcionamento. O script `setup.sh` r
 
 1. Instala os pacotes do sistema operacional (Python, pip, MySQL, cabeçalhos C)
 2. Configura a senha `root` do MySQL e cria o banco `portal_ggci`
-3. Instala as dependências Python (`django`, `mysqlclient`, `argon2-cffi`)
+3. Instala as dependências Python via `requirements.txt`
 4. Roda as migrações do Django (`makemigrations` + `migrate`)
 5. Injeta os usuários iniciais a partir do `usuarios_iniciais.json`
 
@@ -203,14 +203,9 @@ sudo apt-get install -y python3 python3-pip python3-dev default-libmysqlclient-d
 ### 3. Instalar Pacotes Python
 
 ```bash
-pip install --break-system-packages django mysqlclient argon2-cffi
+pip install --break-system-packages -r requirements.txt
+playwright install --with-deps chromium
 ```
-
-| Pacote | Finalidade |
-|---|---|
-| `django` | Framework web principal |
-| `mysqlclient` | Conector nativo entre o Django e o MySQL |
-| `argon2-cffi` | Motor de hash Argon2 para criptografia de senhas |
 
 ### 4. Configurar o Banco de Dados MySQL
 
@@ -358,7 +353,7 @@ Installed X object(s) from 1 fixture(s).
 Após esse passo, o sistema estará pronto. Rode o servidor normalmente:
 
 ```bash
-python manage.py runserver 0.0.0.0:8000
+gunicorn portal_ggci.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 300
 ```
 
 ---
@@ -398,10 +393,10 @@ Pronto! Banco novo, limpo e 100% alinhado com o código atual.
 
 ## ▶️ Execução do Servidor
 
-Com o ambiente configurado, inicie o servidor de desenvolvimento. O parâmetro `0.0.0.0:8000` é **obrigatório** para que o servidor aceite conexões externas (necessário para o túnel via Serveo).
+Com o ambiente configurado, inicie o servidor de produção local utilizando o **Gunicorn**. O parâmetro `--bind 0.0.0.0:8000` é obrigatório para que o servidor aceite conexões externas (necessário para o túnel via Tailscale).
 
 ```bash
-python manage.py runserver 0.0.0.0:8000
+gunicorn portal_ggci.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 300
 ```
 
 O portal estará disponível localmente em: **http://127.0.0.1:8000**
@@ -418,30 +413,42 @@ O portal estará disponível localmente em: **http://127.0.0.1:8000**
 | `/automacoes/` | Módulo de automações (Pipeline GGCI) | Permissão habilitada |
 | `/admin/` | Painel administrativo nativo do Django | Superusuário |
 
-## 🌐 Acesso Externo via Túnel (Serveo)
+## 🌐 Acesso Externo via Túnel (Tailscale Funnel)
 
-Para compartilhar o portal com outros usuários da rede ou acessá-lo remotamente, utilize o **Serveo** — um serviço de túnel SSH gratuito que expõe o servidor local na internet.
+Para compartilhar o portal com outros usuários da rede ou acessá-lo remotamente de forma segura, utilize o **Tailscale Funnel** — que expõe o servidor local na internet com um domínio HTTPS gerado pela Tailscale.
 
-> ⚠️ O servidor Django **deve estar rodando** (`runserver 0.0.0.0:8000`) antes de abrir o túnel.
+> ⚠️ O servidor **Gunicorn deve estar rodando** na porta 8000 antes de abrir o túnel.
 
-Em um **segundo terminal**, execute:
-
+**1. Instalação do Tailscale (caso ainda não possua):**
 ```bash
-ssh -o ServerAliveInterval=60 -R portal-ggci:80:localhost:8000 serveo.net
+curl -fsSL https://tailscale.com/install.sh | sh
 ```
 
-O portal ficará acessível publicamente em: **https://portal-ggci.serveousercontent.com**
+**2. Autenticação e Configuração:**
+```bash
+sudo tailscale up
+sudo tailscale login
+sudo tailscale set --operator=$USER
+```
 
-> **Como funciona:** O comando cria um túnel SSH que redireciona todo o tráfego recebido em `portal-ggci.serveousercontent.com` para o seu `localhost:8000`. Não é necessário abrir portas no roteador nem configurar DNS.
+**3. Habilitando o Funnel:**
+Em um **segundo terminal**, execute:
+```bash
+sudo tailscale funnel 8000
+```
+
+O portal ficará acessível publicamente em uma URL semelhante a: **https://labs.tailXXXX.ts.net/**
+
+> **Como funciona:** O comando cria um túnel criptografado e atribui um domínio HTTPS válido pela Tailscale, redirecionando o tráfego externo de forma segura para o seu `localhost:8000`.
 
 ### Resumo do fluxo completo de execução
 
 ```bash
-# Terminal 1 — Servidor Django
-python manage.py runserver 0.0.0.0:8000
+# Terminal 1 — Servidor Gunicorn
+gunicorn portal_ggci.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 300
 
 # Terminal 2 — Túnel de acesso externo
-ssh -R portal-ggci:80:localhost:8000 serveo.net
+sudo tailscale funnel 8000
 ```
 
 ## 🔄 Manutenção e Atualização de Fixtures

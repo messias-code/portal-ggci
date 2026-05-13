@@ -40,9 +40,11 @@ ALLOWED_HOSTS = ['*']
 
 # Diz ao Django para confiar nos formulários de login enviados por esse link
 CSRF_TRUSTED_ORIGINS = [
+    'https://pcdelpo07.taila4708a.ts.net',
+    'https://labs.tail6def44.ts.net',  
+    'http://pcdelpo07.taila4708a.ts.net:8000',
     'http://100.105.241.124:8000',
     'http://pcdelpo07:8000',
-    'http://pcdelpo07.taila4708a.ts.net:8000',
     'http://[fd7a:115c:a1e0::8436:f17c]:8000',
     'http://localhost:8000',
     'http://127.0.0.1:8000',
