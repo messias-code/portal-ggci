@@ -4,6 +4,10 @@ import time
 import datetime
 import concurrent.futures
 from playwright.sync_api import sync_playwright
+from dotenv import load_dotenv
+
+# Carrega variáveis de ambiente (.env)
+load_dotenv()
 
 # ==========================================
 # 1. CONFIGURAÇÕES GERAIS
@@ -67,8 +71,8 @@ def extrair_documento_scriptcase(tarefa, doc_config, semestre_str):
                 
                 try:
                     page.goto("http://10.237.1.11/pbu/entrar/")
-                    page.get_by_role("textbox", name="Usuário").fill("ihan.santos")
-                    page.get_by_role("textbox", name="Senha").fill("M@vis-08")
+                    page.get_by_role("textbox", name="Usuário").fill(os.getenv('PORTAL_PBU_USER'))
+                    page.get_by_role("textbox", name="Senha").fill(os.getenv('PORTAL_PBU_PASS_AGENDAMENTOS'))
                     page.get_by_role("button", name="Entrar").click()
                     page.wait_for_load_state("networkidle")
 
@@ -180,14 +184,17 @@ def extrair_ano_pagamento(ano_str):
                 try:
                     page.goto("http://10.237.1.11/bolsa/")
                     
-                    page.locator("#usuario").fill("ihan.santos")
-                    page.locator("#senha").fill("Mavis08")
+                    pbu_user = os.getenv('PORTAL_PBU_USER')
+                    pbu_pass = os.getenv('PORTAL_PBU_PASS_VALORES_BOLSAS')
+
+                    page.locator("#usuario").fill(pbu_user)
+                    page.locator("#senha").fill(pbu_pass)
                     page.get_by_role("button", name="Logar").click()
                     
                     try:
                         page.locator("#usuario").wait_for(state="visible", timeout=3000)
-                        page.locator("#usuario").fill("ihan.santos")
-                        page.locator("#senha").fill("Mavis08")
+                        page.locator("#usuario").fill(pbu_user)
+                        page.locator("#senha").fill(pbu_pass)
                         page.get_by_role("button", name="Logar").click()
                     except:
                         pass 

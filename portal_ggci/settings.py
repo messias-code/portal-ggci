@@ -116,7 +116,7 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': os.environ.get('DB_NAME', 'portal_ggci'),
-        'USER': os.environ.get('DB_USER', 'root'),
+        'USER': os.environ.get('DB_USER', 'portal_user'),
         # ⚠️ IMPORTANTE: A senha e o banco configurados aqui devem ser os mesmos 
         # gerados e criados pelo arquivo 'setup.sh'.
         'PASSWORD': os.environ.get('DB_PASSWORD', 'ovg@2026'),

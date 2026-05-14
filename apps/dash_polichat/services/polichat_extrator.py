@@ -5,12 +5,16 @@ import shutil
 import pandas as pd
 import numpy as np
 from playwright.sync_api import sync_playwright
+from dotenv import load_dotenv
+
+# Carrega variáveis de ambiente (.env)
+load_dotenv()
 
 # ==========================================
 # 1. CONFIGURAÇÕES E CAMINHOS
 # ==========================================
-LOGIN_USER    = 'andreia.amaral@ovg.org.br'
-PASSWORD_USER = '123456'
+LOGIN_USER    = os.getenv('DASHBOARD_POLICHAT_USER')
+PASSWORD_USER = os.getenv('DASHBOARD_POLICHAT_PASS')
 LOGIN_URL     = 'https://spa.poli.digital/login'
 RELATORIO_URL = 'https://app-spa.poli.digital/relatorio'
 

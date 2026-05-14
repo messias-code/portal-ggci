@@ -7,6 +7,10 @@ import re
 import datetime
 from urllib.parse import quote_plus
 from sqlalchemy import create_engine
+from dotenv import load_dotenv
+
+# Carrega variáveis de ambiente (.env)
+load_dotenv()
 
 # Desativa o aviso do futuro do Pandas para preenchimento de dados vazios
 pd.set_option('future.no_silent_downcasting', True)
@@ -194,7 +198,10 @@ def aplicar_formatacao_visual(writer, nome_aba, df):
 def buscar_dados_financeiros_sql(semestres_presentes):
     if not semestres_presentes: return pd.DataFrame()
     
-    DB_HOST, DB_USER, DB_PASS, DB_NAME = "10.237.1.16", "bi_ovg", "bi_ovg@#$124as65", "sibu"
+    DB_HOST = os.getenv('SIBU_HOST')
+    DB_USER = os.getenv('SIBU_USER')
+    DB_PASS = os.getenv('SIBU_PASS')
+    DB_NAME = os.getenv('SIBU_NAME')
     
     sems_banco = [str(x).strip().replace('-', '/') for x in semestres_presentes]
     sems_formatados = ",".join([f"'{x}'" for x in sems_banco])
