@@ -14,8 +14,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- CSS Externo: Estilos específicos da tabela e animações de fundo desta página -->
-    <!-- Arquivo localizado em: static/menu/inicio/gestao_acessos/style.css -->
-    <link rel="stylesheet" href="{% static 'menu/inicio/gestao_acessos/style.css' %}">
+    <!-- Arquivo localizado em: static/css/menu/inicio/gestao_acessos.css -->
+    <link rel="stylesheet" href="{% static 'css/menu/inicio/gestao_acessos.css' %}">
 </head>
 
 <body class="bg-[#f8f6fb] text-gray-800 fixed inset-0 p-4 lg:p-6 flex overflow-hidden">
@@ -46,7 +46,7 @@
              ========================================================================== -->
         <aside class="w-[18rem] lg:w-[20rem] flex flex-col border-r border-purple-100/50 bg-white/40 shrink-0">
             <div class="h-28 flex items-center justify-center border-b border-purple-100/50">
-                <img src="{% static 'sources/ovg.png' %}" alt="OVG Logo"
+                <img src="{% static 'img/logos/ovg.png' %}" alt="OVG Logo"
                     class="h-[4.25rem] drop-shadow-md hover:scale-105 transition-transform duration-300">
             </div>
 
@@ -74,8 +74,8 @@
                 {% endif %}
 
                 <!-- Menu Automações Dinâmico -->
-                {% if user.p_automacoes or user.usuario == 'admin@ovg.org.br' %}
-                <a href="{% url 'automacoes' %}"
+                {% if user.p_analise_ia or user.usuario == 'admin@ovg.org.br' %}
+                <a href="{% url 'analise_ia' %}"
                     class="flex items-center space-x-4 px-4 py-3 text-gray-600 hover:bg-white hover:shadow-sm rounded-xl font-semibold text-base transition-all hover:text-purple-600">
                     <i class="fa-brands fa-whmcs text-[28px] w-6 text-center"></i><span>Automações</span>
                 </a>
@@ -86,8 +86,8 @@
                 </div>
                 {% endif %}
 
-                {% if user.p_dashboards or user.usuario == 'admin@ovg.org.br' %}
-                <a href="{% url 'dashboards' %}"
+                {% if user.p_dash_polichat or user.usuario == 'admin@ovg.org.br' %}
+                <a href="{% url 'dash_polichat' %}"
                     class="flex items-center space-x-4 px-4 py-3 text-gray-600 hover:bg-white hover:shadow-sm rounded-xl font-semibold text-base transition-all hover:text-purple-600">
                     <i class="fa-solid fa-chart-line text-[23px] w-6 text-center"></i><span>Dashboards</span>
                 </a>
@@ -153,7 +153,7 @@
                 <div
                     class="flex flex-col md:flex-row justify-between items-center gap-4 bg-white/40 backdrop-blur-md border border-white/50 p-4 rounded-2xl shadow-sm">
 
-                    <!-- Campo de Busca: Lógica de filtragem visual feita pelo static/gestao_acessos/script.js -->
+                    <!-- Campo de Busca: Lógica de filtragem visual feita pelo static/js/menu/inicio/gestao_acessos.js -->
                     <div class="relative w-full md:w-96">
                         <i class="fa-solid fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
                         <input type="text" id="inputBusca" placeholder="Buscar por nome, login ou email..."
@@ -217,7 +217,7 @@
                                         {% if u.can_edit %}
                                         <!-- Ao clicar, injeta os dados do usuário direto no modal via JS -->
                                         <button
-                                            onclick="abrirModalEdicao({'id': {{ u.id }}, 'nome': '{{ u.nome|escapejs }}', 'usuario': '{{ u.usuario|escapejs }}', 'perfil': '{{ u.perfil }}', 'p_ferramentas': {{ u.p_ferramentas }}, 'p_formatador_listas': {{ u.p_formatador_listas }}, 'p_formatador_dados': {{ u.p_formatador_dados }}, 'p_automacoes': {{ u.p_automacoes }}, 'p_analise_ia': {{ u.p_analise_ia }}, 'p_documentacoes': {{ u.p_documentacoes }}, 'p_dashboards': {{ u.p_dashboards }}, 'p_gestao_polichat': {{ u.p_gestao_polichat }} })"
+                                            onclick="abrirModalEdicao({'id': {{ u.id }}, 'nome': '{{ u.nome|escapejs }}', 'usuario': '{{ u.usuario|escapejs }}', 'perfil': '{{ u.perfil }}', 'p_ferramentas': {{ u.p_ferramentas }}, 'p_formatador_listas': {{ u.p_formatador_listas }}, 'p_formatador_dados': {{ u.p_formatador_dados }}, 'p_analise_ia': {{ u.p_analise_ia }}, 'p_analise_ia': {{ u.p_analise_ia }}, 'p_documentacoes': {{ u.p_documentacoes }}, 'p_dash_polichat': {{ u.p_dash_polichat }}, 'p_gestao_polichat': {{ u.p_gestao_polichat }} })"
                                             class="w-9 h-9 rounded-xl bg-amber-100 text-amber-600 hover:bg-amber-500 hover:text-white transition-all flex items-center justify-center shadow-sm relative z-10"
                                             title="Editar Usuário">
                                             <i class="fa-solid fa-pen text-sm"></i>
@@ -288,8 +288,8 @@
     </script>
 
     <!-- JS Externo: Contém a lógica de busca local, abertura/fechamento dos modais e submissão dos dados -->
-    <!-- Arquivo localizado em: static/menu/inicio/gestao_acessos/script.js -->
-    <script src="{% static 'menu/inicio/gestao_acessos/script.js' %}"></script>
+    <!-- Arquivo localizado em: static/js/menu/inicio/gestao_acessos.js -->
+    <script src="{% static 'js/menu/inicio/gestao_acessos.js' %}"></script>
 </body>
 
 </html>

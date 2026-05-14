@@ -119,10 +119,9 @@ def gestao_acessos(request):
             'p_ferramentas': 1 if u.p_ferramentas else 0,
             'p_formatador_listas': 1 if u.p_formatador_listas else 0,
             'p_formatador_dados': 1 if u.p_formatador_dados else 0,
-            'p_automacoes': 1 if u.p_automacoes else 0,
             'p_analise_ia': 1 if u.p_analise_ia else 0,
             'p_documentacoes': 1 if u.p_documentacoes else 0,
-            'p_dashboards': 1 if u.p_dashboards else 0,
+            'p_dash_polichat': 1 if u.p_dash_polichat else 0,
             'p_gestao_polichat': 1 if u.p_gestao_polichat else 0,
             'username_only': username_only,
             'can_edit': can_edit,
@@ -234,12 +233,11 @@ def api_salvar_usuario(request):
             p_formatador_listas = 1 if request.POST.get('p_formatador_listas') else 0
             p_formatador_dados = 1 if request.POST.get('p_formatador_dados') else 0
             
-            p_automacoes = 1 if request.POST.get('p_automacoes') else 0
             p_analise_ia = 1 if request.POST.get('p_analise_ia') else 0
             
             p_documentacoes = 1 if request.POST.get('p_documentacoes') else 0
 
-            p_dashboards = 1 if request.POST.get('p_dashboards') else 0
+            p_dash_polichat = 1 if request.POST.get('p_dash_polichat') else 0
             p_gestao_polichat = 1 if request.POST.get('p_gestao_polichat') else 0
 
             # MODO: NOVO USUÁRIO
@@ -258,10 +256,9 @@ def api_salvar_usuario(request):
                     p_ferramentas=p_ferramentas,
                     p_formatador_listas=p_formatador_listas,
                     p_formatador_dados=p_formatador_dados,
-                    p_automacoes=p_automacoes,
                     p_analise_ia=p_analise_ia,
                     p_documentacoes=p_documentacoes,
-                    p_dashboards=p_dashboards,
+                    p_dash_polichat=p_dash_polichat,
                     p_gestao_polichat=p_gestao_polichat
                 )
                 novo_usuario.set_password(senha_gerada)
@@ -292,12 +289,11 @@ def api_salvar_usuario(request):
                 alvo.p_formatador_listas = p_formatador_listas
                 alvo.p_formatador_dados = p_formatador_dados
                 
-                alvo.p_automacoes = p_automacoes
                 alvo.p_analise_ia = p_analise_ia
                 
                 alvo.p_documentacoes = p_documentacoes
 
-                alvo.p_dashboards = p_dashboards
+                alvo.p_dash_polichat = p_dash_polichat
                 alvo.p_gestao_polichat = p_gestao_polichat
 
                 if alterar_nome:
@@ -353,30 +349,30 @@ def formatador_dados(request):
     return render(request, 'menu/ferramentas/formatador_dados/index.html')
 
 @login_required(login_url='/')
-def automacoes(request):
+def analise_ia(request):
     """Renderiza o hub de Automações."""
-    if not request.user.p_automacoes and request.user.usuario != 'admin@ovg.org.br':
+    if not request.user.p_analise_ia and request.user.usuario != 'admin@ovg.org.br':
         return redirect('inicio')
         
-    return render(request, 'menu/automacoes/index.html')
+    return render(request, 'menu/analise_ia/index.html')
 
 @login_required
 def analise_ia_view(request):
     """Renderiza a tela de Análise IA (Automação de Contratos)"""
-    return render(request, 'menu/automacoes/analise_ia/index.html')
+    return render(request, 'menu/analise_ia/analise_ia/index.html')
 
 @login_required(login_url='/')
-def dashboards(request):
+def dash_polichat(request):
     """Renderiza o hub de Dashboards. Protegido por permissão modular."""
-    if not request.user.p_dashboards and request.user.usuario != 'admin@ovg.org.br':
+    if not request.user.p_dash_polichat and request.user.usuario != 'admin@ovg.org.br':
         return redirect('inicio')
         
-    return render(request, 'menu/dashboards/index.html')
+    return render(request, 'menu/dash_polichat/index.html')
 
 @login_required(login_url='/')
 def gestao_polichat_view(request):
     """Renderiza a tela do Dashboard Gestão Polichat (página inteira)."""
     if not request.user.p_gestao_polichat and request.user.usuario != 'admin@ovg.org.br':
-        return redirect('dashboards')
+        return redirect('dash_polichat')
         
-    return render(request, 'menu/dashboards/gestao_polichat/index.html')
+    return render(request, 'menu/dash_polichat/gestao_polichat/index.html')

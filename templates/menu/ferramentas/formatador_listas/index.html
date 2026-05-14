@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <link rel="stylesheet" href="{% static 'menu/ferramentas/formatador_listas/style.css' %}">
+    <link rel="stylesheet" href="{% static 'css/menu/ferramentas/formatador_listas.css' %}">
 </head>
 
 <body class="bg-[#f8f6fb] text-gray-800 fixed inset-0 p-4 lg:p-6 flex overflow-hidden transition-colors duration-500">
@@ -26,7 +26,7 @@
 
         <aside class="w-[18rem] lg:w-[20rem] flex flex-col border-r border-purple-100/50 bg-white/40 shrink-0">
             <div class="h-28 flex items-center justify-center border-b border-purple-100/50">
-                <img src="{% static 'sources/ovg.png' %}" alt="OVG Logo" class="h-[4.25rem] drop-shadow-md hover:scale-105 transition-transform duration-300">
+                <img src="{% static 'img/logos/ovg.png' %}" alt="OVG Logo" class="h-[4.25rem] drop-shadow-md hover:scale-105 transition-transform duration-300">
             </div>
             <nav class="flex-1 px-6 py-8 space-y-2 overflow-hidden">
                 <p class="text-[13px] font-bold text-purple-700 uppercase tracking-widest mb-4 px-2">Navegação Principal</p>
@@ -39,8 +39,8 @@
                     <i class="fa-solid fa-screwdriver-wrench text-[23px] w-6 text-center"></i><span>Ferramentas</span>
                 </a>
                 
-                {% if user.p_automacoes or user.usuario == 'admin@ovg.org.br' %}
-                    <a href="{% url 'automacoes' %}" class="flex items-center space-x-4 px-4 py-3 text-gray-600 hover:bg-white hover:shadow-sm rounded-xl font-semibold text-base transition-all hover:text-purple-600">
+                {% if user.p_analise_ia or user.usuario == 'admin@ovg.org.br' %}
+                    <a href="{% url 'analise_ia' %}" class="flex items-center space-x-4 px-4 py-3 text-gray-600 hover:bg-white hover:shadow-sm rounded-xl font-semibold text-base transition-all hover:text-purple-600">
                         <i class="fa-brands fa-whmcs text-[28px] w-6 text-center"></i><span>Automações</span>
                     </a>
                 {% else %}
@@ -49,8 +49,8 @@
                     </div>
                 {% endif %}
 
-                {% if user.p_dashboards or user.usuario == 'admin@ovg.org.br' %}
-                    <a href="{% url 'dashboards' %}" class="flex items-center space-x-4 px-4 py-3 text-gray-600 hover:bg-white hover:shadow-sm rounded-xl font-semibold text-base transition-all hover:text-purple-600">
+                {% if user.p_dash_polichat or user.usuario == 'admin@ovg.org.br' %}
+                    <a href="{% url 'dash_polichat' %}" class="flex items-center space-x-4 px-4 py-3 text-gray-600 hover:bg-white hover:shadow-sm rounded-xl font-semibold text-base transition-all hover:text-purple-600">
                         <i class="fa-solid fa-chart-line text-[23px] w-6 text-center"></i><span>Dashboards</span>
                     </a>
                 {% else %}
@@ -150,6 +150,6 @@
         </main>
     </div>
 
-    <script src="{% static 'menu/ferramentas/formatador_listas/script.js' %}?v=2"></script>
+    <script src="{% static 'js/menu/ferramentas/formatador_listas.js' %}?v=2"></script>
 </body>
 </html>

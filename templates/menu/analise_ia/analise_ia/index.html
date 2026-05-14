@@ -1,0 +1,497 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análise IA - Portal GGCI</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { darkMode: 'class', };</script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <link rel="stylesheet" href="{% static 'css/menu/analise_ia/analise_ia.css' %}">
+</head>
+
+<body class="bg-[#f8f6fb] text-gray-800 fixed inset-0 p-4 lg:p-6 flex transition-colors duration-500 overflow-hidden">
+
+    <div
+        class="bg-color-1 absolute top-[-15%] left-[-10%] w-[65vw] h-[65vh] bg-pink-500/70 rounded-full blur-[140px] pointer-events-none z-0">
+    </div>
+    <div
+        class="bg-color-2 absolute bottom-[-15%] left-[10%] w-[60vw] h-[60vh] bg-purple-600/70 rounded-full blur-[140px] pointer-events-none z-0">
+    </div>
+    <div
+        class="bg-color-3 absolute top-[-5%] right-[-10%] w-[60vw] h-[60vh] bg-yellow-400/60 rounded-full blur-[140px] pointer-events-none z-0">
+    </div>
+    <div
+        class="bg-color-4 absolute bottom-[-10%] right-[5%] w-[65vw] h-[65vh] bg-teal-400/60 rounded-full blur-[140px] pointer-events-none z-0">
+    </div>
+
+    <div
+        class="w-full h-full bg-white/70 backdrop-blur-2xl border border-white/80 rounded-[2rem] shadow-2xl flex overflow-hidden relative z-10">
+
+        <aside class="w-[18rem] lg:w-[20rem] flex flex-col border-r border-purple-100/50 bg-white/40">
+            <div class="h-28 flex items-center justify-center border-b border-purple-100/50">
+                <img src="{% static 'img/logos/ovg.png' %}" alt="OVG Logo"
+                    class="h-[4.25rem] drop-shadow-md hover:scale-105 transition-transform duration-300">
+            </div>
+            <nav class="flex-1 px-6 py-8 space-y-2 overflow-hidden">
+                <p class="text-[13px] font-bold text-purple-700 uppercase tracking-widest mb-4 px-2">Navegação Principal
+                </p>
+                <a href="{% url 'inicio' %}"
+                    class="flex items-center space-x-4 px-4 py-3 text-gray-600 hover:bg-white hover:shadow-sm rounded-xl font-semibold text-base transition-all hover:text-purple-600">
+                    <i class="fa-solid fa-user-shield text-[23px] w-6 text-center"></i><span>Início</span>
+                </a>
+                {% if user.p_ferramentas or user.usuario == 'admin@ovg.org.br' %}
+                <a href="{% url 'ferramentas' %}"
+                    class="flex items-center space-x-4 px-4 py-3 text-gray-600 hover:bg-white hover:shadow-sm rounded-xl font-semibold text-base transition-all hover:text-purple-600">
+                    <i class="fa-solid fa-screwdriver-wrench text-[23px] w-6 text-center"></i><span>Ferramentas</span>
+                </a>
+                {% else %}
+                <div class="flex items-center space-x-4 px-4 py-3 text-gray-400 bg-gray-50/50 rounded-xl font-semibold text-base cursor-not-allowed opacity-70"
+                    title="Acesso Restrito">
+                    <i class="fa-solid fa-lock text-[23px] w-6 text-center"></i><span>Ferramentas</span>
+                </div>
+                {% endif %}
+                <a href="{% url 'analise_ia' %}"
+                    class="flex items-center space-x-3 px-4 py-3 bg-gradient-to-r from-purple-600 to-purple-500 shadow-xl shadow-purple-500/30 text-white rounded-xl font-bold text-base transition-all hover:scale-[1.02]">
+                    <i class="fa-brands fa-whmcs text-[28px] w-6 text-center"></i><span>Automações</span>
+                </a>
+                {% if user.p_dash_polichat or user.usuario == 'admin@ovg.org.br' %}
+                <a href="{% url 'dash_polichat' %}"
+                    class="flex items-center space-x-4 px-4 py-3 text-gray-600 hover:bg-white hover:shadow-sm rounded-xl font-semibold text-base transition-all hover:text-purple-600">
+                    <i class="fa-solid fa-chart-line text-[23px] w-6 text-center"></i><span>Dashboards</span>
+                </a>
+                {% else %}
+                <div class="flex items-center space-x-4 px-4 py-3 text-gray-400 bg-gray-50/50 rounded-xl font-semibold text-base cursor-not-allowed opacity-70"
+                    title="Acesso Restrito">
+                    <i class="fa-solid fa-lock text-[23px] w-6 text-center"></i><span>Dashboards</span>
+                </div>
+                {% endif %}
+                {% if user.p_documentacoes or user.usuario == 'admin@ovg.org.br' %}
+                <a href="#"
+                    class="flex items-center space-x-4 px-4 py-3 text-gray-600 hover:bg-white hover:shadow-sm rounded-xl font-semibold text-base transition-all hover:text-purple-600">
+                    <i class="fa-solid fa-folder-open text-[23px] w-6 text-center"></i><span>Documentações</span>
+                </a>
+                {% else %}
+                <div class="flex items-center space-x-4 px-4 py-3 text-gray-400 bg-gray-50/50 rounded-xl font-semibold text-base cursor-not-allowed opacity-70"
+                    title="Acesso Restrito">
+                    <i class="fa-solid fa-lock text-[23px] w-6 text-center"></i><span>Documentações</span>
+                </div>
+                {% endif %}
+            </nav>
+            <div class="p-6 border-t border-purple-100/50">
+                <a href="{% url 'logout' %}"
+                    class="flex items-center justify-center space-x-2 w-full px-4 py-3 bg-red-50 text-red-600 rounded-xl font-extrabold text-sm hover:bg-red-500 hover:text-white transition-all shadow-sm">
+                    <i class="fa-solid fa-right-from-bracket"></i><span>SAIR DO SISTEMA</span>
+                </a>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+
+            <header
+                class="h-28 px-8 lg:px-10 flex justify-between items-center border-b border-pink-100/50 bg-white/40 backdrop-blur-md shrink-0 z-10">
+                <div class="flex items-center gap-5">
+                    <div
+                        class="w-16 h-16 bg-gradient-to-br from-pink-100 to-fuchsia-100 text-pink-600 rounded-2xl flex items-center justify-center border border-pink-200 shadow-sm">
+                        <i class="fa-solid fa-robot text-3xl"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-black text-gray-800 tracking-tight">Análise IA</h2>
+                        <p class="text-[14px] text-gray-500 font-semibold mt-0.5">Automação para extração e análise de
+                            dados.</p>
+                    </div>
+                </div>
+                <a href="{% url 'analise_ia' %}"
+                    class="px-5 py-2.5 bg-white/80 hover:bg-pink-50 text-pink-600 font-bold rounded-xl transition-all shadow-sm border border-pink-100 flex items-center gap-2 text-sm">
+                    <i class="fa-solid fa-arrow-left"></i> Voltar
+                </a>
+            </header>
+
+            <div class="flex-1 p-4 lg:p-6 flex flex-col gap-3 overflow-hidden relative z-10">
+
+                <div
+                    class="bg-white/80 backdrop-blur-xl border border-white/80 px-5 pb-5 pt-2 lg:px-6 lg:pb-6 lg:pt-3 rounded-[1.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col shrink-0">
+
+                    <h3
+                        class="font-extrabold text-[16px] text-gray-800 mb-3 flex items-center gap-2 border-b border-gray-200/80 pb-2">
+                        <i class="fa-solid fa-sliders text-purple-600"></i> Configurações de Extração
+                    </h3>
+
+                    <div class="grid grid-cols-1 xl:grid-cols-12 gap-4">
+
+                        <div class="xl:col-span-5 flex flex-col gap-2.5 xl:border-r border-gray-200/60 xl:pr-6">
+                            <h4
+                                class="text-[12px] font-black text-gray-600 uppercase tracking-widest flex items-center gap-2 mb-0.5">
+                                <i class="fa-solid fa-file-lines text-purple-500 text-lg"></i> Tipos de Documentos
+                            </h4>
+                            <div class="flex flex-col gap-2.5">
+
+                                <label class="flex items-center gap-3 cursor-pointer group">
+                                    <div class="relative w-9 h-5 shrink-0">
+                                        <input type="checkbox" id="chk-todos-docs" name="tipos_documentos" value="TODOS"
+                                            class="sr-only peer chk-todos" checked>
+                                        <div
+                                            class="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:bg-purple-500 transition-colors">
+                                        </div>
+                                        <div
+                                            class="absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4 shadow-sm">
+                                        </div>
+                                    </div>
+                                    <span
+                                        class="text-[13px] font-bold text-gray-800 uppercase group-hover:text-purple-600 transition-colors">Todos</span>
+                                </label>
+
+                                <label class="flex items-center gap-3 cursor-pointer group">
+                                    <div class="relative w-9 h-5 shrink-0">
+                                        <input type="checkbox" name="tipos_documentos" value="CONTRATOS"
+                                            class="sr-only peer chk-doc" checked>
+                                        <div
+                                            class="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:bg-purple-500 transition-colors">
+                                        </div>
+                                        <div
+                                            class="absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4 shadow-sm">
+                                        </div>
+                                    </div>
+                                    <span
+                                        class="text-[11.5px] font-medium text-gray-600 leading-snug group-hover:text-purple-600 transition-colors">CONTRATO
+                                        DE PRESTAÇÃO DE SERVIÇOS EDUCACIONAIS OU COMPROVANTE MATRÍCULA</span>
+                                </label>
+
+                                <label class="flex items-center gap-3 cursor-pointer group">
+                                    <div class="relative w-9 h-5 shrink-0">
+                                        <input type="checkbox" name="tipos_documentos" value="BENEFICIOS"
+                                            class="sr-only peer chk-doc" checked>
+                                        <div
+                                            class="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:bg-purple-500 transition-colors">
+                                        </div>
+                                        <div
+                                            class="absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4 shadow-sm">
+                                        </div>
+                                    </div>
+                                    <span
+                                        class="text-[11.5px] font-medium text-gray-600 leading-snug group-hover:text-purple-600 transition-colors">COMPROVANTE
+                                        OUTROS BENEFÍCIOS</span>
+                                </label>
+
+                                <label class="flex items-center gap-3 cursor-pointer group">
+                                    <div class="relative w-9 h-5 shrink-0">
+                                        <input type="checkbox" name="tipos_documentos" value="FINANCIAMENTO"
+                                            class="sr-only peer chk-doc" checked>
+                                        <div
+                                            class="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:bg-purple-500 transition-colors">
+                                        </div>
+                                        <div
+                                            class="absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4 shadow-sm">
+                                        </div>
+                                    </div>
+                                    <span
+                                        class="text-[11.5px] font-medium text-gray-600 leading-snug group-hover:text-purple-600 transition-colors">COMPROVANTE
+                                        DE FINANCIAMENTO</span>
+                                </label>
+
+                                <label class="flex items-center gap-3 cursor-pointer group">
+                                    <div class="relative w-9 h-5 shrink-0">
+                                        <input type="checkbox" name="tipos_documentos" value="RIAF"
+                                            class="sr-only peer chk-doc" checked>
+                                        <div
+                                            class="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:bg-purple-500 transition-colors">
+                                        </div>
+                                        <div
+                                            class="absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4 shadow-sm">
+                                        </div>
+                                    </div>
+                                    <span
+                                        class="text-[11.5px] font-medium text-gray-600 leading-snug group-hover:text-purple-600 transition-colors">RIAF
+                                        – RESUMO DE INFORMAÇÕES ACADÊMICAS E FINANCEIRAS</span>
+                                </label>
+
+                                <label class="flex items-center gap-3 cursor-pointer group">
+                                    <div class="relative w-9 h-5 shrink-0">
+                                        <input type="checkbox" name="tipos_documentos" value="HISTORICO"
+                                            class="sr-only peer chk-doc" checked>
+                                        <div
+                                            class="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:bg-purple-500 transition-colors">
+                                        </div>
+                                        <div
+                                            class="absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4 shadow-sm">
+                                        </div>
+                                    </div>
+                                    <span
+                                        class="text-[11.5px] font-medium text-gray-600 leading-snug group-hover:text-purple-600 transition-colors uppercase">
+                                        HISTÓRICO ESCOLAR
+                                    </span>
+                                </label>
+                                
+                            </div>
+                        </div>
+
+                        <div class="xl:col-span-7 flex flex-col justify-start xl:pl-2">
+
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+
+                                <div class="flex flex-col gap-2.5 md:border-r border-gray-200/60 md:pr-4">
+                                    <h4
+                                        class="text-[12px] font-black text-gray-600 uppercase tracking-widest flex items-center gap-2 mb-0.5">
+                                        <i class="fa-regular fa-calendar-check text-purple-500 text-lg"></i> Anos
+                                        Letivos
+                                    </h4>
+                                    <div class="flex flex-col gap-2.5">
+                                        <label class="flex items-center gap-3 cursor-pointer group">
+                                            <div class="relative w-9 h-5 shrink-0">
+                                                <input type="checkbox" id="chk-todos-anos" name="anos_letivos"
+                                                    value="TODOS" class="sr-only peer chk-todos" checked>
+                                                <div
+                                                    class="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:bg-purple-500 transition-colors">
+                                                </div>
+                                                <div
+                                                    class="absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4 shadow-sm">
+                                                </div>
+                                            </div>
+                                            <span
+                                                class="text-[13px] font-bold text-gray-800 uppercase group-hover:text-purple-600 transition-colors">Todos</span>
+                                        </label>
+                                        <label class="flex items-center gap-3 cursor-pointer group">
+                                            <div class="relative w-9 h-5 shrink-0">
+                                                <input type="checkbox" name="anos_letivos" value="2025"
+                                                    class="sr-only peer chk-ano" checked>
+                                                <div
+                                                    class="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:bg-purple-500 transition-colors">
+                                                </div>
+                                                <div
+                                                    class="absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4 shadow-sm">
+                                                </div>
+                                            </div>
+                                            <span
+                                                class="text-[12.5px] font-medium text-gray-600 group-hover:text-purple-600 transition-colors">2025</span>
+                                        </label>
+                                        <label class="flex items-center gap-3 cursor-pointer group">
+                                            <div class="relative w-9 h-5 shrink-0">
+                                                <input type="checkbox" name="anos_letivos" value="2026"
+                                                    class="sr-only peer chk-ano" checked>
+                                                <div
+                                                    class="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:bg-purple-500 transition-colors">
+                                                </div>
+                                                <div
+                                                    class="absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4 shadow-sm">
+                                                </div>
+                                            </div>
+                                            <span
+                                                class="text-[12.5px] font-medium text-gray-600 group-hover:text-purple-600 transition-colors">2026</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="flex flex-col gap-2.5 md:border-r border-gray-200/60 md:pr-4">
+                                    <h4
+                                        class="text-[12px] font-black text-gray-600 uppercase tracking-widest flex items-center gap-2 mb-0.5">
+                                        <i class="fa-solid fa-list-ol text-purple-500 text-lg"></i> Semestres
+                                    </h4>
+                                    <div class="flex flex-col gap-2.5">
+                                        <label class="flex items-center gap-3 cursor-pointer group">
+                                            <div class="relative w-9 h-5 shrink-0">
+                                                <input type="checkbox" id="chk-todos-sems" name="semestres"
+                                                    value="TODOS" class="sr-only peer chk-todos" checked>
+                                                <div
+                                                    class="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:bg-purple-500 transition-colors">
+                                                </div>
+                                                <div
+                                                    class="absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4 shadow-sm">
+                                                </div>
+                                            </div>
+                                            <span
+                                                class="text-[13px] font-bold text-gray-800 uppercase group-hover:text-purple-600 transition-colors">Todos</span>
+                                        </label>
+                                        <label class="flex items-center gap-3 cursor-pointer group">
+                                            <div class="relative w-9 h-5 shrink-0">
+                                                <input type="checkbox" name="semestres" value="1"
+                                                    class="sr-only peer chk-sem" checked>
+                                                <div
+                                                    class="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:bg-purple-500 transition-colors">
+                                                </div>
+                                                <div
+                                                    class="absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4 shadow-sm">
+                                                </div>
+                                            </div>
+                                            <span
+                                                class="text-[12.5px] font-medium text-gray-600 group-hover:text-purple-600 transition-colors">1º
+                                                Semestre</span>
+                                        </label>
+                                        <label class="flex items-center gap-3 cursor-pointer group">
+                                            <div class="relative w-9 h-5 shrink-0">
+                                                <input type="checkbox" name="semestres" value="2"
+                                                    class="sr-only peer chk-sem" checked>
+                                                <div
+                                                    class="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:bg-purple-500 transition-colors">
+                                                </div>
+                                                <div
+                                                    class="absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4 shadow-sm">
+                                                </div>
+                                            </div>
+                                            <span
+                                                class="text-[12.5px] font-medium text-gray-600 group-hover:text-purple-600 transition-colors">2º
+                                                Semestre</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="flex flex-col gap-2.5">
+                                    <h4
+                                        class="text-[12px] font-black text-gray-600 uppercase tracking-widest flex items-center gap-2 mb-0.5">
+                                        <i class="fa-solid fa-file-export text-purple-500 text-lg"></i> Formato
+                                    </h4>
+                                    <div class="flex flex-row gap-2.5">
+
+                                        <label
+                                            class="flex-1 px-3 py-2.5 rounded-xl border-2 border-gray-200 bg-white shadow-sm flex items-center justify-center gap-2 cursor-pointer transition-all duration-200 hover:border-purple-300 hover:shadow-md has-[:checked]:border-purple-500 has-[:checked]:bg-purple-50/40 group relative overflow-hidden">
+                                            <input type="radio" name="formato" value="EXCEL"
+                                                class="peer sr-only chk-formato" checked>
+                                            <i
+                                                class="fa-solid fa-file-excel text-gray-400 peer-checked:text-green-600 text-[20px] transition-colors shrink-0"></i>
+                                            <span
+                                                class="text-[12px] font-semibold text-gray-500 peer-checked:text-purple-800 peer-checked:font-bold">Excel</span>
+                                            <span
+                                                class="absolute top-0 right-0 bg-gray-100 text-gray-500 peer-checked:bg-purple-100 peer-checked:text-purple-700 text-[8px] font-black px-1.5 py-0.5 rounded-bl-lg uppercase tracking-wider transition-colors shadow-sm">Padrão</span>
+                                        </label>
+
+                                        <label
+                                            class="flex-1 px-3 py-2.5 rounded-xl border-2 border-gray-200 bg-white shadow-sm flex items-center justify-center gap-2 cursor-pointer transition-all duration-200 hover:border-purple-300 hover:shadow-md has-[:checked]:border-purple-500 has-[:checked]:bg-purple-50/40 group">
+                                            <input type="radio" name="formato" value="CSV"
+                                                class="peer sr-only chk-formato">
+                                            <i
+                                                class="fa-solid fa-file-csv text-gray-400 peer-checked:text-pink-600 text-[20px] transition-colors shrink-0"></i>
+                                            <span
+                                                class="text-[12px] font-semibold text-gray-500 peer-checked:text-purple-800 peer-checked:font-bold">CSV</span>
+                                        </label>
+
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            <hr class="border-t border-gray-200/70 mt-5 mb-3">
+
+                            <div class="flex items-center gap-6">
+                                <h4
+                                    class="text-[12px] font-black text-gray-600 uppercase tracking-widest flex items-center gap-2 shrink-0">
+                                    <i class="fa-solid fa-rectangle-list text-purple-500 text-lg"></i> Relatório
+                                    Informativo das IES
+                                </h4>
+                                <label class="flex items-center gap-3 cursor-pointer group">
+                                    <div class="relative w-9 h-5 shrink-0">
+                                        <input type="checkbox" id="chk-relatorio-ies" name="relatorio_ies" value="SIM"
+                                            class="sr-only peer" checked>
+                                        <div
+                                            class="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:bg-purple-500 transition-colors">
+                                        </div>
+                                        <div
+                                            class="absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4 shadow-sm">
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    class="bg-white/90 backdrop-blur-xl border border-white/80 p-2 rounded-[1rem] shadow-[0_8px_20px_rgb(0,0,0,0.03)] flex items-center shrink-0">
+
+                    <button id="btn-start"
+                        class="text-white bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-purple-300 shadow-lg shadow-purple-500/40 font-bold rounded-xl text-[13px] px-5 py-2.5 tracking-widest uppercase flex items-center justify-center gap-2 w-36 transition-all">
+                        <i class="fa-solid fa-play"></i><span>Iniciar</span>
+                    </button>
+
+                    <button id="btn-stop"
+                        class="ml-2 text-white bg-gradient-to-r from-pink-500 via-pink-600 to-pink-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-pink-300 shadow-md shadow-pink-500/30 font-bold rounded-xl text-[13px] px-5 py-2.5 tracking-widest uppercase flex items-center justify-center gap-2 w-36 transition-all cursor-not-allowed opacity-90">
+                        <i class="fa-solid fa-stop"></i><span>Parar</span>
+                    </button>
+
+                    <div
+                        class="flex-1 mx-4 bg-gray-100 rounded-lg h-7 border border-gray-200 shadow-inner relative flex items-center justify-center overflow-hidden">
+                        <div id="progress-bar"
+                            class="absolute top-0 left-0 h-full bg-gradient-to-r from-pink-400 to-purple-500 transition-all duration-500 ease-out"
+                            style="width: 0%;"></div>
+                        <span id="progress-text"
+                            class="relative z-10 text-[13px] font-black text-gray-700 tracking-wide drop-shadow-[0_0_2px_rgba(255,255,255,0.8)]">0%</span>
+                    </div>
+
+                    <button id="btn-download"
+                        class="text-gray-500 bg-gradient-to-r from-gray-100 via-gray-200 to-gray-300 focus:ring-4 focus:outline-none focus:ring-gray-200 shadow-sm font-bold rounded-xl text-[13px] px-5 py-2.5 tracking-widest uppercase flex items-center justify-center gap-2 w-72 transition-all cursor-not-allowed">
+                        <i class="fa-solid fa-download"></i><span>Baixar</span>
+                    </button>
+
+                </div>
+
+                <div
+                    class="flex-1 min-h-[150px] bg-[#111116] border border-gray-800 rounded-[1.5rem] shadow-2xl flex flex-col overflow-hidden">
+                    <div
+                        class="bg-[#1a1b26] px-5 py-2.5 flex items-center justify-between border-b border-gray-800 shrink-0">
+                        <div class="flex space-x-2.5">
+                            <div class="w-3.5 h-3.5 rounded-full bg-[#ff5f56] shadow-sm"></div>
+                            <div class="w-3.5 h-3.5 rounded-full bg-[#ffbd2e] shadow-sm"></div>
+                            <div class="w-3.5 h-3.5 rounded-full bg-[#27c93f] shadow-sm"></div>
+                        </div>
+                        <span
+                            class="text-gray-400 text-[11px] font-mono tracking-widest font-bold flex items-center gap-2">
+                            <i class="fa-solid fa-terminal text-gray-500"></i> CONSOLE DE PROCESSAMENTO
+                        </span>
+                        <div class="w-10"></div>
+                    </div>
+
+                    <div id="console-logs"
+                        class="p-6 flex-1 overflow-y-auto font-mono text-[13px] leading-relaxed custom-scrollbar-dark bg-[#0d0d12] text-gray-300">
+                        <div class="flex gap-2 mb-1">
+                            <span class="text-pink-500 font-bold">ovg@probem-ai:</span>
+                            <span class="text-purple-400">~</span>
+                            <span class="text-white">$</span>
+                            <span class="text-gray-300 animate-pulse">init_analise_ia --verbose</span>
+                        </div>
+
+                        <div class="text-pink-500/80 italic mb-2">
+                            <i class="fa-solid fa-angle-right"></i> Aguardando início...
+                        </div>
+
+                        <div class="inline-block w-2 h-4 bg-pink-500 ml-1 align-middle animate-bounce"></div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            function setupMasterCheckbox(masterId, childClass) {
+                const master = document.getElementById(masterId);
+                const children = document.querySelectorAll(childClass);
+
+                master.addEventListener('change', (e) => {
+                    children.forEach(child => child.checked = e.target.checked);
+                });
+
+                children.forEach(child => {
+                    child.addEventListener('change', () => {
+                        const allChecked = Array.from(children).every(c => c.checked);
+                        master.checked = allChecked;
+                    });
+                });
+            }
+
+            setupMasterCheckbox('chk-todos-docs', '.chk-doc');
+            setupMasterCheckbox('chk-todos-anos', '.chk-ano');
+            setupMasterCheckbox('chk-todos-sems', '.chk-sem');
+        });
+    </script>
+
+    <script src="{% static 'js/menu/analise_ia/analise_ia.js' %}?v=3"></script>
+</body>
+
+</html>

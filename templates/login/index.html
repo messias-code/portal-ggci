@@ -14,15 +14,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- CSS Externo: Estilos específicos da tela de login (ex: animações de fundo) -->
-    <!-- Arquivo localizado em: static/login/style.css -->
-    <link rel="stylesheet" href="{% static 'login/style.css' %}">
+    <!-- Arquivo localizado em: static/css/login/login.css -->
+    <link rel="stylesheet" href="{% static 'css/login/login.css' %}">
 </head>
 
 <!-- Layout principal: Fundo claro, centralização do card e transições suaves -->
 <body class="bg-[#f8f6fb] fixed inset-0 flex items-center justify-center p-4 antialiased transition-colors duration-500 overflow-hidden">
 
     <!-- INÍCIO: Elementos visuais de fundo (Bolas coloridas animadas) -->
-    <!-- As animações 'drift' são controladas pelo static/login/style.css -->
+    <!-- As animações 'drift' são controladas pelo static/css/login/login.css -->
     <div class="bg-color-1 absolute top-[-15%] left-[-10%] w-[65vw] h-[65vh] bg-pink-500/60 rounded-full blur-[140px] pointer-events-none z-0"></div>
     <div class="bg-color-2 absolute bottom-[-15%] left-[10%] w-[60vw] h-[60vh] bg-purple-600/60 rounded-full blur-[140px] pointer-events-none z-0"></div>
     <div class="bg-color-3 absolute top-[-5%] right-[-10%] w-[60vw] h-[60vh] bg-yellow-400/50 rounded-full blur-[140px] pointer-events-none z-0"></div>
@@ -43,7 +43,7 @@
             <div class="shape-3 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-50"></div>
 
             <!-- Imagem principal do painel esquerdo -->
-            <img src="{% static 'sources/job.png' %}" alt="Equipe trabalhando" class="relative z-10 w-full max-w-sm drop-shadow-xl transform transition hover:scale-105 duration-700">
+            <img src="{% static 'img/icones/job.png' %}" alt="Equipe trabalhando" class="relative z-10 w-full max-w-sm drop-shadow-xl transform transition hover:scale-105 duration-700">
         </div>
 
         <!-- Lado Direito (Formulário de Login) -->
@@ -52,7 +52,7 @@
                 
                 <!-- Cabeçalho do Formulário (Logos e Títulos) -->
                 <div class="text-center flex flex-col items-center">
-                    <img src="{% static 'sources/ovg.png' %}" alt="Logo OVG" class="h-28 mb-6 drop-shadow-sm transition-transform hover:scale-105 duration-300">
+                    <img src="{% static 'img/logos/ovg.png' %}" alt="Logo OVG" class="h-28 mb-6 drop-shadow-sm transition-transform hover:scale-105 duration-300">
                     <h2 class="text-3xl font-bold text-gray-800 tracking-tight transition-colors">Portal GGCI</h2>
                     <p class="mt-2 text-lg text-gray-500 font-medium transition-colors">Gerência de Gestão e Controle de Informações</p>
                 </div>
@@ -63,7 +63,7 @@
                 </div>
 
                 <!-- INÍCIO: Formulário de Autenticação -->
-                <!-- A lógica de envio (Fetch API) está em: static/login/script.js -->
+                <!-- A lógica de envio (Fetch API) está em: static/js/login/login.js -->
                 <form id="formLogin" class="space-y-6" action="#" method="POST" novalidate>
                     
                     <!-- Token de Segurança Obrigatório do Django para requisições POST -->
@@ -103,7 +103,7 @@
     </script>
     
     <!-- JS Externo: Contém a lógica de validação visual e envio do login para a views.py -->
-    <!-- Arquivo localizado em: static/login/script.js -->
-    <script src="{% static 'login/script.js' %}"></script>
+    <!-- Arquivo localizado em: static/js/login/login.js -->
+    <script src="{% static 'js/login/login.js' %}"></script>
 </body>
 </html>

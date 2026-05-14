@@ -33,12 +33,11 @@ class Usuario(AbstractBaseUser):
     p_formatador_listas = models.BooleanField(default=False) 
     p_formatador_dados = models.BooleanField(default=False)  
     
-    p_automacoes = models.BooleanField(default=False)
     p_analise_ia = models.BooleanField(default=False)
     
     p_documentacoes = models.BooleanField(default=False)
 
-    p_dashboards = models.BooleanField(default=False)
+    p_dash_polichat = models.BooleanField(default=False)
     p_gestao_polichat = models.BooleanField(default=False)
 
     # Controles internos do Django

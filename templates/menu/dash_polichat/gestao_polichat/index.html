@@ -1,0 +1,121 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão Polichat · Portal GGCI</title>
+    <meta name="description" content="Painel de gestão de atendimentos Polichat — Portal GGCI">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <!-- Flatpickr for Modern Datepicker -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/pt.js"></script>
+    
+    <link rel="stylesheet" href="{% static 'css/menu/dash_polichat/gestao_polichat.css' %}?v=16">
+</head>
+<body>
+
+<!-- Background blobs -->
+<div class="bg-blob blob-1"></div>
+<div class="bg-blob blob-2"></div>
+<div class="bg-blob blob-3"></div>
+<div class="bg-blob blob-4"></div>
+
+<div class="app">
+    <!-- ═══ HEADER ═══ -->
+    <header class="header">
+        <div class="header-inner">
+            <div class="header-brand">
+                <div class="brand-icon"><i class="fa-solid fa-bezier-curve"></i></div>
+                <div class="brand-info">
+                    <div class="brand-title">Gestão <span>Polichat</span></div>
+                    <div class="sync-badge" id="sync-status"><div class="sync-dot" id="sync-dot"></div><span id="sync-text">Sincronização ativa</span></div>
+                </div>
+            </div>
+
+            <div class="header-filters">
+                <div class="filter-card">
+                    <div class="filter-label"><i class="fa-solid fa-user-tie"></i> Agente</div>
+                    <div class="filter-field">
+                        <select id="filtro-agente" style="display:none">
+                            <option value="">— Selecione seu nome —</option>
+                        </select>
+                        <div class="custom-select" id="custom-select-agente">
+                            <div class="cs-display" id="cs-display">
+                                <span class="cs-text">— Selecione seu nome —</span>
+                                <i class="fa-solid fa-chevron-down cs-arrow"></i>
+                            </div>
+                            <div class="cs-dropdown" id="cs-dropdown">
+                                <div class="cs-search-wrap">
+                                    <i class="fa-solid fa-magnifying-glass"></i>
+                                    <input type="text" class="cs-search" id="cs-search" placeholder="Buscar agente..." autocomplete="off">
+                                </div>
+                                <div class="cs-options" id="cs-options"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="filter-card">
+                    <div class="filter-label" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                        <span><i class="fa-regular fa-calendar-days"></i> Período</span>
+                        <div class="quick-dates">
+                            <button class="qd-btn" data-qd="hoje">Hoje</button>
+                            <button class="qd-btn" data-qd="mes">Mês</button>
+                            <button class="qd-btn" data-qd="ano">Ano</button>
+                        </div>
+                    </div>
+                    <div class="filter-field filter-dates">
+                        <input type="date" id="filtro-inicio" min="2020-01-01" max="2030-12-31">
+                        <span class="date-sep"><i class="fa-solid fa-arrow-right"></i></span>
+                        <input type="date" id="filtro-fim" min="2020-01-01" max="2030-12-31">
+                    </div>
+                </div>
+            </div>
+
+            <div class="header-actions">
+                <button class="btn-sync" id="btn-sync-manual">
+                    <i class="fa-solid fa-rotate-right"></i>
+                    <span>Atualizar agora</span>
+                </button>
+                <a href="{% url 'dash_polichat' %}" class="btn-back">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    <span>Voltar</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- ═══ MAIN ═══ -->
+    <div class="main" style="position:relative">
+        <div id="prompt-inicial"><div class="prompt-box"><div class="p-emoji">👆</div><h3>Selecione seu perfil</h3><p>Escolha seu nome no filtro acima para carregar sua mesa de trabalho.</p><div class="arrow-up"><i class="fa-solid fa-arrow-up"></i> Filtro de agente</div></div></div>
+        <div class="kpi-strip">
+            <div class="kpi-card" data-tab-target="aguardando"><div class="kpi-icon amber"><i class="fa-solid fa-hourglass-half"></i></div><div class="kpi-body"><div class="kpi-label">Aguardando</div><div class="kpi-value amber" id="kpi-aguardando">0</div></div></div>
+            <div class="kpi-card" data-tab-target="andamento"><div class="kpi-icon blue"><i class="fa-solid fa-headset"></i></div><div class="kpi-body"><div class="kpi-label">Em Andamento</div><div class="kpi-value blue" id="kpi-andamento">0</div></div></div>
+            <div class="kpi-card" data-tab-target="mim"><div class="kpi-icon green"><i class="fa-solid fa-trophy"></i></div><div class="kpi-body"><div class="kpi-label">Fechados por Mim</div><div class="kpi-value green" id="kpi-fechados-mim">0</div></div></div>
+            <div class="kpi-card" data-tab-target="outro"><div class="kpi-icon rose"><i class="fa-solid fa-people-arrows"></i></div><div class="kpi-body"><div class="kpi-label">Fechados por Outro</div><div class="kpi-value rose" id="kpi-fechados-outro">0</div></div></div>
+            <div class="kpi-card"><div class="kpi-icon purple"><i class="fa-solid fa-stopwatch"></i></div><div class="kpi-body"><div class="kpi-label">TMA (Fechados)</div><div class="kpi-value purple mono" id="kpi-tma" style="font-size:20px;margin-top:4px">--:--</div></div></div>
+        </div>
+        <div class="master-panel">
+            <div class="master-tabs">
+                <button class="mtab active" data-tab="aguardando"><i class="fa-solid fa-clock"></i> Aguardando <span class="mtab-count amber-c" id="cnt-aguardando">0</span></button>
+                <button class="mtab" data-tab="andamento"><i class="fa-solid fa-circle-play"></i> Em Atendimento <span class="mtab-count blue-c" id="cnt-andamento">0</span></button>
+                <button class="mtab" data-tab="mim"><i class="fa-solid fa-check-circle"></i> Fechados por Mim <span class="mtab-count green-c" id="cnt-mim">0</span></button>
+                <button class="mtab" data-tab="outro"><i class="fa-solid fa-person-walking-arrow-right"></i> Fechados por Outro <span class="mtab-count rose-c" id="cnt-outro">0</span></button>
+                <button class="mtab" data-tab="retorno"><i class="fa-solid fa-reply-all"></i> Retorno <span class="mtab-count purple-c" id="cnt-retorno">0</span></button>
+                <div class="mtab-search" id="search-wrap" style="display:none"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="search-input" placeholder="Buscar cliente ou telefone..."></div>
+            </div>
+            <div class="tab-pane active" id="pane-aguardando"><div class="card-list" id="list-aguardando"><div class="empty-state"><div class="empty-icon">🎉</div><p>Nenhum cliente aguardando.</p></div></div></div>
+            <div class="tab-pane" id="pane-andamento"><div class="card-list" id="list-andamento"><div class="empty-state"><div class="empty-icon">💤</div><p>Nenhum em atendimento.</p></div></div></div>
+            <div class="tab-pane" id="pane-mim"><div class="card-list" id="list-mim"></div><div class="list-footer"><div class="list-info" id="info-mim">0 registros</div><div class="pag" id="pag-mim"></div></div></div>
+            <div class="tab-pane" id="pane-outro"><div class="card-list" id="list-outro"></div><div class="list-footer"><div class="list-info" id="info-outro">0 registros</div><div class="pag" id="pag-outro"></div></div></div>
+            <div class="tab-pane" id="pane-retorno"><div class="card-list" id="list-retorno"><div class="empty-state"><div class="empty-icon">✅</div><p>Nenhum chat de retorno.</p></div></div></div>
+        </div>
+    </div>
+</div>
+<script src="{% static 'js/menu/dash_polichat/gestao_polichat.js' %}?v=16"></script>
+</body>
+</html>

@@ -77,20 +77,20 @@ urlpatterns = [
     path('ferramentas/formatador-dados/', views.formatador_dados, name='formatador_dados'),
     
     # Automações:
-    path('automacoes/', views.automacoes, name='automacoes'),
-    path('menu/automacoes/analise-ia/', views.analise_ia_view, name='analise_ia'),
+    path('analise_ia/', views.analise_ia, name='analise_ia'),
+    path('menu/analise_ia/analise-ia/', views.analise_ia_view, name='analise_ia'),
 
     # Dashboards:
-    path('dashboards/', views.dashboards, name='dashboards'),
-    path('dashboards/gestao-polichat/', views.gestao_polichat_view, name='gestao_polichat'),
+    path('dash_polichat/', views.dash_polichat, name='dash_polichat'),
+    path('dash_polichat/gestao-polichat/', views.gestao_polichat_view, name='gestao_polichat'),
 
     # ======================================================================
     # APIS DO NOVO MOTOR DE IA (APP AUTOMACOES)
     # ======================================================================
-    path('motor-ia/', include('automacoes.urls')),
+    path('motor-ia/', include('analise_ia.urls')),
 
     # ======================================================================
     # APIS DO DASHBOARD POLICHAT (APP DASHBOARDS)
     # ======================================================================
-    path('dashboards/', include('dashboards.urls')),
+    path('dash_polichat/', include('dash_polichat.urls')),
 ]
