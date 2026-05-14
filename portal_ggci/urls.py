@@ -18,8 +18,8 @@ from django.urls import path, include
 from django.views.generic import TemplateView
 
 # Importa o arquivo que contém a inteligência e as regras de negócio do app.
-# -> Arquivo referenciado: usuarios/views.py
-from usuarios import views
+# -> Arquivo referenciado: apps/gestao_acessos/views.py
+from apps.gestao_acessos import views
 
 # ==========================================================================
 # 2. MAPEAMENTO DE ROTAS (URL PATTERNS)
@@ -35,16 +35,16 @@ urlpatterns = [
     # exibe diretamente o HTML do login, sem precisar de lógica extra no views.
     # IMPORTANTE: O parâmetro name='home' é vital, pois o redirecionamento 
     # após o "Sair do Sistema" (logout) procura exatamente por este nome.
-    # -> Arquivo referenciado: templates/login/index.html
+    # -> Arquivo referenciado: apps/gestao_acessos/templates/gestao_acessos/login/index.html
     # ----------------------------------------------------------------------
-    path('', TemplateView.as_view(template_name='login/index.html'), name='home'),
+    path('', TemplateView.as_view(template_name='gestao_acessos/login/index.html'), name='home'),
     
     # ----------------------------------------------------------------------
     # APIS DE COMUNICAÇÃO (FETCH)
     # Rota "invisível" usada exclusivamente pelo Javascript para validar 
     # o usuário e senha de forma segura no backend.
     # -> Acionado por: static/login/script.js
-    # -> Lógica executada em: def verificar_login (usuarios/views.py)
+    # -> Lógica executada em: def verificar_login (apps/gestao_acessos/views.py)
     # ----------------------------------------------------------------------
     path('api/verificar-login/', views.verificar_login, name='verificar_login'),
     
@@ -78,7 +78,7 @@ urlpatterns = [
     
     # Automações:
     path('analise_ia/', views.analise_ia, name='analise_ia'),
-    path('menu/analise_ia/analise-ia/', views.analise_ia_view, name='analise_ia'),
+    path('analise_ia/analise-ia/', views.analise_ia_view, name='analise_ia_view'),
 
     # Dashboards:
     path('dash_polichat/', views.dash_polichat, name='dash_polichat'),
@@ -87,10 +87,10 @@ urlpatterns = [
     # ======================================================================
     # APIS DO NOVO MOTOR DE IA (APP AUTOMACOES)
     # ======================================================================
-    path('motor-ia/', include('analise_ia.urls')),
+    path('motor-ia/', include('apps.analise_ia.urls')),
 
     # ======================================================================
     # APIS DO DASHBOARD POLICHAT (APP DASHBOARDS)
     # ======================================================================
-    path('dash_polichat/', include('dash_polichat.urls')),
+    path('dash_polichat/', include('apps.dash_polichat.urls')),
 ]

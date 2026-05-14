@@ -22,9 +22,9 @@ O `consolidador.py` é um script altamente declarativo. Em vez de ter 50 `if/els
 
 ```ascii
              [PASTAS DO EXTRATOR]
-             ├─ dados_analise/analise_documentos_processados/ (Vários XLSX)
-             ├─ dados_analise/analise_documentos_agendar/ (Vários XLSX)
-             └─ dados_analise/analise_pagamentos/ (Vários XLS-HTML)
+             ├─ dados/dados_analise_ia/analise_documentos_processados/ (Vários XLSX)
+             ├─ dados/dados_analise_ia/analise_documentos_agendar/ (Vários XLSX)
+             └─ dados/dados_analise_ia/analise_pagamentos/ (Vários XLS-HTML)
                         │
                         ↓
             [MOTOR UNIVERSAL DE CONSOLIDAÇÃO]
@@ -42,7 +42,7 @@ O `consolidador.py` é um script altamente declarativo. Em vez de ter 50 `if/els
                         ↓
                      [SAÍDAS]
 ┌─────────────────────────────────────────────────────┐
-│ 📁 dados_analise/.../CONSOLIDADO/                   │
+│ 📁 dados/dados_analise_ia/.../CONSOLIDADO/                   │
 │  ├─ 📄 consolidado_agendar_processamentos.xlsx       │
 │  ├─ 📄 consolidado_processados.xlsx                  │
 │  ├─ 📄 consolidado_processados_riaf.xlsx             │
@@ -107,7 +107,7 @@ Para evitar código "Spaghetti" (onde a lógica de negócio se mistura com a ló
 configs = [
     {
         'tipo': 'pag',
-        'pasta': 'dados_analise/analise_pagamentos',
+        'pasta': 'dados/dados_analise_ia/analise_pagamentos',
         'saida': 'consolidado_pagamentos.xlsx',
         'ext': '.xls',
         'cols_num': ['UNI_CODIGO', 'CADUNICO', 'UNI_CPF'],

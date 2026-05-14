@@ -1,0 +1,200 @@
+[
+{
+    "model": "gestao_acessos.usuario",
+    "pk": 1,
+    "fields": {
+        "password": "argon2$argon2id$v=19$m=102400,t=2,p=8$V0dxWHcxemJwTGNXMm9Ja25yTDY0Nw$ulHNsi62SIjPnU7CZrJS5e9voiyEVG/sNy8JKZBx1xo",
+        "last_login": "2026-04-29T20:05:27.828Z",
+        "nome": "Administrador",
+        "usuario": "admin@ovg.org.br",
+        "perfil": "administrador",
+        "p_ferramentas": false,
+        "p_formatador_listas": false,
+        "p_formatador_dados": false,
+        "p_analise_ia": false,
+        "p_analise_ia": false,
+        "p_documentacoes": false,
+        "p_dash_polichat": false,
+        "p_gestao_polichat": false,
+        "is_active": true,
+        "is_staff": true,
+        "is_superuser": true
+    }
+},
+{
+    "model": "gestao_acessos.usuario",
+    "pk": 2,
+    "fields": {
+        "password": "argon2$argon2id$v=19$m=102400,t=2,p=8$UUkzSnFCRkJxT0RaeElac0xsdU5SMA$0xRUrIaYcqm00ay8B+WIjZTFhIjAgvYXxfnyllKTqc8",
+        "last_login": "2026-03-29T17:14:37.896Z",
+        "nome": "GGCI",
+        "usuario": "ggci@ovg.org.br",
+        "perfil": "consulta",
+        "p_ferramentas": false,
+        "p_formatador_listas": false,
+        "p_formatador_dados": false,
+        "p_analise_ia": false,
+        "p_analise_ia": false,
+        "p_documentacoes": false,
+        "p_dash_polichat": false,
+        "p_gestao_polichat": false,
+        "is_active": true,
+        "is_staff": false,
+        "is_superuser": false
+    }
+},
+{
+    "model": "gestao_acessos.usuario",
+    "pk": 3,
+    "fields": {
+        "password": "argon2$argon2id$v=19$m=102400,t=2,p=8$N2tWQzNsbVZVblNrVWtnWkdiRWl5bA$ksfEgED08DDqUzYdWkRumSZPmpR9Q7AYT0l0RKUV58o",
+        "last_login": null,
+        "nome": "Ihan Messias Nascimento Dos Santos",
+        "usuario": "ihan.santos@ovg.org.br",
+        "perfil": "comum",
+        "p_ferramentas": true,
+        "p_formatador_listas": true,
+        "p_formatador_dados": false,
+        "p_analise_ia": true,
+        "p_analise_ia": true,
+        "p_documentacoes": false,
+        "p_dash_polichat": false,
+        "p_gestao_polichat": false,
+        "is_active": true,
+        "is_staff": false,
+        "is_superuser": false
+    }
+},
+{
+    "model": "gestao_acessos.usuario",
+    "pk": 4,
+    "fields": {
+        "password": "argon2$argon2id$v=19$m=102400,t=2,p=8$Wm1uSzAxMzdvamViN1hVR1hPUFNoVg$XGcs+Jqjh5qVRS9omqPXs2L/k0pJn6nf/3sqKpTBkdw",
+        "last_login": "2026-04-16T20:09:59.376Z",
+        "nome": "Ney Fernando Pinheiro",
+        "usuario": "ney.pinheiro@ovg.org.br",
+        "perfil": "administrador",
+        "p_ferramentas": true,
+        "p_formatador_listas": true,
+        "p_formatador_dados": true,
+        "p_analise_ia": true,
+        "p_analise_ia": true,
+        "p_documentacoes": true,
+        "p_dash_polichat": false,
+        "p_gestao_polichat": false,
+        "is_active": true,
+        "is_staff": false,
+        "is_superuser": false
+    }
+},
+{
+    "model": "gestao_acessos.usuario",
+    "pk": 5,
+    "fields": {
+        "password": "argon2$argon2id$v=19$m=102400,t=2,p=8$cElhNmVjdFFJWjJqV085R3dFWlhVWg$FiAgygsrXQmBIJ/zyrbFcfJrG4f+nBIm2BP+jrDTbW4",
+        "last_login": "2026-04-16T19:00:11.403Z",
+        "nome": "Pedro Eleutério Alves Guarilha",
+        "usuario": "pedro.guarilha@ovg.org.br",
+        "perfil": "comum",
+        "p_ferramentas": true,
+        "p_formatador_listas": true,
+        "p_formatador_dados": true,
+        "p_analise_ia": true,
+        "p_analise_ia": true,
+        "p_documentacoes": true,
+        "p_dash_polichat": false,
+        "p_gestao_polichat": false,
+        "is_active": true,
+        "is_staff": false,
+        "is_superuser": false
+    }
+},
+{
+    "model": "gestao_acessos.usuario",
+    "pk": 6,
+    "fields": {
+        "password": "argon2$argon2id$v=19$m=102400,t=2,p=8$QkhlTEtzYTJKUDNISnNtTjlZWkM1Wg$m2Hr3fVQQ0FDvk0FvpfRbYesBnX16lib7fJILQ7KFMw",
+        "last_login": "2026-04-24T17:48:04.012Z",
+        "nome": "Maria De Fatima Machado Xavier",
+        "usuario": "maria.xavier@ovg.org.br",
+        "perfil": "comum",
+        "p_ferramentas": true,
+        "p_formatador_listas": true,
+        "p_formatador_dados": true,
+        "p_analise_ia": true,
+        "p_analise_ia": true,
+        "p_documentacoes": true,
+        "p_dash_polichat": true,
+        "p_gestao_polichat": true,
+        "is_active": true,
+        "is_staff": false,
+        "is_superuser": false
+    }
+},
+{
+    "model": "gestao_acessos.usuario",
+    "pk": 7,
+    "fields": {
+        "password": "argon2$argon2id$v=19$m=102400,t=2,p=8$QWhVWnVGeUhaMGhPZnZ4Z2hpV3h5TQ$oxgRUTnI4zaf6nft+XokMs/IuMcgJrK8h09JiIDYA0k",
+        "last_login": "2026-04-29T16:04:20.965Z",
+        "nome": "Rafael Gomes Pimentel",
+        "usuario": "rafael.pimentel@ovg.org.br",
+        "perfil": "comum",
+        "p_ferramentas": true,
+        "p_formatador_listas": true,
+        "p_formatador_dados": true,
+        "p_analise_ia": true,
+        "p_analise_ia": true,
+        "p_documentacoes": true,
+        "p_dash_polichat": true,
+        "p_gestao_polichat": true,
+        "is_active": true,
+        "is_staff": false,
+        "is_superuser": false
+    }
+},
+{
+    "model": "gestao_acessos.usuario",
+    "pk": 8,
+    "fields": {
+        "password": "argon2$argon2id$v=19$m=102400,t=2,p=8$U1RCTnJZVjB0YXdPR1hLZmZNVm1reQ$xo0kyAmYFiL4gHWGvPetJTM5/6Hl07wyA4A01s0kdSQ",
+        "last_login": "2026-04-23T18:05:24.487Z",
+        "nome": "Marcella Leao Soffa Guimaraes",
+        "usuario": "marcella.guimaraes@ovg.org.br",
+        "perfil": "comum",
+        "p_ferramentas": true,
+        "p_formatador_listas": true,
+        "p_formatador_dados": true,
+        "p_analise_ia": true,
+        "p_analise_ia": true,
+        "p_documentacoes": true,
+        "p_dash_polichat": false,
+        "p_gestao_polichat": false,
+        "is_active": true,
+        "is_staff": false,
+        "is_superuser": false
+    }
+},
+{
+    "model": "gestao_acessos.usuario",
+    "pk": 9,
+    "fields": {
+        "password": "argon2$argon2id$v=19$m=102400,t=2,p=8$SHUyaEF0S0hZb2lrRjJLajN5Nm1VcQ$Ovj+4NNpM8J7MtIQoH4YgStaG/UFq8Ac1vgzS0HonvQ",
+        "last_login": null,
+        "nome": "Ana Paula Borges Bulhões",
+        "usuario": "ana.bulhoes@ovg.org.br",
+        "perfil": "comum",
+        "p_ferramentas": false,
+        "p_formatador_listas": false,
+        "p_formatador_dados": false,
+        "p_analise_ia": false,
+        "p_analise_ia": false,
+        "p_documentacoes": false,
+        "p_dash_polichat": true,
+        "p_gestao_polichat": true,
+        "is_active": true,
+        "is_staff": false,
+        "is_superuser": false
+    }
+}
+]

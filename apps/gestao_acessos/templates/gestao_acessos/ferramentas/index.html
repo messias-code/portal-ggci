@@ -1,0 +1,149 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ferramentas - Portal GGCI</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Poppins', 'sans-serif'],
+                    }
+                }
+            }
+        };
+    </script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="{% static 'gestao_acessos/css/ferramentas/ferramentas.css' %}">
+</head>
+
+<body class="bg-[#f8f6fb] text-gray-800 fixed inset-0 p-4 lg:p-6 flex transition-colors duration-500 overflow-hidden">
+
+    <div class="bg-color-1 absolute top-[-15%] left-[-10%] w-[65vw] h-[65vh] bg-pink-500/70 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="bg-color-2 absolute bottom-[-15%] left-[10%] w-[60vw] h-[60vh] bg-purple-600/70 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="bg-color-3 absolute top-[-5%] right-[-10%] w-[60vw] h-[60vh] bg-yellow-400/60 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="bg-color-4 absolute bottom-[-10%] right-[5%] w-[65vw] h-[65vh] bg-teal-400/60 rounded-full blur-[140px] pointer-events-none z-0"></div>
+
+    <div class="w-full h-full bg-white/70 backdrop-blur-2xl border border-white/80 rounded-[2rem] shadow-2xl flex overflow-hidden relative z-10">
+
+        <aside class="w-[18rem] lg:w-[20rem] flex flex-col border-r border-purple-100/50 bg-white/40">
+            <div class="h-28 flex items-center justify-center border-b border-purple-100/50">
+                <img src="{% static 'img/logos/ovg.png' %}" alt="OVG Logo" class="h-[4.25rem] drop-shadow-md hover:scale-105 transition-transform duration-300">
+            </div>
+            <nav class="flex-1 px-6 py-8 space-y-2 overflow-hidden">
+                <p class="text-[13px] font-bold text-purple-700 uppercase tracking-widest mb-4 px-2">Navegação Principal</p>
+                
+                <a href="{% url 'inicio' %}" class="flex items-center space-x-4 px-4 py-3 text-gray-600 hover:bg-white hover:shadow-sm rounded-xl font-semibold text-base transition-all hover:text-purple-600">
+                    <i class="fa-solid fa-user-shield text-[23px] w-6 text-center"></i><span>Início</span>
+                </a>
+                
+                <a href="{% url 'ferramentas' %}" class="flex items-center space-x-3 px-4 py-3 bg-gradient-to-r from-purple-600 to-purple-500 shadow-xl shadow-purple-500/30 text-white rounded-xl font-bold text-base transition-all hover:scale-[1.02]">
+                    <i class="fa-solid fa-screwdriver-wrench text-[23px] w-6 text-center"></i><span>Ferramentas</span>
+                </a>
+                
+                {% if user.p_analise_ia or user.usuario == 'admin@ovg.org.br' %}
+                    <a href="{% url 'analise_ia' %}" class="flex items-center space-x-4 px-4 py-3 text-gray-600 hover:bg-white hover:shadow-sm rounded-xl font-semibold text-base transition-all hover:text-purple-600">
+                        <i class="fa-brands fa-whmcs text-[28px] w-6 text-center"></i><span>Automações</span>
+                    </a>
+                {% else %}
+                    <div class="flex items-center space-x-4 px-4 py-3 text-gray-400 bg-gray-50/50 rounded-xl font-semibold text-base cursor-not-allowed opacity-70" title="Acesso Restrito">
+                        <i class="fa-solid fa-lock text-[23px] w-6 text-center"></i><span>Automações</span>
+                    </div>
+                {% endif %}
+
+                {% if user.p_dash_polichat or user.usuario == 'admin@ovg.org.br' %}
+                    <a href="{% url 'dash_polichat' %}" class="flex items-center space-x-4 px-4 py-3 text-gray-600 hover:bg-white hover:shadow-sm rounded-xl font-semibold text-base transition-all hover:text-purple-600">
+                        <i class="fa-solid fa-chart-line text-[23px] w-6 text-center"></i><span>Dashboards</span>
+                    </a>
+                {% else %}
+                    <div class="flex items-center space-x-4 px-4 py-3 text-gray-400 bg-gray-50/50 rounded-xl font-semibold text-base cursor-not-allowed opacity-70" title="Acesso Restrito">
+                        <i class="fa-solid fa-lock text-[23px] w-6 text-center"></i><span>Dashboards</span>
+                    </div>
+                {% endif %}
+                
+                {% if user.p_documentacoes or user.usuario == 'admin@ovg.org.br' %}
+                    <a href="#" class="flex items-center space-x-4 px-4 py-3 text-gray-600 hover:bg-white hover:shadow-sm rounded-xl font-semibold text-base transition-all hover:text-purple-600">
+                        <i class="fa-solid fa-folder-open text-[23px] w-6 text-center"></i><span>Documentações</span>
+                    </a>
+                {% else %}
+                    <div class="flex items-center space-x-4 px-4 py-3 text-gray-400 bg-gray-50/50 rounded-xl font-semibold text-base cursor-not-allowed opacity-70" title="Acesso Restrito">
+                        <i class="fa-solid fa-lock text-[23px] w-6 text-center"></i><span>Documentações</span>
+                    </div>
+                {% endif %}
+            </nav>
+            <div class="p-6 border-t border-purple-100/50">
+                <a href="{% url 'logout' %}" class="flex items-center justify-center space-x-2 w-full px-4 py-3 bg-red-50 text-red-600 rounded-xl font-extrabold text-sm hover:bg-red-500 hover:text-white transition-all shadow-sm">
+                    <i class="fa-solid fa-right-from-bracket"></i><span>SAIR DO SISTEMA</span>
+                </a>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+            <header class="h-28 px-10 flex justify-between items-center border-b border-purple-100/50 bg-white/40 backdrop-blur-md shrink-0">
+                <div>
+                    <h2 class="text-3xl font-extrabold text-gray-800 tracking-tight">Ferramentas</h2>
+                    <p class="text-lg text-gray-500 font-medium mt-1">Otimização de Rotinas Administrativas</p>
+                </div>
+            </header>
+
+            <div class="flex-1 p-8 lg:p-10 flex flex-wrap gap-6 lg:gap-8 content-start overflow-y-auto custom-scrollbar">
+
+                <a href="{% url 'formatador_listas' %}" class="group flex flex-row items-center bg-gradient-to-br from-pink-400 to-pink-500 p-5 lg:p-6 border border-white/30 rounded-[2rem] shadow-xl hover:shadow-2xl hover:shadow-pink-500/30 transition-all duration-300 hover:-translate-y-1 relative overflow-hidden w-full max-w-[25rem] min-h-[12rem]">
+                    <div class="absolute -right-10 -top-10 w-48 h-48 bg-white/10 blur-3xl rounded-full group-hover:bg-white/20 transition-all"></div>
+                    <div class="flex-shrink-0 w-24 h-24 bg-white/10 backdrop-blur-md rounded-[1.2rem] border border-white/30 shadow-[inset_0_0_20px_rgba(255,255,255,0.1)] flex items-center justify-center relative overflow-hidden mr-5 group-hover:bg-white/20 transition-all text-white">
+                        <i class="fa-solid fa-brain text-[2.75rem] drop-shadow-lg transform group-hover:scale-110 transition-transform duration-500"></i>
+                    </div>
+                    <div class="flex flex-col justify-center text-left flex-1 z-10 w-full">
+                        <h5 class="mb-1.5 text-xl font-extrabold tracking-tight text-white drop-shadow-sm">Formatador de Listas</h5>
+
+                        <!-- ADICIONE ESTA LINHA ABAIXO: -->
+                        <p class="mb-4 text-pink-50/90 text-[12px] leading-relaxed font-medium">Padronização de listas para consultas e cruzamento de informações.</p>
+
+                        {% if user.p_formatador_listas or user.usuario == 'admin@ovg.org.br' %}
+                            <button type="button" class="inline-flex items-center justify-center w-max text-pink-600 bg-white hover:bg-gray-100 hover:scale-[1.03] transition-all font-bold rounded-xl text-[13px] px-4 py-2 shadow-md">
+                                Acessar Ferramenta <svg class="w-4 h-4 ml-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                            </button>
+                        {% else %}
+                            <button type="button" class="inline-flex items-center justify-center w-max text-pink-700 bg-white/70 font-bold rounded-xl text-[13px] px-4 py-2 shadow-sm pointer-events-none opacity-80">
+                                <i class="fa-solid fa-lock mr-2"></i> Acesso Restrito
+                            </button>
+                        {% endif %}
+                    </div>
+                </a>
+
+                <a href="{% url 'formatador_dados' %}" class="group flex flex-row items-center bg-gradient-to-br from-pink-600 to-pink-700 p-5 lg:p-6 border border-white/30 rounded-[2rem] shadow-xl hover:shadow-2xl hover:shadow-pink-700/30 transition-all duration-300 hover:-translate-y-1 relative overflow-hidden w-full max-w-[25rem] min-h-[12rem]">
+                    <div class="absolute -right-10 -top-10 w-48 h-48 bg-white/10 blur-3xl rounded-full group-hover:bg-white/20 transition-all"></div>
+                    <div class="flex-shrink-0 w-24 h-24 bg-white/10 backdrop-blur-md rounded-[1.2rem] border border-white/30 shadow-[inset_0_0_20px_rgba(255,255,255,0.1)] flex items-center justify-center relative overflow-hidden mr-5 group-hover:bg-white/20 transition-all text-white">
+                        <i class="fa-solid fa-language text-[3.75rem] drop-shadow-lg transform group-hover:scale-110 transition-transform duration-500"></i>
+                    </div>
+                    <div class="flex flex-col justify-center text-left flex-1 z-10 w-full">
+                        <h5 class="mb-1.5 text-xl font-extrabold tracking-tight text-white drop-shadow-sm">Formatador de Dados</h5>
+                        <p class="mb-4 text-pink-50/90 text-[12px] leading-relaxed font-medium">Padronização e correção de registros para bases de dados da OVG.</p>
+                        {% if user.p_formatador_dados or user.usuario == 'admin@ovg.org.br' %}
+                            <button type="button" class="inline-flex items-center justify-center w-max text-pink-700 bg-white hover:bg-gray-100 hover:scale-[1.03] transition-all font-bold rounded-xl text-[13px] px-4 py-2 shadow-md">
+                                Acessar Ferramenta <svg class="w-4 h-4 ml-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                            </button>
+                        {% else %}
+                            <button type="button" class="inline-flex items-center justify-center w-max text-pink-800 bg-white/70 font-bold rounded-xl text-[13px] px-4 py-2 shadow-sm pointer-events-none opacity-80">
+                                <i class="fa-solid fa-lock mr-2"></i> Acesso Restrito
+                            </button>
+                        {% endif %}
+                    </div>
+                </a>
+
+            </div>
+        </main>
+    </div>
+
+    <script src="{% static 'gestao_acessos/js/ferramentas/ferramentas.js' %}"></script>
+</body>
+</html>

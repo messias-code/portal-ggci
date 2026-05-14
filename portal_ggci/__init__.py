@@ -15,7 +15,7 @@ do nosso projeto e importar arquivos de uma pasta para outra.
 
 Por exemplo, ele é o responsável por permitir que:
 - O 'manage.py' consiga ler o 'portal_ggci/settings.py'
-- O 'portal_ggci/urls.py' consiga puxar o 'usuarios/views.py'
+- O 'portal_ggci/urls.py' consiga puxar o 'apps/gestao_acessos/views.py'
 
 Se este arquivo for deletado, o Python deixará de reconhecer a pasta 
 como parte do código, os imports vão quebrar, e o servidor do Portal GGCI 

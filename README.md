@@ -37,7 +37,7 @@ Em vez de depender de ferramentas externas dispersas, a equipe passa a contar co
 
 - 🔒 **Segurança** — Autenticação com model customizado e senhas criptografadas via **Argon2** (algoritmo recomendado pelo OWASP)
 - 🧩 **Permissões Granulares** — Cada usuário tem acesso somente aos módulos que lhe foram liberados individualmente
-- 📦 **Portabilidade** — O arquivo `usuarios_iniciais.json` garante que qualquer desenvolvedor recrie o ambiente idêntico ao original com um único comando
+- 📦 **Portabilidade** — O arquivo `gestao_acessos_iniciais.json` garante que qualquer desenvolvedor recrie o ambiente idêntico ao original com um único comando
 - ⚡ **Automação de Setup** — Scripts `setup.sh` e `teardown.sh` eliminam toda a configuração manual do ambiente
 
 ## 💡 Módulos e Funcionalidades
@@ -56,7 +56,7 @@ O portal organiza suas funcionalidades em módulos independentes, cada um com co
 3. **Automações (Pipeline GGCI)**
     - **Etapa 1 — Extração:** Download automatizado de documentos e pagamentos via Playwright
     - **Etapa 2 — Consolidação:** Agrupamento e normalização dos dados extraídos em planilhas Excel
-    - **Etapa 3 — Análise:** Cruzamento com banco de dados SQL, auditoria de IA, validação financeira e geração do Relatório Geral (`relatorio_geral.xlsx`)
+    - **Etapa 3 — Análise:** Cruzamento com banco de dados SQL, auditoria de IA, validação financeira e geração do Relatório Geral (`dados/dados_analise_ia/relatorio_geral.xlsx`)
 
 4. **Documentações**
     - Base de conhecimento e repositório técnico interno
@@ -77,31 +77,33 @@ O portal organiza suas funcionalidades em módulos independentes, cada um com co
 portal-ggci-python/
 │
 ├── manage.py                        # Ponto de entrada de todos os comandos Django
-├── usuarios_iniciais.json           # Fixture: snapshot dos usuários de desenvolvimento
+├── gestao_acessos_iniciais.json           # Fixture: snapshot dos usuários de desenvolvimento
 ├── .gitignore                       # Arquivos e pastas ignorados pelo Git
 │
+├── apps/                            # Pasta central dos aplicativos Django
+│   ├── gestao_acessos/              # App de usuários e permissões (antiga 'gestao_acessos')
+│   │   ├── models.py                # Model Usuario customizado
+│   │   ├── views.py                 # Lógica de login e acessos
+│   │   └── admin.py                 # Painel administrativo
+│   │
+│   ├── analise_ia/                  # App de automações e IA
+│   │   └── services/
+│   │       ├── extrator.py          # Etapa 1: Download Playwright
+│   │       ├── consolidador.py      # Etapa 2: Consolidação Excel
+│   │       └── ggci.py              # Etapa 3: Análise e Relatório
+│   │
+│   └── dash_polichat/               # App de dashboards do Polichat
+│
 ├── portal_ggci/                     # App de configuração central do Django
-│   ├── settings.py                  # Configurações globais (DB, apps, segurança, Argon2)
-│   ├── urls.py                      # Roteador central de URLs ("GPS" do portal)
-│   ├── wsgi.py                      # Interface para servidores web em produção
-│   └── asgi.py                      # Interface assíncrona para produção
 │
-├── usuarios/                        # App principal com toda a lógica do portal
-│   ├── models.py                    # Model Usuario customizado (Argon2, perfis, permissões)
-│   ├── views.py                     # Toda a lógica de negócio (login, módulos, APIs)
-│   ├── admin.py                     # Registro no painel administrativo do Django
-│   └── migrations/                  # Histórico de versões do banco de dados
-│
-├── automacoes/                      # App das automações da GGCI
-│   └── services/
-│       ├── extrator.py              # Etapa 1: Download via Playwright (documentos e pagamentos)
-│       ├── consolidador.py          # Etapa 2: Consolidação dos arquivos em Excel
-│       └── ggci.py                  # Etapa 3: Análise, cruzamento SQL e geração do relatório
-│
-├── dados_analise/                   # Criada automaticamente pelos scripts (ignorada pelo Git)
-│   ├── analise_documentos_processados/        # Documentos com IA já processada
-│   ├── analise_documentos_agendar_processamentos/ # Documentos aguardando processamento
-│   └── analise_pagamentos/          # Planilhas de pagamentos mensais de bolsas
+├── dados/                           # Pasta central de dados (ignorada pelo Git)
+│   ├── dados_analise_ia/            # Dados para automações de análise IA
+│   │   ├── analise_documentos_processados/        # Documentos com IA já processada
+│   │   ├── analise_documentos_agendar_processamentos/ # Documentos aguardando processamento
+│   │   ├── analise_pagamentos/          # Planilhas de pagamentos mensais de bolsas
+│   │   └── relatorio_geral.xlsx         # Relatório consolidado final
+│   └── dados_polichat/              # Dados para automações do Polichat
+│       └── analise_anual/               # Dashboards e caches do Polichat
 │
 ├── templates/                       # Arquivos HTML organizados por módulo
 │   ├── login/
@@ -134,7 +136,7 @@ Este projeto está em desenvolvimento ativo e novas funcionalidades são integra
 - [x] Alteração de senha pelo próprio usuário
 - [x] Módulo de Ferramentas: Formatador de Listas
 - [x] Scripts automatizados de setup e teardown
-- [x] Portabilidade com fixtures (`usuarios_iniciais.json`)
+- [x] Portabilidade com fixtures (`gestao_acessos_iniciais.json`)
 - [x] Automação Etapa 1: Extração via Playwright (documentos e pagamentos)
 - [x] Automação Etapa 2: Consolidação de planilhas Excel
 - [x] Automação Etapa 3: Análise com IA, cruzamento SQL e Relatório Geral
@@ -160,7 +162,7 @@ A forma mais rápida de colocar o portal em funcionamento. O script `setup.sh` r
 2. Configura a senha `root` do MySQL e cria o banco `portal_ggci`
 3. Instala as dependências Python via `requirements.txt`
 4. Roda as migrações do Django (`makemigrations` + `migrate`)
-5. Injeta os usuários iniciais a partir do `usuarios_iniciais.json`
+5. Injeta os usuários iniciais a partir do `gestao_acessos_iniciais.json`
 
 ### 1. Clonar o Repositório
 
@@ -237,10 +239,10 @@ Esta é a seção mais importante para garantir o funcionamento do projeto ao cl
 Siga **rigorosamente** a ordem dos passos abaixo para evitar o erro clássico:
 
 ```
-ValueError: Dependency on app with no migrations: usuarios
+ValueError: Dependency on app with no migrations: gestao_acessos
 ```
 
-> **Por que esse erro acontece?** O Portal usa um **modelo de usuário customizado** (`usuarios.Usuario`). O sistema interno do Django (painel Admin, autenticação, sessões) depende desse app. Se você rodar `makemigrations` sem especificar o app `usuarios` primeiro, o Django não encontra a base do sistema de usuários e trava com esse erro.
+> **Por que esse erro acontece?** O Portal usa um **modelo de usuário customizado** (`gestao_acessos.Usuario`). O sistema interno do Django (painel Admin, autenticação, sessões) depende desse app. Se você rodar `makemigrations` sem especificar o app `gestao_acessos` primeiro, o Django não encontra a base do sistema de usuários e trava com esse erro.
 
 ---
 
@@ -271,7 +273,7 @@ mysql -u root -povg@2026 -e "SHOW DATABASES;"
 **3. Verificar se há usuários cadastrados no banco:**
 
 ```bash
-python manage.py shell -c "from usuarios.models import Usuario; print(f'{Usuario.objects.count()} usuário(s) encontrado(s)')"
+python manage.py shell -c "from apps.gestao_acessos.models import Usuario; print(f'{Usuario.objects.count()} usuário(s) encontrado(s)')"
 ```
 
 - Se mostrar `X usuário(s) encontrado(s)` com X > 0 → o banco está populado e funcionando ✅
@@ -284,7 +286,7 @@ python manage.py shell -c "from usuarios.models import Usuario; print(f'{Usuario
 python manage.py showmigrations
 ```
 
-Procure pelo app `usuarios` na lista. Se aparecer `[X]` antes de cada item, as migrações já foram aplicadas. Se aparecer `[ ]`, ainda precisam ser executadas.
+Procure pelo app `gestao_acessos` na lista. Se aparecer `[X]` antes de cada item, as migrações já foram aplicadas. Se aparecer `[ ]`, ainda precisam ser executadas.
 
 ---
 
@@ -295,13 +297,13 @@ Procure pelo app `usuarios` na lista. Se aparecer `[X]` antes de cada item, as m
 Este é o passo que previne o erro. O Django precisa construir a base do sistema de usuários antes de qualquer outra coisa.
 
 ```bash
-python manage.py makemigrations usuarios
+python manage.py makemigrations gestao_acessos
 ```
 
 Output esperado:
 ```
-Migrations for 'usuarios':
-  usuarios/migrations/0001_initial.py
+Migrations for 'gestao_acessos':
+  gestao_acessos/migrations/0001_initial.py
     - Create model Usuario
 ```
 
@@ -329,20 +331,20 @@ python manage.py migrate
 Output esperado:
 ```
 Operations to perform:
-  Apply all migrations: admin, auth, automacoes, contenttypes, sessions, usuarios
+  Apply all migrations: admin, auth, automacoes, contenttypes, sessions, gestao_acessos
 Running migrations:
   Applying contenttypes.0001_initial... OK
-  Applying usuarios.0001_initial... OK
+  Applying gestao_acessos.0001_initial... OK
   Applying admin.0001_initial... OK
   ...
 ```
 
 **Passo 4 — Restaure os usuários e permissões via Fixture:**
 
-> ⚠️ **Esta etapa é fundamental.** O arquivo `usuarios_iniciais.json` é o único backup oficial dos usuários do sistema. Sem ele, o banco estará completamente vazio e você não conseguirá fazer login.
+> ⚠️ **Esta etapa é fundamental.** O arquivo `gestao_acessos_iniciais.json` é o único backup oficial dos usuários do sistema. Sem ele, o banco estará completamente vazio e você não conseguirá fazer login.
 
 ```bash
-python manage.py loaddata usuarios_iniciais.json
+python manage.py loaddata gestao_acessos_iniciais.json
 ```
 
 Output esperado:
@@ -363,7 +365,7 @@ gunicorn portal_ggci.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 
 Se você encontrou um dos problemas abaixo, a solução é apagar o banco MySQL e recriar tudo:
 
 - ❌ Usuários "fantasmas" aparecem no sistema (de uma instalação anterior)
-- ❌ Erro `Dependency on app with no migrations: usuarios` ao subir o servidor
+- ❌ Erro `Dependency on app with no migrations: gestao_acessos` ao subir o servidor
 - ❌ Erro `table already exists` ao rodar `migrate`
 - ❌ Banco de dados corrompido ou dados inconsistentes
 
@@ -379,12 +381,12 @@ mysql -u root -povg@2026 -e "DROP DATABASE portal_ggci;"
 mysql -u root -povg@2026 -e "CREATE DATABASE portal_ggci CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
 # Passo 3: Recrie toda a estrutura do Django (na ordem correta)
-python manage.py makemigrations usuarios
+python manage.py makemigrations gestao_acessos
 python manage.py makemigrations
 python manage.py migrate
 
 # Passo 4: Restaure os usuários
-python manage.py loaddata usuarios_iniciais.json
+python manage.py loaddata gestao_acessos_iniciais.json
 ```
 
 Pronto! Banco novo, limpo e 100% alinhado com o código atual.
@@ -453,7 +455,7 @@ sudo tailscale funnel 8000
 
 ## 🔄 Manutenção e Atualização de Fixtures
 
-O arquivo `usuarios_iniciais.json` é a **fonte de portabilidade** do projeto e o **único backup oficial** dos usuários do sistema. O `.gitignore` esconde o banco de dados do repositório online — sem este `.json`, seria impossível recriar os acessos em um ambiente novo.
+O arquivo `gestao_acessos_iniciais.json` é a **fonte de portabilidade** do projeto e o **único backup oficial** dos usuários do sistema. O `.gitignore` esconde o banco de dados do repositório online — sem este `.json`, seria impossível recriar os acessos em um ambiente novo.
 
 ### Quando atualizar?
 
@@ -469,14 +471,14 @@ O arquivo `usuarios_iniciais.json` é a **fonte de portabilidade** do projeto e 
 O comando `dumpdata` vai até o seu banco de dados local, extrai todos os usuários exatos que estão cadastrados e escreve no arquivo `.json` — sobrescrevendo a versão anterior:
 
 ```bash
-python manage.py dumpdata usuarios.Usuario --indent 4 > usuarios_iniciais.json
+python manage.py dumpdata gestao_acessos.Usuario --indent 4 > gestao_acessos_iniciais.json
 ```
 
 > **💡 Dica:** Use sempre `--indent 4` para gerar um JSON indentado e legível. Isso facilita muito a revisão das mudanças via `git diff` antes de commitar.
 
-> **⚠️ ATENÇÃO — Comando correto:** O Portal GGCI usa um **model de usuário customizado** (`usuarios.Usuario`). O comando correto é **sempre** com `usuarios.Usuario`, nunca com `auth.user`.
+> **⚠️ ATENÇÃO — Comando correto:** O Portal GGCI usa um **model de usuário customizado** (`gestao_acessos.Usuario`). O comando correto é **sempre** com `gestao_acessos.Usuario`, nunca com `auth.user`.
 >
-> ✅ **Correto:** `python manage.py dumpdata usuarios.Usuario --indent 4 > usuarios_iniciais.json`
+> ✅ **Correto:** `python manage.py dumpdata gestao_acessos.Usuario --indent 4 > gestao_acessos_iniciais.json`
 >
 > ❌ **Incorreto:** `python manage.py dumpdata auth.user`
 
@@ -487,20 +489,20 @@ python manage.py dumpdata usuarios.Usuario --indent 4 > usuarios_iniciais.json
          │
          ▼
 2. Exporte o estado atual do banco para o JSON
-   $ python manage.py dumpdata usuarios.Usuario --indent 4 > usuarios_iniciais.json
+   $ python manage.py dumpdata gestao_acessos.Usuario --indent 4 > gestao_acessos_iniciais.json
          │
          ▼
 3. Revise o que mudou no arquivo
-   $ git diff usuarios_iniciais.json
+   $ git diff gestao_acessos_iniciais.json
          │
          ▼
 4. Commite o arquivo atualizado
-   $ git add usuarios_iniciais.json
-   $ git commit -m "chore: atualiza fixture de usuarios via dumpdata"
+   $ git add gestao_acessos_iniciais.json
+   $ git commit -m "chore: atualiza fixture de gestao_acessos via dumpdata"
          │
          ▼
 5. Qualquer desenvolvedor que fizer git pull pode restaurar os usuários com:
-   $ python manage.py loaddata usuarios_iniciais.json
+   $ python manage.py loaddata gestao_acessos_iniciais.json
 ```
 
 ## 💥 Desfazendo as Alterações (Teardown)

@@ -53,7 +53,7 @@ O `ggci.py` atua como um ETL complexo de cruzamento de fontes heterogêneas:
                         ↓
                        [SAÍDA]
 ┌─────────────────────────────────────────────────────┐
-│ 📁 Raiz do Projeto                                   │
+│ 📁 dados/dados_analise_ia/                           │
 │  └─ 📄 relatorio_geral.xlsx                          │
 │     ├─ Aba: Documentos (Lista 1x1 colorida)          │
 │     ├─ Aba: Riaf (Lista 1x1 colorida)                │
@@ -430,7 +430,7 @@ FUNÇÃO gerar_relatorio_geral(filtros_tela)
     
     GERAR Resumo Quantitativo
     CRIAR Relatório Excel Final e Chamar Formatação Visuais
-    SALVAR relatorio_geral.xlsx
+    SALVAR dados/dados_analise_ia/relatorio_geral.xlsx
 ```
 
 ---

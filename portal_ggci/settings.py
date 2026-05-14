@@ -27,12 +27,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # ==========================================================================
 # Chave criptográfica mestre do Django. Usada para assinar sessões e tokens.
 # ⚠️ IMPORTANTE: Nunca vaze essa chave em ambientes de Produção!
-SECRET_KEY = 'django-insecure-&41lq+jr!j1mgh7m014*f+a3-u^fxqbj+d_zxwcw&esw$f6rba'
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-&41lq+jr!j1mgh7m014*f+a3-u^fxqbj+d_zxwcw&esw$f6rba')
 
 # Modo de Depuração. 
 # True: Mostra telas amarelas com detalhes do erro (Apenas para Desenvolvimento).
 # False: Esconde o código-fonte em caso de erro (Obrigatório em Produção).
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 # Define quais domínios/IPs podem acessar o portal (Ex: ['192.168.0.10', 'ovg.org.br']).
 # Vazio durante o desenvolvimento local.
@@ -61,9 +61,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     
     # Nossos aplicativos principais:
-    'usuarios',
-    'analise_ia',
-    'dash_polichat',
+    'apps.gestao_acessos',
+    'apps.analise_ia',
+    'apps.dash_polichat',
 ]
 
 # Interceptadores de Requisição. Protegem contra ataques (CSRF, Clickjacking) 
@@ -115,13 +115,13 @@ WSGI_APPLICATION = 'portal_ggci.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'portal_ggci',
-        'USER': 'root',
+        'NAME': os.environ.get('DB_NAME', 'portal_ggci'),
+        'USER': os.environ.get('DB_USER', 'root'),
         # ⚠️ IMPORTANTE: A senha e o banco configurados aqui devem ser os mesmos 
         # gerados e criados pelo arquivo 'setup.sh'.
-        'PASSWORD': 'ovg@2026',
-        'HOST': '127.0.0.1',  # Usa a rede local
-        'PORT': '3306',
+        'PASSWORD': os.environ.get('DB_PASSWORD', 'ovg@2026'),
+        'HOST': os.environ.get('DB_HOST', '127.0.0.1'),  # Usa a rede local
+        'PORT': os.environ.get('DB_PORT', '3306'),
     }
 }
 
@@ -174,6 +174,6 @@ STORAGES = {
 
 # ⚠️ CONFIGURAÇÃO CRÍTICA DO SISTEMA:
 # Informa ao Django que ele NÃO DEVE usar a tabela padrão de usuários dele.
-# Em vez disso, ele deve usar a nossa tabela customizada 'Usuario' criada no aplicativo 'usuarios'.
-# -> Arquivo referenciado: usuarios/models.py
-AUTH_USER_MODEL = 'usuarios.Usuario'
+# Em vez disso, ele deve usar a nossa tabela customizada 'Usuario' criada no aplicativo 'gestao_acessos'.
+# -> Arquivo referenciado: apps/gestao_acessos/models.py
+AUTH_USER_MODEL = 'gestao_acessos.Usuario'

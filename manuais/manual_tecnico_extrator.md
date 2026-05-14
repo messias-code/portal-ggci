@@ -40,7 +40,7 @@ O `extrator.py` atua como um coordenador de Múltiplos Trabalhadores (Workers) s
                                 ↓
                       [SAÍDAS EM DISCO]
 ┌─────────────────────────────────────────────────────────────┐
-│ 📁 dados_analise/                                            │
+│ 📁 dados/dados_analise_ia/                                            │
 │  ├─ analise_documentos_processados/ (Centenas de .xlsx)      │
 │  ├─ analise_documentos_agendar_processamentos/ (.xlsx)       │
 │  └─ analise_pagamentos/ (Dezenas de .xls mensais)            │
@@ -64,7 +64,7 @@ def limpar_pasta_raiz(pasta):
 - **Por que `shutil.rmtree` e não `os.remove` em loop?** `rmtree` deleta pastas não vazias numa única chamada atômica ao sistema operacional, sendo imensamente mais limpo e rápido que iterar recursivamente em Python para deletar arquivo por arquivo.
 
 ### Exemplo prático
-Ao iniciar, o diretório `dados_analise/analise_pagamentos` que tinha 24 relatórios antigos (2024 e 2025) é completamente fulminado e uma nova pasta vazia com o mesmo nome é criada.
+Ao iniciar, o diretório `dados/dados_analise_ia/analise_pagamentos` que tinha 24 relatórios antigos (2024 e 2025) é completamente fulminado e uma nova pasta vazia com o mesmo nome é criada.
 
 ### Pseudoalgoritmo
 ```text
