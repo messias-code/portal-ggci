@@ -1,7 +1,7 @@
 # 🌐🏛️⚙️ Portal GGCI
 
 <p align="center">
-    <img src="static/sources/ovg.png" alt="portal-ggci" width="200">
+    <img src="static/img/logos/ovg.png" alt="portal-ggci" width="200">
 </p>
 
 > Plataforma web interna da Gerência de Gestão e Controle de Informações (GGCI) da OVG, construída em Python/Django para centralizar ferramentas, automações e gestão operacional da equipe.
