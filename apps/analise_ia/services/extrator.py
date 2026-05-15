@@ -350,7 +350,6 @@ def executar(docs_selecionados=None, anos_selecionados=None, periodos_selecionad
     minutos = int(tempo_total // 60)
     segundos = int(tempo_total % 60)
     
-    import os
     def conta_arquivos(pasta):
         try: return sum(1 for root, dirs, files in os.walk(pasta) for file in files if file.endswith(".xlsx") or file.endswith(".xls"))
         except: return 0

@@ -12,6 +12,7 @@ para Produção), os ajustes ocorrerão aqui.
 
 from pathlib import Path
 import os
+from dotenv import load_dotenv
 
 # ==========================================================================
 # 1. DIRETÓRIO BASE (CAMINHOS DO SISTEMA)
@@ -21,6 +22,8 @@ import os
 # sem precisar de caminhos fixos como "C:/usuario/pasta/...".
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Carrega o arquivo .env localizado na raiz do projeto
+load_dotenv(os.path.join(BASE_DIR, '.env'))
 
 # ==========================================================================
 # 2. SEGURANÇA E AMBIENTE
@@ -36,7 +39,7 @@ DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 # Define quais domínios/IPs podem acessar o portal (Ex: ['192.168.0.10', 'ovg.org.br']).
 # Vazio durante o desenvolvimento local.
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
 # Diz ao Django para confiar nos formulários de login enviados por esse link
 CSRF_TRUSTED_ORIGINS = [
