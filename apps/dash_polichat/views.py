@@ -16,26 +16,32 @@ from apps.analise_ia.models import ProcessamentoAnaliseIA
 @csrf_exempt
 def iniciar_extracao_polichat(request):
     if request.method == 'POST':
+        # Tenta pegar o usuário da sessão do Django, caso o Ajax envie cookies
+        usuario_nome = "Desconhecido/Anonimo"
+        if hasattr(request, 'user') and request.user.is_authenticated:
+            # O modelo customizado usa 'usuario' em vez de 'username'
+            usuario_nome = getattr(request.user, 'usuario', str(request.user))
+        else:
+            # Tenta ver se mandaram quem é pelo POST (fallback para JS sem credentials)
+            nome_enviado = request.POST.get('usuario')
+            if nome_enviado:
+                usuario_nome = f"{nome_enviado} (Via Painel)"
+
         force = request.GET.get('force') == 'true' or request.POST.get('force') == 'true'
         
-        # ── TRAVA DE CONCORRÊNCIA: Não disputar recursos com o motor IA ──
-        ia_ativa = ProcessamentoAnaliseIA.objects.filter(
-            status__in=['PENDENTE', 'EXTRAINDO', 'CONSOLIDANDO', 'CRUZANDO']
-        ).exists()
-        if ia_ativa and not force:
-            return JsonResponse({
-                'status': 'adiado',
-                'msg': 'Motor IA em execução. Sincronização adiada automaticamente.'
-            })
-        
-        robos_ativos = ProcessamentoPolichat.objects.filter(status__in=['PENDENTE', 'PROCESSANDO']).order_by('-id')
+        # ── TRAVA DE CONCORRÊNCIA: Não permite Polichat se o Motor IA estiver rodando ──
+        ia_ativa = ProcessamentoAnaliseIA.objects.filter(status__in=['EXTRAINDO', 'CONSOLIDANDO', 'CRUZANDO']).exists()
+        if ia_ativa:
+            return JsonResponse({'status': 'adiado', 'mensagem': 'O Motor de IA está em execução. Aguarde a conclusão para sincronizar o Polichat.'})
+
+        robos_ativos = ProcessamentoPolichat.objects.filter(status__in=['PENDENTE', 'EXTRAINDO', 'TRATANDO']).order_by('-id')
         if robos_ativos.exists():
             if force:
                 robos_ativos.update(status='FALHA', log='Cancelado pelo usuário. Nova sincronização forçada.')
             else:
                 return JsonResponse({'status': 'ok', 'processo_id': robos_ativos.first().id, 'msg': 'Robô já em execução.'})
 
-        processo = ProcessamentoPolichat.objects.create(status='PENDENTE')
+        processo = ProcessamentoPolichat.objects.create(status='PENDENTE', usuario_solicitante=usuario_nome)
         comando = [sys.executable, 'manage.py', 'executar_polichat', str(processo.id)]
         subprocess.Popen(comando)
         return JsonResponse({'status': 'ok', 'processo_id': processo.id})
@@ -75,6 +81,10 @@ def api_polichat_dados(request):
         pasta_dados = os.path.join(settings.BASE_DIR, "dados", "dados_polichat", "analise_anual")
         arquivo_excel = os.path.join(pasta_dados, "relatorio_chats_pronto.xlsx")
         arquivo_pickle = os.path.join(pasta_dados, "cache_dataframe.pkl")
+        
+        print(f"🔍 DEBUG: Buscando dados em {pasta_dados}")
+        print(f"🔍 DEBUG: Excel existe? {os.path.exists(arquivo_excel)}")
+        print(f"🔍 DEBUG: Pickle existe? {os.path.exists(arquivo_pickle)}")
 
         data_inicio_str = request.GET.get('inicio', '').strip()
         data_fim_str    = request.GET.get('fim', '').strip()
@@ -121,6 +131,11 @@ def api_polichat_dados(request):
                 df = carregar_do_excel()
         elif tem_excel:
             df = carregar_do_excel()
+            
+        if df is not None:
+            print(f"🔍 DEBUG: DataFrame carregado. Registros: {len(df)}")
+        else:
+            print("🔍 DEBUG: DataFrame está nulo após tentativa de carga.")
 
         # === 1. EXTRAI A LISTA GLOBAL DE AGENTES ANTES DE TUDO ===
         lista_agentes_total = []
@@ -137,6 +152,7 @@ def api_polichat_dados(request):
                 a for a in _todos_atend.union(_todos_fecham)
                 if a.lower() not in _excluir
             ])
+            print(f"🔍 DEBUG: Agentes encontrados na base: {len(lista_agentes_total)}")
 
         # === 2. RESPOSTA VAZIA AGORA DEVOLVE OS AGENTES EXISTENTES ===
         EMPTY_RESPONSE = {
@@ -212,13 +228,8 @@ def api_polichat_dados(request):
             if dt_fim:    mask &= (df['Data_Filtro'] <= (dt_fim + pd.Timedelta(hours=23, minutes=59, seconds=59)).replace(tzinfo=None))
             
             # DIAGNÓSTICO: Ver o que está acontecendo
-            print(f"\n[DIAGNÓSTICO POLICHAT] Filtro: {agente_filtro} | Início: {dt_inicio} | Fim: {dt_fim}")
-            print(f"[DIAGNÓSTICO POLICHAT] Total Linhas Original: {len(df)}")
             df = df[mask]
-            print(f"[DIAGNÓSTICO POLICHAT] Linhas após Filtro Data: {len(df)}")
-            if not df.empty:
-                print(f"[DIAGNÓSTICO POLICHAT] Exemplo Atendentes: {df['Atendente'].unique()[:5]}")
-                print(f"[DIAGNÓSTICO POLICHAT] Exemplo Datas: {df['Data_Filtro'].dropna().dt.strftime('%d/%m/%Y').unique()[:5]}")
+            print(f"🔍 DEBUG: Registros após filtro de data ({data_inicio_str} a {data_fim_str}): {len(df)}")
 
         # ── CORREÇÃO: Fechamento por colega sem novo chat ────────────────
         # Quando um colega apenas fecha o chat de outro agente (sem responder
@@ -393,8 +404,13 @@ def api_polichat_dados(request):
             is_minha_abertura = atend.lower() == ag_lower
             is_meu_fechamento = fechado_por.lower() == ag_lower
 
+            # Tenta pegar os tempos de forma robusta
+            raw_espera = row.get('Tempo de Espera (Fila)')
+            raw_atend  = row.get('Tempo de Conversa (Atendimento)')
+            raw_total  = row.get('Tempo Total (Início ao Fim)')
+
             calc_espera = row.get('__live_espera_seg', -1)
-            seg_espera  = calc_espera if (is_aguardando and calc_espera >= 0) else tempo_para_segundos(row.get('Tempo de Espera (Fila)'))
+            seg_espera  = calc_espera if (is_aguardando and calc_espera >= 0) else tempo_para_segundos(raw_espera)
 
             obj_base = {
                 'status': st_raw,
@@ -409,8 +425,8 @@ def api_polichat_dados(request):
             }
 
             if is_finalizado:
-                seg_total = tempo_para_segundos(row.get('Tempo Total (Início ao Fim)'))
-                seg_atend = tempo_para_segundos(row.get('Tempo de Conversa (Atendimento)'))
+                seg_total = tempo_para_segundos(raw_total)
+                seg_atend = tempo_para_segundos(raw_atend)
                 if seg_atend == 0 and seg_total > 0:
                     seg_atend = seg_total - seg_espera if seg_total >= seg_espera else 0
 

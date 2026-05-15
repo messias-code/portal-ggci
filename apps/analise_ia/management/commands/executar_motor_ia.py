@@ -239,7 +239,7 @@ class Command(BaseCommand):
             registrar_log("🔄 Consolidando e limpando as planilhas base...")
             
             consolidador.consolidar() # Chama a função do seu script original
-            registrar_log("✅ Planilhas consolidadas e limpas.")
+            registrar_log("Planilhas consolidadas e limpas.")
 
             # --- ETAPA 3: GGCI (Negócio) ---
             proc.status = 'CRUZANDO'
@@ -254,7 +254,7 @@ class Command(BaseCommand):
             
             # Passando os filtros completos pro motor
             ggci.gerar_relatorio_geral(docs_selecionados=docs, anos_selecionados=anos, sems_selecionados=sems, gerar_relatorio=gerar_relatorio) 
-            registrar_log("✅ Regras de negócio aplicadas.")
+            registrar_log("Regras de negócio aplicadas.")
 
             # --- FINALIZAÇÃO ---
             tempo_total = time.time() - tempo_inicio_global

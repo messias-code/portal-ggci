@@ -4,7 +4,7 @@
     "pk": 1,
     "fields": {
         "password": "argon2$argon2id$v=19$m=102400,t=2,p=8$V0dxWHcxemJwTGNXMm9Ja25yTDY0Nw$ulHNsi62SIjPnU7CZrJS5e9voiyEVG/sNy8JKZBx1xo",
-        "last_login": "2026-05-14T19:40:02.332Z",
+        "last_login": "2026-05-15T18:06:01.431Z",
         "nome": "Administrador",
         "usuario": "admin@ovg.org.br",
         "perfil": "administrador",

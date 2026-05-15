@@ -36,7 +36,7 @@ class LogCapture:
             self.buffer += message
             agora = time.time()
             
-            # Salva a cada 1s ou em mensagens importantes
+            # Salva a cada 1s ou em mensagens importantes no BD
             if agora - self.last_save > 1.0 or any(e in message for e in ["✅", "🚀", "🎉", "❌", "🏆"]):
                 self.proc.refresh_from_db(fields=['log', 'progresso'])
                 
@@ -44,33 +44,25 @@ class LogCapture:
                 msg = str(self.buffer)
                 
                 # Atualiza progresso baseado nas mensagens
-                if "Login enviado" in msg:
+                if "Login em" in msg:
                     novo_progresso = max(novo_progresso, 10)
-                elif "Metabase carregado" in msg:
+                elif "Iframe localizado" in msg:
                     novo_progresso = max(novo_progresso, 20)
-                elif "Configurando filtro" in msg:
+                elif "Filtro de Data" in msg:
                     novo_progresso = max(novo_progresso, 25)
-                elif "Aguardando o Metabase processar" in msg:
+                elif "Aguardando Metabase" in msg:
                     novo_progresso = max(novo_progresso, 30)
                 elif "Localizando tabela" in msg:
                     novo_progresso = max(novo_progresso, 40)
-                elif "Iniciando download" in msg:
+                elif "Aguardando download" in msg:
                     novo_progresso = max(novo_progresso, 45)
                 elif "DOWNLOAD CONCLUÍDO" in msg:
                     novo_progresso = max(novo_progresso, 55)
-                elif "CSV carregado" in msg:
+                elif "Carregando dados temporários" in msg:
                     novo_progresso = max(novo_progresso, 60)
-                elif "Nomes de atendentes" in msg:
-                    novo_progresso = max(novo_progresso, 65)
-                elif "Período do dia" in msg:
+                elif "Aplicando lógica de transferências" in msg:
                     novo_progresso = max(novo_progresso, 70)
-                elif "Avaliação de tempo" in msg:
-                    novo_progresso = max(novo_progresso, 75)
-                elif "Diagnóstico e status" in msg:
-                    novo_progresso = max(novo_progresso, 80)
-                elif "Colunas de tempo" in msg:
-                    novo_progresso = max(novo_progresso, 85)
-                elif "Gerando ficheiro Excel" in msg:
+                elif "Formatando layout" in msg:
                     novo_progresso = max(novo_progresso, 90)
                 elif "SUCESSO" in msg:
                     novo_progresso = max(novo_progresso, 99)
@@ -87,7 +79,6 @@ class LogCapture:
 
     def flush(self):
         self.original.flush()
-
 
 class Command(BaseCommand):
     help = 'Executa o pipeline de extração e tratamento de dados do Polichat'
@@ -112,12 +103,17 @@ class Command(BaseCommand):
 
         try:
             tempo_inicio = time.time()
+            usuario = proc.usuario_solicitante or "Desconhecido"
             
             # --- FASE 1: EXTRAÇÃO ---
             proc.status = 'EXTRAINDO'
             proc.progresso = 5
             proc.save(update_fields=['status', 'progresso'])
-            registrar_log("🚀 Iniciando pipeline de extração Polichat...")
+            
+            registrar_log(f"=======================================================")
+            registrar_log(f"🚀 INICIANDO PIPELINE POLICHAT | ID: {processo_id}")
+            registrar_log(f"👤 USUÁRIO: {usuario}")
+            registrar_log(f"=======================================================")
 
             polichat_extrator.limpar_pasta_downloads()
             sucesso_extracao = polichat_extrator.extrair_relatorio_metabase()

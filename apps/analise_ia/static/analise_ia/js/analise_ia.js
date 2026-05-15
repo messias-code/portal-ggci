@@ -176,8 +176,20 @@ document.addEventListener('DOMContentLoaded', () => {
     function iniciarMonitoramento(processo_id) {
         pollInterval = setInterval(() => {
             fetch(`/motor-ia/api/status-processamento/${processo_id}/`)
-                .then(res => res.json())
+                .then(res => {
+                    if (!res.ok) {
+                        // Se der 404 ou qualquer erro de rede, para o monitoramento para não inundar o log
+                        clearInterval(pollInterval);
+                        if (res.status === 404) {
+                            adicionarLog(`<div class="text-red-500">Erro 404: Processo ${processo_id} não encontrado no banco. Polling encerrado.</div>`);
+                        }
+                        resetarBotoesFalha();
+                        return;
+                    }
+                    return res.json();
+                })
                 .then(data => {
+                    if (!data) return;
                     let promptHtml = `
                     <div class="flex items-center gap-1.5 font-mono text-[14px] mb-1">
                         <span class="text-pink-500 font-bold">ovg@probem-ai:</span>
@@ -203,9 +215,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     rawLog = rawLog.replace(/\[([^<>[\]]+?)\s*\|\s*([^<>[\]]+?)\s*\|\s*([^<>[\]]+?)\]\s*(.*?)(?=\n|\[[^<>\[\]]+?\||$)/g, (_, p1, p2, p3, rest) => {
                         let msg = rest.replace('->', '→').trim();
-                        // === AQUI FICA O AVISO AMARELO DAS REGRAS IGNORADAS ===
-                        let icon = msg.includes('⚠️') ? '<span class="text-yellow-400">⚠</span>' : '<span class="text-green-400">✔</span>';
-                        return `<div class="ml-4 my-0.5 text-[13px] font-mono whitespace-nowrap">${icon} <span class="text-pink-400 uppercase">${p1.trim()}</span> <span class="text-gray-600">│</span> <span class="text-indigo-400 uppercase">${p2.trim()}</span> <span class="text-gray-600">│</span> <span class="text-emerald-400">${p3.trim()}</span> <span class="text-gray-600">│</span> <span class="text-gray-300">${msg}</span></div>\n`;
+                        // === DETECÇÃO DE ÍCONE BASEADA NO CONTEÚDO ===
+                        let isWarn = msg.includes('⚠️');
+                        let isError = msg.includes('❌');
+                        
+                        // Limpa emojis redundantes da mensagem final
+                        let cleanMsg = msg.replace(/⚠️|❌|✅/g, '').trim();
+                        
+                        let icon = isWarn ? '<span class="text-yellow-400 font-bold">!</span>' : 
+                                   isError ? '<span class="text-red-500 font-bold">✖</span>' : 
+                                   '<span class="text-green-400">✔</span>';
+                                   
+                        return `<div class="ml-4 my-0.5 text-[13px] font-mono whitespace-nowrap">${icon} <span class="text-pink-400 uppercase">${p1.trim()}</span> <span class="text-gray-600">│</span> <span class="text-indigo-400 uppercase">${p2.trim()}</span> <span class="text-gray-600">│</span> <span class="text-emerald-400">${p3.trim()}</span> <span class="text-gray-600">│</span> <span class="text-gray-300">${cleanMsg}</span></div>`;
                     });
 
                     // BADGES E MENSAGENS
@@ -214,14 +235,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     rawLog = rawLog.replace(/🚀 Inciando limpeza e recriação dos diretórios de extração\.\.\./g, B.blue('⚙', 'SISTEMA', 'Limpando e recriando diretórios...'));
                     rawLog = rawLog.replace(/✅ Dados financeiros carregados com sucesso\./g, B.emerald('✔', 'FINANCEIRO', 'Dados financeiros carregados.'));
 
-                    rawLog = rawLog.replace(/⚠️ EXTRAÇÃO VAZIA: Nenhum arquivo corresponde aos filtros \(Bloqueio por Regras\)\./g, B.yellow('⚠', 'FILTRO VAZIO', 'Combinação de filtros não gerou dados.'));
+                    rawLog = rawLog.replace(/⚠️ EXTRAÇÃO VAZIA: Nenhum arquivo corresponde aos filtros \(Bloqueio por Regras\)\./g, B.yellow('!', 'FILTRO VAZIO', 'Combinação de filtros não gerou dados.'));
                     rawLog = rawLog.replace(/🛑 Processo abortado de forma inteligente\./g, '');
 
                     rawLog = rawLog.replace(/🔄 Processando: .*/g, '');
-                    rawLog = rawLog.replace(/✅ Gerado com sucesso e colunas ordenadas: .*?[\\/]([^\\/]+\.xlsx)/g, `<div class="ml-4 my-0.5 text-[13px] text-gray-300"><span class="text-teal-400">💾</span> $1 <span class="text-gray-500">→</span> salvo</div>`);
+                    rawLog = rawLog.replace(/✅ Gerado com sucesso e colunas ordenadas: .*?[\\/]([^\\/]+\.xlsx)/g, `<div class="ml-4 my-0.5 text-[13px] text-gray-300"><span class="text-teal-400 font-bold">💾</span> $1 <span class="text-gray-500">→</span> salvo</div>`);
 
                     rawLog = rawLog.replace(/🚀 Iniciando GGCI - Gerando Relatório Geral\.\.\./g, '');
-                    rawLog = rawLog.replace(/📥 Lido: (.*?)\s*→\s*(.*)/g, `<div class="ml-4 my-0.5 text-[13px] text-gray-300"><span class="text-yellow-400">📥</span> Lido: $1 <span class="text-gray-500">→</span> $2</div>`);
+                    rawLog = rawLog.replace(/📥 Lido: (.*?)\s*→\s*(.*)/g, `<div class="ml-4 my-0.5 text-[13px] text-gray-300"><span class="text-yellow-400 font-bold">📥</span> Lido: $1 <span class="text-gray-500">→</span> $2</div>`);
                     rawLog = rawLog.replace(/🔍 Identificando bolsistas sem documentação entregue\.\.\./g, `<div class="ml-4 my-0.5 text-[13px] text-gray-400">↳ Identificando bolsistas com pendências...</div>`);
                     rawLog = rawLog.replace(/🗄️ Buscando dados financeiros dos bolsistas\.\.\./g, `<div class="ml-4 my-0.5 text-[13px] text-gray-400">↳ Buscando dados financeiros dos bolsistas...</div>`);
                     rawLog = rawLog.replace(/🗄️ Conectando ao sistema de pagamentos\.\.\./g, `<div class="ml-6 my-0.5 text-[13px] text-gray-400">↳ Conectando ao sistema de pagamentos...</div>`);
@@ -246,7 +267,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     rawLog = rawLog.replace(/🎉 Extração concluída: (.*)\./g, B.emerald('✔', 'OK', '$1.'));
                     rawLog = rawLog.replace(/🎉 SUPER-EXTRAÇÃO CONCLUÍDA E SALVA/g, B.emerald('✔', 'CONCLUÍDO', 'Relatório Geral gerado com sucesso!'));
-                    rawLog = rawLog.replace(/🚨 \[SISTEMA\] Processo de IA abortado manualmente pelo usuário!/g, B.red('⚠', 'ABORTADO PELO USUÁRIO', 'Processo interrompido manualmente.'));
+                    rawLog = rawLog.replace(/🚨 \[SISTEMA\] Processo de IA abortado manualmente pelo usuário!/g, B.red('!', 'ABORTADO PELO USUÁRIO', 'Processo interrompido manualmente.'));
 
                     const termCmd = (cmd) => `<div class="flex items-center gap-1 mt-4 mb-1.5 font-mono text-[14px] whitespace-nowrap"><span class="text-pink-500 font-bold">ovg@probem-ai:</span><span class="text-purple-400"> ~</span><span class="text-white"> $</span><span class="text-gray-300"> ${cmd}</span></div>`;
                     rawLog = rawLog.replace(/🚀 Iniciando processamento massivo\.\.\./g, termCmd('extracao_ia --run'));
@@ -255,9 +276,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     rawLog = rawLog.replace(/🎉 Processamento concluído em (.*)!/g, termCmd('exit 0  <span class="text-gray-500 mx-1">—</span> <span class="text-emerald-400 font-semibold ml-1">✔ Concluído em $1</span>'));
 
                     rawLog = rawLog
-                        .replace(/✅ /g, '').replace(/❌ /g, '<span class="text-red-500 font-bold mr-1">✖</span>')
-                        .replace(/⚠️ /g, '<span class="text-yellow-500 mr-1">⚠</span>')
-                        .replace(/🚨 /g, '');
+                        .replace(/✅/g, '')
+                        .replace(/❌/g, '<span class="text-red-500 font-bold mr-1">✖</span>')
+                        .replace(/⚠️/g, '<span class="text-yellow-500 font-bold mr-1">!</span>')
+                        .replace(/🚨/g, '');
 
                     let htmlLog = rawLog.replace(/\n{3,}/g, '\n\n').replace(/\n/g, '<div class="h-px"></div>');
 

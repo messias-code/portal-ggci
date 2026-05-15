@@ -177,9 +177,11 @@ try:
     mapping = {
         'POLICHAT_USER': 'DASHBOARD_POLICHAT_USER', 'POLICHAT_PASS': 'DASHBOARD_POLICHAT_PASS',
         'PBU_USER': 'PORTAL_PBU_USER', 'PBU_PASS_SCRIPTCASE': 'PORTAL_PBU_PASS_AGENDAMENTOS',
-        'PBU_PASS_BOLSA': 'PORTAL_PBU_PASS_VALORES_BOLSAS', 'SIBU_PASS': 'SIBU_BANCO_DADOS_PASS',
+        'PBU_PASS_BOLSA': 'PORTAL_PBU_PASS_VALORES_BOLSAS', 
+        'SIBU_HOST': 'SIBU_BANCO_DADOS_HOST', 'SIBU_USER': 'SIBU_BANCO_DADOS_USER',
+        'SIBU_PASS': 'SIBU_BANCO_DADOS_PASS', 'SIBU_NAME': 'SIBU_BANCO_DADOS_NAME',
         'SIBU_BANCO_DADOS_HOST': 'SIBU_BANCO_DADOS_HOST', 'SIBU_BANCO_DADOS_USER': 'SIBU_BANCO_DADOS_USER',
-        'SIBU_BANCO_DADOS_NAME': 'SIBU_BANCO_DADOS_NAME'
+        'SIBU_BANCO_DADOS_NAME': 'SIBU_BANCO_DADOS_NAME', 'SIBU_BANCO_DADOS_PASS': 'SIBU_BANCO_DADOS_PASS'
     }
     for k, v in data.items():
         key = mapping.get(k, k)
@@ -337,7 +339,17 @@ EOF
 }
 
 # --------------------------------------------------------------------------
-# 6. UTILITÁRIOS (BACKUP E DESTRUIÇÃO)
+# 6. MONITORAMENTO
+# --------------------------------------------------------------------------
+function server_monitoring() {
+    print_ovg_logo
+    print_phase "📊 MONITORAMENTO DE SAÚDE DO SERVIDOR"
+    run_with_stream "python3 manage.py monitorar_servidor" "Coletando métricas de hardware..."
+    wait_key
+}
+
+# --------------------------------------------------------------------------
+# 7. UTILITÁRIOS (BACKUP E DESTRUIÇÃO)
 # --------------------------------------------------------------------------
 function user_backup() {
     print_ovg_logo
@@ -380,6 +392,8 @@ while true; do
     echo -e "   ${C_GREE}${C_BOLD} 4 ${C_RESET} ${C_WHIT}🤖 Executar Robô de Extração: PoliChat${C_RESET}"
     echo -e "   ${C_GREE}${C_BOLD} 5 ${C_RESET} ${C_WHIT}🧠 Executar Robô de Extração: Documentos e Pagamentos (IA)${C_RESET}"
     echo ""
+    echo -e "   ${C_CYAN}${C_BOLD} 7 ${C_RESET} ${C_WHIT}📊 Monitorar Saúde do Servidor (CPU/RAM/Disco)${C_RESET}"
+    echo ""
     echo -e "   ${C_REDD}${C_BOLD} 9 ${C_RESET} ${C_WHIT}🧹 Destruição Total do Ambiente${C_RESET}"
     echo -e "   ${C_GRAY}${C_BOLD} 0 ${C_RESET} ${C_WHIT}🚪 Sair do Painel${C_RESET}"
     echo ""
@@ -394,6 +408,7 @@ while true; do
         2) user_backup ;;
         4) run_robot_polichat ;;
         5) run_robot_documentos ;;
+        7) server_monitoring ;;
         9) teardown_full ;;
         0) clear; exit 0 ;;
         *) log_msg "err" "Comando não reconhecido."; sleep 1 ;;

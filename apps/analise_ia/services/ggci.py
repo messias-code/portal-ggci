@@ -198,10 +198,10 @@ def aplicar_formatacao_visual(writer, nome_aba, df):
 def buscar_dados_financeiros_sql(semestres_presentes):
     if not semestres_presentes: return pd.DataFrame()
     
-    DB_HOST = os.getenv('SIBU_HOST')
-    DB_USER = os.getenv('SIBU_USER')
-    DB_PASS = os.getenv('SIBU_PASS')
-    DB_NAME = os.getenv('SIBU_NAME')
+    DB_HOST = os.getenv('SIBU_BANCO_DADOS_HOST')
+    DB_USER = os.getenv('SIBU_BANCO_DADOS_USER')
+    DB_PASS = os.getenv('SIBU_BANCO_DADOS_PASS')
+    DB_NAME = os.getenv('SIBU_BANCO_DADOS_NAME')
     
     sems_banco = [str(x).strip().replace('-', '/') for x in semestres_presentes]
     sems_formatados = ",".join([f"'{x}'" for x in sems_banco])
@@ -275,11 +275,11 @@ def buscar_dados_financeiros_sql(semestres_presentes):
             df_sql['valor_financiamento'] = pd.to_numeric(df_sql['valor_financiamento'], errors='coerce').fillna(0.0)
             
             df_sql = df_sql.drop_duplicates(subset=['uni_codigo', 'semestre'], keep='last')
-            print("   ✅ Dados financeiros carregados com sucesso.")
+            print("   Dados financeiros carregados com sucesso.")
             
         return df_sql
     except Exception as e:
-        print(f"\n   🚨 ERRO CRÍTICO: Não foi possível conectar ao banco de dados SQL.")
+        print(f"\n   ⚠️ ERRO CRÍTICO: Não foi possível conectar ao banco de dados SQL.")
         print(f"   Detalhes do erro: {e}")
         print("   Abortando a execução do GGCI pois os dados do banco são indispensáveis para o relatório.")
         sys.exit(1)
@@ -1309,7 +1309,7 @@ def gerar_relatorio_geral(docs_selecionados=None, anos_selecionados=None, sems_s
     pode_gerar_relatorio = (check_contrato and check_financ and check_benef and "1" in sems_selecionados and "2" in sems_selecionados)
     
     if gerar_relatorio and not pode_gerar_relatorio:
-        print(f"[AVISO | RELATÓRIO | BLOQUEADO] ⚠️ A aba 'Relatório' exige: Contratos, Financiamentos, Benefícios e Semestres 1/2 simultâneos.")
+        print(f"⚠️ [RELATÓRIO | BLOQUEADO] A aba 'Relatório' exige: Contratos, Financiamentos, Benefícios e Semestres 1/2 simultâneos.")
     
     sems_alvo = []
     for ano in anos_selecionados:
@@ -1441,7 +1441,7 @@ def gerar_relatorio_geral(docs_selecionados=None, anos_selecionados=None, sems_s
         semestres_presentes = list(set(sem_docs + sem_riaf))
         print("🗄️ Conectando ao sistema de pagamentos...")
         df_financas = buscar_dados_financeiros_sql(semestres_presentes)
-        print("✅ Dados financeiros carregados com sucesso.")
+        print("[OK] Dados financeiros carregados com sucesso.")
     
     def gerar_checks_documentos(df_target):
         if df_target.empty: return df_target

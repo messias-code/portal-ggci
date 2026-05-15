@@ -265,3 +265,5 @@ def consolidar():
             
             writer.close()
             print(f"✅ Gerado com sucesso e colunas ordenadas: {caminho_final}")
+
+    print("Planilhas consolidadas e limpas.")

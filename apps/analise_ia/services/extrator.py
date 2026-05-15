@@ -94,7 +94,7 @@ def extrair_documento_scriptcase(tarefa, doc_config, semestre_str):
                         frame.locator("#SC_semestre").select_option(valor_semestre, timeout=3000)
                     except:
                         # Mantemos apenas os avisos de quando algo não existe
-                        print(f"⚠️  {tag} Semestre não disponível no sistema.")
+                        print(f"{tag} ⚠️ Semestre não disponível no sistema.")
                         return
 
                     frame.get_by_role("cell", name=filtro_site, exact=True).locator("input").check()
@@ -107,7 +107,7 @@ def extrair_documento_scriptcase(tarefa, doc_config, semestre_str):
 
                     vazio = frame.locator("text=Registros não encontrados").is_visible() or frame.locator("text=Nenhum registro").is_visible()
                     if vazio:
-                        print(f"⚠️  {tag} Sem registros (Vazio).")
+                        print(f"{tag} ⚠️ Sem registros (Vazio).")
                         return
 
                     frame.get_by_title("Exportação", exact=True).click()
@@ -131,22 +131,22 @@ def extrair_documento_scriptcase(tarefa, doc_config, semestre_str):
                     download.save_as(caminho_final)
                     
                     # Único print de sucesso para essa thread
-                    print(f"✅ {tag} Download concluído → {nome_arquivo}")
+                    print(f"{tag} Download concluído")
                     return # Sucesso! Sai da função sem tentar novamente
                     
                 except Exception as e:
                     if tentativa < max_tentativas:
-                        print(f"⚠️  {tag} Tentativa {tentativa} falhou. Retentando em breve...")
+                        print(f"{tag} ⚠️ Tentativa {tentativa} falhou. Retentando em breve...")
                         time.sleep(3)
                     else:
-                        print(f"❌ {tag} Falha final após {max_tentativas}x: {e}")
+                        print(f"{tag} ❌ Falha final após {max_tentativas}x: {e}")
                 finally:
                     browser.close()
         except Exception as e:
             if tentativa < max_tentativas:
                 time.sleep(3)
             else:
-                print(f"❌ {tag} Falha da API Playwright: {e}")
+                print(f"{tag} ❌ Falha da API Playwright: {e}")
 
 # ==========================================
 # 4. WORKER: PAGAMENTOS (PORTAL BOLSA)
@@ -242,22 +242,22 @@ def extrair_ano_pagamento(ano_str):
 
                     # Único print de sucesso consolidando todos os meses baixados
                     if meses_baixados:
-                        print(f"✅ {tag} Download concluído ({len(meses_baixados)} meses) → {', '.join(meses_baixados)}")
+                        print(f"{tag} Download concluído ({len(meses_baixados)} meses)")
                         
                     return # Sucesso absoluto, abandona retry
                 except Exception as e:
                     if tentativa < max_tentativas:
-                        print(f"⚠️  {tag} Tentativa {tentativa} falhou. Retentando...")
+                        print(f"{tag} ⚠️ Tentativa {tentativa} falhou. Retentando...")
                         time.sleep(3)
                     else:
-                        print(f"🚨 {tag} Erro crítico após {max_tentativas}x: {e}")
+                        print(f"{tag} ❌ Erro crítico após {max_tentativas}x: {e}")
                 finally:
                     browser.close()
         except Exception as e:
             if tentativa < max_tentativas:
                 time.sleep(3)
             else:
-                print(f"🚨 {tag} Erro crítico na API Playwright: {e}")
+                print(f"{tag} ❌ Erro crítico na API Playwright: {e}")
 
 # ==========================================
 # 5. MACRO-ORQUESTRADORES (Executados em Paralelo)

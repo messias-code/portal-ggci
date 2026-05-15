@@ -34,23 +34,16 @@ def verificar_login(request):
             if usuario and '@' not in usuario:
                 usuario += '@ovg.org.br'
 
-            # RAIO-X: Log de depuração visível no terminal do servidor
-            print(f"\n--- DEBUG LOGIN ---")
-            print(f"Tentando autenticar: '{usuario}'")
-
             # O Django autentica usando o campo 'username' mapeado para nosso campo 'usuario'
             user = authenticate(request, username=usuario, password=senha)
 
             if user is not None:
-                print(">>> SUCESSO: Credenciais Argon2 validadas.")
                 login(request, user)
                 return JsonResponse({'sucesso': True})
             else:
-                print(">>> FALHA: Usuário inexistente ou senha inválida.")
                 return JsonResponse({'sucesso': False, 'mensagem': 'Usuário ou senha incorretos.'})
                 
         except Exception as e:
-            print(f"ERRO CRÍTICO NO LOGIN: {e}")
             return JsonResponse({'sucesso': False, 'mensagem': f'Erro interno: {str(e)}'})
             
     return JsonResponse({'sucesso': False, 'mensagem': 'Método não permitido.'})

@@ -322,7 +322,16 @@ document.addEventListener('DOMContentLoaded', () => {
         isSyncing = true; syncProgress = 0; setSyncUI('syncing');
         let tL = manual ? toast('Buscando dados...', 'loading') : null;
         if (manual) setBtnSync(true);
-        fetch('/dash_polichat/api/polichat/iniciar/', { method: 'POST' })
+
+        const formData = new FormData();
+        const userEl = document.querySelector('.user-name, .profile-name, #user_name_display');
+        if (userEl) { formData.append('usuario', userEl.innerText.trim()); }
+
+        fetch('/dash_polichat/api/polichat/iniciar/', { 
+            method: 'POST', 
+            body: formData,
+            credentials: 'same-origin'
+        })
             .then(r => r.json()).then(d => {
                 // ── TRAVA DE CONCORRÊNCIA: Motor IA está rodando ──
                 if (d.status === 'adiado') {

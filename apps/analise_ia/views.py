@@ -3,6 +3,7 @@ import sys
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from .models import ProcessamentoAnaliseIA
+from apps.dash_polichat.models import ProcessamentoPolichat
 import json
 
 @csrf_exempt
@@ -16,6 +17,11 @@ def iniciar_processamento_ia(request):
             except json.JSONDecodeError:
                 pass
                 
+        # ── TRAVA DE CONCORRÊNCIA: Não permite IA se o Polichat estiver rodando ──
+        polichat_ativo = ProcessamentoPolichat.objects.filter(status__in=['PENDENTE', 'EXTRAINDO', 'TRATANDO']).exists()
+        if polichat_ativo:
+            return JsonResponse({'status': 'erro', 'mensagem': 'O Dashboard Polichat está em sincronização. Aguarde a conclusão para iniciar a IA.'})
+
         # 2. Salva as configurações no banco
         processo = ProcessamentoAnaliseIA.objects.create(status='PENDENTE', configuracoes=payload)
         
