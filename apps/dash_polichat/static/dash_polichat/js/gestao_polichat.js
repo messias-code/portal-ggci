@@ -11,7 +11,7 @@
  * • Auto-refresh protegido
  * • Lista de agentes recarregada ao mudar período
  */
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('turbo:load', () => {
     const inputInicio = document.getElementById('filtro-inicio');
     const inputFim = document.getElementById('filtro-fim');
     const selectAgente = document.getElementById('filtro-agente');

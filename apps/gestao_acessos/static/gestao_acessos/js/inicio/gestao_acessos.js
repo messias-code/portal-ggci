@@ -8,7 +8,7 @@
    ========================================================================== */
 
 // Lógica de UI: Desativa os checkboxes dos cards se o Menu pai estiver desligado
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('turbo:load', () => {
     document.querySelectorAll('.menu-toggle').forEach(toggle => {
         toggle.addEventListener('change', function() {
             const targetClass = this.getAttribute('data-target');
@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
 /* ==========================================================================
    1. SISTEMA DE BUSCA E FILTRAGEM NA TABELA
    ========================================================================== */
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('turbo:load', () => {
     const tbody = document.getElementById('tabelaUsuarios');
     if (!tbody) return;
     

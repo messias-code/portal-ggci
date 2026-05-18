@@ -27,26 +27,28 @@
     <!-- CSS Externo: Estilos específicos da tabela e animações de fundo desta página -->
     <!-- Arquivo localizado em: static/css/menu/inicio/gestao_acessos.css -->
     <link rel="stylesheet" href="{% static 'gestao_acessos/css/inicio/gestao_acessos.css' %}">
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@8.0.4/dist/turbo.es.2017-esm.js"></script>
 </head>
 
-<body class="bg-[#f8f6fb] text-gray-800 fixed inset-0 p-4 lg:p-6 flex overflow-hidden">
+<body class="grid-bg bg-[#f8f6fb] text-gray-800 fixed inset-0 p-4 lg:p-6 flex overflow-hidden">
 
     <!-- Container de Notificações (Toasts) gerados dinamicamente pelo JS -->
     <div id="toast-container" class="fixed top-5 right-5 z-[70] flex flex-col items-end"></div>
 
     <!-- INÍCIO: Elementos visuais de fundo animados -->
-    <div
-        class="bg-color-1 absolute top-[-15%] left-[-10%] w-[65vw] h-[65vh] bg-pink-500/70 rounded-full blur-[140px] pointer-events-none z-0">
-    </div>
-    <div
-        class="bg-color-2 absolute bottom-[-15%] left-[10%] w-[60vw] h-[60vh] bg-purple-600/70 rounded-full blur-[140px] pointer-events-none z-0">
-    </div>
-    <div
-        class="bg-color-3 absolute top-[-5%] right-[-10%] w-[60vw] h-[60vh] bg-yellow-400/60 rounded-full blur-[140px] pointer-events-none z-0">
-    </div>
-    <div
-        class="bg-color-4 absolute bottom-[-10%] right-[5%] w-[65vw] h-[65vh] bg-teal-400/60 rounded-full blur-[140px] pointer-events-none z-0">
-    </div>
+        <!-- 
+        ======================================================================
+        1. ELEMENTOS DECORATIVOS DE BACKGROUND (LIGHT BLOBS / BLUR EFFECTS)
+        ----------------------------------------------------------------------
+        Divs com desfoque gaussiano (blur-[140px]) e alta opacidade que criam o
+        efeito estético de iluminação colorida flutuante nos quatro cantos da tela,
+        trazendo profundidade visual sem prejudicar o desempenho.
+        ======================================================================
+    -->
+    <div class="absolute top-[-20%] left-[-15%] w-[70vw] h-[70vh] bg-pink-500/70 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="absolute top-[-20%] right-[-15%] w-[70vw] h-[70vh] bg-yellow-400/75 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="absolute bottom-[-20%] left-[-15%] w-[70vw] h-[70vh] bg-purple-700/60 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="absolute bottom-[-20%] right-[-15%] w-[70vw] h-[70vh] bg-green-600/65 rounded-full blur-[140px] pointer-events-none z-0"></div>
     <!-- FIM: Elementos visuais de fundo animados -->
 
     <div
@@ -67,14 +69,14 @@
 
                 <!-- Link ATIVO (Início) -->
                 <a href="{% url 'inicio' %}"
-                    class="flex items-center space-x-3 px-4 py-3 bg-gradient-to-r from-purple-600 to-purple-500 shadow-xl shadow-purple-500/30 text-white rounded-xl font-bold text-base transition-all hover:scale-[1.02]">
+                    class="nav-active flex items-center space-x-3 px-4 py-3 rounded-xl font-bold text-base">
                     <i class="fa-solid fa-user-shield text-[23px] w-6 text-center"></i><span>Início</span>
                 </a>
 
                 <!-- Menu Ferramentas Dinâmico -->
                 {% if user.p_ferramentas or user.usuario == 'admin@ovg.org.br' %}
                 <a href="{% url 'ferramentas' %}"
-                    class="flex items-center space-x-4 px-4 py-3 text-gray-600 hover:bg-white hover:shadow-sm rounded-xl font-semibold text-base transition-all hover:text-purple-600">
+                    class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
                     <i class="fa-solid fa-screwdriver-wrench text-[23px] w-6 text-center"></i><span>Ferramentas</span>
                 </a>
                 {% else %}
@@ -87,7 +89,7 @@
                 <!-- Menu Automações Dinâmico -->
                 {% if user.p_analise_ia or user.usuario == 'admin@ovg.org.br' %}
                 <a href="{% url 'analise_ia' %}"
-                    class="flex items-center space-x-4 px-4 py-3 text-gray-600 hover:bg-white hover:shadow-sm rounded-xl font-semibold text-base transition-all hover:text-purple-600">
+                    class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
                     <i class="fa-brands fa-whmcs text-[28px] w-6 text-center"></i><span>Automações</span>
                 </a>
                 {% else %}
@@ -99,7 +101,7 @@
 
                 {% if user.p_dash_polichat or user.usuario == 'admin@ovg.org.br' %}
                 <a href="{% url 'dash_polichat' %}"
-                    class="flex items-center space-x-4 px-4 py-3 text-gray-600 hover:bg-white hover:shadow-sm rounded-xl font-semibold text-base transition-all hover:text-purple-600">
+                    class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
                     <i class="fa-solid fa-chart-line text-[23px] w-6 text-center"></i><span>Dashboards</span>
                 </a>
                 {% else %}
@@ -112,7 +114,7 @@
                 <!-- Menu Documentações Dinâmico -->
                 {% if user.p_documentacoes or user.usuario == 'admin@ovg.org.br' %}
                 <a href="#"
-                    class="flex items-center space-x-4 px-4 py-3 text-gray-600 hover:bg-white hover:shadow-sm rounded-xl font-semibold text-base transition-all hover:text-purple-600">
+                    class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
                     <i class="fa-solid fa-folder-open text-[23px] w-6 text-center"></i><span>Documentações</span>
                 </a>
                 {% else %}
@@ -300,7 +302,7 @@
 
     <!-- JS Externo: Contém a lógica de busca local, abertura/fechamento dos modais e submissão dos dados -->
     <!-- Arquivo localizado em: static/js/menu/inicio/gestao_acessos.js -->
-    <script src="{% static 'gestao_acessos/js/inicio/gestao_acessos.js' %}"></script>
+    <script src="{% static 'gestao_acessos/js/inicio/gestao_acessos.js' %}" defer></script>
 </body>
 
 </html>

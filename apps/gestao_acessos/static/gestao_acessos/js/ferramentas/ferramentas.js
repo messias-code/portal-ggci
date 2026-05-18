@@ -2,7 +2,7 @@
    SCRIPT: MÓDULO DE FERRAMENTAS
    ========================================================================== */
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('turbo:load', () => {
     console.log("Módulo de Ferramentas inicializado.");
     
     // Espaço reservado para futuras implementações, como animações 

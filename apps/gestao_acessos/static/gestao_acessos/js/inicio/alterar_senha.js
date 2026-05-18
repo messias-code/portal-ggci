@@ -2,7 +2,7 @@
    SCRIPT: ALTERAÇÃO DE SENHA (FRONTEND)
    ========================================================================== */
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('turbo:load', () => {
     
     function mostrarNotificacao(mensagem, sucesso = true) {
         const container = document.getElementById('toast-container');

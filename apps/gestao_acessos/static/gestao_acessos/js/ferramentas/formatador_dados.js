@@ -4,7 +4,7 @@
    remoção de caracteres, replicando o comportamento do antigo app Dash.
    ========================================================================== */
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('turbo:load', () => {
 
     // -------------------------------------------------------------------------
     // NOTIFICAÇÕES (Toast)

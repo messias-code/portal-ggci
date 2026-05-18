@@ -3,7 +3,7 @@
    v2.0 — Barra de Progresso Inteligente com Suavização Adaptativa
    ========================================================================== */
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('turbo:load', () => {
     console.log("Módulo de automação inicializado.");
 
     const btnStart = document.getElementById('btn-start');

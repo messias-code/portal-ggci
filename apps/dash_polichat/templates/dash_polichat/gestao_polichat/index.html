@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestão Polichat · Portal GGCI</title>
+    <title>Polichat · Portal GGCI</title>
     <meta name="description" content="Painel de gestão de atendimentos Polichat — Portal GGCI">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,14 +16,23 @@
     <script src="https://npmcdn.com/flatpickr/dist/l10n/pt.js"></script>
     
     <link rel="stylesheet" href="{% static 'dash_polichat/css/gestao_polichat.css' %}?v=16">
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@8.0.4/dist/turbo.es.2017-esm.js"></script>
 </head>
-<body>
+<body class="grid-bg">
 
-<!-- Background blobs -->
-<div class="bg-blob blob-1"></div>
-<div class="bg-blob blob-2"></div>
-<div class="bg-blob blob-3"></div>
-<div class="bg-blob blob-4"></div>
+    <!-- 
+        ======================================================================
+        1. ELEMENTOS DECORATIVOS DE BACKGROUND (LIGHT BLOBS / BLUR EFFECTS)
+        ----------------------------------------------------------------------
+        Divs com desfoque gaussiano (blur-[140px]) e alta opacidade que criam o
+        efeito estético de iluminação colorida flutuante nos quatro cantos da tela,
+        trazendo profundidade visual sem prejudicar o desempenho.
+        ======================================================================
+    -->
+    <div class="absolute top-[-20%] left-[-15%] w-[70vw] h-[70vh] bg-pink-500/70 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="absolute top-[-20%] right-[-15%] w-[70vw] h-[70vh] bg-yellow-400/75 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="absolute bottom-[-20%] left-[-15%] w-[70vw] h-[70vh] bg-purple-700/60 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="absolute bottom-[-20%] right-[-15%] w-[70vw] h-[70vh] bg-green-600/65 rounded-full blur-[140px] pointer-events-none z-0"></div>
 
 <div class="app">
     <!-- ═══ HEADER ═══ -->
@@ -32,7 +41,7 @@
             <div class="header-brand">
                 <div class="brand-icon"><i class="fa-solid fa-bezier-curve"></i></div>
                 <div class="brand-info">
-                    <div class="brand-title">Gestão <span>Polichat</span></div>
+                    <div class="brand-title"><span>Polichat</span></div>
                     <div class="sync-badge" id="sync-status"><div class="sync-dot" id="sync-dot"></div><span id="sync-text">Sincronização ativa</span></div>
                 </div>
             </div>

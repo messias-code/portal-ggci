@@ -129,7 +129,7 @@ function check_sudo() {
 
 function ask_confirm() {
     local prompt="$1"
-    echo -ne "   ${C_YELL}[!]${C_RESET} ${C_WHIT}${prompt} (sim/NÃO): ${C_RESET}"
+    echo -ne "   ${C_YELL}[!]${C_RESET} ${C_WHIT}${prompt} (s/N): ${C_RESET}"
     read -r conf
     conf="${conf,,}" 
     if [[ "$conf" == "s" || "$conf" == "sim" || "$conf" == "y" || "$conf" == "yes" ]]; then
@@ -172,12 +172,15 @@ function env_wizard() {
 python3 -c \"
 import os, json, re, sys
 try:
-    data = json.loads(os.environ.get('JSON_DATA'))
+    json_str = os.environ.get('JSON_DATA')
+    json_str = re.sub(r',\s*}', '}', json_str)
+    data = json.loads(json_str)
     with open('.env', 'r') as f: content = f.read()
+    content = re.sub(r'^# ={10,}\n# TEMPLATE.*?# ={10,}\n+', '', content, flags=re.DOTALL)
     mapping = {
         'POLICHAT_USER': 'DASHBOARD_POLICHAT_USER', 'POLICHAT_PASS': 'DASHBOARD_POLICHAT_PASS',
-        'PBU_USER': 'PORTAL_PBU_USER', 'PBU_PASS_SCRIPTCASE': 'PORTAL_PBU_PASS_AGENDAMENTOS',
-        'PBU_PASS_BOLSA': 'PORTAL_PBU_PASS_VALORES_BOLSAS', 
+        'PBU_USER': 'PORTAL_PBU_USER', 'PBU_PASS_SCRIPTCASE': 'PORTAL_PBU_PASS_ANALISE_IA',
+        'PBU_PASS_BOLSA': 'PORTAL_PBU_PASS_PAGAMENTOS', 
         'SIBU_HOST': 'SIBU_BANCO_DADOS_HOST', 'SIBU_USER': 'SIBU_BANCO_DADOS_USER',
         'SIBU_PASS': 'SIBU_BANCO_DADOS_PASS', 'SIBU_NAME': 'SIBU_BANCO_DADOS_NAME',
         'SIBU_BANCO_DADOS_HOST': 'SIBU_BANCO_DADOS_HOST', 'SIBU_BANCO_DADOS_USER': 'SIBU_BANCO_DADOS_USER',

@@ -2,7 +2,7 @@
    SCRIPT: FORMATADOR DE LISTAS
    ========================================================================== */
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('turbo:load', () => {
 
     function mostrarNotificacao(mensagem, sucesso = true) {
         const container = document.getElementById('toast-container');

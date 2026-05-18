@@ -2,7 +2,7 @@
    SCRIPT: MÓDULO DE DASHBOARDS
    ========================================================================== */
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('turbo:load', () => {
     console.log("Módulo de Dashboards inicializado.");
     
     // Espaço reservado para futuras implementações, como animações 
