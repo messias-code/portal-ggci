@@ -63,3 +63,8 @@ notas.txt
 # quando arquivos são baixados da internet e acessados via WSL
 # ==========================================
 *:Zone.Identifier
+
+# Ignorar arquivos de log do sistema
+logs/
+*.log
+log_do_robo.txt

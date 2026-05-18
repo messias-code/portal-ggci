@@ -11,7 +11,7 @@
  * • Auto-refresh protegido
  * • Lista de agentes recarregada ao mudar período
  */
-document.addEventListener('turbo:load', () => {
+document.addEventListener('DOMContentLoaded', () => {
     const inputInicio = document.getElementById('filtro-inicio');
     const inputFim = document.getElementById('filtro-fim');
     const selectAgente = document.getElementById('filtro-agente');
@@ -81,7 +81,7 @@ document.addEventListener('turbo:load', () => {
             const agora = new Date(Date.now() - tzOff);
             let dIni = new Date(agora);
             let dFim = new Date(agora);
-            
+
             const tipo = btn.dataset.qd;
             if (tipo === 'mes') {
                 dIni.setDate(1);
@@ -92,16 +92,16 @@ document.addEventListener('turbo:load', () => {
                 dFim.setMonth(11, 31);
             }
             // 'hoje' não precisa mudar as datas, já são hoje
-            
+
             const sIni = dIni.toISOString().split('T')[0];
             const sFim = dFim.toISOString().split('T')[0];
-            
+
             inputInicio.value = sIni;
             inputFim.value = sFim;
-            
+
             if (inputInicio._flatpickr) inputInicio._flatpickr.setDate(sIni);
             if (inputFim._flatpickr) inputFim._flatpickr.setDate(sFim);
-            
+
             runFilter();
         });
     });
@@ -135,7 +135,7 @@ document.addEventListener('turbo:load', () => {
         Array.from(selectAgente.options).forEach(opt => {
             const div = document.createElement('div');
             div.className = 'cs-option' + (opt.value === selectAgente.value ? ' active' : '');
-            
+
             if (!opt.value) {
                 div.classList.add('cs-placeholder-opt');
                 div.innerHTML = `<i class="fa-solid fa-arrow-left"></i> Voltar ao painel inicial`;
@@ -146,7 +146,7 @@ document.addEventListener('turbo:load', () => {
             } else {
                 div.textContent = opt.value;
             }
-            
+
             div.dataset.value = opt.value;
             div.addEventListener('click', () => {
                 selectAgente.value = div.dataset.value;
@@ -327,8 +327,10 @@ document.addEventListener('turbo:load', () => {
         const userEl = document.querySelector('.user-name, .profile-name, #user_name_display');
         if (userEl) { formData.append('usuario', userEl.innerText.trim()); }
 
-        fetch('/dash_polichat/api/polichat/iniciar/', { 
-            method: 'POST', 
+
+        if (manual) { formData.append('force', 'true'); }
+        fetch('/dash_polichat/api/polichat/iniciar/', {
+            method: 'POST',
             body: formData,
             credentials: 'same-origin'
         })
@@ -475,8 +477,8 @@ document.addEventListener('turbo:load', () => {
     function filterData(data) {
         const sVal = searchInput ? searchInput.value.toLowerCase().trim() : '';
         if (sVal) {
-            data = data.filter(d => 
-                (d.cliente || '').toLowerCase().includes(sVal) || 
+            data = data.filter(d =>
+                (d.cliente || '').toLowerCase().includes(sVal) ||
                 (d.telefone || '').toLowerCase().includes(sVal)
             );
         }

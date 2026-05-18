@@ -481,27 +481,40 @@
     </div>
 
     <script>
-        document.addEventListener("turbo:load", () => {
-            function setupMasterCheckbox(masterId, childClass) {
-                const master = document.getElementById(masterId);
-                const children = document.querySelectorAll(childClass);
+        // Utilizando Event Delegation para garantir funcionamento à prova de falhas,
+        // independentemente do ciclo de vida do Turbo ou recarregamentos do DOM.
+        if (!window.__motorCheckboxesInit) {
+            window.__motorCheckboxesInit = true;
 
-                master.addEventListener('change', (e) => {
-                    children.forEach(child => child.checked = e.target.checked);
-                });
+            document.addEventListener('change', function(e) {
+                // 1. Tipos de Documentos
+                if (e.target.matches('#chk-todos-docs')) {
+                    document.querySelectorAll('.chk-doc').forEach(c => c.checked = e.target.checked);
+                } else if (e.target.matches('.chk-doc')) {
+                    const allChecked = Array.from(document.querySelectorAll('.chk-doc')).every(c => c.checked);
+                    const master = document.getElementById('chk-todos-docs');
+                    if (master) master.checked = allChecked;
+                }
 
-                children.forEach(child => {
-                    child.addEventListener('change', () => {
-                        const allChecked = Array.from(children).every(c => c.checked);
-                        master.checked = allChecked;
-                    });
-                });
-            }
+                // 2. Anos Letivos
+                if (e.target.matches('#chk-todos-anos')) {
+                    document.querySelectorAll('.chk-ano').forEach(c => c.checked = e.target.checked);
+                } else if (e.target.matches('.chk-ano')) {
+                    const allChecked = Array.from(document.querySelectorAll('.chk-ano')).every(c => c.checked);
+                    const master = document.getElementById('chk-todos-anos');
+                    if (master) master.checked = allChecked;
+                }
 
-            setupMasterCheckbox('chk-todos-docs', '.chk-doc');
-            setupMasterCheckbox('chk-todos-anos', '.chk-ano');
-            setupMasterCheckbox('chk-todos-sems', '.chk-sem');
-        });
+                // 3. Semestres
+                if (e.target.matches('#chk-todos-sems')) {
+                    document.querySelectorAll('.chk-sem').forEach(c => c.checked = e.target.checked);
+                } else if (e.target.matches('.chk-sem')) {
+                    const allChecked = Array.from(document.querySelectorAll('.chk-sem')).every(c => c.checked);
+                    const master = document.getElementById('chk-todos-sems');
+                    if (master) master.checked = allChecked;
+                }
+            });
+        }
     </script>
 
     <script src="{% static 'analise_ia/js/analise_ia.js' %}?v=3"></script>

@@ -19,17 +19,15 @@ def iniciar_extracao_polichat(request):
         # Tenta pegar o usuário da sessão do Django, caso o Ajax envie cookies
         usuario_nome = "Desconhecido/Anonimo"
         if hasattr(request, 'user') and request.user.is_authenticated:
-            # O modelo customizado usa 'usuario' em vez de 'username'
             usuario_nome = getattr(request.user, 'usuario', str(request.user))
         else:
-            # Tenta ver se mandaram quem é pelo POST (fallback para JS sem credentials)
             nome_enviado = request.POST.get('usuario')
             if nome_enviado:
                 usuario_nome = f"{nome_enviado} (Via Painel)"
 
         force = request.GET.get('force') == 'true' or request.POST.get('force') == 'true'
         
-        # ── TRAVA DE CONCORRÊNCIA: Não permite Polichat se o Motor IA estiver rodando ──
+        # ── TRAVA DE CONCORRÊNCIA ──
         ia_ativa = ProcessamentoAnaliseIA.objects.filter(status__in=['EXTRAINDO', 'CONSOLIDANDO', 'CRUZANDO']).exists()
         if ia_ativa:
             return JsonResponse({'status': 'adiado', 'mensagem': 'O Motor de IA está em execução. Aguarde a conclusão para sincronizar o Polichat.'})
@@ -40,14 +38,33 @@ def iniciar_extracao_polichat(request):
                 robos_ativos.update(status='FALHA', log='Cancelado pelo usuário. Nova sincronização forçada.')
             else:
                 return JsonResponse({'status': 'ok', 'processo_id': robos_ativos.first().id, 'msg': 'Robô já em execução.'})
-
+        
         processo = ProcessamentoPolichat.objects.create(status='PENDENTE', usuario_solicitante=usuario_nome)
-        comando = [sys.executable, 'manage.py', 'executar_polichat', str(processo.id)]
-        subprocess.Popen(comando)
+        
+        # ==========================================
+        # SISTEMA DE LOGS ORGANIZADO
+        # ==========================================
+        # 1. Define o caminho: /caminho/do/projeto/logs/dash_polichat/
+        pasta_logs = os.path.join(settings.BASE_DIR, "logs", "dash_polichat")
+        
+        # 2. Cria a pasta automaticamente se ela ainda não existir
+        os.makedirs(pasta_logs, exist_ok=True)
+        
+        # 3. Define o nome do arquivo .log
+        arquivo_log = os.path.join(pasta_logs, "extracao.log")
+        
+        # 4. Abre o arquivo em modo "a" (append). 
+        # Isso adiciona os novos logs no final do arquivo preservando o histórico.
+        log_file = open(arquivo_log, "a")
+        
+        comando = [sys.executable, '-u', 'manage.py', 'executar_polichat', str(processo.id)]
+        
+        # 5. Executa jogando a saída para o arquivo oficial
+        subprocess.Popen(comando, stdout=log_file, stderr=subprocess.STDOUT)
+        
         return JsonResponse({'status': 'ok', 'processo_id': processo.id})
 
     return JsonResponse({'status': 'erro', 'mensagem': 'Método inválido'}, status=400)
-
 
 def checar_status_polichat(request, processo_id):
     try:
@@ -81,10 +98,6 @@ def api_polichat_dados(request):
         pasta_dados = os.path.join(settings.BASE_DIR, "dados", "dados_polichat", "analise_anual")
         arquivo_excel = os.path.join(pasta_dados, "relatorio_chats_pronto.xlsx")
         arquivo_pickle = os.path.join(pasta_dados, "cache_dataframe.pkl")
-        
-        print(f"🔍 DEBUG: Buscando dados em {pasta_dados}")
-        print(f"🔍 DEBUG: Excel existe? {os.path.exists(arquivo_excel)}")
-        print(f"🔍 DEBUG: Pickle existe? {os.path.exists(arquivo_pickle)}")
 
         data_inicio_str = request.GET.get('inicio', '').strip()
         data_fim_str    = request.GET.get('fim', '').strip()
@@ -131,11 +144,6 @@ def api_polichat_dados(request):
                 df = carregar_do_excel()
         elif tem_excel:
             df = carregar_do_excel()
-            
-        if df is not None:
-            print(f"🔍 DEBUG: DataFrame carregado. Registros: {len(df)}")
-        else:
-            print("🔍 DEBUG: DataFrame está nulo após tentativa de carga.")
 
         # === 1. EXTRAI A LISTA GLOBAL DE AGENTES ANTES DE TUDO ===
         lista_agentes_total = []
@@ -152,7 +160,6 @@ def api_polichat_dados(request):
                 a for a in _todos_atend.union(_todos_fecham)
                 if a.lower() not in _excluir
             ])
-            print(f"🔍 DEBUG: Agentes encontrados na base: {len(lista_agentes_total)}")
 
         # === 2. RESPOSTA VAZIA AGORA DEVOLVE OS AGENTES EXISTENTES ===
         EMPTY_RESPONSE = {
@@ -227,9 +234,7 @@ def api_polichat_dados(request):
             if dt_inicio: mask &= (df['Data_Filtro'] >= dt_inicio.replace(tzinfo=None))
             if dt_fim:    mask &= (df['Data_Filtro'] <= (dt_fim + pd.Timedelta(hours=23, minutes=59, seconds=59)).replace(tzinfo=None))
             
-            # DIAGNÓSTICO: Ver o que está acontecendo
             df = df[mask]
-            print(f"🔍 DEBUG: Registros após filtro de data ({data_inicio_str} a {data_fim_str}): {len(df)}")
 
         # ── CORREÇÃO: Fechamento por colega sem novo chat ────────────────
         # Quando um colega apenas fecha o chat de outro agente (sem responder
