@@ -71,8 +71,8 @@ def extrair_documento_scriptcase(tarefa, doc_config, semestre_str):
                 
                 try:
                     page.goto("http://10.237.1.11/pbu/entrar/")
-                    page.get_by_role("textbox", name="Usuário").fill(os.getenv('PORTAL_PBU_USER'))
-                    page.get_by_role("textbox", name="Senha").fill(os.getenv('PORTAL_PBU_PASS_ANALISE_IA'))
+                    page.get_by_role("textbox", name="Usuário").fill(os.getenv('PORTAL_PBU_USER') or "")
+                    page.get_by_role("textbox", name="Senha").fill(os.getenv('PORTAL_PBU_PASS_AGENDAMENTOS') or "")
                     page.get_by_role("button", name="Entrar").click()
                     page.wait_for_load_state("networkidle")
 
@@ -184,8 +184,8 @@ def extrair_ano_pagamento(ano_str):
                 try:
                     page.goto("http://10.237.1.11/bolsa/")
                     
-                    pbu_user = os.getenv('PORTAL_PBU_USER')
-                    pbu_pass = os.getenv('PORTAL_PBU_PASS_PAGAMENTOS')
+                    pbu_user = os.getenv('PORTAL_PBU_USER') or ""
+                    pbu_pass = os.getenv('PORTAL_PBU_PASS_VALORES_BOLSAS') or ""
 
                     page.locator("#usuario").fill(pbu_user)
                     page.locator("#senha").fill(pbu_pass)

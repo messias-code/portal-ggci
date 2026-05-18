@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const csOptions = document.getElementById('cs-options');
 
     let isSyncing = false, ultimoAgente = '';
-    let dadosMim = [], dadosOutro = [], dadosRetorno = [];
+    let dadosMim = [], dadosOutro = [], dadosAguardando = [], dadosAndamento = [];
     let pagMim = 1, pagOutro = 1;
     const PER_PAGE = 50;
 
@@ -209,12 +209,13 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
             btn.classList.add('active');
             document.getElementById('pane-' + btn.dataset.tab).classList.add('active');
-            const isSearchable = btn.dataset.tab === 'mim' || btn.dataset.tab === 'outro' || btn.dataset.tab === 'retorno';
+            const isSearchable = true;
             if (searchWrap) searchWrap.style.display = isSearchable ? 'flex' : 'none';
             // Re-renderiza a aba ativa com o filtro de busca atual
             if (btn.dataset.tab === 'mim') { pagMim = 1; renderPaginated('mim'); }
             else if (btn.dataset.tab === 'outro') { pagOutro = 1; renderPaginated('outro'); }
-            else if (btn.dataset.tab === 'retorno') renderRetorno();
+            else if (btn.dataset.tab === 'aguardando') renderSimple('list-aguardando', dadosAguardando, 'aguardando');
+            else if (btn.dataset.tab === 'andamento') renderSimple('list-andamento', dadosAndamento, 'andamento');
         });
     });
 
@@ -237,7 +238,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!a) return;
         if (a.dataset.tab === 'mim') renderPaginated('mim');
         else if (a.dataset.tab === 'outro') renderPaginated('outro');
-        else if (a.dataset.tab === 'retorno') renderRetorno();
+        else if (a.dataset.tab === 'aguardando') renderSimple('list-aguardando', dadosAguardando, 'aguardando');
+        else if (a.dataset.tab === 'andamento') renderSimple('list-andamento', dadosAndamento, 'andamento');
     }
 
     let tempoParaSync = 300, syncProgress = 0;
@@ -401,18 +403,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!agente) { mostrarPrompt(true); zerarKPIs(); return; }
                 mostrarPrompt(false);
                 atualizarKPIs(data.kpis);
-                renderSimple('list-aguardando', data.tabelas.aguardando || [], 'aguardando');
-                renderSimple('list-andamento', data.tabelas.em_andamento || [], 'andamento');
-                document.getElementById('cnt-aguardando').textContent = (data.tabelas.aguardando || []).length;
-                document.getElementById('cnt-andamento').textContent = (data.tabelas.em_andamento || []).length;
+                dadosAguardando = data.tabelas.aguardando || [];
+                dadosAndamento = data.tabelas.em_andamento || [];
+                renderSimple('list-aguardando', dadosAguardando, 'aguardando');
+                renderSimple('list-andamento', dadosAndamento, 'andamento');
+                document.getElementById('cnt-aguardando').textContent = dadosAguardando.length;
+                document.getElementById('cnt-andamento').textContent = dadosAndamento.length;
                 dadosMim = data.tabelas.fechados_por_mim || data.tabelas.fechados || [];
                 dadosOutro = data.tabelas.fechados_por_outro || [];
-                dadosRetorno = data.tabelas.retorno || [];
                 document.getElementById('cnt-mim').textContent = dadosMim.length;
                 document.getElementById('cnt-outro').textContent = dadosOutro.length;
-                document.getElementById('cnt-retorno').textContent = dadosRetorno.length;
                 pagMim = 1; pagOutro = 1;
-                renderPaginated('mim'); renderPaginated('outro'); renderRetorno();
+                renderPaginated('mim'); renderPaginated('outro');
             })
             .catch(err => {
                 // Ignora erros de abort (são intencionais)
@@ -438,37 +440,65 @@ document.addEventListener('DOMContentLoaded', () => {
         const el = document.getElementById(listId);
         if (!el) return;
         el.innerHTML = '';
-        if (!itens.length) {
+
+        const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
+        let filtered = itens;
+        if (q) {
+            filtered = itens.filter(d => 
+                (d.cliente || '').toLowerCase().includes(q) || 
+                (d.telefone || '').toLowerCase().includes(q)
+            );
+        }
+
+        if (!filtered.length) {
             const m = { aguardando: ['🎉', 'Nenhum aguardando.'], andamento: ['💤', 'Nenhum em atendimento.'] };
             const [ic, tx] = m[tipo] || ['—', 'Sem dados.'];
-            el.innerHTML = `<div class="empty-state"><div class="empty-icon">${ic}</div><p>${tx}</p></div>`;
+            el.innerHTML = `<div class="empty-state"><div class="empty-icon">${q ? '🔍' : ic}</div><p>${q ? 'Nenhum resultado para a busca.' : tx}</p></div>`;
             return;
         }
         const f = document.createDocumentFragment();
-        itens.forEach(c => f.appendChild(mkCard(c, tipo)));
+        filtered.forEach(c => f.appendChild(mkCard(c, tipo)));
         el.appendChild(f);
+    }
+
+    function formatSegundos(seg) {
+        if (seg <= 0) return "--";
+        seg = Math.floor(seg);
+        let h = Math.floor(seg / 3600);
+        let m = Math.floor((seg % 3600) / 60);
+        let s = seg % 60;
+        if (h > 0) return `${h}h ${m}m ${s}s`;
+        if (m > 0) return `${m}m ${s}s`;
+        return `${s}s`;
     }
 
     function mkCard(c, tipo) {
         const d = document.createElement('div'); d.className = 'item-card';
         const nm = esc(c.cliente || 'Desconhecido'), tel = esc(c.telefone || '—');
         const ent = esc(c.data_entrada || '—'), resp = esc(c.primeira_resposta || '—');
+        const ativoFlag = c.is_ativo ? `<span class="chip blue" style="font-weight:600"><i class="fa-solid fa-bolt"></i> ATIVO</span>` : '';
+        const ehOutroRetorno = c.retorno_de && c.retorno_de.toLowerCase() !== c.atendente.toLowerCase();
+        const textoRetorno = ehOutroRetorno ? `Retornou de ${esc(c.retorno_de)}` : `Retorno`;
+        const retornoFlag = c.is_retorno ? `<span class="chip purple" style="font-weight:600"><i class="fa-solid fa-arrow-rotate-left"></i> ${textoRetorno}</span>` : '';
+        const veioDe = ativoFlag + retornoFlag + (c.veio_de ? `<span class="chip redir"><i class="fa-solid fa-shuffle"></i> Encaminhado por ${esc(c.veio_de)} após ${esc(c.tempo_anterior || '--')}.</span>` : '');
 
         if (tipo === 'aguardando') {
             const cls = (c.tempo_espera_seg || 0) > 900 ? 'rose' : 'amber';
-            d.innerHTML = `<div class="ic-identity"><div class="ic-name" title="${nm}">${nm}</div><div class="ic-phone">${tel}</div></div><div class="ic-status"><span class="status-pill aguardando">Aguardando</span></div><div class="ic-meta"><span class="chip neutral"><i class="fa-regular fa-clock"></i> Entrada: <span class="mono">${ent}</span></span><span class="chip neutral"><i class="fa-solid fa-user"></i> Atendente: ${esc(c.atendente || '—')}</span></div><div class="ic-time"><div class="ic-time-label">Na fila</div><div class="ic-time-val live-timer" data-seconds="${c.tempo_espera_seg || 0}" style="background:var(--c-${cls}-bg);color:var(--c-${cls})">${esc(c.tempo_espera || '--')}</div></div>`;
+            d.innerHTML = `<div class="ic-identity"><div class="ic-name" title="${nm}">${nm}</div><div class="ic-phone">${tel}</div></div><div class="ic-status"><span class="status-pill aguardando">Aguardando</span></div><div class="ic-meta">${veioDe}<span class="chip neutral"><i class="fa-regular fa-clock"></i> Entrada: <span class="mono">${ent}</span></span><span class="chip neutral"><i class="fa-solid fa-user"></i> Atendente: ${esc(c.atendente || '—')}</span></div><div class="ic-time"><div class="ic-time-label">Na fila</div><div class="ic-time-val live-timer" data-seconds="${c.tempo_espera_seg || 0}" style="background:var(--c-${cls}-bg);color:var(--c-${cls})">${esc(c.tempo_espera || '--')}</div></div>`;
         } else if (tipo === 'andamento') {
             const redir = c.houve_redir ? `<span class="chip redir"><i class="fa-solid fa-shuffle"></i> Redirecionado</span>` : '';
-            d.innerHTML = `<div class="ic-identity"><div class="ic-name" title="${nm}">${nm}</div><div class="ic-phone">${tel}</div></div><div class="ic-status"><span class="status-pill atendimento">Em Atendimento</span></div><div class="ic-meta"><span class="chip neutral"><i class="fa-regular fa-clock"></i> Entrada: <span class="mono">${ent}</span></span><span class="chip neutral"><i class="fa-solid fa-reply"></i> 1ª Resposta: <span class="mono">${resp}</span></span><span class="chip amber"><i class="fa-solid fa-hourglass-half"></i> Espera: ${esc(c.tempo_espera || '--')}</span>${redir}</div><div class="ic-time"><div class="ic-time-label">Atendimento</div><div class="ic-time-val live-timer" data-seconds="${c.tempo_atendimento_seg || 0}" style="background:var(--c-blue-bg);color:var(--c-blue)">${esc(c.tempo_atendimento || '--')}</div></div>`;
+            d.innerHTML = `<div class="ic-identity"><div class="ic-name" title="${nm}">${nm}</div><div class="ic-phone">${tel}</div></div><div class="ic-status"><span class="status-pill atendimento">Em Atendimento</span></div><div class="ic-meta">${veioDe}<span class="chip neutral"><i class="fa-regular fa-clock"></i> Entrada: <span class="mono">${ent}</span></span><span class="chip neutral"><i class="fa-solid fa-reply"></i> 1ª Resposta: <span class="mono">${resp}</span></span><span class="chip amber"><i class="fa-solid fa-hourglass-half"></i> Espera: ${esc(c.tempo_espera || '--')}</span>${redir}</div><div class="ic-time"><div class="ic-time-label">Atendimento</div><div class="ic-time-val live-timer" data-seconds="${c.tempo_atendimento_seg || 0}" style="background:var(--c-blue-bg);color:var(--c-blue)">${esc(c.tempo_atendimento || '--')}</div></div>`;
         } else if (tipo === 'fechados_mim') {
-            const veioDe = c.veio_de ? `<span class="chip redir"><i class="fa-solid fa-shuffle"></i> Veio de ${esc(c.veio_de)} (ficou ${esc(c.tempo_anterior || '--')} com ele)</span>` : '';
-            d.innerHTML = `<div class="ic-identity"><div class="ic-name" title="${nm}">${nm}</div><div class="ic-phone">${tel}</div></div><div class="ic-status"><span class="status-pill fechado">Fechado por mim</span></div><div class="ic-meta">${veioDe}<span class="chip neutral"><i class="fa-regular fa-clock"></i> Entrada: <span class="mono">${ent}</span></span><span class="chip neutral"><i class="fa-solid fa-flag-checkered"></i> Fechamento: <span class="mono">${esc(c.data_fechamento || '—')}</span></span><span class="chip amber"><i class="fa-solid fa-hourglass-half"></i> Espera: ${esc(c.tempo_espera || '--')}</span><span class="chip blue"><i class="fa-solid fa-headset"></i> Atend.: ${esc(c.tempo_atendimento || '--')}</span></div><div class="ic-time"><div class="ic-time-label">Total</div><div class="ic-time-val" style="background:var(--c-green-bg);color:#065f46">${esc(c.tempo_total || '--')}</div></div>`;
+            let totalShow = esc(c.tempo_total || '--');
+            let extraChips = '';
+            if (c.veio_de) {
+                const grandTotal = (c.tempo_total_seg || 0) + (c.tempo_anterior_seg || 0);
+                totalShow = formatSegundos(grandTotal);
+                extraChips = `<span class="chip blue"><i class="fa-solid fa-stopwatch"></i> Tempo comigo: ${esc(c.tempo_total || '--')}</span>`;
+            }
+            d.innerHTML = `<div class="ic-identity"><div class="ic-name" title="${nm}">${nm}</div><div class="ic-phone">${tel}</div></div><div class="ic-status"><span class="status-pill fechado">Fechado por mim</span></div><div class="ic-meta">${veioDe}<span class="chip neutral"><i class="fa-regular fa-clock"></i> Entrada: <span class="mono">${ent}</span></span><span class="chip neutral"><i class="fa-solid fa-flag-checkered"></i> Fechamento: <span class="mono">${esc(c.data_fechamento || '—')}</span></span><span class="chip amber"><i class="fa-solid fa-hourglass-half"></i> Espera: ${esc(c.tempo_espera || '--')}</span><span class="chip blue"><i class="fa-solid fa-headset"></i> Atend.: ${esc(c.tempo_atendimento || '--')}</span>${extraChips}</div><div class="ic-time"><div class="ic-time-label">Total</div><div class="ic-time-val" style="background:var(--c-green-bg);color:#065f46">${totalShow}</div></div>`;
         } else if (tipo === 'fechados_outro') {
-            d.innerHTML = `<div class="ic-identity"><div class="ic-name" title="${nm}">${nm}</div><div class="ic-phone">${tel}</div></div><div class="ic-status"><span class="status-pill fechado-outro">Fechado por outro</span></div><div class="ic-meta"><span class="chip neutral"><i class="fa-regular fa-clock"></i> Entrada: <span class="mono">${ent}</span></span><span class="chip neutral"><i class="fa-solid fa-right-from-bracket"></i> Transferido em: <span class="mono">${esc(c.data_fechamento || '—')}</span></span><span class="chip rose"><i class="fa-solid fa-user-group"></i> Transferido para: ${esc(c.fechado_por || '—')}</span><span class="chip amber"><i class="fa-solid fa-stopwatch"></i> Tempo comigo: ${esc(c.tempo_total || '--')}</span><span class="chip blue"><i class="fa-solid fa-user"></i> Tempo com colega: ${esc(c.tempo_com_colega || '--')}</span></div><div class="ic-time"><div class="ic-time-label">Total</div><div class="ic-time-val" style="background:var(--c-purple-bg);color:var(--c-purple)">${esc(c.tempo_total_chat || '--')}</div></div>`;
-        } else if (tipo === 'retorno') {
-            const seg = c.tempo_espera_seg || 0;
-            const cls = seg > 3600 ? 'rose' : seg > 900 ? 'amber' : 'purple';
-            d.innerHTML = `<div class="ic-identity"><div class="ic-name" title="${nm}">${nm}</div><div class="ic-phone">${tel}</div></div><div class="ic-status"><span class="status-pill retorno">Retorno</span></div><div class="ic-meta"><span class="chip neutral"><i class="fa-regular fa-clock"></i> Voltou em: <span class="mono">${ent}</span></span><span class="chip neutral" style="font-size:9px"><i class="fa-solid fa-circle-info"></i> Confira se é reação ou nova dúvida</span></div><div class="ic-time"><div class="ic-time-label">Esperando</div><div class="ic-time-val" style="background:var(--c-${cls}-bg);color:var(--c-${cls})">${esc(c.tempo_espera || '--')}</div></div>`;
+            d.innerHTML = `<div class="ic-identity"><div class="ic-name" title="${nm}">${nm}</div><div class="ic-phone">${tel}</div></div><div class="ic-status"><span class="status-pill fechado-outro">Fechado por outro</span></div><div class="ic-meta">${veioDe}<span class="chip neutral"><i class="fa-regular fa-clock"></i> Entrada: <span class="mono">${ent}</span></span><span class="chip neutral"><i class="fa-solid fa-right-from-bracket"></i> Transferido em: <span class="mono">${esc(c.data_fechamento || '—')}</span></span><span class="chip rose"><i class="fa-solid fa-user-group"></i> Transferido para: ${esc(c.fechado_por || '—')}</span><span class="chip amber"><i class="fa-solid fa-hourglass-half"></i> Espera: ${esc(c.tempo_espera || '--')}</span><span class="chip blue"><i class="fa-solid fa-headset"></i> Atend.: ${esc(c.tempo_atendimento || '--')}</span><span class="chip amber"><i class="fa-solid fa-stopwatch"></i> Tempo comigo: ${esc(c.tempo_total || '--')}</span><span class="chip blue"><i class="fa-solid fa-user"></i> Tempo com colega: ${esc(c.tempo_com_colega || '--')}</span></div><div class="ic-time"><div class="ic-time-label">Total</div><div class="ic-time-val" style="background:var(--c-purple-bg);color:var(--c-purple)">${esc(c.tempo_total_chat || '--')}</div></div>`;
         }
         return d;
     }
@@ -538,19 +568,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             mk('<i class="fa-solid fa-chevron-right" style="font-size:10px"></i>', page + 1, page >= totalPages, false);
         }
-    }
-
-    // Retorno
-    function renderRetorno() {
-        const el = document.getElementById('list-retorno');
-        if (!el) return;
-        const q = (searchInput?.value || '').toLowerCase().trim();
-        const filtered = q ? dadosRetorno.filter(c => ((c.cliente || '') + ' ' + (c.telefone || '')).toLowerCase().includes(q)) : dadosRetorno;
-        el.innerHTML = '';
-        if (!filtered.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><p>Nenhum chat de retorno.</p></div>'; return; }
-        const f = document.createDocumentFragment();
-        filtered.forEach(c => f.appendChild(mkCard(c, 'retorno')));
-        el.appendChild(f);
     }
 
     function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }

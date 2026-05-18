@@ -8,8 +8,10 @@
    ========================================================================== */
 
 // Lógica de UI: Desativa os checkboxes dos cards se o Menu pai estiver desligado
-document.addEventListener('turbo:load', () => {
+function initGestaoAcessosMenu() {
     document.querySelectorAll('.menu-toggle').forEach(toggle => {
+        if (toggle.dataset.menuInited) return;
+        toggle.dataset.menuInited = '1';
         toggle.addEventListener('change', function() {
             const targetClass = this.getAttribute('data-target');
             const cards = document.querySelectorAll(targetClass);
@@ -29,21 +31,31 @@ document.addEventListener('turbo:load', () => {
             });
         });
     });
-});
+}
+document.addEventListener('turbo:load', initGestaoAcessosMenu);
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initGestaoAcessosMenu);
+} else {
+    initGestaoAcessosMenu();
+}
 
 /* ==========================================================================
    1. SISTEMA DE BUSCA E FILTRAGEM NA TABELA
    ========================================================================== */
-document.addEventListener('turbo:load', () => {
+function initGestaoAcessosBusca() {
     const tbody = document.getElementById('tabelaUsuarios');
-    if (!tbody) return;
+    if (!tbody || tbody.dataset.searchInited) return;
+    tbody.dataset.searchInited = '1';
     
     // Salva as linhas originais carregadas pelo Django para restaurar depois
     const originalRows = Array.from(tbody.querySelectorAll('tr'));
     if (originalRows.length === 0 || (originalRows.length === 1 && originalRows[0].children.length === 1)) return;
     
+    const inputBusca = document.getElementById('inputBusca');
+    if (!inputBusca) return;
+
     // Escuta a digitação no campo de busca superior
-    document.getElementById('inputBusca').addEventListener('input', function(e) {
+    inputBusca.addEventListener('input', function(e) {
         // Normaliza o texto (remove acentos e deixa minúsculo)
         const termo = e.target.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const posicoes = new Map();
@@ -93,7 +105,13 @@ document.addEventListener('turbo:load', () => {
             }
         });
     });
-});
+}
+document.addEventListener('turbo:load', initGestaoAcessosBusca);
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initGestaoAcessosBusca);
+} else {
+    initGestaoAcessosBusca();
+}
 
 /* ==========================================================================
    2. SISTEMA DE NOTIFICAÇÕES (TOASTS)
@@ -330,7 +348,7 @@ function abrirModalEdicao(user) {
     // Marca os acessos modulares e granulares do usuário de forma segura
     const camposBooleanos = [
         'p_ferramentas', 'p_formatador_listas', 'p_formatador_dados', 
-        'p_analise_ia', 'p_analise_ia', 'p_documentacoes',
+        'p_analise_ia', 'p_documentacoes',
         'p_dash_polichat', 'p_gestao_polichat'
     ];
     
@@ -344,6 +362,13 @@ function abrirModalEdicao(user) {
             elemento.dispatchEvent(new Event('change'));
         }
     });
+
+    // PASSO 1.5: Trata o Menu Automações que não possui campo no BD e herda do p_analise_ia
+    const toggleAutomacoes = document.getElementById('toggle_menu_automacoes');
+    if (toggleAutomacoes) {
+        toggleAutomacoes.checked = isMasterUser ? true : (user.p_analise_ia == 1);
+        toggleAutomacoes.dispatchEvent(new Event('change'));
+    }
 
     // PASSO 2: Rolo Compressor do Admin Master (Sobrepõe estilos forçando o visual bloqueado)
     const boxGestao = document.getElementById('box_gestao_acessos'); 

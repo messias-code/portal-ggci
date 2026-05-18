@@ -2,6 +2,7 @@
    ESTILOS: MÓDULO DE DASHBOARDS
    ========================================================================== */
 
+html { font-size: 90%; }
 body { font-family: 'Poppins', sans-serif; }
 
 /* Animações de fundo (Bolinhas flutuantes) */

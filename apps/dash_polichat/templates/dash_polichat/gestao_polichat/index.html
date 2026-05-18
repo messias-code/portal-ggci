@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestão Polichat · Portal GGCI</title>
+    <title>Polichat · Portal GGCI</title>
     <meta name="description" content="Painel de gestão de atendimentos Polichat — Portal GGCI">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -30,9 +30,9 @@
     <header class="header">
         <div class="header-inner">
             <div class="header-brand">
-                <div class="brand-icon"><i class="fa-solid fa-bezier-curve"></i></div>
+                <div class="brand-icon"><i class="fa-brands fa-weixin"></i></div>
                 <div class="brand-info">
-                    <div class="brand-title">Gestão <span>Polichat</span></div>
+                    <div class="brand-title"><span>Polichat</span></div>
                     <div class="sync-badge" id="sync-status"><div class="sync-dot" id="sync-dot"></div><span id="sync-text">Sincronização ativa</span></div>
                 </div>
             </div>
@@ -91,7 +91,18 @@
 
     <!-- ═══ MAIN ═══ -->
     <div class="main" style="position:relative">
-        <div id="prompt-inicial"><div class="prompt-box"><div class="p-emoji">👆</div><h3>Selecione seu perfil</h3><p>Escolha seu nome no filtro acima para carregar sua mesa de trabalho.</p><div class="arrow-up"><i class="fa-solid fa-arrow-up"></i> Filtro de agente</div></div></div>
+        <div id="prompt-inicial">
+            <div class="prompt-box">
+                <div class="prompt-icon-wrapper">
+                    <i class="fa-solid fa-user-tie"></i>
+                </div>
+                <h3>Bem-vindo ao Polichat</h3>
+                <p>Para iniciarmos, por favor, selecione o seu perfil no <strong>Filtro de agente</strong> localizado no painel superior. Isso carregará sua mesa de trabalho e suas métricas exclusivas.</p>
+                <div class="arrow-up">
+                    <i class="fa-solid fa-arrow-up"></i> Selecione seu perfil acima
+                </div>
+            </div>
+        </div>
         <div class="kpi-strip">
             <div class="kpi-card" data-tab-target="aguardando"><div class="kpi-icon amber"><i class="fa-solid fa-hourglass-half"></i></div><div class="kpi-body"><div class="kpi-label">Aguardando</div><div class="kpi-value amber" id="kpi-aguardando">0</div></div></div>
             <div class="kpi-card" data-tab-target="andamento"><div class="kpi-icon blue"><i class="fa-solid fa-headset"></i></div><div class="kpi-body"><div class="kpi-label">Em Andamento</div><div class="kpi-value blue" id="kpi-andamento">0</div></div></div>
@@ -105,14 +116,12 @@
                 <button class="mtab" data-tab="andamento"><i class="fa-solid fa-circle-play"></i> Em Atendimento <span class="mtab-count blue-c" id="cnt-andamento">0</span></button>
                 <button class="mtab" data-tab="mim"><i class="fa-solid fa-check-circle"></i> Fechados por Mim <span class="mtab-count green-c" id="cnt-mim">0</span></button>
                 <button class="mtab" data-tab="outro"><i class="fa-solid fa-person-walking-arrow-right"></i> Fechados por Outro <span class="mtab-count rose-c" id="cnt-outro">0</span></button>
-                <button class="mtab" data-tab="retorno"><i class="fa-solid fa-reply-all"></i> Retorno <span class="mtab-count purple-c" id="cnt-retorno">0</span></button>
                 <div class="mtab-search" id="search-wrap" style="display:none"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="search-input" placeholder="Buscar cliente ou telefone..."></div>
             </div>
             <div class="tab-pane active" id="pane-aguardando"><div class="card-list" id="list-aguardando"><div class="empty-state"><div class="empty-icon">🎉</div><p>Nenhum cliente aguardando.</p></div></div></div>
             <div class="tab-pane" id="pane-andamento"><div class="card-list" id="list-andamento"><div class="empty-state"><div class="empty-icon">💤</div><p>Nenhum em atendimento.</p></div></div></div>
             <div class="tab-pane" id="pane-mim"><div class="card-list" id="list-mim"></div><div class="list-footer"><div class="list-info" id="info-mim">0 registros</div><div class="pag" id="pag-mim"></div></div></div>
             <div class="tab-pane" id="pane-outro"><div class="card-list" id="list-outro"></div><div class="list-footer"><div class="list-info" id="info-outro">0 registros</div><div class="pag" id="pag-outro"></div></div></div>
-            <div class="tab-pane" id="pane-retorno"><div class="card-list" id="list-retorno"><div class="empty-state"><div class="empty-icon">✅</div><p>Nenhum chat de retorno.</p></div></div></div>
         </div>
     </div>
 </div>

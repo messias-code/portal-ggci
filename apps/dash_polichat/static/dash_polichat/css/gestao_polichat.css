@@ -58,6 +58,7 @@ body {
     overflow: hidden
 }
 
+html { font-size: 90%; }
 body {
     font-family: 'DM Sans', system-ui, sans-serif;
     background: var(--c-bg);
@@ -1286,51 +1287,72 @@ body {
     background: var(--glass);
     backdrop-filter: blur(16px);
     border: 1px solid var(--glass-border);
-    border-radius: 22px;
-    padding: 44px 52px;
+    border-radius: 24px;
+    padding: 50px 60px;
     text-align: center;
-    box-shadow: var(--shadow-lg);
-    max-width: 400px;
+    box-shadow: 0 25px 50px -12px rgba(236, 72, 153, 0.25);
+    max-width: 480px;
+    position: relative;
+    overflow: hidden;
 }
 
-.prompt-box .p-emoji {
-    font-size: 44px;
-    margin-bottom: 14px
+.prompt-box::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at center, rgba(236, 72, 153, 0.05) 0%, transparent 50%);
+    pointer-events: none;
 }
 
-.prompt-box h3 {
-    font-size: 19px;
-    font-weight: 800;
-    margin-bottom: 6px;
-    color: var(--c-text)
-}
-
-.prompt-box p {
-    font-size: 12px;
-    color: var(--c-muted);
-    line-height: 1.7
-}
-
-.prompt-box .arrow-up {
-    margin-top: 18px;
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--pink);
+.prompt-icon-wrapper {
+    width: 72px;
+    height: 72px;
+    background: linear-gradient(135deg, #f472b6, var(--pink), var(--pink-dark));
+    border-radius: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 5px;
-    animation: bounce-up 2s ease-in-out infinite;
+    color: white;
+    font-size: 32px;
+    margin: 0 auto 24px auto;
+    box-shadow: 0 10px 25px rgba(236, 72, 153, 0.3);
+    border: 2px solid rgba(255, 255, 255, 0.5);
 }
 
-@keyframes bounce-up {
+.prompt-box h3 {
+    font-size: 22px;
+    font-weight: 800;
+    margin-bottom: 12px;
+    color: var(--c-text);
+    letter-spacing: -0.5px;
+}
 
-    0%,
-    100% {
-        transform: translateY(0)
-    }
+.prompt-box p {
+    font-size: 13.5px;
+    color: var(--c-muted);
+    line-height: 1.6;
+    margin-bottom: 24px;
+}
 
-    50% {
-        transform: translateY(-4px)
-    }
+.prompt-box p strong {
+    color: var(--pink-dark);
+    font-weight: 700;
+}
+
+.prompt-box .arrow-up {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--pink);
+    background: rgba(236, 72, 153, 0.1);
+    padding: 10px 20px;
+    border-radius: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }

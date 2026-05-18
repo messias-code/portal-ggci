@@ -3,10 +3,13 @@
    v2.0 — Barra de Progresso Inteligente com Suavização Adaptativa
    ========================================================================== */
 
-document.addEventListener('turbo:load', () => {
+function initAnaliseIA() {
     console.log("Módulo de automação inicializado.");
 
     const btnStart = document.getElementById('btn-start');
+    if (!btnStart || btnStart.dataset.inited) return;
+    btnStart.dataset.inited = '1';
+
     const btnStop = document.getElementById('btn-stop');
     const btnDownload = document.getElementById('btn-download');
     const consoleLogs = document.getElementById('console-logs');
@@ -381,4 +384,11 @@ document.addEventListener('turbo:load', () => {
                 .catch(err => console.error("Monitoramento error:", err));
         }, 1500);
     }
-});
+}
+
+document.addEventListener('turbo:load', initAnaliseIA);
+if (document.readyState !== 'loading') {
+    initAnaliseIA();
+} else {
+    document.addEventListener('DOMContentLoaded', initAnaliseIA);
+}

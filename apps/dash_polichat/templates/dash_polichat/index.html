@@ -99,10 +99,10 @@
                 <a href="{% url 'gestao_polichat' %}" class="group flex flex-row items-center bg-gradient-to-br from-pink-400 to-pink-500 p-5 lg:p-6 border border-white/30 rounded-[2rem] shadow-xl hover:shadow-2xl hover:shadow-pink-500/30 transition-all duration-300 hover:-translate-y-1 relative overflow-hidden w-full max-w-[25rem] min-h-[12rem]">
                     <div class="absolute -right-10 -top-10 w-48 h-48 bg-white/10 blur-3xl rounded-full group-hover:bg-white/20 transition-all"></div>
                     <div class="flex-shrink-0 w-24 h-24 bg-white/10 backdrop-blur-md rounded-[1.2rem] border border-white/30 shadow-[inset_0_0_20px_rgba(255,255,255,0.1)] flex items-center justify-center relative overflow-hidden mr-5 group-hover:bg-white/20 transition-all text-white">
-                        <i class="fa-solid fa-bezier-curve text-[2.75rem] drop-shadow-lg transform group-hover:scale-110 transition-transform duration-500"></i>
+                        <i class="fa-brands fa-weixin text-[2.75rem] m-auto leading-none drop-shadow-lg transform group-hover:scale-110 transition-transform duration-500"></i>
                     </div>
                     <div class="flex flex-col justify-center text-left flex-1 z-10 w-full">
-                        <h5 class="mb-1.5 text-xl font-extrabold tracking-tight text-white drop-shadow-sm">Gestão Polichat</h5>
+                        <h5 class="mb-1.5 text-xl font-extrabold tracking-tight text-white drop-shadow-sm">Polichat</h5>
                         <p class="mb-4 text-pink-50/90 text-[12px] leading-relaxed font-medium">Acompanhamento de atendimentos, tempo de resposta e desempenho dos atendentes.</p>
                         {% if user.p_gestao_polichat or user.usuario == 'admin@ovg.org.br' %}
                             <button type="button" class="inline-flex items-center justify-center w-max text-pink-600 bg-white hover:bg-gray-100 hover:scale-[1.03] transition-all font-bold rounded-xl text-[13px] px-4 py-2 shadow-md">

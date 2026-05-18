@@ -3,6 +3,7 @@
    ========================================================================== */
 
 /* Define a tipografia padrão para toda a página (Fonte Poppins importada no HTML) */
+html { font-size: 90%; }
 body { font-family: 'Poppins', sans-serif; }
 
 

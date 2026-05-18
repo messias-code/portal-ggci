@@ -4,6 +4,7 @@
 
 /* Define a tipografia padrão para toda a página. 
    A fonte 'Poppins' precisa ser importada no <head> do 'templates/inicio/index.html' */
+html { font-size: 90%; }
 body { font-family: 'Poppins', sans-serif; }
 
 

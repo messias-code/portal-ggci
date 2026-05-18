@@ -1,6 +1,7 @@
 /* ==========================================================================
    CONFIGURAÇÕES ESPECÍFICAS - ANÁLISE IA
    ========================================================================== */
+html { font-size: 90%; }
 body { font-family: 'Poppins', sans-serif; }
 
 /* Animações das Bolhas de Fundo */
