@@ -175,24 +175,46 @@ try:
     json_str = os.environ.get('JSON_DATA')
     json_str = re.sub(r',\s*}', '}', json_str)
     data = json.loads(json_str)
-    with open('.env', 'r') as f: content = f.read()
-    content = re.sub(r'^# ={10,}\n# TEMPLATE.*?# ={10,}\n+', '', content, flags=re.DOTALL)
-    mapping = {
-        'POLICHAT_USER': 'DASHBOARD_POLICHAT_USER', 'POLICHAT_PASS': 'DASHBOARD_POLICHAT_PASS',
-        'PBU_USER': 'PORTAL_PBU_USER', 'PBU_PASS_SCRIPTCASE': 'PORTAL_PBU_PASS_ANALISE_IA',
-        'PBU_PASS_BOLSA': 'PORTAL_PBU_PASS_PAGAMENTOS', 
-        'SIBU_HOST': 'SIBU_BANCO_DADOS_HOST', 'SIBU_USER': 'SIBU_BANCO_DADOS_USER',
-        'SIBU_PASS': 'SIBU_BANCO_DADOS_PASS', 'SIBU_NAME': 'SIBU_BANCO_DADOS_NAME',
-        'SIBU_BANCO_DADOS_HOST': 'SIBU_BANCO_DADOS_HOST', 'SIBU_BANCO_DADOS_USER': 'SIBU_BANCO_DADOS_USER',
-        'SIBU_BANCO_DADOS_NAME': 'SIBU_BANCO_DADOS_NAME', 'SIBU_BANCO_DADOS_PASS': 'SIBU_BANCO_DADOS_PASS'
-    }
-    for k, v in data.items():
-        key = mapping.get(k, k)
-        if re.search(f'^{key}=', content, flags=re.MULTILINE):
-            content = re.sub(f'^{key}=.*', f\\\"{key}='{v}'\\\", content, flags=re.MULTILINE)
-        else:
-            content += f\\\"\n{key}='{v}'\\\"
-    with open('.env', 'w') as f: f.write(content)
+    
+    content = ''
+    if os.path.exists('.env'):
+        with open('.env', 'r') as f: content = f.read()
+        
+    def get_val(key, default=''):
+        m = re.search(f'^{key}=\\'?(.*?)\\'?$', content, flags=re.MULTILINE)
+        return m.group(1) if m else default
+
+    new_env = '# ==========================================================================\\n'
+    new_env += '# ARQUIVO DE CONFIGURAÇÕES (.env)\\n'
+    new_env += '# ==========================================================================\\n\\n'
+    new_env += '# --- 1. CONFIGURAÇÕES DO DJANGO ---\\n'
+    new_env += 'DEBUG=True\\n'
+    new_env += f\\\"SECRET_KEY='{get_val('SECRET_KEY', 'gerada-automaticamente-pelo-setup')}'\\n\\\"
+    new_env += 'ALLOWED_HOSTS=*\\n\\n'
+    
+    new_env += '# --- 2. BANCO DE DADOS LOCAL (MYSQL) ---\\n'
+    new_env += 'DB_NAME=\\'portal_ggci\\'\\n'
+    new_env += 'DB_USER=\\'portal_user\\'\\n'
+    new_env += f\\\"DB_PASSWORD='{get_val('DB_PASSWORD', 'ovg@2026')}'\\n\\\"
+    new_env += 'DB_HOST=\\'127.0.0.1\\'\\n'
+    new_env += 'DB_PORT=\\'3306\\'\\n\\n'
+    
+    new_env += '# --- 3. DASHBOARD POLICHAT ---\\n'
+    new_env += f\\\"DASHBOARD_POLICHAT_USER='{data.get('DASHBOARD_POLICHAT_USER', get_val('DASHBOARD_POLICHAT_USER', ''))}'\\n\\\"
+    new_env += f\\\"DASHBOARD_POLICHAT_PASS='{data.get('DASHBOARD_POLICHAT_PASS', get_val('DASHBOARD_POLICHAT_PASS', ''))}'\\n\\n\\\"
+    
+    new_env += '# --- 4. PORTAL PBU (GOVERNO) ---\\n'
+    new_env += f\\\"PORTAL_PBU_USER='{data.get('PORTAL_PBU_USER', get_val('PORTAL_PBU_USER', ''))}'\\n\\\"
+    new_env += f\\\"PORTAL_PBU_PASS_AGENDAMENTOS='{data.get('PORTAL_PBU_PASS_AGENDAMENTOS', get_val('PORTAL_PBU_PASS_AGENDAMENTOS', ''))}'\\n\\\"
+    new_env += f\\\"PORTAL_PBU_PASS_VALORES_BOLSAS='{data.get('PORTAL_PBU_PASS_VALORES_BOLSAS', get_val('PORTAL_PBU_PASS_VALORES_BOLSAS', ''))}'\\n\\n\\\"
+    
+    new_env += '# --- 5. BANCO DE DADOS EXTERNO (SIBU) ---\\n'
+    new_env += f\\\"SIBU_BANCO_DADOS_HOST='{data.get('SIBU_BANCO_DADOS_HOST', get_val('SIBU_BANCO_DADOS_HOST', '10.237.1.16'))}'\\n\\\"
+    new_env += f\\\"SIBU_BANCO_DADOS_USER='{data.get('SIBU_BANCO_DADOS_USER', get_val('SIBU_BANCO_DADOS_USER', 'bi_ovg'))}'\\n\\\"
+    new_env += f\\\"SIBU_BANCO_DADOS_PASS='{data.get('SIBU_BANCO_DADOS_PASS', get_val('SIBU_BANCO_DADOS_PASS', 'bi_ovg@#$124as65'))}'\\n\\\"
+    new_env += f\\\"SIBU_BANCO_DADOS_NAME='{data.get('SIBU_BANCO_DADOS_NAME', get_val('SIBU_BANCO_DADOS_NAME', 'sibu'))}'\\n\\\"
+
+    with open('.env', 'w') as f: f.write(new_env)
 except Exception as e:
     sys.exit(1)
 \"" "Processando e injetando JSON de credenciais"

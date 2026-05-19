@@ -68,3 +68,8 @@ notas.txt
 logs/
 *.log
 log_do_robo.txt
+
+# ==========================================
+# ANTIGRAVITY E AGENTES DE IA
+# ==========================================
+.agents/
