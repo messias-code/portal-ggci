@@ -848,7 +848,7 @@ def get_engine():
             pool_size=5,
             max_overflow=10,
             pool_recycle=3600,
-            connect_args={'connect_timeout': 30}
+            connect_args={'connect_timeout': 30, 'read_timeout': 300}
         )
     return _ENGINE_CACHE
 

@@ -659,7 +659,10 @@ def atualizar_cache_parquets(docs_selecionados=None):
     os.makedirs(pasta_parquets, exist_ok=True)
     
     try:
-        engine = create_engine(f'mysql+mysqlconnector://{DB_USER}:{quote_plus(DB_PASS)}@{DB_HOST}/{DB_NAME}')
+        engine = create_engine(
+            f'mysql+mysqlconnector://{DB_USER}:{quote_plus(DB_PASS)}@{DB_HOST}/{DB_NAME}',
+            connect_args={'connect_timeout': 30, 'read_timeout': 300}
+        )
         mapa_tabelas = [
             ("PY_ggci_coleta_de_dados_beneficiarios_temp_d1_analise_ia", os.path.join(PROJECT_ROOT, "apps/automacoes/analise_ia/sql/beneficiarios/PY_ggci_coleta_de_dados_beneficiarios_temp_d1_analise_ia.sql"), ["TODOS"]),
             ("PY_ggci_coleta_de_dados_pagamentos_temp_d1_analise_ia", os.path.join(PROJECT_ROOT, "apps/automacoes/analise_ia/sql/pagamentos/PY_ggci_coleta_de_dados_pagamentos_temp_d1_analise_ia.sql"), ["TODOS"]),
