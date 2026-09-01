@@ -858,3 +858,95 @@ body { font-family: 'Poppins', sans-serif; }
     .cfgx__resumo { flex: 1 1 100%; }
     .cfgx__btn { flex: 1 1 auto; justify-content: center; }
 }
+
+/* ==========================================================================
+   BARRA DE FILTROS — SEÇÕES, RÓTULOS E CONTADORES
+   ==========================================================================
+   A barra era uma pilha de oito controles sem hierarquia: dois tamanhos de
+   título (`text-xs` e `text-[10px]`), três espaçamentos diferentes e nenhuma
+   pista de a que pergunta cada controle respondia.
+
+   CSS próprio, e não mais utilitárias: o bundle do Tailwind deste projeto é
+   purgado e não há build no repositório — classe utilitária nova não é gerada
+   e falha em silêncio. Escrito sobre os tokens de tema (`--tema-*`, em
+   `static/css/tema.css`), o que faz o eleitoral vir junto sem uma segunda
+   folha para manter em dia.
+
+   Os CONTROLES em si continuam sendo a grade segmentada com `peer-checked`
+   que a tela já usava, com as mesmas classes: é essa a marcação que o tema
+   eleitoral corrige nominalmente em `dash_documentos_ia-eleitoral.css`, e
+   trocá-la por outra coisa deixaria o modo escuro para trás.
+   ========================================================================== */
+
+.docia-filtro-secao > * + * { margin-top: 0.625rem; }
+
+.docia-filtro-cabecalho {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    /* Faz o título parar de flutuar sobre o controle: a linha fica ancorada
+       na régua e o par (título + grade) lê como um bloco só. */
+    padding-bottom: 0.375rem;
+    border-bottom: 1px solid var(--tema-borda);
+}
+
+.docia-filtro-titulo {
+    margin: 0;
+    font-size: 0.6875rem;
+    font-weight: 800;
+    line-height: 1;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--tema-texto-medio);
+}
+
+/*  Rótulo à ESQUERDA do controle, e não acima dele.
+
+    Acima, cada par gastava duas linhas e a coluna virava uma escada de oito
+    degraus. Ao lado, o par ocupa uma linha só e os controles ficam alinhados
+    numa régua vertical — o olho compara "Ativo/Desligado" com "Veterano/
+    Ingresso" sem reencontrar a margem a cada linha.
+
+    A coluna do rótulo é fixa em 5.25rem: é o que "Mudou de bolsa" precisa
+    para caber em duas linhas curtas sem espremer o controle, que fica com
+    ~11rem — largura suficiente para "Desligado" por extenso.  */
+.docia-filtro-linha {
+    display: grid;
+    grid-template-columns: 5.25rem minmax(0, 1fr);
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.docia-filtro-rotulo {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--tema-texto-medio);
+}
+
+/*  O contador só aparece quando há o que contar — o JS cuida do `display`.
+    Zero escrito num selo é ruído: ele ocupa o mesmo espaço e a mesma cor de
+    um filtro aceso para dizer que não há nenhum.  */
+.docia-filtro-contador {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 0.375rem;
+    border-radius: 999px;
+    font-size: 0.625rem;
+    font-weight: 800;
+    line-height: 1;
+    background-color: rgba(107, 0, 123, 0.1);
+    color: #6B007B;
+}
+
+/*  No cabeçalho o selo convive com "Filtros" em 1.25rem, e o mesmo tamanho de
+    lá parece um erro de alinhamento ao lado de um título tão maior.  */
+.docia-filtro-contador--total {
+    min-width: 1.375rem;
+    height: 1.375rem;
+    font-size: 0.6875rem;
+}

@@ -428,3 +428,14 @@ html[data-tema="eleitoral"] .cfgx__btn:focus-visible,
 html[data-tema="eleitoral"] .cfg-periodo:focus-visible + .cfgx-periodo__caixa {
     outline-color: var(--tema-primaria);
 }
+
+/* Barra de filtros: seções, rótulos e contadores.
+
+   Só o selo do contador precisa vir para cá. Título, rótulo e a régua das
+   seções já foram escritos sobre `--tema-texto-medio` e `--tema-borda`, que
+   trocam de valor sozinhos no eleitoral; o selo é a única peça com cor de
+   marca fixa (#6B007B), e no fundo escuro ele ficaria roxo sobre grafite. */
+html[data-tema="eleitoral"] .docia-filtro-contador {
+    background-color: var(--tema-primaria-lavada) !important;
+    color: var(--tema-primaria) !important;
+}

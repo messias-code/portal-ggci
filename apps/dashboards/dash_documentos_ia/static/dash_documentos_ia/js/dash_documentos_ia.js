@@ -1385,18 +1385,86 @@ document.addEventListener('turbo:load', () => {
                 marcarBotaoDeLimpar();
             }
 
+            /* ==================================================================
+               CONTADORES DAS SEÇÕES DA BARRA
+               ==================================================================
+               A barra vive fechada — ela desliza por cima dos gráficos e é fechada
+               logo depois de recortar. Fechada, ela não diz mais nada, e um recorte
+               esquecido de ontem lê como "só existem 299 linhas". Os chips de filtros
+               ativos sobre a tabela já cobrem parte disso; o que eles não cobrem é a
+               pergunta que se faz ANTES de abrir: "sobrou alguma coisa ligada aqui?".
+
+               Contam o que está MARCADO, não o que a consulta devolveu: o número tem
+               de estar certo no instante do clique, e não depois que a API responde.  */
+            const pintarContador = (id, quantidade) => {
+                const selo = document.getElementById(id);
+                if (!selo) return;
+                selo.textContent = quantidade;
+                selo.style.display = quantidade > 0 ? '' : 'none';
+            };
+
+            const atualizarContadores = () => {
+                const porSecao = [
+                    ['contador-semestres', marcados(checkboxesSemestre).length],
+                    ['contador-situacao', marcados(checkboxesVinculo).length
+                                        + marcados(checkboxesPerfil).length],
+                    ['contador-mudancas', marcados(checkboxesMudouIES).length
+                                        + marcados(checkboxesMudouBolsa).length],
+                    // Mesmo guarda de `parametrosDeFiltro`: o filtro de IES vive no
+                    // escopo do modal, que pode não ter sido inicializado ainda.
+                    ['contador-ies', typeof activeIESFilters !== 'undefined'
+                                        ? activeIESFilters.length : 0],
+                ];
+                let total = 0;
+                porSecao.forEach(([id, quantidade]) => {
+                    total += quantidade;
+                    pintarContador(id, quantidade);
+                });
+                pintarContador('contador-filtros', total);
+            };
+
             const recarregar = () => {
+                atualizarContadores();
                 window.fetchChartData();
                 window.fetchTableData();
             };
             window.recarregarDocumentosIA = recarregar;
 
             // --- Semestres: cada clique refaz a consulta ------------------------
+            // Somam: "2025-2 E 2026-1" é uma pergunta que se faz.
             checkboxesSemestre.forEach((caixa) => caixa.addEventListener('change', recarregar));
-            checkboxesMudouIES.forEach((caixa) => caixa.addEventListener('change', recarregar));
-            checkboxesMudouBolsa.forEach((caixa) => caixa.addEventListener('change', recarregar));
-            checkboxesVinculo.forEach((caixa) => caixa.addEventListener('change', recarregar));
-            checkboxesPerfil.forEach((caixa) => caixa.addEventListener('change', recarregar));
+
+            /*  OS PARES SE EXCLUEM.
+
+                Vínculo, Perfil, Mudou IES e Mudou Bolsa são caixas, e caixa deixa
+                marcar as duas — "Ativo E Desligado", que é exatamente o mesmo recorte
+                que nenhum dos dois marcado. O controle prometia uma decisão e aceitava
+                uma contradição, e quem marcasse os dois veria o número não mudar e
+                concluiria que o filtro está quebrado.
+
+                Continuam sendo caixas, e não rádio, por causa do terceiro estado: rádio
+                não desmarca com um segundo clique, e "tanto faz" é a resposta mais
+                comum das quatro perguntas. Marcar um apaga o outro; clicar no que já
+                está aceso apaga ele mesmo, pelo comportamento nativo da caixa.
+
+                O ouvinte é UM SÓ com as duas coisas dentro, e não dois registrados
+                separadamente: na mesma caixa eles disparam na ordem em que foram
+                registrados, e a consulta precisa sair DEPOIS que o par foi desfeito —
+                senão a primeira consulta ainda leva os dois valores.  */
+            const exclusivo = (caixas) => caixas.forEach((caixa) =>
+                caixa.addEventListener('change', () => {
+                    if (caixa.checked) {
+                        caixas.forEach((outra) => {
+                            if (outra !== caixa) outra.checked = false;
+                        });
+                    }
+                    recarregar();
+                }));
+
+            exclusivo(checkboxesMudouIES);
+            exclusivo(checkboxesMudouBolsa);
+            exclusivo(checkboxesVinculo);
+            exclusivo(checkboxesPerfil);
 
             /* ==================================================================
                EXPORTAR EM EXCEL E EXPANDIR
@@ -1499,6 +1567,60 @@ document.addEventListener('turbo:load', () => {
                 });
             }
 
+            /* ==================================================================
+               MODO DE VISUALIZAÇÃO — BENEFICIÁRIOS OU IES
+               ==================================================================
+               Não é um filtro: é a troca do sujeito da pergunta. No modo Beneficiários
+               cada linha da tela é um documento esperado de um aluno; no modo IES a
+               mesma pergunta ("quem já mandou o quê") será respondida por instituição,
+               com outros números e outros gráficos.
+
+               Por enquanto o modo IES é uma vista vazia de propósito — o dashboard por
+               instituição ainda não existe. O que ele já faz é o que precisa estar certo
+               desde o começo: recolhe a vista de beneficiários INTEIRA (KPIs, roscas e
+               detalhamento) e os filtros que só valem para ela, para que ninguém leia um
+               número de beneficiário achando que é de IES.
+
+               `display` inline, e não a classe `hidden`: as duas vistas são `flex`, e
+               `hidden` e `flex` têm a mesma especificidade — quem ganha é quem vier
+               depois no bundle purgado, que não é garantia nenhuma. Os dois modais desta
+               tela já contornam isso do mesmo jeito.  */
+            const MODO_PADRAO = 'beneficiarios';
+            const radiosModo = document.querySelectorAll('.filter-modo');
+            const vistaBeneficiarios = document.getElementById('vista-beneficiarios');
+            const vistaIES = document.getElementById('vista-ies');
+            const filtrosBeneficiarios = document.getElementById('filtros-beneficiarios');
+
+            const modoSelecionado = () => {
+                const marcado = Array.from(radiosModo).find((radio) => radio.checked);
+                return (marcado && marcado.value) || MODO_PADRAO;
+            };
+
+            /*  `buscarDados` é falso na carga: o `recarregar()` do fim da inicialização
+                já cuida disso, e chamar os dois seria pedir a mesma coisa duas vezes.  */
+            const aplicarModo = (modo, buscarDados) => {
+                const emIES = modo === 'ies';
+                radiosModo.forEach((radio) => (radio.checked = radio.value === modo));
+                if (vistaBeneficiarios) vistaBeneficiarios.style.display = emIES ? 'none' : 'flex';
+                if (vistaIES) vistaIES.style.display = emIES ? 'flex' : 'none';
+                if (filtrosBeneficiarios) filtrosBeneficiarios.style.display = emIES ? 'none' : '';
+                if (emIES || !buscarDados) return;
+                /*  De volta aos beneficiários: os dados podem ter envelhecido enquanto a
+                    outra vista estava no ar, e as roscas passaram esse tempo dentro de um
+                    container sem altura — o ApexCharts recebe a altura como número e não
+                    percebe sozinho que ela voltou.  */
+                recarregar();
+                setTimeout(forcarResize, 60);
+            };
+
+            radiosModo.forEach((radio) => radio.addEventListener('change', () => {
+                if (radio.checked) aplicarModo(radio.value, true);
+            }));
+
+            /*  O navegador restaura o rádio marcado ao recarregar a página (o Firefox
+                faz isso), e aí o markup diria "Beneficiários" com o modo IES marcado.  */
+            aplicarModo(modoSelecionado(), false);
+
             // --- "Restaurar Padrão": limpa semestres, IES e fatias escondidas ---
             const btnLimparFiltros = document.getElementById('btn-clear-filters');
             if (btnLimparFiltros) {
@@ -1513,7 +1635,12 @@ document.addEventListener('turbo:load', () => {
                     marcarBotaoDeLimpar();
                     window.__recortesDocIA.length = 0;
                     repintarLegendas();
-                    recarregar();
+                    /*  O modo é o primeiro controle da barra, e "restaurar" só é
+                        verdade se ele voltar junto: com a vista de IES no ar, limpar
+                        semestres e IES não mudaria nada do que está na tela. É ele
+                        também quem recarrega — vindo do modo IES, as roscas voltam de um
+                        container sem altura e precisam do `forcarResize` que ele faz.  */
+                    aplicarModo(MODO_PADRAO, true);
                 });
             }
 
