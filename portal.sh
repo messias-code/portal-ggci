@@ -455,7 +455,13 @@ function setup_full() {
         # rastreado que o rsync seguinte sobrescrevia — deixando o worktree sujo.
         if [ ! -d '/home/labs/portal-ggci-prod' ]; then
             rsync -a --exclude 'venv' --exclude '.git' ./ /home/labs/portal-ggci-prod/
+            # PROD nasce já com a configuração de produção. Antes o .env vinha
+            # copiado cru e só a opção 5 aplicava estes dois ajustes — ou seja,
+            # numa instalação nova a produção subia com DEBUG=True (tela amarela
+            # do Django exposta ao visitante) e apontando para o banco errado.
             cp .env /home/labs/portal-ggci-prod/.env
+            sed -i \"s|^DEBUG=.*|DEBUG=False|\" /home/labs/portal-ggci-prod/.env
+            sed -i \"s|^DB_NAME=.*|DB_NAME='portal_ggci'|\" /home/labs/portal-ggci-prod/.env
         fi
         # Remove atalho antigo se existir e cria um venv real
         if [ -L '/home/labs/portal-ggci-prod/venv' ]; then rm '/home/labs/portal-ggci-prod/venv'; fi
@@ -473,7 +479,11 @@ function setup_full() {
             git worktree add /home/labs/portal-ggci-dev dev 2>/dev/null \
               || { rsync -a --exclude 'venv' --exclude '.git' ./ /home/labs/portal-ggci-dev/; \
                    echo '[AVISO] portal-ggci-dev criado SEM git: a base nao e um clone. Commits nao funcionarao ali.'; }
+            # DEV aponta para o SEU banco. Sem esta linha os dois ambientes
+            # compartilhavam portal_ggci, e um teste no dev alterava produção.
             cp .env /home/labs/portal-ggci-dev/.env
+            sed -i \"s|^DEBUG=.*|DEBUG=True|\" /home/labs/portal-ggci-dev/.env
+            sed -i \"s|^DB_NAME=.*|DB_NAME='portal_ggci_dev'|\" /home/labs/portal-ggci-dev/.env
         fi
         # Remove atalho antigo se existir e cria um venv real
         if [ -L '/home/labs/portal-ggci-dev/venv' ]; then rm '/home/labs/portal-ggci-dev/venv'; fi
@@ -517,11 +527,17 @@ function setup_full() {
         run_with_stream "sudo service mysql stop || true; sudo mysqld_safe --skip-grant-tables --skip-networking & sleep 5; sudo mysql -e \"FLUSH PRIVILEGES; ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY '${pass}'; FLUSH PRIVILEGES;\"; sudo pkill mysqld; sleep 2; sudo service mysql start" "Resgatando MySQL"
     fi
 
+    # DOIS bancos, não um. Antes só o de produção era criado, e como a FASE 1.5
+    # copiava o mesmo .env para os dois ambientes, DEV subia escrevendo no banco de
+    # PRODUÇÃO. Separar aqui é o que faz "dev sendo dev e prod sendo prod" valer já
+    # na primeira instalação, e não só depois da primeira opção 5.
     run_with_stream "
         sudo mysql -e \"DROP DATABASE IF EXISTS ${db_name}; CREATE DATABASE ${db_name} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;\" &&
+        sudo mysql -e \"DROP DATABASE IF EXISTS ${db_name}_dev; CREATE DATABASE ${db_name}_dev CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;\" &&
         sudo mysql -e \"DROP USER IF EXISTS '${db_user}'@'localhost';\" &&
         sudo mysql -e \"CREATE USER '${db_user}'@'localhost' IDENTIFIED BY '${pass}';\" &&
         sudo mysql -e \"GRANT ALL PRIVILEGES ON ${db_name}.* TO '${db_user}'@'localhost';\" &&
+        sudo mysql -e \"GRANT ALL PRIVILEGES ON ${db_name}_dev.* TO '${db_user}'@'localhost';\" &&
         sudo mysql -e \"FLUSH PRIVILEGES;\" &&
         export K_U=\"DB_USER\" V_U=\"${db_user}\" &&
         python3 -c \"import os, re; k,v=os.environ.get('K_U'),os.environ.get('V_U'); c=open('.env').read(); f=open('.env','w'); f.write(re.sub(f'^{k}=.*',f\\\"{k}='{v}'\\\",c,flags=re.MULTILINE))\"
@@ -540,6 +556,17 @@ function setup_full() {
     elif [ -s gestao_acessos_iniciais.example.json ]; then
         run_with_stream "python3 manage.py loaddata gestao_acessos_iniciais.example.json" "Criando usuário admin inicial (template)"
         log_msg "warn" "Instalação nova: defina a senha do admin com 'python3 manage.py changepassword admin'."
+    fi
+
+    # O bloco acima migrou o banco de PRODUÇÃO (portal_ggci), que é o do
+    # orquestrador. O banco de DEV é outro e precisa das mesmas tabelas, senão o
+    # ambiente sobe e quebra no primeiro acesso — "table doesn't exist". Rodamos
+    # de dentro do DEV_DIR justamente para que o Django leia o .env de lá.
+    local DEV_DIR="/home/labs/portal-ggci-dev"
+    if [ -d "$DEV_DIR/venv" ]; then
+        local semente="gestao_acessos_iniciais.json"
+        [ -s "$DEV_DIR/$semente" ] || semente="gestao_acessos_iniciais.example.json"
+        run_with_stream "cd '$DEV_DIR' && . venv/bin/activate && python3 manage.py makemigrations --noinput && python3 manage.py migrate --noinput && { [ -s '$semente' ] && python3 manage.py loaddata '$semente' || true; }" "Preparando o banco do ambiente DEV"
     fi
 
     print_phase "🛡️ FASE 4: AGENDAMENTO E AUTO-RECUPERAÇÃO"

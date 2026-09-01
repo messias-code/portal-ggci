@@ -94,8 +94,10 @@ if not os.path.exists(PROD_DIR):
 
 subprocess.run("tmux new-session -d -s prod /bin/bash", shell=True)
 subprocess.run(f"tmux send-keys -t prod 'cd {PROD_DIR}' C-m", shell=True)
-# Sincroniza e garante que o diretório prod está na main
-subprocess.run("tmux send-keys -t prod 'git checkout main' C-m", shell=True)
+# Aqui havia um `git checkout main`. PROD é cópia rsync SEM .git (ver README, seção
+# "Os três diretórios"), então o comando só produzia "not a git repository" na pane
+# a cada reboot — barulho que escondia erro de verdade. O código de PROD vem do
+# rsync da opção 5, não de checkout.
 time.sleep(2)
 subprocess.run("tmux send-keys -t prod '. venv/bin/activate && bash portal.sh' C-m", shell=True)
 time.sleep(3) # Aguarda a interface do portal.sh carregar
