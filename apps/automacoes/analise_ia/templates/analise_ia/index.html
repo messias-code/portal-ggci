@@ -1,0 +1,1731 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <!-- 
+    === ARQUIVO: apps/automacoes/analise_ia/templates/analise_ia/analise_ia/index.html ===
+    Propósito: Estrutura visual HTML/Django principal da ferramenta de Automação de IA.
+    Autor: N/A
+    Dependências Principais: TailwindCSS (CDN), FontAwesome, Turbo (Hotwire)
+    O QUE FAZ: Constrói a UI para o usuário disparar as extrações via painel.
+    POR QUÊ EXISTE: Evitar execução de automação CLI. Permite que funcionários acionem 
+    o robô (Playwright) sem necessitarem conhecimento técnico de programação.
+    COMO FUNCIONA: Usa classes CSS utilitárias, um script JS para gerenciar a reatividade e blocos modulares em tela.
+    -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análise IA - Portal GGCI</title>
+
+    <!--
+        MOTOR DE TEMAS — precisa vir antes de tudo.
+        Carregado SEM 'defer'/'async' de propósito: executado de forma síncrona
+        aqui no <head>, grava o atributo data-tema no <html> antes da primeira
+        pintura, eliminando o flash do tema padrão. Como a preferência vive no
+        localStorage, o modo escolhido em qualquer tela já chega aplicado aqui.
+    -->
+    <script src="{% static 'js/tema.js' %}"></script>
+
+    <link rel="stylesheet" href="{% static 'css/output.css' %}">
+    <!-- Console de processamento: utilitárias que o bundle purgou + os dois temas. -->
+    <link rel="stylesheet" href="{% static 'css/console.css' %}?v=1">
+
+    <!-- Tokens de cor dos temas e o botão sol/lua (compartilhado por todo o portal) -->
+    <link rel="stylesheet" href="{% static 'css/tema.css' %}">
+
+    <!-- Modo escuro da casca de menu (barra lateral + cabeçalho), compartilhado -->
+    <link rel="stylesheet" href="{% static 'css/tema-menu.css' %}">
+
+    <!-- Modo escuro da área de trabalho (painéis, campos, botões), compartilhado -->
+    <link rel="stylesheet" href="{% static 'css/tema-ferramenta.css' %}">
+
+    <!-- Remapeia em bloco as utilitárias neutras dentro de .area-trabalho -->
+    <link rel="stylesheet" href="{% static 'css/tema-conteudo.css' %}">
+
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <link rel="stylesheet" href="{% static 'analise_ia/css/analise_ia.css' %}">
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@8.0.4/dist/turbo.es.2017-esm.js"></script>
+</head>
+
+<body class="grid-bg bg-[#f8f6fb] text-gray-800 fixed inset-0 p-4 lg:p-6 flex transition-colors duration-500 overflow-hidden">
+
+        <!-- 
+        ======================================================================
+        1. ELEMENTOS DECORATIVOS DE BACKGROUND (LIGHT BLOBS / BLUR EFFECTS)
+        ----------------------------------------------------------------------
+        Divs com desfoque gaussiano (blur-[140px]) e alta opacidade que criam o
+        efeito estético de iluminação colorida flutuante nos quatro cantos da tela,
+        trazendo profundidade visual sem prejudicar o desempenho.
+        ======================================================================
+    -->
+    <div class="menu-blob menu-blob--1 absolute top-[-20%] left-[-15%] w-[70vw] h-[70vh] bg-pink-500/70 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="menu-blob menu-blob--2 absolute top-[-20%] right-[-15%] w-[70vw] h-[70vh] bg-yellow-400/75 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="menu-blob menu-blob--3 absolute bottom-[-20%] left-[-15%] w-[70vw] h-[70vh] bg-purple-700/60 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="menu-blob menu-blob--4 absolute bottom-[-20%] right-[-15%] w-[70vw] h-[70vh] bg-green-600/65 rounded-full blur-[140px] pointer-events-none z-0"></div>
+
+    <div
+        class="menu-shell w-full h-full bg-white/70 backdrop-blur-2xl border border-white/80 rounded-[2rem] shadow-2xl flex overflow-hidden relative z-10">
+
+        <aside class="menu-sidebar w-[18rem] lg:w-[20rem] flex flex-col border-r border-purple-100/50 bg-white/40">
+            <div class="menu-divisoria h-28 flex items-center justify-center border-b border-purple-100/50">
+                <!--
+                    As duas versões da logo são publicadas e o CSS de tema decide
+                    qual fica visível. O elemento oculto sai da árvore de
+                    acessibilidade, então o leitor de tela anuncia apenas uma.
+                -->
+                <img src="{% static 'img/logos/ovg.png' %}" alt="OVG Logo"
+                    class="logo-tema logo-tema--claro h-[4.46rem] drop-shadow-md">
+                <img src="{% static 'img/logos/ovg-eleitoral.png' %}" alt="OVG Logo"
+                    class="logo-tema logo-tema--eleitoral h-[4.46rem] drop-shadow-md">
+            </div>
+            <nav class="flex-1 px-6 py-8 space-y-2 overflow-hidden">
+                <p class="menu-nav-titulo text-[13px] font-bold text-purple-700 uppercase tracking-widest mb-4 px-2">Navegação Principal
+                </p>
+                <a href="{% url 'inicio' %}"
+                    class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
+                    <i class="fa-solid fa-user-shield text-[23px] w-6 text-center"></i><span>Início</span>
+                </a>
+                {% if user.p_ferramentas or user.usuario == 'admin@ovg.org.br' %}
+                <a href="{% url 'ferramentas' %}"
+                    class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
+                    <i class="fa-solid fa-screwdriver-wrench text-[23px] w-6 text-center"></i><span>Ferramentas</span>
+                </a>
+                {% else %}
+                <div class="menu-nav-bloqueado flex items-center space-x-4 px-4 py-3 text-gray-400 bg-gray-50/50 rounded-xl font-semibold text-base cursor-not-allowed opacity-70"
+                    title="Acesso Restrito">
+                    <i class="fa-solid fa-lock text-[23px] w-6 text-center"></i><span>Ferramentas</span>
+                </div>
+                {% endif %}
+                <a href="{% url 'automacoes' %}"
+                    class="nav-active flex items-center space-x-3 px-4 py-3 rounded-xl font-bold text-base">
+                    <i class="fa-brands fa-whmcs text-[28px] w-6 text-center"></i><span>Automações</span>
+                </a>
+                {% if user.p_dash_polichat or user.p_dash_documentos_ia or user.usuario == 'admin@ovg.org.br' %}
+                <a href="{% url 'dashboards' %}"
+                    class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
+                    <i class="fa-solid fa-chart-line text-[23px] w-6 text-center"></i><span>Dashboards</span>
+                </a>
+                {% else %}
+                <div class="menu-nav-bloqueado flex items-center space-x-4 px-4 py-3 text-gray-400 bg-gray-50/50 rounded-xl font-semibold text-base cursor-not-allowed opacity-70"
+                    title="Acesso Restrito">
+                    <i class="fa-solid fa-lock text-[23px] w-6 text-center"></i><span>Dashboards</span>
+                </div>
+                {% endif %}
+                {% if user.p_documentacoes or user.usuario == 'admin@ovg.org.br' %}
+                <a href="#"
+                    class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
+                    <i class="fa-solid fa-folder-open text-[23px] w-6 text-center"></i><span>Documentações</span>
+                </a>
+                {% else %}
+                <div class="menu-nav-bloqueado flex items-center space-x-4 px-4 py-3 text-gray-400 bg-gray-50/50 rounded-xl font-semibold text-base cursor-not-allowed opacity-70"
+                    title="Acesso Restrito">
+                    <i class="fa-solid fa-lock text-[23px] w-6 text-center"></i><span>Documentações</span>
+                </div>
+                {% endif %}
+            </nav>
+            <div class="menu-divisoria p-6 border-t border-purple-100/50">
+                <a href="{% url 'logout' %}"
+                    class="menu-sair flex items-center justify-center space-x-2 w-full px-4 py-3 bg-red-50 text-red-600 rounded-xl font-extrabold text-sm hover:bg-red-500 hover:text-white transition-all shadow-sm">
+                    <i class="fa-solid fa-right-from-bracket"></i><span>SAIR DO SISTEMA</span>
+                </a>
+            </div>
+        </aside>
+
+        <main class="area-trabalho flex-1 flex flex-col h-full overflow-hidden relative">
+
+            <header
+                class="h-28 px-8 lg:px-10 flex justify-between items-center border-b border-pink-100/50 bg-white/40 backdrop-blur-md shrink-0 z-10">
+                <div class="flex items-center gap-5">
+                    <div
+                        class="tela-header-icone w-16 h-16 bg-gradient-to-br from-pink-100 to-fuchsia-100 text-pink-600 rounded-2xl flex items-center justify-center border border-pink-200 shadow-sm">
+                        <i class="fa-solid fa-robot text-3xl"></i>
+                    </div>
+                    <div>
+                        <h2 class="menu-header-titulo text-2xl font-black text-gray-800 tracking-tight">Análise IA</h2>
+                        <p class="text-[14px] text-gray-500 font-semibold mt-0.5">Automação para extração e análise de
+                            dados.</p>
+                    </div>
+                </div>
+                <!--
+                    Agrupa o seletor de modo e o botão Voltar no canto direito do
+                    cabeçalho. O <header> é 'justify-between' e este bloco é o
+                    segundo filho, então o alinhamento à direita já vem de graça.
+                -->
+                <div class="flex items-center gap-4">
+                    <button type="button"
+                        class="tema-toggle"
+                        data-tema-toggle
+                        aria-label="Ativar modo eleitoral"
+                        aria-pressed="false">
+                        <svg class="tema-toggle__icone tema-toggle__icone--lua" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"
+                            stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                        <svg class="tema-toggle__icone tema-toggle__icone--sol" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.6"/>
+                            <path d="M12 2.4V4.4M12 19.6V21.6M21.6 12H19.6M4.4 12H2.4M18.79 5.21L17.38 6.62M6.62 17.38L5.21 18.79M18.79 18.79L17.38 17.38M6.62 6.62L5.21 5.21"
+                                stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+
+                    <a href="{% url 'automacoes' %}" class="tela-voltar px-5 py-2.5 bg-white/80 hover:bg-pink-50 text-pink-600 font-bold rounded-xl transition-all shadow-sm border border-pink-100 inline-flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-arrow-left mr-2 mt-[1px]"></i>
+                    <span class="leading-none">Voltar</span>
+                </a>
+                </div>
+            </header>
+
+            <div class="flex-1 p-4 lg:p-6 flex flex-col gap-3 overflow-hidden relative z-10">
+
+                <div
+                    class="bg-white/80 backdrop-blur-xl border border-white/80 px-5 pb-5 pt-2 lg:px-6 lg:pb-6 lg:pt-3 rounded-[1.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col shrink-0">
+
+                    <h3
+                        class="font-extrabold text-[16px] text-gray-800 mb-3 flex items-center gap-2 border-b border-gray-200/80 pb-2">
+                        <i class="fa-solid fa-sliders text-purple-600"></i> Configurações de Extração
+                    </h3>
+                    <!-- Layout: Flex col para criar as linhas -->
+                    <style>
+                        @media (min-width: 768px) {
+                            .grid-proporcional {
+                                display: grid;
+                                grid-template-columns: 1fr 2fr;
+                            }
+                        }
+                    
+                .contratos-sem-item:has(.chk-sortable:checked) .grip-handle:hover,
+                .riaf-sem-item:has(.chk-sortable:checked) .grip-handle:hover {
+                    background-color: rgba(255, 255, 255, 0.15) !important;
+                }
+                .contratos-sem-item:has(.chk-sortable:checked) .grip-handle:hover i.fa-grip-vertical,
+                .riaf-sem-item:has(.chk-sortable:checked) .grip-handle:hover i.fa-grip-vertical {
+                    color: white !important;
+                }
+</style>
+                    <div class="flex flex-col gap-6">
+
+                        <!-- Linha 1: Base de Extração & Relatórios Informativos -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+                            <!-- Base de Extração -->
+                            <div class="flex flex-col p-5 border border-gray-200 rounded-2xl bg-white shadow-sm gap-5 h-full">
+                                <div class="flex flex-col gap-3">
+                                    <h4 class="text-[11px] font-black text-gray-700 uppercase tracking-widest flex items-center gap-2 mb-1">
+                                        <i class="fa-solid fa-file-lines text-purple-500 text-xl"></i> Base de Extração
+                                    </h4>
+                                    <p class="text-[12px] text-gray-500 font-medium leading-relaxed min-h-[40px] mb-2">
+                                        Selecione quais documentos você deseja baixar do portal do SIBU e configure seus semestres individualmente.
+                                    </p>
+                                    
+                                    <!-- `btn-config-acao` não pinta nada no modo claro: é só o gancho
+                                         estável de que o modo escuro precisa para sobrepor o roxo
+                                         institucional escrito no atributo `style` abaixo. -->
+                                    <button type="button" onclick="openModalDocumentos()" class="btn-config-acao w-full flex items-center justify-center gap-2 px-4 py-2 text-white rounded-xl transition-all shadow-md font-bold text-[12px] uppercase tracking-wider group hover:opacity-90 cursor-pointer" style="background-color: #7e22ce;">
+                                        <i class="fa-solid fa-sliders group-hover:rotate-90 transition-transform duration-300"></i> Configurar Documentos
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Relatórios Informativos -->
+                            <div class="flex flex-col p-5 border border-gray-200 rounded-2xl bg-white shadow-sm gap-5 h-full">
+                                <div class="flex flex-col gap-3">
+                                    <h4 class="text-[11px] font-black text-gray-700 uppercase tracking-widest flex items-center gap-2 mb-1">
+                                        <i class="fa-solid fa-rectangle-list text-purple-500 text-lg"></i> Relatórios Informativos
+                                    </h4>
+                                    <p class="text-[12px] text-gray-500 font-medium leading-relaxed min-h-[40px] mb-2">
+                                        Configure as extrações específicas dos relatórios das IES.
+                                    </p>
+                                    <div class="flex flex-wrap items-center gap-3">
+                                        <button type="button" onclick="openModalConfigContratos()" class="flex-1 min-w-[120px] flex items-center justify-center gap-2 px-3 py-2 border border-purple-200 bg-purple-50 text-purple-700 rounded-xl hover:bg-purple-100 transition-colors text-[12px] font-bold uppercase shadow-sm cursor-pointer" id="btn-config-contratos">
+                                            <i class="fa-solid fa-file-contract text-[22px]"></i> Contratos
+                                        </button>
+                                        <button type="button" onclick="openModalConfigRiaf()" class="flex-1 min-w-[120px] flex items-center justify-center gap-2 px-3 py-2 border border-purple-200 bg-purple-50 text-purple-700 rounded-xl hover:bg-purple-100 transition-colors text-[12px] font-bold uppercase shadow-sm cursor-pointer" id="btn-config-riaf">
+                                            <i class="fa-solid fa-file-invoice-dollar text-[22px]"></i> RIAF's
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Linha 2: Formato de Saída & Relatórios Quantitativos (Levantamento de Dados) -->
+                        <div class="grid grid-cols-1 gap-6 items-stretch grid-proporcional">
+                            <!-- Formato de Saída -->
+                            <div class="flex flex-col p-5 border border-gray-200 rounded-2xl bg-white shadow-sm gap-5 h-full">
+                                <div class="flex flex-col gap-3 h-full justify-between">
+                                    <h4 class="text-[11px] font-black text-gray-700 uppercase tracking-widest flex items-center gap-2 mb-1">
+                                        <i class="fa-solid fa-file-export text-purple-500 text-lg"></i> Formato de Saída
+                                    </h4>
+                                    <div class="flex flex-row gap-3">
+                                        <label class="flex-1 px-3 py-2 rounded-xl border-2 border-gray-200 bg-white shadow-sm flex items-center justify-center gap-2 cursor-pointer transition-all duration-200 hover:border-purple-300 hover:shadow-md has-[:checked]:border-purple-500 has-[:checked]:bg-purple-50/40 group relative overflow-hidden">
+                                            <input type="radio" name="formato" value="EXCEL" class="peer sr-only chk-formato" checked>
+                                            <i class="fa-solid fa-file-excel text-gray-400 peer-checked:text-green-600 text-[22px] transition-colors shrink-0"></i>
+                                            <span class="text-[13px] font-semibold text-gray-500 peer-checked:text-purple-800 peer-checked:font-bold">Excel</span>
+                                            <span class="absolute top-0 right-0 bg-gray-100 text-gray-500 peer-checked:bg-purple-100 peer-checked:text-purple-700 text-[9px] font-black px-1.5 py-0.5 rounded-bl-lg uppercase tracking-wider transition-colors shadow-sm">Padrão</span>
+                                        </label>
+                                        <label class="flex-1 px-3 py-2 rounded-xl border-2 border-gray-200 bg-white shadow-sm flex items-center justify-center gap-2 cursor-pointer transition-all duration-200 hover:border-purple-300 hover:shadow-md has-[:checked]:border-purple-500 has-[:checked]:bg-purple-50/40 group">
+                                            <input type="radio" name="formato" value="CSV" class="peer sr-only chk-formato">
+                                            <i class="fa-solid fa-file-csv text-gray-400 peer-checked:text-pink-600 text-[22px] transition-colors shrink-0"></i>
+                                            <span class="text-[13px] font-semibold text-gray-500 peer-checked:text-purple-800 peer-checked:font-bold">CSV</span>
+                                        </label>
+                                    </div>
+
+                                </div>
+                            </div>
+
+                            <!-- Levantamento de Dados -->
+                            <div class="flex flex-col p-5 border border-gray-200 rounded-2xl bg-white shadow-sm gap-5 h-full">
+                                <div class="flex flex-col gap-3 h-full justify-between">
+                                    <h4 class="text-[11px] font-black text-gray-700 uppercase tracking-widest flex items-center gap-2 mb-1">
+                                        <i class="fa-solid fa-chart-column text-purple-500 text-lg"></i> Levantamento Estratégico
+                                    </h4>
+                                    <style>
+                                        .btn-quantitativo:has(input:checked) {
+                                            background-color: #ec4899 !important;
+                                            border-color: #ec4899 !important;
+                                        }
+                                    </style>
+                                    <div class="flex flex-row gap-3 h-full">
+                                        <label class="btn-quantitativo flex-1 px-2 py-2 rounded-xl border-2 border-gray-200 bg-white shadow-sm flex items-center justify-center gap-2 cursor-pointer transition-all duration-200 hover:border-pink-400 hover:shadow-md group relative">
+                                            <input type="checkbox" id="chk-aba-quantitativa" class="peer sr-only">
+                                            <i class="fa-solid fa-clipboard-list text-gray-400 peer-checked:text-white text-[22px] transition-colors shrink-0"></i>
+                                            <span class="text-[12px] font-semibold text-gray-500 peer-checked:text-white peer-checked:font-bold whitespace-nowrap">Envios & Pendências</span>
+                                        </label>
+                                        <label class="btn-quantitativo flex-1 px-2 py-2 rounded-xl border-2 border-gray-200 bg-white shadow-sm flex items-center justify-center gap-2 cursor-pointer transition-all duration-200 hover:border-pink-400 hover:shadow-md group relative">
+                                            <input type="checkbox" id="chk-pagamentos" class="peer sr-only">
+                                            <i class="fa-solid fa-money-check-dollar text-gray-400 peer-checked:text-white text-[22px] transition-colors shrink-0"></i>
+                                            <span class="text-[12px] font-semibold text-gray-500 peer-checked:text-white peer-checked:font-bold whitespace-nowrap">Pagamentos</span>
+                                        </label>
+                                        <label class="flex-1 px-2 py-2 rounded-xl border-2 border-gray-200 bg-gray-50 shadow-sm flex items-center justify-center gap-2 cursor-not-allowed opacity-60 transition-all duration-200 group relative" title="Em desenvolvimento">
+                                            <input type="checkbox" id="chk-coleta-dados" class="peer sr-only" disabled>
+                                            <i class="fa-solid fa-database text-gray-400 text-[22px] shrink-0"></i>
+                                            <span class="text-[12px] font-semibold text-gray-500 whitespace-nowrap">Coleta de Dados</span>
+                                        </label>
+                                        
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div
+                    class="bg-white/90 backdrop-blur-xl border border-white/80 p-2 rounded-[1rem] shadow-[0_8px_20px_rgb(0,0,0,0.03)] flex items-center shrink-0">
+
+                    <button id="btn-start"
+                        class="text-white bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-purple-300 shadow-lg shadow-purple-500/40 font-bold rounded-xl text-[13px] px-5 py-2.5 tracking-widest uppercase flex items-center justify-center gap-2 w-36 transition-all cursor-pointer">
+                        <i class="fa-solid fa-play"></i><span>Iniciar</span>
+                    </button>
+
+                    <button id="btn-stop"
+                        class="ml-2 text-white bg-gradient-to-r from-pink-500 via-pink-600 to-pink-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-pink-300 shadow-md shadow-pink-500/30 font-bold rounded-xl text-[13px] px-5 py-2.5 tracking-widest uppercase flex items-center justify-center gap-2 w-36 transition-all cursor-not-allowed opacity-90">
+                        <i class="fa-solid fa-stop"></i><span>Parar</span>
+                    </button>
+
+                    <div
+                        class="flex-1 mx-4 bg-gray-100 rounded-lg h-7 border border-gray-200 shadow-inner relative flex items-center justify-center overflow-hidden">
+                        <div id="progress-bar"
+                            class="absolute top-0 left-0 h-full bg-gradient-to-r from-pink-400 to-purple-500 transition-all duration-500 ease-out"
+                            style="width: 0%;"></div>
+                        <span id="progress-text"
+                            class="relative z-10 text-[13px] font-black text-gray-700 tracking-wide drop-shadow-[0_0_2px_rgba(255,255,255,0.8)]">0%</span>
+                    </div>
+
+                    <button id="btn-download"
+                        class="text-gray-500 bg-gradient-to-r from-gray-100 via-gray-200 to-gray-300 focus:ring-4 focus:outline-none focus:ring-gray-200 shadow-sm font-bold rounded-xl text-[13px] px-5 py-2.5 tracking-widest uppercase flex items-center justify-center gap-2 w-72 transition-all cursor-not-allowed">
+                        <i class="fa-solid fa-download"></i><span>Baixar</span>
+                    </button>
+
+                </div>
+
+                <div class="flex-1 min-h-[150px] console-ggci border rounded-[1.5rem] flex flex-col overflow-hidden">
+                    <!-- Barra de título, no estilo de uma janela de terminal. As três
+                         bolinhas são a convenção do macOS e valem igual nos dois temas. -->
+                    <div class="console-ggci__cromo px-5 py-2.5 flex items-center justify-between border-b shrink-0">
+                        <div class="flex space-x-2.5">
+                            <div class="w-3.5 h-3.5 rounded-full bg-[#ff5f56] shadow-sm"></div>
+                            <div class="w-3.5 h-3.5 rounded-full bg-[#ffbd2e] shadow-sm"></div>
+                            <div class="w-3.5 h-3.5 rounded-full bg-[#27c93f] shadow-sm"></div>
+                        </div>
+                        <span class="text-purple-800 text-[11px] font-mono tracking-widest font-bold flex items-center gap-2">
+                            <i class="fa-solid fa-terminal text-pink-500"></i> CONSOLE DE PROCESSAMENTO
+                        </span>
+                        <div class="w-10"></div>
+                    </div>
+
+                    <div id="console-logs"
+                        class="console-ggci__log p-6 flex-1 overflow-y-auto overflow-x-hidden font-mono text-[13px] leading-relaxed text-gray-700 break-words">
+                        <div class="flex gap-2 mb-1">
+                            <span class="text-pink-600 font-bold">ovg@probem-ai:</span>
+                            <span class="text-purple-600">~</span>
+                            <span class="text-purple-400">$</span>
+                            <span class="text-purple-900 font-bold animate-pulse">init_analise_ia --verbose</span>
+                        </div>
+                        <div class="text-pink-500 italic mb-2">
+                            <i class="fa-solid fa-angle-right"></i> Aguardando início...
+                        </div>
+                        <span class="console-spinner"></span>
+                    </div>
+                </div>
+                    </div>
+                </div>
+
+            </div>
+            </div>
+            
+
+
+            <!-- Modal Configuração RIAF -->
+            
+            <style>
+                .contratos-sem-item:has(.chk-sortable:checked),
+                .riaf-sem-item:has(.chk-sortable:checked) {
+                    border-color: #8B009B !important;
+                    background-color: #8B009B !important;
+                }
+                .contratos-sem-item:has(.chk-sortable:checked) .lbl-text,
+                .riaf-sem-item:has(.chk-sortable:checked) .lbl-text {
+                    color: white !important;
+                }
+                .contratos-sem-item:has(.chk-sortable:checked) label:hover,
+                .riaf-sem-item:has(.chk-sortable:checked) label:hover {
+                    background-color: rgba(0, 0, 0, 0.05) !important;
+                }
+                .contratos-sem-item:has(.chk-sortable:checked) i.fa-grip-vertical,
+                .riaf-sem-item:has(.chk-sortable:checked) i.fa-grip-vertical {
+                    color: rgba(255, 255, 255, 0.7) !important;
+                }
+                
+                .sortable-ghost {
+                    opacity: 0.5 !important;
+                    background-color: #f8f9fa !important;
+                    border: 1px dashed #cbd5e1 !important;
+                }
+                .sortable-drag {
+                    cursor: grabbing !important;
+                    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+                    z-index: 9999 !important;
+                }
+            </style>
+            <div id="modal-config-riaf" class="area-trabalho z-[60] hidden items-center justify-center p-4" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(15, 23, 42, 0.4); backdrop-filter: blur(4px); display: none;">
+                <div class="bg-white rounded-2xl flex flex-col overflow-hidden animate-fade-in-up shadow-2xl border border-gray-200" style="width: 90%; max-width: 650px;">
+                    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0 bg-gray-50/80">
+                        <div class="flex items-center gap-4">
+                            <div class="modal-header-icone w-10 h-10 rounded-xl flex items-center justify-center shadow-sm" style="background: linear-gradient(135deg, #6B007B, #9B00B3); color: white;">
+                                <i class="fa-solid fa-file-invoice-dollar text-lg"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-gray-800 tracking-tight">Relatório do RIAF</h3>
+                                <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mt-0.5">Defina as opções e ordem de visualização</p>
+                            </div>
+                        </div>
+                        <button type="button" onclick="cancelModalConfigRiaf()" class="text-gray-400 hover:text-gray-800 hover:bg-gray-200 w-8 h-8 flex items-center justify-center rounded-lg transition-colors shrink-0">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="p-6 overflow-y-auto" style="max-height: 60vh;">
+
+
+                        <!-- Seleção de Semestres -->
+                        <div>
+                            <h4 class="text-sm font-bold text-gray-800 mb-1">Semestres e Ordem</h4>
+                            <p class="text-xs text-gray-500 mb-3">Selecione e arraste para ordenar as colunas no relatório.</p>
+                            
+                            <div id="riaf-semestres-list" class="flex flex-wrap gap-2">
+                                <!-- Itens arrastáveis -->
+                                <div class="riaf-sem-item select-none flex items-stretch rounded-lg border-2 border-gray-200 bg-white transition-all duration-200 hover:border-gray-300 hover:shadow-md overflow-hidden" data-id="2026-1">
+                                    <!-- Grip Area -->
+                                    <div class="grip-handle flex items-center justify-center px-3 cursor-move hover:bg-[#8B009B]/10 transition-colors" title="Arraste para reordenar">
+                                        <i class="fa-solid fa-grip-vertical text-gray-300 hover:text-[#8B009B] transition-colors"></i>
+                                    </div>
+                                    <!-- Clickable Area -->
+                                    <label class="relative flex-1 flex items-center cursor-pointer px-3 py-1.5 m-0 text-[13px] font-bold text-gray-500 hover:bg-gray-50/50">
+                                        <input type="checkbox" class="sr-only chk-sortable chk-riaf-sem" value="2026-1" checked>
+                                        <span class="lbl-text">2026-1</span>
+                                    </label>
+                                </div>
+                                <div class="riaf-sem-item select-none flex items-stretch rounded-lg border-2 border-gray-200 bg-white transition-all duration-200 hover:border-gray-300 hover:shadow-md overflow-hidden" data-id="2026-2">
+                                    <!-- Grip Area -->
+                                    <div class="grip-handle flex items-center justify-center px-3 cursor-move hover:bg-[#8B009B]/10 transition-colors" title="Arraste para reordenar">
+                                        <i class="fa-solid fa-grip-vertical text-gray-300 hover:text-[#8B009B] transition-colors"></i>
+                                    </div>
+                                    <!-- Clickable Area -->
+                                    <label class="relative flex-1 flex items-center cursor-pointer px-3 py-1.5 m-0 text-[13px] font-bold text-gray-500 hover:bg-gray-50/50">
+                                        <input type="checkbox" class="sr-only chk-sortable chk-riaf-sem" value="2026-2">
+                                        <span class="lbl-text">2026-2</span>
+                                    </label>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="px-6 py-4 border-t border-gray-200 flex justify-end bg-gray-50/80">
+                        <button type="button" onclick="closeModalConfigRiaf()" class="modal-confirmar px-6 py-2 text-sm font-bold text-white rounded-xl transition-all shadow-md hover:opacity-90 cursor-pointer" style="background: linear-gradient(135deg, #6B007B, #9B00B3);">
+                            Concluir Seleção
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Configuração Contratos -->
+            <div id="modal-config-contratos" class="area-trabalho z-[60] hidden items-center justify-center p-4" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(15, 23, 42, 0.4); backdrop-filter: blur(4px); display: none;">
+                <div class="bg-white rounded-2xl flex flex-col overflow-hidden shadow-2xl border border-gray-200" style="width: 90%; max-width: 650px;">
+                    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50/80">
+                        <div class="flex items-center gap-4">
+                            <div class="modal-header-icone w-10 h-10 rounded-xl flex items-center justify-center shadow-sm" style="background: linear-gradient(135deg, #6B007B, #9B00B3); color: white;">
+                                <i class="fa-solid fa-file-contract text-lg"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-gray-800 tracking-tight">Relatório dos Contratos</h3>
+                                <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mt-0.5">Defina as opções e ordem de visualização</p>
+                            </div>
+                        </div>
+                        <button type="button" onclick="cancelModalConfigContratos()" class="text-gray-400 hover:text-gray-800 hover:bg-gray-200 w-8 h-8 flex items-center justify-center rounded-lg transition-colors">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="p-6 overflow-y-auto" style="max-height: 60vh;">
+
+
+                        <!-- Seleção de Semestres -->
+                        <div>
+                            <h4 class="text-sm font-bold text-gray-800 mb-1">Semestres e Ordem</h4>
+                            <p class="text-xs text-gray-500 mb-3">Selecione e arraste para ordenar as colunas no relatório.</p>
+                            
+                            <div id="contratos-semestres-list" class="flex flex-wrap gap-2">
+                                <div class="contratos-sem-item select-none flex items-stretch rounded-lg border-2 border-gray-200 bg-white transition-all duration-200 hover:border-gray-300 hover:shadow-md overflow-hidden" data-id="2025-1">
+                                    <!-- Grip Area -->
+                                    <div class="grip-handle flex items-center justify-center px-3 cursor-move hover:bg-[#8B009B]/10 transition-colors" title="Arraste para reordenar">
+                                        <i class="fa-solid fa-grip-vertical text-gray-300 hover:text-[#8B009B] transition-colors"></i>
+                                    </div>
+                                    <!-- Clickable Area -->
+                                    <label class="relative flex-1 flex items-center cursor-pointer px-3 py-1.5 m-0 text-[13px] font-bold text-gray-500 hover:bg-gray-50/50">
+                                        <input type="checkbox" class="sr-only chk-sortable chk-contratos-sem" value="2025-1" checked>
+                                        <span class="lbl-text">2025-1</span>
+                                    </label>
+                                </div>
+                                <div class="contratos-sem-item select-none flex items-stretch rounded-lg border-2 border-gray-200 bg-white transition-all duration-200 hover:border-gray-300 hover:shadow-md overflow-hidden" data-id="2025-2">
+                                    <!-- Grip Area -->
+                                    <div class="grip-handle flex items-center justify-center px-3 cursor-move hover:bg-[#8B009B]/10 transition-colors" title="Arraste para reordenar">
+                                        <i class="fa-solid fa-grip-vertical text-gray-300 hover:text-[#8B009B] transition-colors"></i>
+                                    </div>
+                                    <!-- Clickable Area -->
+                                    <label class="relative flex-1 flex items-center cursor-pointer px-3 py-1.5 m-0 text-[13px] font-bold text-gray-500 hover:bg-gray-50/50">
+                                        <input type="checkbox" class="sr-only chk-sortable chk-contratos-sem" value="2025-2" checked>
+                                        <span class="lbl-text">2025-2</span>
+                                    </label>
+                                </div>
+                                <div class="contratos-sem-item select-none flex items-stretch rounded-lg border-2 border-gray-200 bg-white transition-all duration-200 hover:border-gray-300 hover:shadow-md overflow-hidden" data-id="2026-1">
+                                    <!-- Grip Area -->
+                                    <div class="grip-handle flex items-center justify-center px-3 cursor-move hover:bg-[#8B009B]/10 transition-colors" title="Arraste para reordenar">
+                                        <i class="fa-solid fa-grip-vertical text-gray-300 hover:text-[#8B009B] transition-colors"></i>
+                                    </div>
+                                    <!-- Clickable Area -->
+                                    <label class="relative flex-1 flex items-center cursor-pointer px-3 py-1.5 m-0 text-[13px] font-bold text-gray-500 hover:bg-gray-50/50">
+                                        <input type="checkbox" class="sr-only chk-sortable chk-contratos-sem" value="2026-1">
+                                        <span class="lbl-text">2026-1</span>
+                                    </label>
+                                </div>
+                                <div class="contratos-sem-item select-none flex items-stretch rounded-lg border-2 border-gray-200 bg-white transition-all duration-200 hover:border-gray-300 hover:shadow-md overflow-hidden" data-id="2026-2">
+                                    <!-- Grip Area -->
+                                    <div class="grip-handle flex items-center justify-center px-3 cursor-move hover:bg-[#8B009B]/10 transition-colors" title="Arraste para reordenar">
+                                        <i class="fa-solid fa-grip-vertical text-gray-300 hover:text-[#8B009B] transition-colors"></i>
+                                    </div>
+                                    <!-- Clickable Area -->
+                                    <label class="relative flex-1 flex items-center cursor-pointer px-3 py-1.5 m-0 text-[13px] font-bold text-gray-500 hover:bg-gray-50/50">
+                                        <input type="checkbox" class="sr-only chk-sortable chk-contratos-sem" value="2026-2">
+                                        <span class="lbl-text">2026-2</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="px-6 py-4 border-t border-gray-200 flex justify-end bg-gray-50/80">
+                        <button type="button" onclick="closeModalConfigContratos()" class="modal-confirmar px-6 py-2 text-sm font-bold text-white rounded-xl transition-all shadow-md hover:opacity-90 cursor-pointer" style="background: linear-gradient(135deg, #6B007B, #9B00B3);">
+                            Concluir Seleção
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <style>
+                .peer:checked ~ .peer-checked\:translate-x-3 {
+                    transform: translateX(0.75rem) !important;
+                }
+            </style>
+                        <style>
+                /* O bloco que existia aqui pintava o chip marcado de roxo SÓLIDO e o botão
+                   "todos" de roxo com texto branco, tudo com !important — e por isso vencia
+                   o estilo do modal redesenhado mesmo estando acima dele. Saiu junto com o
+                   cartão: `doc-header` nem existe mais, e o estado marcado agora é claro.
+                   Os equivalentes vivos estão no bloco MODAL "TIPOS DE DOCUMENTAÇÕES". */
+
+                /* ==========================================================
+                   MODAL "TIPOS DE DOCUMENTAÇÕES"
+
+                   Cada documento é uma LINHA, não um cartão. Antes eram cinco molduras
+                   completas empilhadas (borda + cabeçalho + corpo) só para carregar quatro
+                   chips cada: o conteúdo passava de 1200px e o modal nunca cabia na tela.
+                   Em linha, os cinco documentos ficam visíveis de uma vez.
+
+                   O estilo mora aqui, e não em utilitário do Tailwind, porque
+                   `static/css/output.css` é um bundle PRÉ-COMPILADO e purgado, sem build no
+                   repositório: classe que não está lá não tem efeito e falha em silêncio.
+                   ========================================================== */
+                .modal-docs{
+                    background:#fff; border-radius:16px; overflow:hidden; display:flex;
+                    flex-direction:column; box-shadow:0 20px 60px -18px rgba(20,10,30,.45);
+                }
+                .modal-docs-topo{
+                    display:flex; align-items:center; gap:15px; padding:20px 26px;
+                    border-bottom:1px solid #e6e2ec; flex-shrink:0;
+                }
+                .modal-docs-topo .modal-header-icone{
+                    width:36px; height:36px; border-radius:10px; flex:0 0 auto; color:#fff;
+                    display:flex; align-items:center; justify-content:center; font-size:15px;
+                }
+                .modal-docs-titulo h3{
+                    margin:0; font-size:17.5px; font-weight:700; color:#221c26; letter-spacing:-.01em;
+                }
+                .modal-docs-titulo p{ margin:2px 0 0; font-size:12.5px; color:#8b8596; }
+                .modal-docs-fechar{
+                    margin-left:auto; width:30px; height:30px; border:0; background:transparent;
+                    color:#a8a2b2; border-radius:8px; cursor:pointer; font-size:15px;
+                    transition:background-color .15s, color .15s;
+                }
+                .modal-docs-fechar:hover{ background:#f4f2f7; color:#221c26; }
+
+                .modal-docs-barra{
+                    display:flex; align-items:center; gap:10px; padding:13px 26px;
+                    background:#faf9fc; border-bottom:1px solid #e6e2ec; flex-wrap:wrap; flex-shrink:0;
+                }
+                .modal-docs-contador{ font-size:13.5px; color:#57525f; margin-right:auto; }
+                .modal-docs-contador b{ color:#8B009B; font-weight:700; font-variant-numeric:tabular-nums; }
+                .btn-mini{
+                    font-size:12.5px; font-weight:600; color:#57525f; background:#fff;
+                    border:1px solid #d8d2e0; border-radius:7px; padding:5px 11px; cursor:pointer;
+                    transition:border-color .15s, color .15s;
+                }
+                .btn-mini:hover{ border-color:#8B009B; color:#8B009B; }
+
+                .modal-docs-corpo{ overflow-y:auto; flex:1 1 auto; }
+                /* Barra no padrão do projeto: quem pinta é a classe .custom-scrollbar do
+                   markup (definida em analise_ia.css, mesmo thumb roxo translúcido das
+                   outras telas). O Firefox não lê `::-webkit-scrollbar` e precisa das
+                   propriedades padrão — mas declará-las sem guarda seria um tiro no pé: a
+                   partir do Chromium 121 `scrollbar-width` tem precedência e DESLIGA o
+                   `::-webkit-scrollbar`, ou seja, o Firefox ganharia a barra e o Chrome
+                   perderia a customização. O @supports entrega só a quem não tem webkit. */
+                @supports not selector(::-webkit-scrollbar) {
+                    .modal-docs-corpo, .txt-inscricoes-forcadas{
+                        scrollbar-width:thin;
+                        scrollbar-color:rgba(168,85,247,.4) transparent;
+                    }
+                }
+
+                .modal-docs-rodape{
+                    display:flex; align-items:center; gap:14px; padding:16px 26px;
+                    border-top:1px solid #e6e2ec; background:#faf9fc; flex-wrap:wrap; flex-shrink:0;
+                }
+                .modal-docs-resumo{ font-size:13px; color:#6b6577; margin-right:auto; }
+                .modal-docs-resumo b{ color:#221c26; font-weight:700; }
+                .modal-docs-resumo em{ font-style:normal; color:#8B009B; font-weight:600; }
+                .modal-docs .modal-confirmar{
+                    font-size:13px; font-weight:600; color:#fff; border:0; border-radius:9px;
+                    padding:9px 22px; cursor:pointer; transition:opacity .15s;
+                }
+                .modal-docs .modal-confirmar:hover{ opacity:.9; }
+
+                /* ---- linha de documento ---- */
+                .doc-group{ border-bottom:1px solid #e6e2ec; transition:background-color .15s; }
+                .doc-group:last-child{ border-bottom:0; }
+                .doc-group:hover{ background:#fcfbfd; }
+                .doc-linha{ display:flex; align-items:center; gap:16px; padding:15px 26px; }
+                .doc-identidade{ display:flex; align-items:center; gap:11px; flex:1 1 220px; min-width:0; }
+                .doc-icon{
+                    width:34px; height:34px; border-radius:9px; flex:0 0 auto; font-size:13px;
+                    display:flex; align-items:center; justify-content:center;
+                    background:#f5f3f8; color:#9d95a8;
+                    transition:background-color .15s, color .15s;
+                }
+                .doc-group:has(.chk-periodo-inline:checked) .doc-icon{ background:#f5e6f8; color:#8B009B; }
+                .doc-texto{ min-width:0; }
+                .doc-nome{
+                    display:block; font-size:13.5px; font-weight:600; color:#3b3542; line-height:1.35;
+                    overflow:hidden; text-overflow:ellipsis;
+                }
+                .doc-group:has(.chk-periodo-inline:checked) .doc-nome{ color:#221c26; }
+                .doc-sub{
+                    display:flex; align-items:center; gap:8px; font-size:11.5px; color:#a29ab0;
+                    font-variant-numeric:tabular-nums;
+                }
+                /* "todos" é link, não botão no fim da linha: no fim ele ficava órfão numa
+                   segunda linha assim que a largura apertava. */
+                .btn-selecionar-todos-semestres{
+                    font-size:11.5px; font-weight:600; color:#8B009B; background:none; border:0;
+                    padding:0; cursor:pointer; text-decoration:underline; text-underline-offset:2px;
+                }
+                .btn-selecionar-todos-semestres:hover{ color:#6B007B; }
+                .doc-chips{ display:flex; gap:7px; flex:0 1 auto; flex-wrap:wrap; justify-content:flex-end; }
+                .chip-slot{ display:flex; }
+                .chip-label{ display:flex; cursor:pointer; margin:0; }
+
+                /* ---- chip de semestre ---- */
+                .period-chip{
+                    display:flex; align-items:center; border:1.5px solid #d8d2e0; border-radius:8px;
+                    background:#fff; overflow:hidden; user-select:none;
+                    transition:border-color .18s, background-color .18s;
+                }
+                .period-chip:hover{ border-color:#cdc6d6; }
+                .chip-nome{
+                    padding:0 13px; font-size:12.5px; font-weight:600; color:#6b6577;
+                    line-height:32px; white-space:nowrap; font-variant-numeric:tabular-nums;
+                }
+                .btn-atualizar-bruta, .btn-abrir-lista{
+                    width:30px; height:32px; flex:0 0 auto; display:flex; align-items:center;
+                    justify-content:center; color:#b3a9bd; font-size:12px; cursor:pointer;
+                    transition:background-color .18s, color .18s;
+                }
+                .btn-atualizar-bruta{ border-right:1px solid #ddd7e3; }
+                .btn-abrir-lista{ border-left:1px solid #ddd7e3; }
+                /* Os <i> do Font Awesome carregam a cor do markup antigo e venceriam o
+                   `color` do bloco pai; sem isto a seta fica cinza sobre o roxo. */
+                .btn-atualizar-bruta i, .btn-abrir-lista i{ color:inherit; }
+                .btn-atualizar-bruta:hover, .btn-abrir-lista:hover{
+                    background:rgba(139,0,155,.08); color:#8B009B;
+                }
+
+                /* selecionado: claro, não sólido. É o estado NORMAL — com 20 chips na tela,
+                   dar peso ao normal faz o modal inteiro gritar e nada se destacar. */
+                .chk-periodo-inline:checked + .period-chip{ border-color:#8B009B; background:#FCF4FD; }
+                .chk-periodo-inline:checked + .period-chip .chip-nome{ color:#6B007B; }
+                .chk-periodo-inline:checked + .period-chip .btn-atualizar-bruta,
+                .chk-periodo-inline:checked + .period-chip .btn-abrir-lista{ color:#a86bb4; }
+                .chk-periodo-inline:checked + .period-chip .btn-atualizar-bruta{ border-right-color:rgba(139,0,155,.18); }
+                .chk-periodo-inline:checked + .period-chip .btn-abrir-lista{ border-left-color:rgba(139,0,155,.18); }
+                .chk-periodo-inline:disabled + .period-chip{ opacity:.5; cursor:not-allowed; }
+
+                /* o sólido significa uma coisa só: atualização bruta ligada */
+                .btn-atualizar-bruta.is-ativo{
+                    background:#8B009B; color:#fff; border-right-color:#8B009B;
+                }
+                .btn-atualizar-bruta.is-ativo:hover{ background:#7A0088; color:#fff; }
+                .period-chip:has(.btn-atualizar-bruta.is-ativo){ border-color:#8B009B; background:#F7E9FA; }
+                /* Com a bruta ligada a lista não é usada — a seta sai de cena para o usuário
+                   não digitar uma lista que o extrator ignoraria. */
+                .period-chip:has(.btn-atualizar-bruta.is-ativo) .btn-abrir-lista{
+                    opacity:.3; pointer-events:none;
+                }
+
+                /* ---- gaveta de inscrições ---- */
+                .gaveta-lista{ display:none; padding:0 26px 16px 78px; }
+                .gaveta-lista.aberta{ display:block; }
+                .gaveta-rot{
+                    display:block; font-size:11px; font-weight:600; letter-spacing:.07em;
+                    text-transform:uppercase; color:#a29ab0; margin-bottom:5px;
+                }
+                .txt-inscricoes-forcadas{
+                    width:100%; height:58px; resize:none; border:1px solid #d8d2e0; border-radius:8px;
+                    padding:9px 11px; font-size:12.5px; color:#3b3542; background:#faf9fc; outline:none;
+                }
+                .txt-inscricoes-forcadas:focus{ border-color:#8B009B; background:#fff; }
+                /* A barra do textarea vinha nativa (cinza, com setas nas pontas) porque
+                   `.custom-scrollbar` só tinha sido aplicada ao corpo do modal. Os botões
+                   de seta precisam ser zerados à parte: o padrão do projeto define largura,
+                   trilho e polegar, mas não `::-webkit-scrollbar-button`, que o Chromium
+                   ainda desenha por conta própria dentro de um campo de formulário. */
+                .txt-inscricoes-forcadas::-webkit-scrollbar-button{ display:none; height:0; width:0; }
+
+                @media (max-width:780px){
+                    .doc-linha{ flex-wrap:wrap; }
+                    .doc-identidade{ flex:1 1 100%; }
+                    .doc-chips{ justify-content:flex-start; }
+                    .gaveta-lista{ padding-left:26px; }
+                }
+</style>
+            <div id="modal-config-documentos" class="area-trabalho z-[60] hidden items-center justify-center p-4" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(15, 23, 42, 0.4); backdrop-filter: blur(4px); display: none;">
+            <div class="modal-docs" style="width: 1060px; max-width: 95vw; max-height: 90vh;">
+
+                <div class="modal-docs-topo">
+                    <div class="modal-header-icone" style="background: linear-gradient(135deg, #6B007B, #9B00B3);">
+                        <i class="fa-solid fa-list-check"></i>
+                    </div>
+                    <div class="modal-docs-titulo">
+                        <h3>Tipos de documentações</h3>
+                        <p>Escolha os documentos e os semestres da extração</p>
+                    </div>
+                    <button type="button" onclick="closeModalDocumentos()" class="modal-docs-fechar" aria-label="Fechar">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <div class="modal-docs-barra">
+                    <span class="modal-docs-contador" id="docs-contador">nenhum semestre selecionado</span>
+                    <button type="button" class="btn-mini" onclick="marcarTodosDocumentos(true)">Marcar tudo</button>
+                    <button type="button" class="btn-mini" onclick="marcarTodosDocumentos(false)">Limpar</button>
+                </div>
+
+                <div class="modal-docs-corpo custom-scrollbar">
+                        <div class="doc-group" data-doc="CONTRATOS">
+                            <div class="doc-linha">
+                                <span class="doc-identidade">
+                                    <span class="doc-icon"><i class="fa-solid fa-file-contract"></i></span>
+                                    <span class="doc-texto">
+                                        <strong class="doc-nome">Contrato de Prestação de Serviços Educacionais / Matrícula</strong>
+                                        <span class="doc-sub">
+                                            <span class="doc-contagem" data-doc="CONTRATOS">nenhum semestre</span>
+                                            <button type="button" onclick="toggleSemesters(this)" class="btn-selecionar-todos-semestres" data-doc="CONTRATOS">todos</button>
+                                            <input type="checkbox" name="tipos_documentos" value="CONTRATOS" class="sr-only chk-doc chk-doc-master">
+                                        </span>
+                                    </span>
+                                </span>
+                                <span class="doc-chips">
+                                    <div class="chip-slot">
+                                        <label class="chip-label">
+                                            <input type="checkbox" class="sr-only chk-periodo-inline" value="2025-1" data-doc="CONTRATOS" checked>
+                                            <span class="period-chip">
+                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="CONTRATOS" data-sem="2025-1" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="chip-nome">2025-1</span>
+                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                            </span>
+                                        </label>
+                                    </div>
+                                    <div class="chip-slot">
+                                        <label class="chip-label">
+                                            <input type="checkbox" class="sr-only chk-periodo-inline" value="2025-2" data-doc="CONTRATOS" checked>
+                                            <span class="period-chip">
+                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="CONTRATOS" data-sem="2025-2" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="chip-nome">2025-2</span>
+                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                            </span>
+                                        </label>
+                                    </div>
+                                    <div class="chip-slot">
+                                        <label class="chip-label">
+                                            <input type="checkbox" class="sr-only chk-periodo-inline" value="2026-1" data-doc="CONTRATOS">
+                                            <span class="period-chip">
+                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="CONTRATOS" data-sem="2026-1" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="chip-nome">2026-1</span>
+                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                            </span>
+                                        </label>
+                                    </div>
+                                    <div class="chip-slot">
+                                        <label class="chip-label">
+                                            <input type="checkbox" class="sr-only chk-periodo-inline" value="2026-2" data-doc="CONTRATOS">
+                                            <span class="period-chip">
+                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="CONTRATOS" data-sem="2026-2" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="chip-nome">2026-2</span>
+                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                            </span>
+                                        </label>
+                                    </div>
+                                </span>
+                            </div>
+                                <div class="gaveta-lista" data-doc="CONTRATOS" data-sem="2025-1">
+                                    <label class="gaveta-rot">Inscrições específicas · 2025-1</label>
+                                    <textarea class="txt-inscricoes-forcadas custom-scrollbar" data-doc="CONTRATOS" data-sem="2025-1" placeholder="Cole os códigos separados por vírgula. Ex.: 2140283, 2195094"></textarea>
+                                </div>
+                                <div class="gaveta-lista" data-doc="CONTRATOS" data-sem="2025-2">
+                                    <label class="gaveta-rot">Inscrições específicas · 2025-2</label>
+                                    <textarea class="txt-inscricoes-forcadas custom-scrollbar" data-doc="CONTRATOS" data-sem="2025-2" placeholder="Cole os códigos separados por vírgula. Ex.: 2140283, 2195094"></textarea>
+                                </div>
+                                <div class="gaveta-lista" data-doc="CONTRATOS" data-sem="2026-1">
+                                    <label class="gaveta-rot">Inscrições específicas · 2026-1</label>
+                                    <textarea class="txt-inscricoes-forcadas custom-scrollbar" data-doc="CONTRATOS" data-sem="2026-1" placeholder="Cole os códigos separados por vírgula. Ex.: 2140283, 2195094"></textarea>
+                                </div>
+                                <div class="gaveta-lista" data-doc="CONTRATOS" data-sem="2026-2">
+                                    <label class="gaveta-rot">Inscrições específicas · 2026-2</label>
+                                    <textarea class="txt-inscricoes-forcadas custom-scrollbar" data-doc="CONTRATOS" data-sem="2026-2" placeholder="Cole os códigos separados por vírgula. Ex.: 2140283, 2195094"></textarea>
+                                </div>
+                        </div>
+                        <div class="doc-group" data-doc="RIAF">
+                            <div class="doc-linha">
+                                <span class="doc-identidade">
+                                    <span class="doc-icon"><i class="fa-solid fa-file-invoice-dollar"></i></span>
+                                    <span class="doc-texto">
+                                        <strong class="doc-nome">RIAF – Resumo de Informações Acadêmicas e Financeiras</strong>
+                                        <span class="doc-sub">
+                                            <span class="doc-contagem" data-doc="RIAF">nenhum semestre</span>
+                                            <button type="button" onclick="toggleSemesters(this)" class="btn-selecionar-todos-semestres" data-doc="RIAF">todos</button>
+                                            <input type="checkbox" name="tipos_documentos" value="RIAF" class="sr-only chk-doc chk-doc-master">
+                                        </span>
+                                    </span>
+                                </span>
+                                <span class="doc-chips">
+                                    <div class="chip-slot">
+                                        <label class="chip-label">
+                                            <input type="checkbox" class="sr-only chk-periodo-inline" value="2026-1" data-doc="RIAF" checked>
+                                            <span class="period-chip">
+                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="RIAF" data-sem="2026-1" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="chip-nome">2026-1</span>
+                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                            </span>
+                                        </label>
+                                    </div>
+                                    <div class="chip-slot">
+                                        <label class="chip-label">
+                                            <input type="checkbox" class="sr-only chk-periodo-inline" value="2026-2" data-doc="RIAF">
+                                            <span class="period-chip">
+                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="RIAF" data-sem="2026-2" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="chip-nome">2026-2</span>
+                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                            </span>
+                                        </label>
+                                    </div>
+                                    <div class="chip-slot">
+                                        <label class="chip-label">
+                                            <input type="checkbox" class="sr-only chk-periodo-inline" value="2027-1" data-doc="RIAF">
+                                            <span class="period-chip">
+                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="RIAF" data-sem="2027-1" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="chip-nome">2027-1</span>
+                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                            </span>
+                                        </label>
+                                    </div>
+                                    <div class="chip-slot">
+                                        <label class="chip-label">
+                                            <input type="checkbox" class="sr-only chk-periodo-inline" value="2027-2" data-doc="RIAF">
+                                            <span class="period-chip">
+                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="RIAF" data-sem="2027-2" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="chip-nome">2027-2</span>
+                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                            </span>
+                                        </label>
+                                    </div>
+                                </span>
+                            </div>
+                                <div class="gaveta-lista" data-doc="RIAF" data-sem="2026-1">
+                                    <label class="gaveta-rot">Inscrições específicas · 2026-1</label>
+                                    <textarea class="txt-inscricoes-forcadas custom-scrollbar" data-doc="RIAF" data-sem="2026-1" placeholder="Cole os códigos separados por vírgula. Ex.: 2140283, 2195094"></textarea>
+                                </div>
+                                <div class="gaveta-lista" data-doc="RIAF" data-sem="2026-2">
+                                    <label class="gaveta-rot">Inscrições específicas · 2026-2</label>
+                                    <textarea class="txt-inscricoes-forcadas custom-scrollbar" data-doc="RIAF" data-sem="2026-2" placeholder="Cole os códigos separados por vírgula. Ex.: 2140283, 2195094"></textarea>
+                                </div>
+                                <div class="gaveta-lista" data-doc="RIAF" data-sem="2027-1">
+                                    <label class="gaveta-rot">Inscrições específicas · 2027-1</label>
+                                    <textarea class="txt-inscricoes-forcadas custom-scrollbar" data-doc="RIAF" data-sem="2027-1" placeholder="Cole os códigos separados por vírgula. Ex.: 2140283, 2195094"></textarea>
+                                </div>
+                                <div class="gaveta-lista" data-doc="RIAF" data-sem="2027-2">
+                                    <label class="gaveta-rot">Inscrições específicas · 2027-2</label>
+                                    <textarea class="txt-inscricoes-forcadas custom-scrollbar" data-doc="RIAF" data-sem="2027-2" placeholder="Cole os códigos separados por vírgula. Ex.: 2140283, 2195094"></textarea>
+                                </div>
+                        </div>
+                        <div class="doc-group" data-doc="BENEFICIOS">
+                            <div class="doc-linha">
+                                <span class="doc-identidade">
+                                    <span class="doc-icon"><i class="fa-solid fa-hand-holding-dollar"></i></span>
+                                    <span class="doc-texto">
+                                        <strong class="doc-nome">Comprovante Outros Benefícios</strong>
+                                        <span class="doc-sub">
+                                            <span class="doc-contagem" data-doc="BENEFICIOS">nenhum semestre</span>
+                                            <button type="button" onclick="toggleSemesters(this)" class="btn-selecionar-todos-semestres" data-doc="BENEFICIOS">todos</button>
+                                            <input type="checkbox" name="tipos_documentos" value="BENEFICIOS" class="sr-only chk-doc chk-doc-master">
+                                        </span>
+                                    </span>
+                                </span>
+                                <span class="doc-chips">
+                                    <div class="chip-slot">
+                                        <label class="chip-label">
+                                            <input type="checkbox" class="sr-only chk-periodo-inline" value="2025-1" data-doc="BENEFICIOS">
+                                            <span class="period-chip">
+                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="BENEFICIOS" data-sem="2025-1" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="chip-nome">2025-1</span>
+                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                            </span>
+                                        </label>
+                                    </div>
+                                    <div class="chip-slot">
+                                        <label class="chip-label">
+                                            <input type="checkbox" class="sr-only chk-periodo-inline" value="2025-2" data-doc="BENEFICIOS">
+                                            <span class="period-chip">
+                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="BENEFICIOS" data-sem="2025-2" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="chip-nome">2025-2</span>
+                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                            </span>
+                                        </label>
+                                    </div>
+                                    <div class="chip-slot">
+                                        <label class="chip-label">
+                                            <input type="checkbox" class="sr-only chk-periodo-inline" value="2026-1" data-doc="BENEFICIOS">
+                                            <span class="period-chip">
+                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="BENEFICIOS" data-sem="2026-1" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="chip-nome">2026-1</span>
+                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                            </span>
+                                        </label>
+                                    </div>
+                                    <div class="chip-slot">
+                                        <label class="chip-label">
+                                            <input type="checkbox" class="sr-only chk-periodo-inline" value="2026-2" data-doc="BENEFICIOS">
+                                            <span class="period-chip">
+                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="BENEFICIOS" data-sem="2026-2" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="chip-nome">2026-2</span>
+                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                            </span>
+                                        </label>
+                                    </div>
+                                </span>
+                            </div>
+                                <div class="gaveta-lista" data-doc="BENEFICIOS" data-sem="2025-1">
+                                    <label class="gaveta-rot">Inscrições específicas · 2025-1</label>
+                                    <textarea class="txt-inscricoes-forcadas custom-scrollbar" data-doc="BENEFICIOS" data-sem="2025-1" placeholder="Cole os códigos separados por vírgula. Ex.: 2140283, 2195094"></textarea>
+                                </div>
+                                <div class="gaveta-lista" data-doc="BENEFICIOS" data-sem="2025-2">
+                                    <label class="gaveta-rot">Inscrições específicas · 2025-2</label>
+                                    <textarea class="txt-inscricoes-forcadas custom-scrollbar" data-doc="BENEFICIOS" data-sem="2025-2" placeholder="Cole os códigos separados por vírgula. Ex.: 2140283, 2195094"></textarea>
+                                </div>
+                                <div class="gaveta-lista" data-doc="BENEFICIOS" data-sem="2026-1">
+                                    <label class="gaveta-rot">Inscrições específicas · 2026-1</label>
+                                    <textarea class="txt-inscricoes-forcadas custom-scrollbar" data-doc="BENEFICIOS" data-sem="2026-1" placeholder="Cole os códigos separados por vírgula. Ex.: 2140283, 2195094"></textarea>
+                                </div>
+                                <div class="gaveta-lista" data-doc="BENEFICIOS" data-sem="2026-2">
+                                    <label class="gaveta-rot">Inscrições específicas · 2026-2</label>
+                                    <textarea class="txt-inscricoes-forcadas custom-scrollbar" data-doc="BENEFICIOS" data-sem="2026-2" placeholder="Cole os códigos separados por vírgula. Ex.: 2140283, 2195094"></textarea>
+                                </div>
+                        </div>
+                        <div class="doc-group" data-doc="FINANCIAMENTO">
+                            <div class="doc-linha">
+                                <span class="doc-identidade">
+                                    <span class="doc-icon"><i class="fa-solid fa-money-check-dollar"></i></span>
+                                    <span class="doc-texto">
+                                        <strong class="doc-nome">Comprovante de Financiamento</strong>
+                                        <span class="doc-sub">
+                                            <span class="doc-contagem" data-doc="FINANCIAMENTO">nenhum semestre</span>
+                                            <button type="button" onclick="toggleSemesters(this)" class="btn-selecionar-todos-semestres" data-doc="FINANCIAMENTO">todos</button>
+                                            <input type="checkbox" name="tipos_documentos" value="FINANCIAMENTO" class="sr-only chk-doc chk-doc-master">
+                                        </span>
+                                    </span>
+                                </span>
+                                <span class="doc-chips">
+                                    <div class="chip-slot">
+                                        <label class="chip-label">
+                                            <input type="checkbox" class="sr-only chk-periodo-inline" value="2025-1" data-doc="FINANCIAMENTO">
+                                            <span class="period-chip">
+                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="FINANCIAMENTO" data-sem="2025-1" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="chip-nome">2025-1</span>
+                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                            </span>
+                                        </label>
+                                    </div>
+                                    <div class="chip-slot">
+                                        <label class="chip-label">
+                                            <input type="checkbox" class="sr-only chk-periodo-inline" value="2025-2" data-doc="FINANCIAMENTO">
+                                            <span class="period-chip">
+                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="FINANCIAMENTO" data-sem="2025-2" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="chip-nome">2025-2</span>
+                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                            </span>
+                                        </label>
+                                    </div>
+                                    <div class="chip-slot">
+                                        <label class="chip-label">
+                                            <input type="checkbox" class="sr-only chk-periodo-inline" value="2026-1" data-doc="FINANCIAMENTO">
+                                            <span class="period-chip">
+                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="FINANCIAMENTO" data-sem="2026-1" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="chip-nome">2026-1</span>
+                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                            </span>
+                                        </label>
+                                    </div>
+                                    <div class="chip-slot">
+                                        <label class="chip-label">
+                                            <input type="checkbox" class="sr-only chk-periodo-inline" value="2026-2" data-doc="FINANCIAMENTO">
+                                            <span class="period-chip">
+                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="FINANCIAMENTO" data-sem="2026-2" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="chip-nome">2026-2</span>
+                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                            </span>
+                                        </label>
+                                    </div>
+                                </span>
+                            </div>
+                                <div class="gaveta-lista" data-doc="FINANCIAMENTO" data-sem="2025-1">
+                                    <label class="gaveta-rot">Inscrições específicas · 2025-1</label>
+                                    <textarea class="txt-inscricoes-forcadas custom-scrollbar" data-doc="FINANCIAMENTO" data-sem="2025-1" placeholder="Cole os códigos separados por vírgula. Ex.: 2140283, 2195094"></textarea>
+                                </div>
+                                <div class="gaveta-lista" data-doc="FINANCIAMENTO" data-sem="2025-2">
+                                    <label class="gaveta-rot">Inscrições específicas · 2025-2</label>
+                                    <textarea class="txt-inscricoes-forcadas custom-scrollbar" data-doc="FINANCIAMENTO" data-sem="2025-2" placeholder="Cole os códigos separados por vírgula. Ex.: 2140283, 2195094"></textarea>
+                                </div>
+                                <div class="gaveta-lista" data-doc="FINANCIAMENTO" data-sem="2026-1">
+                                    <label class="gaveta-rot">Inscrições específicas · 2026-1</label>
+                                    <textarea class="txt-inscricoes-forcadas custom-scrollbar" data-doc="FINANCIAMENTO" data-sem="2026-1" placeholder="Cole os códigos separados por vírgula. Ex.: 2140283, 2195094"></textarea>
+                                </div>
+                                <div class="gaveta-lista" data-doc="FINANCIAMENTO" data-sem="2026-2">
+                                    <label class="gaveta-rot">Inscrições específicas · 2026-2</label>
+                                    <textarea class="txt-inscricoes-forcadas custom-scrollbar" data-doc="FINANCIAMENTO" data-sem="2026-2" placeholder="Cole os códigos separados por vírgula. Ex.: 2140283, 2195094"></textarea>
+                                </div>
+                        </div>
+                        <div class="doc-group" data-doc="HISTORICO">
+                            <div class="doc-linha">
+                                <span class="doc-identidade">
+                                    <span class="doc-icon"><i class="fa-solid fa-graduation-cap"></i></span>
+                                    <span class="doc-texto">
+                                        <strong class="doc-nome">Histórico Escolar</strong>
+                                        <span class="doc-sub">
+                                            <span class="doc-contagem" data-doc="HISTORICO">nenhum semestre</span>
+                                            <button type="button" onclick="toggleSemesters(this)" class="btn-selecionar-todos-semestres" data-doc="HISTORICO">todos</button>
+                                            <input type="checkbox" name="tipos_documentos" value="HISTORICO" class="sr-only chk-doc chk-doc-master">
+                                        </span>
+                                    </span>
+                                </span>
+                                <span class="doc-chips">
+                                    <div class="chip-slot">
+                                        <label class="chip-label">
+                                            <input type="checkbox" class="sr-only chk-periodo-inline" value="2025-1" data-doc="HISTORICO">
+                                            <span class="period-chip">
+                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="HISTORICO" data-sem="2025-1" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="chip-nome">2025-1</span>
+                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                            </span>
+                                        </label>
+                                    </div>
+                                    <div class="chip-slot">
+                                        <label class="chip-label">
+                                            <input type="checkbox" class="sr-only chk-periodo-inline" value="2025-2" data-doc="HISTORICO">
+                                            <span class="period-chip">
+                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="HISTORICO" data-sem="2025-2" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="chip-nome">2025-2</span>
+                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                            </span>
+                                        </label>
+                                    </div>
+                                    <div class="chip-slot">
+                                        <label class="chip-label">
+                                            <input type="checkbox" class="sr-only chk-periodo-inline" value="2026-1" data-doc="HISTORICO">
+                                            <span class="period-chip">
+                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="HISTORICO" data-sem="2026-1" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="chip-nome">2026-1</span>
+                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                            </span>
+                                        </label>
+                                    </div>
+                                    <div class="chip-slot">
+                                        <label class="chip-label">
+                                            <input type="checkbox" class="sr-only chk-periodo-inline" value="2026-2" data-doc="HISTORICO">
+                                            <span class="period-chip">
+                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="HISTORICO" data-sem="2026-2" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="chip-nome">2026-2</span>
+                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                            </span>
+                                        </label>
+                                    </div>
+                                </span>
+                            </div>
+                                <div class="gaveta-lista" data-doc="HISTORICO" data-sem="2025-1">
+                                    <label class="gaveta-rot">Inscrições específicas · 2025-1</label>
+                                    <textarea class="txt-inscricoes-forcadas custom-scrollbar" data-doc="HISTORICO" data-sem="2025-1" placeholder="Cole os códigos separados por vírgula. Ex.: 2140283, 2195094"></textarea>
+                                </div>
+                                <div class="gaveta-lista" data-doc="HISTORICO" data-sem="2025-2">
+                                    <label class="gaveta-rot">Inscrições específicas · 2025-2</label>
+                                    <textarea class="txt-inscricoes-forcadas custom-scrollbar" data-doc="HISTORICO" data-sem="2025-2" placeholder="Cole os códigos separados por vírgula. Ex.: 2140283, 2195094"></textarea>
+                                </div>
+                                <div class="gaveta-lista" data-doc="HISTORICO" data-sem="2026-1">
+                                    <label class="gaveta-rot">Inscrições específicas · 2026-1</label>
+                                    <textarea class="txt-inscricoes-forcadas custom-scrollbar" data-doc="HISTORICO" data-sem="2026-1" placeholder="Cole os códigos separados por vírgula. Ex.: 2140283, 2195094"></textarea>
+                                </div>
+                                <div class="gaveta-lista" data-doc="HISTORICO" data-sem="2026-2">
+                                    <label class="gaveta-rot">Inscrições específicas · 2026-2</label>
+                                    <textarea class="txt-inscricoes-forcadas custom-scrollbar" data-doc="HISTORICO" data-sem="2026-2" placeholder="Cole os códigos separados por vírgula. Ex.: 2140283, 2195094"></textarea>
+                                </div>
+                        </div>
+                </div>
+
+                <div class="modal-docs-rodape">
+                    <span class="modal-docs-resumo" id="docs-resumo"></span>
+                    <button type="button" onclick="closeModalDocumentos()" class="modal-confirmar" style="background: linear-gradient(135deg, #6B007B, #9B00B3);">
+                        Concluir seleção
+                    </button>
+                </div>
+
+            </div>
+        </div>
+
+        </main>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. MODAL DE DOCUMENTOS E PERÍODOS
+        // O QUE FAZ: Controla a abertura e fechamento do modal genérico de configuração
+        // POR QUÊ EXISTE: Salva o estado dos checkboxes para que o botão "Cancelar" desfaça as alterações.
+        // ==========================================
+        let _documentosInitialState = null;
+
+        function openModalDocumentos() {
+            const modal = document.getElementById('modal-config-documentos');
+            _documentosInitialState = Array.from(modal.querySelectorAll('.chk-periodo-inline')).map(chk => ({
+                element: chk,
+                checked: chk.checked
+            }));
+            modal.style.display = 'flex';
+            modal.classList.remove('hidden');
+        }
+
+        function cancelModalDocumentos() {
+            if (_documentosInitialState) {
+                _documentosInitialState.forEach(item => {
+                    if (item.element.checked !== item.checked) {
+                        item.element.checked = item.checked;
+                        item.element.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                });
+            }
+            closeModalDocumentos();
+        }
+
+        
+        // ==========================================
+        // CONTROLES DO MODAL DE DOCUMENTOS
+        //
+        // Todas as funções abaixo localizam os elementos pelo par `data-doc` + `data-sem`,
+        // nunca pela estrutura do HTML. A versão anterior usava `closest('.flex-col')` —
+        // uma classe utilitária de LAYOUT do Tailwind — para achar o textarea, então
+        // qualquer mudança na diagramação quebrava o comportamento em silêncio.
+        // ==========================================
+
+        function _chipDe(doc, sem) {
+            return document.querySelector(`.chk-periodo-inline[data-doc="${doc}"][value="${sem}"]`);
+        }
+        function _gavetaDe(doc, sem) {
+            return document.querySelector(`.gaveta-lista[data-doc="${doc}"][data-sem="${sem}"]`);
+        }
+
+        // O QUE FAZ: liga/desliga o rebaixamento total daquele semestre.
+        // POR QUÊ EXISTE: o fluxo normal só pede ao SIBU as inscrições que o espelho local
+        //   ainda não tem (arquitetura D-1). Quando o SIBU altera um documento que o espelho
+        //   já considera pronto, nenhum filtro de pendentes enxerga a diferença — e a única
+        //   saída era digitar as inscrições uma a uma. Ligado, este botão manda baixar o
+        //   semestre inteiro, enviados e ausentes.
+        // COMO FUNCIONA: alterna a classe `is-ativo`. Ligar também marca o semestre (sem ele
+        //   o par documento+semestre nem entra na extração) e fecha a gaveta de lista, que
+        //   deixa de ser usada. Estado vive no DOM; o payload é montado em analise_ia.js.
+        function toggleAtualizacaoBruta(e, el) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const doc = el.getAttribute('data-doc');
+            const sem = el.getAttribute('data-sem');
+            const ativando = !el.classList.contains('is-ativo');
+            el.classList.toggle('is-ativo', ativando);
+
+            if (ativando) {
+                const chk = _chipDe(doc, sem);
+                if (chk && !chk.disabled && !chk.checked) {
+                    chk.checked = true;
+                    chk.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                const gaveta = _gavetaDe(doc, sem);
+                if (gaveta) gaveta.classList.remove('aberta');
+            }
+            atualizarResumoDocumentos();
+        }
+
+        // Abre a caixa de inscrições específicas do semestre. Uma por documento de cada vez:
+        // duas gavetas abertas empurravam a lista e faziam o modal saltar.
+        function toggleTextarea(e, el) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const chip = el.closest('.chip-slot');
+            const bruta = chip ? chip.querySelector('.btn-atualizar-bruta') : null;
+            if (bruta && bruta.classList.contains('is-ativo')) return;
+
+            const doc = bruta ? bruta.getAttribute('data-doc') : null;
+            const sem = bruta ? bruta.getAttribute('data-sem') : null;
+            const gaveta = _gavetaDe(doc, sem);
+            if (!gaveta) return;
+
+            const abrir = !gaveta.classList.contains('aberta');
+            document.querySelectorAll(`.gaveta-lista[data-doc="${doc}"]`)
+                    .forEach(g => g.classList.remove('aberta'));
+            gaveta.classList.toggle('aberta', abrir);
+
+            if (abrir) {
+                const chk = _chipDe(doc, sem);
+                if (chk && !chk.disabled && !chk.checked) {
+                    chk.checked = true;
+                    chk.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                const campo = gaveta.querySelector('textarea');
+                if (campo) campo.focus();
+            }
+        }
+
+        // Marca ou limpa todos os semestres de todos os documentos de uma vez.
+        function marcarTodosDocumentos(ligar) {
+            document.querySelectorAll('.chk-periodo-inline').forEach(chk => {
+                if (chk.disabled || chk.checked === ligar) return;
+                chk.checked = ligar;
+                chk.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+            if (!ligar) {
+                document.querySelectorAll('.btn-atualizar-bruta.is-ativo')
+                        .forEach(b => b.classList.remove('is-ativo'));
+                document.querySelectorAll('.gaveta-lista.aberta')
+                        .forEach(g => g.classList.remove('aberta'));
+            }
+            atualizarResumoDocumentos();
+        }
+
+        // O QUE FAZ: mantém o contador do topo, o "x de y semestres" de cada linha e o
+        //   resumo do rodapé em dia.
+        // POR QUÊ EXISTE: antes só dava para saber o que estava selecionado rolando o modal
+        //   inteiro e conferindo chip por chip.
+        function atualizarResumoDocumentos() {
+            const modal = document.getElementById('modal-config-documentos');
+            if (!modal) return;
+
+            let docsAtivos = 0, totalSems = 0, totalBrutas = 0;
+
+            modal.querySelectorAll('.doc-group').forEach(grupo => {
+                const doc = grupo.getAttribute('data-doc');
+                const chks = grupo.querySelectorAll('.chk-periodo-inline');
+                const marcados = Array.from(chks).filter(c => c.checked);
+                if (marcados.length) docsAtivos++;
+                totalSems += marcados.length;
+
+                grupo.querySelectorAll('.btn-atualizar-bruta.is-ativo').forEach(b => {
+                    const chk = _chipDe(doc, b.getAttribute('data-sem'));
+                    if (chk && chk.checked) totalBrutas++;
+                });
+
+                const contagem = grupo.querySelector('.doc-contagem');
+                if (contagem) {
+                    contagem.textContent = marcados.length
+                        ? `${marcados.length} de ${chks.length} semestres`
+                        : 'nenhum semestre';
+                }
+                const btnTodos = grupo.querySelector('.btn-selecionar-todos-semestres');
+                if (btnTodos) {
+                    btnTodos.textContent = (marcados.length === chks.length && chks.length) ? 'limpar' : 'todos';
+                }
+            });
+
+            const contador = document.getElementById('docs-contador');
+            if (contador) {
+                contador.innerHTML = totalSems
+                    ? `<b>${docsAtivos}</b> de 5 documentos · <b>${totalSems}</b> semestres`
+                    : 'nenhum semestre selecionado';
+            }
+            const resumo = document.getElementById('docs-resumo');
+            if (resumo) {
+                resumo.innerHTML = totalSems
+                    ? `Vai extrair <b>${totalSems}</b> ${totalSems > 1 ? 'semestres' : 'semestre'} em `
+                      + `<b>${docsAtivos}</b> ${docsAtivos > 1 ? 'documentos' : 'documento'}`
+                      + (totalBrutas ? ` · <em>${totalBrutas} em atualização bruta</em>` : '')
+                    : 'Nenhum semestre selecionado';
+            }
+        }
+
+        // Turbo Drive intercepta a navegação, então `DOMContentLoaded` dispara uma vez só e
+        // o resumo ficaria vazio ao voltar para a página. `turbo:load` roda em toda visita.
+        document.addEventListener('turbo:load', atualizarResumoDocumentos);
+        document.addEventListener('DOMContentLoaded', atualizarResumoDocumentos);
+        document.addEventListener('change', function (e) {
+            if (e.target && e.target.classList && e.target.classList.contains('chk-periodo-inline')) {
+                atualizarResumoDocumentos();
+            }
+        });
+
+        function closeModalDocumentos() {
+            const modal = document.getElementById('modal-config-documentos');
+            modal.style.display = 'none';
+            modal.classList.add('hidden');
+        }
+
+
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script>
+        // ==========================================
+        // 2. MODAIS ESPECÍFICOS E ARRASTAR-E-SOLTAR (SORTABLE.JS)
+        // O QUE FAZ: Gerencia as janelas de config de RIAF e Contratos. Injeta a funcionalidade Sortable (Drag n' Drop)
+        // e controla comportamentos reativos (Selecionar Todos, Bloqueios por formato CSV).
+        // ==========================================
+        let _riafInitialState = null;
+        let _contratosInitialState = null;
+
+        function openModalConfigRiaf() {
+            const listEl = document.getElementById('riaf-semestres-list');
+            _riafInitialState = {
+                sems: Array.from(listEl.querySelectorAll('.chk-riaf-sem')).map(chk => ({
+                    checked: chk.checked,
+                    element: chk.closest('.riaf-sem-item')
+                }))
+            };
+            const modal = document.getElementById('modal-config-riaf');
+            modal.style.display = 'flex';
+            modal.classList.remove('hidden');
+            
+            if (!window.__riafSortableInit) {
+                const el = document.getElementById('riaf-semestres-list');
+                Sortable.create(el, {
+                    animation: 150,
+                    ghostClass: 'sortable-ghost',
+                    dragClass: 'sortable-drag',
+                    handle: '.grip-handle'
+                });
+                window.__riafSortableInit = true;
+            }
+        }
+
+        function cancelModalConfigRiaf() {
+            if (_riafInitialState) {
+                const listEl = document.getElementById('riaf-semestres-list');
+                listEl.innerHTML = '';
+                _riafInitialState.sems.forEach(item => {
+                    item.element.querySelector('.chk-riaf-sem').checked = item.checked;
+                    listEl.appendChild(item.element);
+                });
+            }
+            const modal = document.getElementById('modal-config-riaf');
+            modal.style.display = 'none';
+            modal.classList.add('hidden');
+        }
+
+        function closeModalConfigRiaf() {
+            const modal = document.getElementById('modal-config-riaf');
+            modal.style.display = 'none';
+            modal.classList.add('hidden');
+        }
+
+function openModalConfigContratos() {
+            const listEl = document.getElementById('contratos-semestres-list');
+            _contratosInitialState = {
+                sems: Array.from(listEl.querySelectorAll('.chk-contratos-sem')).map(chk => ({
+                    checked: chk.checked,
+                    element: chk.closest('.contratos-sem-item')
+                }))
+            };
+            const modal = document.getElementById('modal-config-contratos');
+            modal.style.display = 'flex';
+            modal.classList.remove('hidden');
+            
+            if (!window.__contratosSortableInit) {
+                const el = document.getElementById('contratos-semestres-list');
+                if (el && typeof Sortable !== 'undefined') {
+                    new Sortable(el, {
+                        animation: 150,
+                        ghostClass: 'sortable-ghost',
+                        dragClass: 'sortable-drag',
+                        handle: '.grip-handle'
+                    });
+                }
+                window.__contratosSortableInit = true;
+            }
+        }
+
+        function cancelModalConfigContratos() {
+            if (_contratosInitialState) {
+                const listEl = document.getElementById('contratos-semestres-list');
+                listEl.innerHTML = '';
+                _contratosInitialState.sems.forEach(item => {
+                    item.element.querySelector('.chk-contratos-sem').checked = item.checked;
+                    listEl.appendChild(item.element);
+                });
+            }
+            const modal = document.getElementById('modal-config-contratos');
+            modal.style.display = 'none';
+            modal.classList.add('hidden');
+        }
+
+        function closeModalConfigContratos() {
+            const modal = document.getElementById('modal-config-contratos');
+            modal.style.display = 'none';
+            modal.classList.add('hidden');
+        }
+
+        // Initialize states on load
+        if (!window.__motorCheckboxesInit_v2) {
+            window.__motorCheckboxesInit_v2 = true;
+
+            document.addEventListener('change', function(e) {
+                // Auto-check hidden document input based on semesters
+                if (e.target.matches('.chk-periodo-inline')) {
+                    const docType = e.target.getAttribute('data-doc');
+                    const allSemesters = document.querySelectorAll(`.chk-periodo-inline[data-doc="${docType}"]`);
+                    const anyChecked = Array.from(allSemesters).some(chk => chk.checked);
+                    const allChecked = Array.from(allSemesters).every(chk => chk.checked);
+                    
+                    const masterInput = document.querySelector(`.chk-doc-master[value="${docType}"]`);
+                    if (masterInput) {
+                        masterInput.checked = anyChecked;
+                    }
+
+                    // O rótulo do botão ("todos" / "limpar") é escrito por
+                    // atualizarResumoDocumentos, junto com o contador da linha — manter as
+                    // duas escritas aqui fazia uma sobrescrever a outra conforme a ordem
+                    // dos listeners.
+                }
+                if (e.target.matches('#chk-todos-riaf')) {
+                    document.querySelectorAll('.chk-riaf-sem').forEach(c => c.checked = e.target.checked);
+                    if (e.target.checked) document.getElementById('chk-relatorio-riaf').checked = true;
+                } else if (e.target.matches('.chk-riaf-sem')) {
+                    const allChecked = Array.from(document.querySelectorAll('.chk-riaf-sem')).every(c => c.checked);
+                    const master = document.getElementById('chk-todos-riaf');
+                    if (master) master.checked = allChecked;
+                    if (e.target.checked) document.getElementById('chk-relatorio-riaf').checked = true;
+                }
+                if (e.target.matches('#chk-todos-contratos')) {
+                    document.querySelectorAll('.chk-contratos-sem').forEach(c => c.checked = e.target.checked);
+                    if (e.target.checked) document.getElementById('chk-relatorio-ies').checked = true;
+                } else if (e.target.matches('.chk-contratos-sem')) {
+                    const allChecked = Array.from(document.querySelectorAll('.chk-contratos-sem')).every(c => c.checked);
+                    const master = document.getElementById('chk-todos-contratos');
+                    if (master) master.checked = allChecked;
+                    if (e.target.checked) document.getElementById('chk-relatorio-ies').checked = true;
+                }
+
+                // 4. Formato CSV desativa Configurações de Extração
+                if (e.target.matches('.chk-formato')) {
+                    const btnIds = ['btn-config-contratos', 'btn-config-riaf'];
+                    const isCsv = (e.target.value === 'CSV');
+                    
+                    if (isCsv && typeof mostrarNotificacao === 'function') {
+                        mostrarNotificacao('Relatórios indisponíveis em CSV.', false);
+                    }
+
+                    btnIds.forEach(id => {
+                        const btn = document.getElementById(id);
+                        if (btn) {
+                            if (isCsv) {
+                                btn.disabled = true;
+                                btn.classList.add('opacity-50', 'cursor-not-allowed');
+                            } else {
+                                btn.disabled = false;
+                                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                            }
+                        }
+                    });
+                }
+            });
+        }
+        
+        window.toggleSemesters = function(btn) {
+            try {
+                const docType = btn.getAttribute('data-doc');
+                const allSemesters = document.querySelectorAll(`.chk-periodo-inline[data-doc="${docType}"]`);
+                if (allSemesters.length === 0) return;
+                
+                const allChecked = Array.from(allSemesters).every(chk => chk.checked);
+                const newState = !allChecked;
+                
+                allSemesters.forEach(chk => {
+                    if (chk.checked !== newState) {
+                        chk.checked = newState;
+                        chk.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                });
+            } catch (e) {
+                console.error("Erro ao selecionar todos: ", e);
+            }
+        };
+    </script>
+    <script>
+        // ==========================================
+        // 3. SISTEMA DE NOTIFICAÇÕES (TOAST)
+        // O QUE FAZ: Exibe mensagens temporárias no canto da tela.
+        // COMO FUNCIONA: Cria um DIV flutuante e controla sua animação de entrada/saída no eixo X.
+        // ==========================================
+        function mostrarNotificacao(mensagem, sucesso = true) {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            container.innerHTML = ''; 
+            const toast = document.createElement('div');
+            const corBorda = sucesso ? 'border-purple-500' : 'border-red-500';
+            const corIcone = sucesso ? 'text-purple-500' : 'text-red-500';
+            const bgIcone = sucesso ? 'bg-purple-100' : 'bg-red-100';
+            const iconeHtml = sucesso ? '<i class="fa-solid fa-check text-lg"></i>' : '<i class="fa-solid fa-triangle-exclamation text-lg"></i>';
+
+            toast.className = `bg-white border-l-4 ${corBorda} shadow-2xl rounded-r-xl p-5 mb-3 flex items-center space-x-4 transform transition-all duration-500 translate-x-full opacity-0 z-[100]`;
+            toast.innerHTML = `<div class="flex-shrink-0 ${bgIcone} p-2 rounded-full w-10 h-10 flex items-center justify-center ${corIcone}">${iconeHtml}</div><div><p class="text-gray-800 font-semibold text-sm">${mensagem}</p></div>`;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => { 
+                toast.classList.remove('translate-x-full', 'opacity-0'); 
+                toast.classList.add('translate-x-0', 'opacity-100'); 
+            }, 10);
+            
+            setTimeout(() => { 
+                toast.classList.remove('translate-x-0', 'opacity-100'); 
+                toast.classList.add('translate-x-full', 'opacity-0'); 
+                setTimeout(() => toast.remove(), 500); 
+            }, 4000);
+        }
+    </script>
+    <!-- Scripts: Separação de Responsabilidades (UI, Eventos, Automação) -->
+    <script src="{% static 'analise_ia/js/analise_ia.js' %}?v=24"></script>
+    <div id="toast-container" class="fixed top-5 right-5 z-[70] flex flex-col items-end"></div>
+
+    <!-- Modal de Validação -->
+    <div id="modal-erro-validacao" class="area-trabalho hidden items-center justify-center p-4" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 999999; display: none;">
+        <!-- Overlay -->
+        <div id="modal-erro-overlay" onclick="fecharModalErro()" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(15, 23, 42, 0.5); backdrop-filter: blur(4px); transition: opacity 0.3s; opacity: 0;"></div>
+        
+        <!-- Content -->
+        <div class="bg-white rounded-2xl shadow-2xl p-6 flex flex-col items-center text-center" id="modal-erro-content" style="position: relative; width: 90%; max-width: 360px; transform: scale(0.95); opacity: 0; transition: all 0.3s;">
+            <div class="w-16 h-16 rounded-full bg-red-50 border-[4px] border-red-100 flex items-center justify-center mb-4">
+                <i class="fa-solid fa-triangle-exclamation text-red-500 text-[28px]"></i>
+            </div>
+            
+            <h3 class="text-[16px] font-black text-gray-800 uppercase tracking-widest mb-2">Seleção Obrigatória</h3>
+            <p class="text-[13px] text-gray-500 font-medium mb-6 leading-relaxed">
+                Você precisa escolher pelo menos um item na <strong class="text-gray-700">Base de Extração</strong> (Documentos) para que o motor tenha dados para analisar.
+            </p>
+            
+            <button type="button" onclick="fecharModalErro()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-3 rounded-xl transition-colors shadow-sm text-[13px] uppercase tracking-wider">
+                Ok, entendi
+            </button>
+        </div>
+    </div>
+    
+    <script>
+        // ==========================================
+        // 4. MODAL DE ERRO FATAL E VALIDAÇÃO DE FRONT-END
+        // O QUE FAZ: Alerta visual com fade-in e overlay borrado (backdrop) quando o usuário
+        // tenta iniciar o processamento sem selecionar nada.
+        // ==========================================
+        function mostrarModalErro() {
+            const modal = document.getElementById('modal-erro-validacao');
+            const overlay = document.getElementById('modal-erro-overlay');
+            const content = document.getElementById('modal-erro-content');
+            
+            modal.style.display = 'flex';
+            
+            // Trigger animation
+            setTimeout(() => {
+                overlay.style.opacity = '1';
+                content.style.opacity = '1';
+                content.style.transform = 'scale(1)';
+            }, 10);
+        }
+        
+        function fecharModalErro() {
+            const modal = document.getElementById('modal-erro-validacao');
+            const overlay = document.getElementById('modal-erro-overlay');
+            const content = document.getElementById('modal-erro-content');
+            
+            overlay.style.opacity = '0';
+            content.style.opacity = '0';
+            content.style.transform = 'scale(0.95)';
+            
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 300);
+        }
+    </script>
+    
+    <!-- Modal: Processados Hoje -->
+    <div id="modal-processados-hoje" class="area-trabalho z-[60] hidden fixed inset-0 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl flex flex-col overflow-hidden shadow-2xl border border-gray-200 animate-fade-in-up" style="width: 800px; max-width: 95vw; max-height: 90vh;">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50/80 shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="modal-header-icone w-10 h-10 rounded-xl flex items-center justify-center shadow-sm" style="background: linear-gradient(135deg, #ec4899, #be185d); color: white;">
+                        <i class="fa-solid fa-list-check text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-800 tracking-tight">Processados Hoje (Extração Forçada)</h3>
+                        <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mt-0.5">Defina quais inscrições forçar para cada Documento e Semestre</p>
+                    </div>
+                </div>
+                <button type="button" onclick="document.getElementById('modal-processados-hoje').classList.add('hidden')" class="text-gray-400 hover:text-gray-800 hover:bg-gray-200 w-8 h-8 flex items-center justify-center rounded-lg transition-colors">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <div class="p-6 flex flex-col gap-5 bg-white overflow-y-auto custom-scrollbar">
+                
+                <!-- CARD CONTRATOS -->
+                <div class="border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden proc-hoje-card" data-doc="CONTRATOS">
+                    <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center gap-3">
+                        <i class="fa-solid fa-file-contract text-pink-500"></i>
+                        <span class="text-sm font-bold text-gray-700">Contratos</span>
+                    </div>
+                    <div class="p-4 flex flex-col gap-3">
+                        <div class="flex gap-3 items-center">
+                            <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider shrink-0">Semestres:</p>
+                            <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" class="proc-hoje-sem" value="2025-1"> <span class="text-xs font-semibold text-gray-600">2025-1</span></label>
+                            <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" class="proc-hoje-sem" value="2025-2"> <span class="text-xs font-semibold text-gray-600">2025-2</span></label>
+                            <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" class="proc-hoje-sem" value="2026-1"> <span class="text-xs font-semibold text-gray-600">2026-1</span></label>
+                            <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" class="proc-hoje-sem" value="2026-2"> <span class="text-xs font-semibold text-gray-600">2026-2</span></label>
+                        </div>
+                        <textarea class="proc-hoje-lista w-full rounded-lg border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 text-sm" rows="2" placeholder="Cole os IDs separados por vírgula..."></textarea>
+                    </div>
+                </div>
+
+                <!-- CARD RIAF -->
+                <div class="border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden proc-hoje-card" data-doc="RIAF">
+                    <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center gap-3">
+                        <i class="fa-solid fa-graduation-cap text-pink-500"></i>
+                        <span class="text-sm font-bold text-gray-700">RIAF</span>
+                    </div>
+                    <div class="p-4 flex flex-col gap-3">
+                        <div class="flex gap-3 items-center">
+                            <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider shrink-0">Semestres:</p>
+                            <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" class="proc-hoje-sem" value="2026-1"> <span class="text-xs font-semibold text-gray-600">2026-1</span></label>
+                            <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" class="proc-hoje-sem" value="2026-2"> <span class="text-xs font-semibold text-gray-600">2026-2</span></label>
+                        </div>
+                        <textarea class="proc-hoje-lista w-full rounded-lg border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 text-sm" rows="2" placeholder="Cole os IDs separados por vírgula..."></textarea>
+                    </div>
+                </div>
+
+                <!-- CARD BENEFICIOS -->
+                <div class="border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden proc-hoje-card" data-doc="BENEFICIOS">
+                    <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center gap-3">
+                        <i class="fa-solid fa-hand-holding-dollar text-pink-500"></i>
+                        <span class="text-sm font-bold text-gray-700">Benefícios</span>
+                    </div>
+                    <div class="p-4 flex flex-col gap-3">
+                        <div class="flex gap-3 items-center">
+                            <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider shrink-0">Semestres:</p>
+                            <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" class="proc-hoje-sem" value="2025-1"> <span class="text-xs font-semibold text-gray-600">2025-1</span></label>
+                            <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" class="proc-hoje-sem" value="2025-2"> <span class="text-xs font-semibold text-gray-600">2025-2</span></label>
+                            <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" class="proc-hoje-sem" value="2026-1"> <span class="text-xs font-semibold text-gray-600">2026-1</span></label>
+                            <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" class="proc-hoje-sem" value="2026-2"> <span class="text-xs font-semibold text-gray-600">2026-2</span></label>
+                        </div>
+                        <textarea class="proc-hoje-lista w-full rounded-lg border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 text-sm" rows="2" placeholder="Cole os IDs separados por vírgula..."></textarea>
+                    </div>
+                </div>
+                
+                <!-- CARD HISTORICO -->
+                <div class="border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden proc-hoje-card" data-doc="HISTORICO">
+                    <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center gap-3">
+                        <i class="fa-solid fa-clock-rotate-left text-pink-500"></i>
+                        <span class="text-sm font-bold text-gray-700">Histórico</span>
+                    </div>
+                    <div class="p-4 flex flex-col gap-3">
+                        <div class="flex gap-3 items-center">
+                            <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider shrink-0">Semestres:</p>
+                            <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" class="proc-hoje-sem" value="2025-1"> <span class="text-xs font-semibold text-gray-600">2025-1</span></label>
+                            <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" class="proc-hoje-sem" value="2025-2"> <span class="text-xs font-semibold text-gray-600">2025-2</span></label>
+                            <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" class="proc-hoje-sem" value="2026-1"> <span class="text-xs font-semibold text-gray-600">2026-1</span></label>
+                            <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" class="proc-hoje-sem" value="2026-2"> <span class="text-xs font-semibold text-gray-600">2026-2</span></label>
+                        </div>
+                        <textarea class="proc-hoje-lista w-full rounded-lg border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 text-sm" rows="2" placeholder="Cole os IDs separados por vírgula..."></textarea>
+                    </div>
+                </div>
+
+            </div>
+            <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 shrink-0">
+                <button type="button" onclick="document.getElementById('modal-processados-hoje').classList.add('hidden')" class="w-full py-3 bg-pink-500 hover:bg-pink-600 text-white font-bold rounded-xl shadow-md transition-colors text-sm uppercase tracking-wider">
+                    Confirmar Configuração
+                </button>
+            </div>
+        </div>
+    </div>
+</body>
+
+
+</html>

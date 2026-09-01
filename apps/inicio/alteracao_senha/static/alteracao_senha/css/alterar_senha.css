@@ -1,0 +1,345 @@
+/* ==========================================================================
+   ESTILOS: ALTERAÇÃO DE SENHA
+   ========================================================================== */
+
+html { font-size: 90%; }
+body { 
+    font-family: 'Poppins', sans-serif; 
+}
+
+/* Animações de fundo (Bolinhas flutuantes) */
+
+
+/* Customização da Barra de Rolagem */
+.custom-scrollbar::-webkit-scrollbar { 
+    width: 6px; 
+}
+.custom-scrollbar::-webkit-scrollbar-track { 
+    background: transparent; 
+}
+.custom-scrollbar::-webkit-scrollbar-thumb { 
+    background: rgba(244, 114, 182, 0.5); /* Rosa padrão do sistema */
+    border-radius: 10px; 
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { 
+    background: rgba(244, 114, 182, 0.8); 
+}
+
+/* ======================================================================================
+   PLANO DE FUNDO (BOLHAS COLORIDAS BLUR ESTÁTICAS)
+   As bolhas coloridas de fundo agora são estáticas para garantir 100% de performance 
+   e resposta instantânea aos cliques no navegador, mantendo o visual rico e vibrante.
+   =================================================================================== */
+
+/* ==========================================================================
+   PLANO DE FUNDO - MALHA DE GRID (.grid-bg)
+   Cria um efeito sutil de linhas de grade (grid) roxas cruzadas no plano de fundo,
+   proporcionando profundidade visual e um aspecto técnico/moderno à interface.
+   ========================================================================== */
+.grid-bg {
+    background-image: 
+        linear-gradient(rgba(147, 51, 234, 0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(147, 51, 234, 0.07) 1px, transparent 1px);
+    background-size: 113px 75px;
+}
+
+
+
+.neon-btn::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: 0 15px 35px rgba(124, 58, 237, 0.35), 0 0 20px rgba(217, 70, 239, 0.25);
+    opacity: 0;
+    transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: -1;
+    pointer-events: none;
+}
+
+.neon-btn:hover {
+    transform: translateY(-2px);
+}
+
+.neon-btn:hover::after {
+    opacity: 1;
+}
+
+.neon-btn:active {
+    transform: translateY(0);
+}
+
+
+
+
+
+.neon-item:hover::before,
+
+
+
+/* =========================================
+   EFEITOS DE NAVEGAÇÃO OTIMIZADOS (OVG)
+   Alta performance: Anima apenas opacity e transform (GPU 60fps)
+========================================= */
+
+.nav-active {
+    position: relative;
+    background: linear-gradient(to right, #9333ea, #a855f7); /* OVG purple-600 to purple-500 */
+    box-shadow: 0 10px 20px rgba(147, 51, 234, 0.25);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    isolation: isolate;
+    will-change: transform;
+    color: white !important;
+}
+
+.nav-active::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: 0 15px 30px rgba(147, 51, 234, 0.4), 0 0 15px rgba(168, 85, 247, 0.3);
+    opacity: 0;
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: -1;
+    pointer-events: none;
+}
+
+.nav-active:hover {
+    transform: translateY(-2px);
+}
+
+.nav-active:hover::after {
+    opacity: 1;
+}
+
+.nav-inactive {
+    position: relative;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), color 0.3s ease;
+    isolation: isolate;
+    will-change: transform;
+    color: #4b5563; /* text-gray-600 */
+}
+
+.nav-inactive::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background-color: #ffffff;
+    box-shadow: 0 4px 15px rgba(147, 51, 234, 0.08);
+    opacity: 0;
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: -1;
+    pointer-events: none;
+}
+
+.nav-inactive:hover {
+    transform: translateY(-1px);
+    color: #9333ea !important; /* text-purple-600 */
+}
+
+.nav-inactive:hover::before {
+    opacity: 1;
+}
+
+
+
+/* ==========================================================================
+   ==========================================================================
+   MODO ELEITORAL — ALTERAÇÃO DE SENHA
+   ==========================================================================
+   ==========================================================================
+   A casca desta tela (halos, painel, barra lateral, cabeçalho, botão de sair)
+   é a mesma dos menus e já vem pronta de `static/css/tema-menu.css`, carregado
+   pelo template. Aqui ficam APENAS os elementos exclusivos: o painel de
+   conteúdo, as caixas de aviso e o formulário de troca de senha.
+
+   Doutrina, igual ao resto do portal: toda regra pende de
+   `html[data-tema="eleitoral"]`, as cores saem dos tokens `--tema-*`, e o CSS
+   é manual porque `static/css/output.css` é um bundle Tailwind purgado.
+
+   ATENÇÃO AO JAVASCRIPT
+     O `alterar_senha.js` REESCREVE o `className` inteiro de `#box_dica_senha`,
+     `#senha_dica` e `#box_logout_warning` a cada tecla digitada, para trocar o
+     estado entre neutro, válido e inválido. Qualquer classe semântica colocada
+     nesses elementos seria apagada no primeiro caractere.
+
+     Por isso eles são ancorados pelo ID — que o script preserva — e os estados
+     são distinguidos pela própria utilitária de fundo que o JS aplica. É o que
+     mantém o feedback de senha funcionando no escuro sem tocar no script.
+   ========================================================================== */
+
+
+/* --------------------------------------------------------------------------
+   CABEÇALHO: ÍCONE DECORATIVO E BOTÃO VOLTAR
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] .tela-header-icone {
+    background-image: linear-gradient(to bottom right, rgba(111, 211, 191, 0.22), rgba(111, 211, 191, 0.10));
+    color: var(--tema-primaria-suave);
+}
+
+html[data-tema="eleitoral"] .tela-voltar {
+    background-color: rgba(255, 255, 255, 0.06);
+    border-color: var(--tema-borda-forte);
+    color: var(--tema-texto-medio);
+}
+
+html[data-tema="eleitoral"] .tela-voltar:hover {
+    background-color: rgba(111, 211, 191, 0.16);
+    border-color: var(--tema-primaria-borda);
+    color: var(--tema-primaria-suave);
+}
+
+
+/* --------------------------------------------------------------------------
+   PAINEL DE CONTEÚDO
+   Fica acima do painel principal na hierarquia, então recebe uma superfície
+   um degrau mais clara — é assim que o escuro comunica elevação.
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] .senha-painel {
+    background-color: rgba(66, 76, 91, 0.75);
+    border-color: var(--tema-borda);
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.45);
+}
+
+html[data-tema="eleitoral"] .senha-titulo {
+    color: var(--tema-texto-forte);
+}
+
+html[data-tema="eleitoral"] .senha-texto,
+html[data-tema="eleitoral"] .senha-regras {
+    color: var(--tema-texto-medio);
+}
+
+html[data-tema="eleitoral"] .senha-regras-titulo {
+    color: var(--tema-texto-forte);
+}
+
+html[data-tema="eleitoral"] .senha-regras-titulo i {
+    color: var(--tema-primaria-suave);
+}
+
+
+/* --------------------------------------------------------------------------
+   CAIXA DE AVISO DE LOGOUT (#box_logout_warning)
+   Ancorada por ID porque o JS troca a classe inteira: nasce azul (informativo)
+   e vira laranja durante a contagem regressiva de redirecionamento. Ambos os
+   estados são semânticos — informação e urgência — e por isso mantêm a matiz,
+   apenas migrando de fundo sólido claro para véu translúcido sobre o escuro.
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] #box_logout_warning {
+    background-color: rgba(143, 173, 235, 0.13);
+    border-color: rgba(143, 173, 235, 0.32);
+    color: #8FADEB;
+}
+
+html[data-tema="eleitoral"] #box_logout_warning.bg-orange-100 {
+    background-color: rgba(249, 146, 44, 0.16);
+    border-color: rgba(249, 146, 44, 0.38);
+    color: #FFC489;
+}
+
+
+/* --------------------------------------------------------------------------
+   CAIXA DE REGRAS E FEEDBACK DE SENHA (#box_dica_senha / #senha_dica)
+   Também ancoradas por ID. Os seletores de estado usam as próprias classes
+   que o script escreve; a barra invertida escapa a `/` do nome da classe
+   (`bg-green-50/50` vira `.bg-green-50\/50` em CSS).
+
+   Verde e vermelho são preservados: comunicam "senha aceita" e "ainda falta",
+   que é a única informação útil da caixa.
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] #box_dica_senha {
+    background-color: rgba(255, 255, 255, 0.04);
+    border-color: var(--tema-borda);
+}
+
+html[data-tema="eleitoral"] #box_dica_senha.bg-green-50\/50 {
+    background-color: rgba(98, 209, 145, 0.12);
+    border-color: rgba(98, 209, 145, 0.34);
+}
+
+html[data-tema="eleitoral"] #box_dica_senha.bg-red-50\/50 {
+    background-color: rgba(242, 147, 125, 0.12);
+    border-color: rgba(242, 147, 125, 0.32);
+}
+
+html[data-tema="eleitoral"] #senha_dica {
+    color: var(--tema-texto-medio);
+    border-top-color: var(--tema-borda);
+}
+
+html[data-tema="eleitoral"] #senha_dica.text-green-700 {
+    color: #62D191;
+}
+
+html[data-tema="eleitoral"] #senha_dica.text-red-600 {
+    color: #F2937D;
+}
+
+html[data-tema="eleitoral"] #senha_dica .text-red-500 {
+    color: #FFA9B5;
+}
+
+
+/* --------------------------------------------------------------------------
+   FORMULÁRIO
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] .senha-form {
+    background-color: rgba(56, 65, 79, 0.55);
+    border-color: var(--tema-borda);
+}
+
+html[data-tema="eleitoral"] .senha-label {
+    color: var(--tema-texto-medio);
+}
+
+html[data-tema="eleitoral"] .senha-icone {
+    color: var(--tema-texto-fraco);
+}
+
+html[data-tema="eleitoral"] .senha-input {
+    background-color: var(--tema-superficie-3);
+    border-color: var(--tema-borda);
+    color: var(--tema-texto-forte);
+}
+
+html[data-tema="eleitoral"] .senha-input::placeholder {
+    color: var(--tema-texto-fraco);
+}
+
+html[data-tema="eleitoral"] .senha-input:focus {
+    border-color: var(--tema-primaria);
+}
+
+/* Preenchimento automático do navegador.
+   O Chrome pinta o campo autopreenchido com um amarelo fixo que ignora
+   `background-color` — num tema escuro vira uma faixa clara ilegível. A única
+   saída é cobrir o fundo com uma sombra interna sólida e forçar a cor do texto
+   pelo `-webkit-text-fill-color`. O delay absurdo na transição impede que o
+   amarelo reapareça durante a animação. */
+html[data-tema="eleitoral"] .senha-input:-webkit-autofill,
+html[data-tema="eleitoral"] .senha-input:-webkit-autofill:hover,
+html[data-tema="eleitoral"] .senha-input:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--tema-texto-forte);
+    -webkit-box-shadow: 0 0 0 1000px var(--tema-superficie-3) inset;
+    caret-color: var(--tema-texto-forte);
+    transition: background-color 9999s ease-in-out 0s;
+}
+
+/* Botão de salvar: o degradê atravessa teal → azul índigo, a mesma ideia
+   usada no botão de acesso do login — variar a matiz dentro da família em vez
+   de escurecer uma única matiz. */
+html[data-tema="eleitoral"] .senha-btn {
+    background-image: linear-gradient(to right,
+            var(--tema-acento-esmeralda),
+            var(--tema-primaria),
+            var(--tema-acento-ciano));
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45);
+}
+
+html[data-tema="eleitoral"] .senha-btn:hover {
+    background-image: linear-gradient(to right,
+            var(--tema-primaria),
+            var(--tema-acento-ciano));
+}

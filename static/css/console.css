@@ -1,0 +1,240 @@
+/* ==========================================================================
+   CONSOLE DE PROCESSAMENTO — componente compartilhado
+   ==========================================================================
+   Uma peça, quatro telas: Análise IA, Enquadramento de Cursos, Recálculo de
+   Bolsas e Documentos IA. Todas montam o mesmo terminal (semáforo do macOS,
+   barra de título, corpo de log monoespaçado) e todas serviam esse terminal de
+   um jeito ligeiramente diferente.
+
+   POR QUE ESTE ARQUIVO EXISTE, E NÃO UM BLOCO EM CADA APP
+
+   1. AS UTILITÁRIAS DO CONSOLE NÃO EXISTEM NO BUNDLE.
+      O `static/css/output.css` é pré-compilado e purgado: classe que não estava
+      no HTML no momento da compilação não tem regra e FALHA EM SILÊNCIO. O
+      console usa 18 utilitárias nessa situação — entre elas `bg-emerald-50`,
+      `border-emerald-200`, `text-emerald-600`, `text-purple-900` e
+      `text-purple-200`.
+
+      Isso não é hipótese: medido no navegador, o selo "✔ OK" do Documentos IA
+      renderizava com FUNDO TRANSPARENTE, BORDA PRETA e RÓTULO PRETO, e o
+      `exit 0` saía preto. Nada quebrava, nada aparecia no console do navegador.
+
+      Elas são declaradas aqui ESCOPADAS em `.console-ggci`. O escopo não é
+      preciosismo: declarar `.text-purple-900` globalmente passaria a pintar
+      qualquer outra tela do portal que já use a classe hoje sem efeito — ou
+      seja, mudaria visual congelado em lugares que ninguém pediu.
+
+   2. AS QUATRO TELAS PRECISAM DOS DOIS TEMAS.
+      No modo padrão o console é claro (lavanda e rosa, a identidade colorida);
+      no eleitoral ele veste a ardósia do tema. As SUPERFÍCIES são variáveis
+      `--console-*`, então o modo eleitoral só as reaponta para os tokens
+      `--tema-*` — sem `!important`, mesmo quando a cor vem de atributo `style`.
+
+   CARREGAMENTO: depois de `output.css` e dos `tema-*.css`, antes do CSS do app.
+
+   OS VALORES em oklch são os do Tailwind v4, a mesma versão do bundle, para o
+   console pertencer à mesma família de cor do resto da tela.
+   ========================================================================== */
+
+/* ==========================================================================
+   1. SUPERFÍCIES (variáveis) — modo padrão
+   --------------------------------------------------------------------------
+   Os valores são os que o console do Documentos IA já usava escritos à mão.
+   ========================================================================== */
+:root {
+    --console-superficie: #fbf9fe;      /* corpo da janela */
+    --console-cromo: #f4f0fa;           /* barra de título e rodapé */
+    --console-borda: rgba(233, 213, 255, 0.6);
+    --console-fundo-log: linear-gradient(to bottom right, #fbf9fe, #fff5fa);
+    --console-trilho: #ede8f5;          /* fundo da barra de progresso */
+    --console-trilho-borda: rgba(233, 213, 255, 0.5);
+    --console-sombra: 0 20px 60px -15px rgba(236, 72, 153, 0.2);
+    --console-cursor: #ec4899;
+    --console-rolagem: rgba(236, 72, 153, 0.3);
+    --console-rolagem-hover: rgba(236, 72, 153, 0.6);
+}
+
+.console-ggci {
+    background-color: var(--console-superficie);
+    border-color: var(--console-borda);
+    box-shadow: var(--console-sombra);
+}
+.console-ggci__cromo {
+    background-color: var(--console-cromo);
+    border-color: var(--console-borda);
+}
+.console-ggci__log { background-image: var(--console-fundo-log); }
+.console-ggci__trilho {
+    background-color: var(--console-trilho);
+    border-color: var(--console-trilho-borda);
+}
+
+/* ==========================================================================
+   2. UTILITÁRIAS AUSENTES DO BUNDLE
+   --------------------------------------------------------------------------
+   Escopadas em `.console-ggci` de propósito — ver item 1 do cabeçalho.
+   ========================================================================== */
+
+/* Selo de conclusão de etapa (✔ OK) */
+.console-ggci .bg-emerald-50 { background-color: oklch(97.9% 0.021 166.113); }
+.console-ggci .border-emerald-200 { border-color: oklch(90.5% 0.093 164.15); }
+.console-ggci .text-emerald-600 { color: oklch(59.6% 0.145 163.225); }
+.console-ggci .text-emerald-300 { color: oklch(84.5% 0.143 164.978); }
+
+/* Selo de falha / aborto */
+.console-ggci .text-red-300 { color: oklch(80.8% 0.114 19.571); }
+
+/* Selo de aviso */
+.console-ggci .bg-yellow-50 { background-color: oklch(98.7% 0.026 102.212); }
+.console-ggci .border-yellow-200 { border-color: oklch(94.5% 0.129 101.54); }
+.console-ggci .text-yellow-600 { color: oklch(68.1% 0.162 75.834); }
+.console-ggci .text-yellow-300 { color: oklch(90.5% 0.182 98.111); }
+
+/* Separadores dos selos e do prompt */
+.console-ggci .text-blue-300 { color: oklch(80.9% 0.105 251.813); }
+.console-ggci .text-pink-300 { color: oklch(82.3% 0.12 346.018); }
+.console-ggci .text-purple-200 { color: oklch(90.2% 0.063 306.703); }
+.console-ggci .text-purple-300 { color: oklch(82.7% 0.119 306.383); }
+
+/* Comando do prompt — o texto de maior contraste do console */
+.console-ggci .text-purple-900 { color: oklch(38.1% 0.176 304.987); }
+
+/* ==========================================================================
+   3. CURSOR E ROLAGEM
+   ========================================================================== */
+.console-ggci .console-cursor {
+    display: inline-block;
+    width: 0.5rem;
+    height: 1rem;
+    margin-left: 0.25rem;
+    vertical-align: middle;
+    background-color: var(--console-cursor);
+    animation: console-piscar 1s steps(2, start) infinite;
+}
+@keyframes console-piscar { to { visibility: hidden; } }
+
+/* Só WebKit/Blink implementa estes pseudo-elementos; no Firefox a barra cai no
+   padrão do sistema, igual nas quatro telas. */
+.console-ggci__log::-webkit-scrollbar { width: 6px; height: 6px; }
+.console-ggci__log::-webkit-scrollbar-track { background: transparent; }
+.console-ggci__log::-webkit-scrollbar-thumb { background: var(--console-rolagem); border-radius: 10px; }
+.console-ggci__log::-webkit-scrollbar-thumb:hover { background: var(--console-rolagem-hover); }
+
+/* ==========================================================================
+   4. MODO ELEITORAL
+   --------------------------------------------------------------------------
+   As superfícies são só um reapontamento de variável. O corpo do log recebe a
+   superfície MAIS PROFUNDA da escala e o cromo da janela a mais elevada: é a
+   lógica de elevação do tema e, por acaso, é como um terminal de verdade se
+   parece — a área de texto afunda, a moldura flutua.
+   ========================================================================== */
+html[data-tema="eleitoral"] {
+    --console-superficie: var(--tema-superficie);
+    --console-cromo: var(--tema-superficie-2);
+    --console-borda: var(--tema-borda);
+    --console-fundo-log: linear-gradient(to bottom right, var(--tema-fundo), var(--tema-superficie));
+    --console-trilho: var(--tema-fundo);
+    --console-trilho-borda: var(--tema-borda);
+    --console-sombra: 0 24px 64px -16px var(--tema-brilho);
+    --console-cursor: var(--tema-primaria);
+    --console-rolagem: var(--tema-primaria-borda);
+    --console-rolagem-hover: var(--tema-primaria);
+}
+
+/* --- Texto corrente e cromo ---------------------------------------------- */
+html[data-tema="eleitoral"] .console-ggci__log { color: var(--tema-texto-medio); }
+html[data-tema="eleitoral"] .console-ggci .text-gray-700,
+html[data-tema="eleitoral"] .console-ggci .text-gray-400 { color: var(--tema-texto-medio); }
+html[data-tema="eleitoral"] .console-ggci .text-gray-500 { color: var(--tema-texto-fraco); }
+
+/* --- Prompt --------------------------------------------------------------
+   `ovg@probem-ai:` é o traço de identidade e vai para a primária; o comando é
+   o texto de maior contraste. */
+html[data-tema="eleitoral"] .console-ggci .text-pink-600,
+html[data-tema="eleitoral"] .console-ggci .text-pink-500 { color: var(--tema-primaria); }
+html[data-tema="eleitoral"] .console-ggci .text-purple-900 { color: var(--tema-texto-forte); }
+html[data-tema="eleitoral"] .console-ggci .text-purple-800 { color: var(--tema-texto-medio); }
+html[data-tema="eleitoral"] .console-ggci .text-purple-400 { color: var(--tema-texto-fraco); }
+
+/* Separadores: estrutura, não conteúdo — ficam na cor de borda. */
+html[data-tema="eleitoral"] .console-ggci .text-purple-200,
+html[data-tema="eleitoral"] .console-ggci .text-purple-300 { color: var(--tema-borda-forte); }
+
+/* --- Selos ---------------------------------------------------------------
+   No claro cada selo é `cor + fundo pastel + borda pastel`. No escuro o pastel
+   viraria mancha clara, então o fundo passa a ser um véu translúcido da própria
+   cor — a mesma solução que o tema usa nas pílulas de status. */
+html[data-tema="eleitoral"] .console-ggci .bg-emerald-50 { background-color: rgba(98, 209, 145, 0.12); }
+html[data-tema="eleitoral"] .console-ggci .border-emerald-200 { border-color: rgba(98, 209, 145, 0.30); }
+html[data-tema="eleitoral"] .console-ggci .text-emerald-600 { color: var(--tema-status-sucesso); }
+html[data-tema="eleitoral"] .console-ggci .text-emerald-300 { color: rgba(98, 209, 145, 0.45); }
+
+html[data-tema="eleitoral"] .console-ggci .bg-blue-50 { background-color: rgba(143, 173, 235, 0.12); }
+html[data-tema="eleitoral"] .console-ggci .border-blue-200 { border-color: rgba(143, 173, 235, 0.30); }
+html[data-tema="eleitoral"] .console-ggci .text-blue-600 { color: var(--tema-status-info); }
+html[data-tema="eleitoral"] .console-ggci .text-blue-300 { color: rgba(143, 173, 235, 0.45); }
+
+html[data-tema="eleitoral"] .console-ggci .bg-purple-50 { background-color: var(--tema-primaria-lavada); }
+html[data-tema="eleitoral"] .console-ggci .border-purple-200 { border-color: var(--tema-primaria-borda); }
+html[data-tema="eleitoral"] .console-ggci .text-purple-600 { color: var(--tema-primaria); }
+
+html[data-tema="eleitoral"] .console-ggci .bg-red-50 { background-color: rgba(242, 147, 125, 0.12); }
+html[data-tema="eleitoral"] .console-ggci .border-red-200 { border-color: rgba(242, 147, 125, 0.30); }
+html[data-tema="eleitoral"] .console-ggci .text-red-600 { color: var(--tema-status-erro); }
+html[data-tema="eleitoral"] .console-ggci .text-red-300 { color: rgba(242, 147, 125, 0.45); }
+
+html[data-tema="eleitoral"] .console-ggci .bg-yellow-50 { background-color: rgba(239, 177, 105, 0.12); }
+html[data-tema="eleitoral"] .console-ggci .border-yellow-200 { border-color: rgba(239, 177, 105, 0.30); }
+html[data-tema="eleitoral"] .console-ggci .text-yellow-600 { color: var(--tema-status-alerta); }
+html[data-tema="eleitoral"] .console-ggci .text-yellow-300 { color: rgba(239, 177, 105, 0.45); }
+
+html[data-tema="eleitoral"] .console-ggci .bg-pink-50 { background-color: var(--tema-primaria-lavada); }
+/* O bloco piscante do estado de repouso — é cursor, não selo, e acompanha a
+   primária junto com o `.console-cursor` que o substitui durante a execução. */
+html[data-tema="eleitoral"] .console-ggci .bg-pink-500 { background-color: var(--tema-primaria); }
+html[data-tema="eleitoral"] .console-ggci .border-pink-200 { border-color: var(--tema-primaria-borda); }
+html[data-tema="eleitoral"] .console-ggci .text-pink-300 { color: rgba(111, 211, 191, 0.45); }
+
+/* --- Ícones de estado das linhas do log ---------------------------------- */
+html[data-tema="eleitoral"] .console-ggci .text-green-500 { color: var(--tema-status-sucesso); }
+html[data-tema="eleitoral"] .console-ggci .text-yellow-500 { color: var(--tema-status-alerta); }
+html[data-tema="eleitoral"] .console-ggci .text-red-500 { color: var(--tema-status-erro); }
+
+/* --- Barra de progresso ---------------------------------------------------
+   O degradê rosa→roxo é identidade colorida; no escuro percorre o eixo
+   teal→índigo do tema, o mesmo par dos demais degradês. */
+html[data-tema="eleitoral"] .console-ggci__barra {
+    background-image: linear-gradient(to right, var(--tema-acento-esmeralda), var(--tema-acento-ciano));
+}
+
+/* ==========================================================================
+   5. SPINNER DE CARREGAMENTO (BRAILLE)
+   ========================================================================== */
+@keyframes console-braille-spin {
+    0% { content: '⠋'; }
+    10% { content: '⠙'; }
+    20% { content: '⠹'; }
+    30% { content: '⠸'; }
+    40% { content: '⠼'; }
+    50% { content: '⠴'; }
+    60% { content: '⠦'; }
+    70% { content: '⠧'; }
+    80% { content: '⠇'; }
+    90% { content: '⠏'; }
+    100% { content: '⠋'; }
+}
+
+.console-spinner {
+    display: inline-block;
+    color: oklch(52.6% 0.19 337.893); /* text-pink-600 */
+    font-weight: 700;
+    margin-left: 0.25rem;
+    font-size: 16px;
+}
+html[data-tema="eleitoral"] .console-spinner {
+    color: var(--tema-primaria);
+}
+.console-spinner::after {
+    content: '⠋';
+    animation: console-braille-spin 0.8s step-end infinite;
+}

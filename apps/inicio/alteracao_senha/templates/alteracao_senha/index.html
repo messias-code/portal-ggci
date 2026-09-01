@@ -1,0 +1,253 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alterar Senha - Portal GGCI</title>
+    
+    <!--
+        MOTOR DE TEMAS — precisa vir antes de tudo.
+        Carregado SEM 'defer'/'async' de propósito: executado de forma síncrona
+        aqui no <head>, grava o atributo data-tema no <html> antes da primeira
+        pintura, eliminando o flash do tema padrão. Como a preferência vive no
+        localStorage, o modo escolhido em qualquer tela já chega aplicado aqui.
+    -->
+    <script src="{% static 'js/tema.js' %}"></script>
+
+    <link rel="stylesheet" href="{% static 'css/output.css' %}">
+
+    <!-- Tokens de cor dos temas e o botão sol/lua (compartilhado por todo o portal) -->
+    <link rel="stylesheet" href="{% static 'css/tema.css' %}">
+
+    <!-- Modo escuro da casca de menu (barra lateral + cabeçalho), compartilhado -->
+    <link rel="stylesheet" href="{% static 'css/tema-menu.css' %}">
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="{% static 'alteracao_senha/css/alterar_senha.css' %}?v=2">
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@8.0.4/dist/turbo.es.2017-esm.js"></script>
+</head>
+
+<body class="grid-bg bg-[#f8f6fb] text-gray-800 fixed inset-0 p-4 lg:p-6 flex overflow-hidden transition-colors duration-500">
+
+    <div id="toast-container" class="fixed top-5 right-5 z-[70] flex flex-col items-end"></div>
+
+        <!-- 
+        ======================================================================
+        1. ELEMENTOS DECORATIVOS DE BACKGROUND (LIGHT BLOBS / BLUR EFFECTS)
+        ----------------------------------------------------------------------
+        Divs com desfoque gaussiano (blur-[140px]) e alta opacidade que criam o
+        efeito estético de iluminação colorida flutuante nos quatro cantos da tela,
+        trazendo profundidade visual sem prejudicar o desempenho.
+        ======================================================================
+    -->
+    <div class="menu-blob menu-blob--1 absolute top-[-20%] left-[-15%] w-[70vw] h-[70vh] bg-pink-500/70 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="menu-blob menu-blob--2 absolute top-[-20%] right-[-15%] w-[70vw] h-[70vh] bg-yellow-400/75 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="menu-blob menu-blob--3 absolute bottom-[-20%] left-[-15%] w-[70vw] h-[70vh] bg-purple-700/60 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="menu-blob menu-blob--4 absolute bottom-[-20%] right-[-15%] w-[70vw] h-[70vh] bg-green-600/65 rounded-full blur-[140px] pointer-events-none z-0"></div>
+
+    <div class="menu-shell w-full h-full bg-white/70 backdrop-blur-2xl border border-white/80 rounded-[2rem] shadow-2xl flex overflow-hidden relative z-10 transition-all duration-300">
+
+        <aside class="menu-sidebar w-[18rem] lg:w-[20rem] flex flex-col border-r border-purple-100/50 bg-white/40 shrink-0">
+            <div class="menu-divisoria h-28 flex items-center justify-center border-b border-purple-100/50">
+                <!--
+                    As duas versões da logo são publicadas e o CSS de tema decide
+                    qual fica visível. O elemento oculto sai da árvore de
+                    acessibilidade, então o leitor de tela anuncia apenas uma.
+                -->
+                <img src="{% static 'img/logos/ovg.png' %}" alt="OVG Logo"
+                    class="logo-tema logo-tema--claro h-[4.46rem] drop-shadow-md">
+                <img src="{% static 'img/logos/ovg-eleitoral.png' %}" alt="OVG Logo"
+                    class="logo-tema logo-tema--eleitoral h-[4.46rem] drop-shadow-md">
+            </div>
+            <nav class="flex-1 px-6 py-8 space-y-2 overflow-hidden">
+                <p class="menu-nav-titulo text-[13px] font-bold text-purple-700 uppercase tracking-widest mb-4 px-2">Navegação Principal</p>
+                
+                <a href="{% url 'inicio' %}" class="nav-active flex items-center space-x-3 px-4 py-3 rounded-xl font-bold text-base">
+                    <i class="fa-solid fa-user-shield text-[23px] w-6 text-center"></i><span>Início</span>
+                </a>
+                
+                {% if user.p_ferramentas or user.usuario == 'admin@ovg.org.br' %}
+                    <a href="{% url 'ferramentas' %}" class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
+                        <i class="fa-solid fa-screwdriver-wrench text-[23px] w-6 text-center"></i><span>Ferramentas</span>
+                    </a>
+                {% else %}
+                    <div class="menu-nav-bloqueado flex items-center space-x-4 px-4 py-3 text-gray-400 bg-gray-50/50 rounded-xl font-semibold text-base cursor-not-allowed opacity-70" title="Acesso Restrito">
+                        <i class="fa-solid fa-lock text-[23px] w-6 text-center"></i><span>Ferramentas</span>
+                    </div>
+                {% endif %}
+                
+                {% if user.p_analise_ia or user.p_recalculo_bolsas or user.p_enquadramento_cursos or user.usuario == 'admin@ovg.org.br' %}
+                    <a href="{% url 'automacoes' %}" class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
+                        <i class="fa-brands fa-whmcs text-[28px] w-6 text-center"></i><span>Automações</span>
+                    </a>
+                {% else %}
+                    <div class="menu-nav-bloqueado flex items-center space-x-4 px-4 py-3 text-gray-400 bg-gray-50/50 rounded-xl font-semibold text-base cursor-not-allowed opacity-70" title="Acesso Restrito">
+                        <i class="fa-solid fa-lock text-[23px] w-6 text-center"></i><span>Automações</span>
+                    </div>
+                {% endif %}
+
+                {% if user.p_dash_polichat or user.p_dash_documentos_ia or user.usuario == 'admin@ovg.org.br' %}
+                    <a href="{% url 'dashboards' %}" class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
+                        <i class="fa-solid fa-chart-line text-[23px] w-6 text-center"></i><span>Dashboards</span>
+                    </a>
+                {% else %}
+                    <div class="menu-nav-bloqueado flex items-center space-x-4 px-4 py-3 text-gray-400 bg-gray-50/50 rounded-xl font-semibold text-base cursor-not-allowed opacity-70" title="Acesso Restrito">
+                        <i class="fa-solid fa-lock text-[23px] w-6 text-center"></i><span>Dashboards</span>
+                    </div>
+                {% endif %}
+                
+                {% if user.p_documentacoes or user.usuario == 'admin@ovg.org.br' %}
+                    <a href="#" class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
+                        <i class="fa-solid fa-folder-open text-[23px] w-6 text-center"></i><span>Documentações</span>
+                    </a>
+                {% else %}
+                    <div class="menu-nav-bloqueado flex items-center space-x-4 px-4 py-3 text-gray-400 bg-gray-50/50 rounded-xl font-semibold text-base cursor-not-allowed opacity-70" title="Acesso Restrito">
+                        <i class="fa-solid fa-lock text-[23px] w-6 text-center"></i><span>Documentações</span>
+                    </div>
+                {% endif %}
+            </nav>
+            <div class="menu-divisoria p-6 border-t border-purple-100/50">
+                <a href="{% url 'logout' %}" class="menu-sair flex items-center justify-center space-x-2 w-full px-4 py-3 bg-red-50 text-red-600 rounded-xl font-extrabold text-sm hover:bg-red-500 hover:text-white transition-all shadow-sm">
+                    <i class="fa-solid fa-right-from-bracket"></i><span>SAIR DO SISTEMA</span>
+                </a>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+            <header class="menu-header menu-divisoria h-28 px-8 lg:px-10 flex justify-between items-center border-b border-purple-100/50 bg-white/40 backdrop-blur-md shrink-0 transition-all duration-300">
+                <div class="flex items-center gap-4 relative z-10">
+                    <div class="tela-header-icone w-14 h-14 rounded-2xl bg-gradient-to-br from-pink-100 to-pink-200 text-pink-700 flex items-center justify-center shadow-inner shrink-0 hidden sm:flex">
+                        <i class="fa-solid fa-user-secret text-2xl drop-shadow-sm"></i>
+                    </div>
+
+                    <div>
+                        <h2 class="menu-header-titulo text-2xl lg:text-3xl font-extrabold text-gray-800 tracking-tight">Alteração de Senha</h2>
+                        <p class="menu-header-sub text-sm lg:text-lg text-gray-500 font-medium mt-1">Gerenciamento de credencial de acesso</p>
+                    </div>
+                </div>
+                <!--
+                    Agrupa o seletor de modo e o botão Voltar no canto direito do
+                    cabeçalho. O <header> é 'justify-between' e este bloco é o
+                    segundo filho, então o alinhamento à direita já vem de graça.
+                -->
+                <div class="flex items-center gap-4">
+                    <!--
+                        BOTÃO DE ALTERNÂNCIA DE MODO (SOL / LUA)
+                        Componente compartilhado, definido em 'static/css/tema.css'.
+                        O ícone exibido é o do modo PARA O QUAL se vai. O clique é
+                        capturado por delegação em 'static/js/tema.js' via
+                        'data-tema-toggle', e o aria-label é preenchido por lá.
+                    -->
+                    <button type="button"
+                        class="tema-toggle"
+                        data-tema-toggle
+                        aria-label="Ativar modo eleitoral"
+                        aria-pressed="false">
+                        <svg class="tema-toggle__icone tema-toggle__icone--lua" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"
+                            stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                        <svg class="tema-toggle__icone tema-toggle__icone--sol" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.6"/>
+                            <path d="M12 2.4V4.4M12 19.6V21.6M21.6 12H19.6M4.4 12H2.4M18.79 5.21L17.38 6.62M6.62 17.38L5.21 18.79M18.79 18.79L17.38 17.38M6.62 6.62L5.21 5.21"
+                                stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+
+                    <a href="{% url 'inicio' %}" class="tela-voltar px-5 py-2.5 bg-white/80 hover:bg-pink-50 text-pink-600 font-bold rounded-xl transition-all shadow-sm border border-pink-100 inline-flex items-center justify-center text-sm">
+                        <i class="fa-solid fa-arrow-left mr-2 mt-[1px]"></i>
+                        <span class="leading-none">Voltar</span>
+                    </a>
+                </div>
+            </header>
+
+            <div class="flex-1 p-6 lg:p-8 flex items-center justify-center overflow-y-auto custom-scrollbar transition-all duration-300 relative">
+                
+                <div class="senha-painel w-full max-w-5xl bg-white/80 backdrop-blur-xl border border-white/50 rounded-[2rem] shadow-xl p-8 lg:p-10 relative z-10">
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14">
+                        
+                        <div class="flex flex-col justify-center">
+                            <h3 class="senha-titulo text-2xl font-extrabold text-gray-800 tracking-tight relative z-10 mb-2">Alteração de Senha</h3>
+                            <p class="senha-texto text-[13px] text-gray-500 font-medium leading-relaxed relative z-10">
+                                Crie uma nova senha forte e exclusiva. Lembre-se de não compartilhar seus dados de acesso com terceiros para manter a integridade do Portal.
+                            </p>
+                            
+                            <div id="box_logout_warning" class="mt-6 bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-xl text-[13px] font-semibold flex items-center transition-all duration-300">
+                                <i class="fa-solid fa-circle-info mr-3 text-xl"></i>
+                                <span id="logout_warning_text">Aviso: Por segurança, você será deslogado automaticamente após a alteração.</span>
+                            </div>
+
+                            <div id="box_dica_senha" class="bg-gray-50/80 rounded-xl p-5 mt-4 border border-gray-200/80 transition-colors duration-300 relative z-10 flex-1">
+                                <p class="senha-regras-titulo text-[13px] text-gray-700 font-bold mb-3 flex items-center"><i class="fa-solid fa-shield-halved mr-2 text-gray-500"></i> Regras Obrigatórias:</p>
+                                <ul class="senha-regras text-[13px] text-gray-500 list-disc list-inside mb-4 ml-1 space-y-1.5">
+                                    <li>Mínimo de 8 caracteres</li>
+                                    <li>Pelo menos 1 letra maiúscula</li>
+                                    <li>Pelo menos 1 número</li>
+                                    <li>Pelo menos 1 caractere especial (@, -, !, etc)</li>
+                                </ul>
+                                <div id="senha_dica" class="text-[13px] text-gray-500 font-medium pt-3 border-t border-gray-200/80 hidden">
+                                    Comece a digitar para validar...
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col justify-center">
+                            <form id="formAlterarSenha" class="senha-form space-y-5 relative z-10 bg-white/60 p-7 rounded-[1.5rem] border border-white shadow-sm">
+                                {% csrf_token %} 
+                                
+                                <div class="relative z-10">
+                                    <label class="senha-label block text-[14px] font-bold text-gray-700 mb-1.5 relative z-10">Senha Atual</label>
+                                    <div class="relative z-10">
+                                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
+                                            <i class="senha-icone fa-solid fa-lock text-gray-400 relative z-10"></i>
+                                        </div>
+                                        <input type="password" id="senha_atual" name="senha_atual" placeholder="Digite sua senha atual" class="senha-input w-full pl-11 pr-4 py-3 rounded-xl border-2 border-gray-100 bg-white text-gray-800 focus:ring-0 focus:border-pink-500 outline-none transition-all placeholder-gray-400 font-medium relative z-10">
+                                    </div>
+                                </div>
+
+                                <div class="relative z-10">
+                                    <label class="senha-label block text-[14px] font-bold text-gray-700 mb-1.5 relative z-10">Nova Senha</label>
+                                    <div class="relative z-10">
+                                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
+                                            <i class="senha-icone fa-solid fa-key text-gray-400 relative z-10"></i>
+                                        </div>
+                                        <input type="password" id="nova_senha" name="nova_senha" placeholder="Crie uma nova senha" class="senha-input w-full pl-11 pr-4 py-3 rounded-xl border-2 border-gray-100 bg-white text-gray-800 focus:ring-0 focus:border-pink-500 outline-none transition-all placeholder-gray-400 font-medium relative z-10">
+                                    </div>
+                                </div>
+
+                                <div class="relative z-10">
+                                    <label class="senha-label block text-[14px] font-bold text-gray-700 mb-1.5 relative z-10">Confirme a Nova Senha</label>
+                                    <div class="relative z-10">
+                                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
+                                            <i class="senha-icone fa-solid fa-check-double text-gray-400 relative z-10"></i>
+                                        </div>
+                                        <input type="password" id="confirma_senha" name="confirma_senha" placeholder="Repita a nova senha criada" class="senha-input w-full pl-11 pr-4 py-3 rounded-xl border-2 border-gray-100 bg-white text-gray-800 focus:ring-0 focus:border-pink-500 outline-none transition-all placeholder-gray-400 font-medium relative z-10">
+                                    </div>
+                                </div>
+
+                                <div class="pt-3 flex justify-end relative z-10">
+                                    <button id="btnSalvarNovaSenha" type="button" class="senha-btn w-full px-8 py-3.5 rounded-xl font-extrabold text-white bg-gradient-to-r from-pink-600 to-pink-700 hover:from-pink-700 hover:to-pink-800 shadow-lg shadow-pink-700/30 hover:scale-[1.02] transition-all text-[14px] relative z-10">
+                                        <i class="fa-solid fa-floppy-disk mr-2 relative z-10"></i> Salvar Nova Senha
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const URL_API_ALTERAR_SENHA = "{% url 'api_alterar_senha' %}";
+        const URL_LOGOUT_ACAO = "{% url 'logout' %}";
+    </script>
+    <script src="{% static 'alteracao_senha/js/alterar_senha.js' %}?v=3" defer></script>
+</body>
+</html>

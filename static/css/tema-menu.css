@@ -1,0 +1,381 @@
+/* ==========================================================================
+   PORTAL GGCI — MODO ELEITORAL DO SHELL DE MENU (COMPARTILHADO)
+   ==========================================================================
+   As telas de menu do portal — Início, Ferramentas, Automações e Dashboards —
+   são a MESMA casca: barra lateral com navegação, cabeçalho e uma grade de
+   cards de módulo. Este arquivo carrega o modo escuro dessa casca uma única
+   vez, em vez de repetir o mesmo bloco em quatro CSS diferentes.
+
+   ESCOPO
+     Só o que é comum às quatro telas. Se um menu tiver um elemento próprio,
+     ele deve ser tematizado no CSS daquele app, não aqui.
+
+   COMO USAR NUMA TELA DE MENU
+     1. No <head>, depois de `output.css`:
+            <script src="{% static 'js/tema.js' %}"></script>   (no topo, síncrono)
+            <link rel="stylesheet" href="{% static 'css/tema.css' %}">
+            <link rel="stylesheet" href="{% static 'css/tema-menu.css' %}">
+     2. Marque os elementos da casca com as classes `menu-*` e `card-modulo*`
+        descritas abaixo. Elas não pintam nada no modo claro — servem só como
+        ponto de ancoragem para as regras deste arquivo.
+
+   DOUTRINA (a mesma de `static/css/tema.css`)
+     - O modo ativo vem do atributo `data-tema` no <html>, escrito por
+       `static/js/tema.js` antes da primeira pintura.
+     - Toda regra pende de `html[data-tema="eleitoral"]`, então o modo claro
+       permanece exatamente como está hoje, intocado.
+     - As cores saem dos tokens `--tema-*`.
+     - CSS manual em vez de utilitárias, porque `static/css/output.css` é um
+       bundle Tailwind purgado e sem processo de build no repositório.
+
+   A escala de superfícies expressa ELEVAÇÃO: o fundo da página é o mais
+   escuro, o painel principal vem acima dele, a barra lateral e o cabeçalho
+   acima do painel. No escuro é essa diferença de claridade que separa as
+   áreas — as sombras do modo claro praticamente não se enxergam.
+   ========================================================================== */
+
+
+/* --------------------------------------------------------------------------
+   FUNDO DA PÁGINA
+   O <body> das telas de menu traz `bg-[#f8f6fb]` e `text-gray-800` como
+   utilitárias. Ambas são classes simples (0,1,0); `html[data-tema] body` soma
+   atributo + elemento (0,1,1) e vence sem precisar de `!important`.
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] body {
+    background-color: var(--tema-fundo);
+    color: var(--tema-texto-medio);
+}
+
+html[data-tema="eleitoral"] .grid-bg {
+    background-image:
+        linear-gradient(var(--tema-grade) 1px, transparent 1px),
+        linear-gradient(90deg, var(--tema-grade) 1px, transparent 1px);
+}
+
+
+/* --------------------------------------------------------------------------
+   HALOS DE FUNDO (BLOBS)
+   O eixo é teal → petróleo → azul índigo, com os halos azuis embaixo: o peso
+   cromático desce para o rodapé da tela e o conteúdo fica recortado contra a
+   parte mais fria do fundo, em vez de nadar num campo de cor uniforme.
+   Valores idênticos nas telas de login e de menu, para que todo o portal
+   compartilhe a mesma atmosfera de fundo.
+
+   SOBRE AS OPACIDADES — elas subiram junto com a paleta ardósia, e por um
+   motivo que não é óbvio: halo é cor por CONTRASTE com o que está atrás. Num
+   fundo mais claro, o mesmo alfa produz menos diferença. Manter os valores
+   antigos teria transformado o ganho de claridade em perda de cor — que era
+   justamente a queixa a resolver.
+   -------------------------------------------------------------------------- */
+
+html[data-tema="eleitoral"] .menu-blob--1 {
+    background-color: rgba(86, 114, 179, 0.42);
+}
+
+html[data-tema="eleitoral"] .menu-blob--2 {
+    background-color: rgba(72, 110, 150, 0.34);
+}
+
+html[data-tema="eleitoral"] .menu-blob--3 {
+    background-color: rgba(58, 91, 168, 0.32);
+}
+
+html[data-tema="eleitoral"] .menu-blob--4 {
+    background-color: rgba(53, 120, 109, 0.24);
+}
+
+
+/* --------------------------------------------------------------------------
+   PAINEL PRINCIPAL, BARRA LATERAL E CABEÇALHO
+   Os três são semitransparentes para que os halos continuem visíveis por trás
+   do vidro (`backdrop-blur`). A barra lateral e o cabeçalho ficam um degrau
+   mais claros que o painel, marcando a hierarquia.
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] .menu-shell {
+    /* rgba equivalente a --tema-superficie (#38414F); o alfa faz parte do
+       efeito de vidro, por isso o valor é literal. */
+    background-color: rgba(56, 65, 79, 0.72);
+    border-color: var(--tema-borda);
+    box-shadow:
+        0 25px 60px rgba(0, 0, 0, 0.55),
+        0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+html[data-tema="eleitoral"] .menu-sidebar,
+html[data-tema="eleitoral"] .menu-header {
+    background-color: rgba(66, 76, 91, 0.55);
+}
+
+/* As divisórias usam `border-purple-100/50`. No escuro, um fio claro de baixa
+   opacidade cumpre o mesmo papel sem puxar a cor de volta para o roxo. */
+html[data-tema="eleitoral"] .menu-sidebar,
+html[data-tema="eleitoral"] .menu-divisoria {
+    border-color: var(--tema-borda);
+}
+
+/* --------------------------------------------------------------------------
+   ÍCONE DECORATIVO E BOTÃO VOLTAR DO CABEÇALHO
+   Presentes nas telas internas (ferramentas, automações, alteração de senha,
+   gestão de acessos). Vivem AQUI, e não no CSS de cada tela, porque fazem
+   parte da casca — todas as telas que têm cabeçalho carregam este arquivo.
+
+   O ícone é um quadrado com degradê `from-pink-100 to-*-100` e borda rosa. Ele
+   fica fora da `.area-trabalho`, então os remapeamentos escopados por lá não o
+   alcançam: sem esta regra, o bloco rosa-claro continua aceso sobre o
+   cabeçalho escuro — lê-se como um ícone neon, destoando de todas as outras
+   telas. As três propriedades precisam ser tratadas juntas (fundo, cor do
+   glifo e borda), senão sobra um contorno rosa em volta.
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] .tela-header-icone {
+    background-image: linear-gradient(to bottom right, rgba(111, 211, 191, 0.22), rgba(111, 211, 191, 0.10));
+    border-color: var(--tema-primaria-borda);
+    color: var(--tema-primaria-suave);
+}
+
+html[data-tema="eleitoral"] .tela-voltar {
+    background-color: rgba(255, 255, 255, 0.06);
+    border-color: var(--tema-borda-forte);
+    color: var(--tema-texto-medio);
+}
+
+html[data-tema="eleitoral"] .tela-voltar:hover {
+    background-color: rgba(111, 211, 191, 0.16);
+    border-color: var(--tema-primaria-borda);
+    color: var(--tema-primaria-suave);
+}
+
+html[data-tema="eleitoral"] .menu-header-titulo {
+    color: var(--tema-texto-forte);
+}
+
+html[data-tema="eleitoral"] .menu-header-sub {
+    color: var(--tema-texto-medio);
+}
+
+/* Trecho em destaque dentro do subtítulo (por exemplo, o nome do usuário). */
+html[data-tema="eleitoral"] .menu-header-destaque {
+    color: var(--tema-primaria-suave);
+}
+
+
+/* --------------------------------------------------------------------------
+   NAVEGAÇÃO LATERAL
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] .menu-nav-titulo {
+    color: var(--tema-primaria-suave);
+}
+
+/* Item ativo da navegação. Vai de AZUL, não do teal da marca — e o critério
+   vale para o tema inteiro:
+
+       teal  = marca. Traço e pontos pequenos: texto, ícone, borda, foco.
+       azul  = estrutura. Áreas: navegação, halos de fundo, paginação.
+
+   A razão é de proporção, não de gosto. O teal é a cor mais saturada da
+   paleta; usado em ÁREA — e a barra lateral tem um item ativo sempre visível,
+   em todas as telas — ele deixa de ser acento e vira o clima da página. Foi o
+   que produziu a queixa de "muito verde" mesmo com as superfícies já neutras.
+
+   O teal continua na tela em toda parte onde é traço, e é ali que a marca é
+   lida sem dominar. */
+html[data-tema="eleitoral"] .nav-active {
+    background: linear-gradient(to right, var(--tema-solido-info), #2B4068);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.35);
+}
+
+html[data-tema="eleitoral"] .nav-active::after {
+    box-shadow:
+        0 15px 30px rgba(0, 0, 0, 0.45),
+        0 0 15px rgba(58, 91, 168, 0.40);
+}
+
+html[data-tema="eleitoral"] .nav-inactive {
+    color: var(--tema-texto-medio);
+}
+
+/* O realce de hover é um retângulo BRANCO SÓLIDO no modo claro. Mantê-lo aqui
+   produziria um flash branco a cada passagem do mouse — o efeito mais
+   destoante possível num tema escuro. Vira uma superfície elevada translúcida. */
+html[data-tema="eleitoral"] .nav-inactive::before {
+    background-color: rgba(77, 88, 103, 0.85);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.30);
+}
+
+/* O `!important` acompanha o do modo claro: a regra original o usa para vencer
+   as utilitárias de cor do Tailwind, e sem ele aqui o hover não trocaria. */
+html[data-tema="eleitoral"] .nav-inactive:hover {
+    color: var(--tema-primaria-suave) !important;
+}
+
+/* Itens sem permissão: precisam continuar legíveis, mas visivelmente apagados
+   em relação aos navegáveis. */
+html[data-tema="eleitoral"] .menu-nav-bloqueado {
+    background-color: rgba(255, 255, 255, 0.03);
+    color: var(--tema-texto-fraco);
+}
+
+
+/* --------------------------------------------------------------------------
+   BOTÃO DE SAIR
+   O vermelho é preservado: sinaliza uma ação destrutiva, e trocá-lo por verde
+   apagaria justamente o aviso que a cor carrega. O que muda é o fundo, que sai
+   do rosa-claro sólido para um vermelho translúcido sobre o escuro.
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] .menu-sair {
+    background-color: rgba(242, 147, 125, 0.14);
+    color: #F2937D;
+}
+
+html[data-tema="eleitoral"] .menu-sair:hover {
+    background-color: #E11D48;
+    color: #FFFFFF;
+}
+
+
+/* --------------------------------------------------------------------------
+   CARDS DE MÓDULO
+   No modo claro cada módulo tem sua própria cor. Essa identidade é mantida
+   aqui: em vez de pintar todos com o mesmo teal, cada posição da grade
+   recebe uma matiz distinta da paleta ardósia — teal, azul índigo e petróleo.
+   É o que preserva a leitura rápida da grade.
+
+   As variantes são nomeadas por POSIÇÃO (`--a`, `--b`, `--c`) e não por
+   módulo, porque as quatro telas reaproveitam a mesma sequência de cores:
+   o primeiro card de cada menu é índigo, o segundo é petróleo, e o terceiro
+   é teal. A sequência começa no azul de propósito: o primeiro card é o mais
+   olhado da grade, e abrir com a cor de estrutura mantém o teal como acento.
+
+   Os degradês são mais escuros que os do modo claro de propósito: o texto
+   branco por cima precisa de contraste, e um card saturado sobre fundo escuro
+   vira um bloco luminoso que rouba a atenção da tela inteira.
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] .card-modulo--a {
+    background-image: linear-gradient(to bottom right, #3E5C93, #2B4068);
+}
+
+html[data-tema="eleitoral"] .card-modulo--b {
+    background-image: linear-gradient(to bottom right, #376F7C, #254E58);
+}
+
+html[data-tema="eleitoral"] .card-modulo--c {
+    background-image: linear-gradient(to bottom right, #2F7267, #21544C);
+}
+
+html[data-tema="eleitoral"] .card-modulo {
+    border-color: rgba(255, 255, 255, 0.14);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+}
+
+html[data-tema="eleitoral"] .card-modulo:hover {
+    box-shadow: 0 26px 55px rgba(0, 0, 0, 0.55);
+}
+
+/* A descrição usa `text-pink-50/90`, um rosa quase branco. */
+html[data-tema="eleitoral"] .card-modulo__desc {
+    color: rgba(242, 245, 249, 0.88);
+}
+
+/* O botão continua branco — é o contraste máximo contra o card colorido, e o
+   que o mantém como chamada de ação óbvia. Só o texto acompanha a matiz do
+   card em que está. */
+html[data-tema="eleitoral"] .card-modulo--a .card-modulo__btn {
+    color: #2B4068;
+}
+
+html[data-tema="eleitoral"] .card-modulo--b .card-modulo__btn {
+    color: #254E58;
+}
+
+html[data-tema="eleitoral"] .card-modulo--c .card-modulo__btn {
+    color: #21544C;
+}
+
+/* Selo de acesso negado. Aparece em duas formas nos templates: com fundo
+   `bg-gray-200` sólido ou `bg-white/70` translúcido. Ambas viram o mesmo
+   véu escuro, que funciona sobre qualquer um dos degradês. */
+html[data-tema="eleitoral"] .card-modulo__restrito {
+    background-color: rgba(0, 0, 0, 0.28);
+    color: rgba(226, 245, 242, 0.80);
+}
+
+
+/* --------------------------------------------------------------------------
+   BARRA DE ROLAGEM
+   O âmbar do modo claro é a única cor das telas de menu fora das famílias
+   roxo/rosa, e no escuro ele destoa por completo. Passa a acompanhar o teal.
+   -------------------------------------------------------------------------- */
+/* A barra de rolagem é cromo de interface, não marca: ela aparece em toda tela
+   com conteúdo longo e, pintada de teal a 75%, virava mais um traço verde
+   permanente na borda da página. Neutra, ela some quando não é necessária —
+   que é exatamente o comportamento desejado de uma barra de rolagem. */
+html[data-tema="eleitoral"] .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.18);
+}
+
+html[data-tema="eleitoral"] .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.32);
+}
+
+
+/* --------------------------------------------------------------------------
+   NOTIFICAÇÕES (TOASTS)
+   Os scripts de menu montam o toast com `bg-white` fixo no JavaScript. Em vez
+   de alterar cada script — o que arriscaria o modo claro —, o container serve
+   de gancho e o filho é repintado aqui; o `id` dá especificidade de sobra.
+
+   As cores semânticas de sucesso e erro são preservadas: elas comunicam o
+   resultado da ação, não a identidade visual. A única exceção é o roxo do
+   toast de sucesso, que é justamente a matiz que o modo eleitoral não pode
+   exibir e por isso segue o teal do tema.
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] #toast-container > div {
+    background-color: var(--tema-superficie-2);
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.6);
+}
+
+html[data-tema="eleitoral"] #toast-container p {
+    color: var(--tema-texto-forte);
+}
+
+html[data-tema="eleitoral"] #toast-container .border-purple-500 {
+    border-left-color: var(--tema-primaria);
+}
+
+html[data-tema="eleitoral"] #toast-container .bg-purple-100 {
+    background-color: rgba(111, 211, 191, 0.18);
+}
+
+html[data-tema="eleitoral"] #toast-container .text-purple-500 {
+    color: var(--tema-primaria-suave);
+}
+
+html[data-tema="eleitoral"] #toast-container .bg-red-100 {
+    background-color: rgba(242, 147, 125, 0.18);
+}
+
+html[data-tema="eleitoral"] #toast-container .text-red-500 {
+    color: #F2937D;
+}
+
+
+/* --------------------------------------------------------------------------
+   SOMBRAS COLORIDAS DOS CARDS DE MÓDULO
+   `hover:shadow-pink-500/30` e `hover:shadow-pink-700/30` vivem nos quatro
+   menus. São variantes de estado, classes distintas das versões em repouso, e
+   por isso escapavam do tratamento de sombra: o card ficava correto parado e
+   acendia um halo rosa ao passar o mouse.
+
+   Halo colorido é o efeito que mais engana ao migrar um tema — some contra o
+   branco, vira luz de verdade contra o escuro. Vira profundidade preta, que é
+   o que comunica elevação aqui.
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] .hover\:shadow-pink-500\/30:hover,
+html[data-tema="eleitoral"] .hover\:shadow-pink-700\/30:hover {
+    --tw-shadow-color: rgba(0, 0, 0, 0.5);
+    --tw-shadow: var(--tw-shadow-colored);
+}
+
+/* Texto quase branco sobre os cards coloridos (`text-pink-50/90`). */
+html[data-tema="eleitoral"] .text-pink-50\/90 {
+    color: rgba(242, 245, 249, 0.90);
+}

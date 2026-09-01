@@ -1,0 +1,19 @@
+[Unit]
+Description=Dispara o watchdog do Portal GGCI a cada 60 segundos
+
+[Timer]
+# 180s apos o boot. O cron tem uma linha @reboot que chama start_server.py, e
+# ele leva ~25s ate disparar a opcao 3 no tmux (que e quem cria o lock de
+# manutencao), mais o tempo de subir a pilha. Acordar antes disso faria o
+# watchdog competir com a propria inicializacao do servidor.
+OnBootSec=180s
+
+# OnUnitInactiveSec (e nao OnUnitActiveSec) mede a partir do FIM da execucao
+# anterior. Evita sobreposicao quando um ciclo demora por causa de uma cura.
+OnUnitInactiveSec=60s
+
+AccuracySec=5s
+Unit=ggci-watchdog.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,134 @@
+# ==========================================
+# PYTHON
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# ==========================================
+# AMBIENTES VIRTUAIS
+# ==========================================
+venv/
+env/
+.env
+
+# ==========================================
+# DJANGO
+# ==========================================
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+staticfiles/
+
+# Mantém apenas o arquivo __init__.py das migrations (ignora arquivos gerados)
+**/migrations/*
+!**/migrations/__init__.py
+
+# ==========================================
+# EDITORES E IDES
+# ==========================================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ==========================================
+# LOGS
+# ==========================================
+*.log
+
+# ==========================================
+# ESTADO DO CRON (Análise IA)
+# Artefatos que só valem para a máquina onde o ciclo roda:
+# o lock que impede duas extrações simultâneas e o selo com o
+# resultado da última execução do dia.
+# ==========================================
+apps/automacoes/analise_ia/cron/analise_ia.lock
+apps/automacoes/analise_ia/cron/ultima_execucao.json
+
+# ==========================================
+# DADOS DE ANÁLISE E PROCESSAMENTO
+# Pastas criadas automaticamente pelos scripts
+# de extração, consolidação e geração de relatórios
+# ==========================================
+dados/
+*.parquet
+
+# ==========================================
+# ANOTAÇÕES LOCAIS
+# ==========================================
+notas.txt
+
+# ==========================================
+# ARQUIVOS TEMPORÁRIOS DO EXCEL
+# (criados ao abrir planilhas .xls/.xlsx abertas)
+# ==========================================
+~$*.xls
+~$*.xlsx
+
+# ==========================================
+# WINDOWS / WSL
+# Metadados de "Zone.Identifier" criados pelo Windows
+# quando arquivos são baixados da internet e acessados via WSL
+# ==========================================
+*:Zone.Identifier
+
+# Ignorar arquivos de log do sistema
+logs/
+*.log
+log_do_robo.txt
+
+# ==========================================
+# ANTIGRAVITY E AGENTES DE IA
+# ==========================================
+.agents/
+cloudflare_accelerator.json
+
+# ==========================================
+# NODE / NPM
+# ==========================================
+node_modules/
+.dados/
+.antigravitycli/
+
+# ==========================================
+# CLAUDE CODE
+# O índice da raiz e as regras sensíveis ficam locais.
+# Já .claude/regras/ (demais) e .claude/commands/ são versionados de propósito.
+# ==========================================
+CLAUDE.md
+.claude/settings.local.json
+.claude/regras/seguranca-e-acessos.md
+
+# Baseline de 74MB usado só para comparar relatórios localmente (nao versionar)
+apps/automacoes/analise_ia/tests/baseline/
+
+# ==========================================
+# ESTADO LOCAL DOS CICLOS DE CRON
+# O selo ("já rodei hoje") e o lock (PID em execução) descrevem o que aconteceu
+# NESTA máquina e NESTE ambiente. Versioná-los faria o dev achar que o ciclo da
+# prod já rodou — e pular a execução do dia.
+# Os logs detalhados já caem na regra *.log acima.
+# ==========================================
+**/cron/ultima_execucao.json
+**/cron/*.lock
+
+# ==========================================
+# RASCUNHOS LOCAIS
+# `scratch/` guardava scripts descartáveis de edição em massa e amostras de CSV;
+# nada ali é insumo de execução. Os PNGs soltos na raiz são capturas de tela
+# usadas em conversa. Os dois só poluíam o `git status` e o rsync de produção,
+# que não usa --delete e por isso nunca os removeria de lá.
+# ==========================================
+scratch/
+/*.png
+
+# Artefatos das ferramentas de agente. Skills e binários de agente pertencem ao
+# ambiente (~/.agents/skills, ~/.local/bin), não ao repositório — quem os cria é
+# scripts/setup-agentes.sh. Estas linhas são uma rede de proteção para o caso de
+# alguém rodar `npx skills add` sem o -g dentro do projeto.
+.agents/
+.claude/skills/
+.playwright/
+skills-lock.json

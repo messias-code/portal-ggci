@@ -1,0 +1,936 @@
+{
+  "ACADEMIA DE CURSOS MEDICOS LTDA": {
+    "cnpj": "03.676.813/0001-94",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FAPM FACULDADE APM ACADEMIA DE CURSOS MEDICOS LTDA",
+        "cnpj": "03.676.813/0001-94"
+      }
+    ]
+  },
+  "ANHANGUERA EDUCACIONAL PARTICIPACOES S/A": {
+    "cnpj": "04.310.392/0001-46",
+    "instituicoes": [
+      {
+        "nome_instituicao": "ANHANGUERA GOIANIA FACULDADE ANHANGUERA DE GOIANIA ANHANGUERA EDUCACIONAL",
+        "cnpj": "04.310.392/0063-49"
+      },
+      {
+        "nome_instituicao": "ANHANGUERA ANAPOLIS FACULDADE ANHANGUERA DE ANAPOLIS ANHANGUERA EDUCACIONA",
+        "cnpj": "04.310.392/0064-20"
+      }
+    ]
+  },
+  "ASSOBES ENSINO SUPERIOR LTDA.": {
+    "cnpj": "01.711.282/0001-06",
+    "instituicoes": [
+      {
+        "nome_instituicao": "UNICEUG CENTRO UNIVERSITARIO DE GOIANIA ASSOBES ENSINO SUPERIOR LTDA",
+        "cnpj": "01.711.282/0001-06"
+      }
+    ]
+  },
+  "ASSOCIACAO DE ENSINO SUPERIOR DE GOIAS-AESGO": {
+    "cnpj": "33.636.671/0001-00",
+    "instituicoes": [
+      {
+        "nome_instituicao": "UNIBRAS CENTRO UNIVERSITARIO UNIBRAS RIO VERDE ASSOCIACAO DE ENSINO SUPERIOR",
+        "cnpj": "33.636.671/0001-00"
+      }
+    ]
+  },
+  "ASSOCIACAO EDUCACIONAL NOSSA SENHORA APARECIDA - AENSA": {
+    "cnpj": "74.036.161/0001-71",
+    "instituicoes": [
+      {
+        "nome_instituicao": "UNIFANAP CENTRO UNIVERSITARIO NOSSA SENHORA APARECIDA ASSOCIACAO EDUCACIONAL",
+        "cnpj": "74.036.161/0001-71"
+      }
+    ]
+  },
+  "ASSOCIACAO EDUCATIVA EVANGELICA": {
+    "cnpj": "01.060.102/0001-65",
+    "instituicoes": [
+      {
+        "nome_instituicao": "RAIZES FACULDADE EVANGELICA RAIZES ASSOCIACAO EDUCATIVA EVANGELICA",
+        "cnpj": "01.060.102/0007-50"
+      },
+      {
+        "nome_instituicao": "UNIEGO FACEG CENTRO UNIVERSITARIO EVANGELICO DE GOIANESIA ASSOCIACAO EDUCA",
+        "cnpj": "01.060.102/0006-70"
+      },
+      {
+        "nome_instituicao": "UNIEVANGELICA CAMPUS ANAPOLIS UNIVERSIDADE EVANGELICA DE GOIAS ASSOCIACAO",
+        "cnpj": "01.060.102/0016-41"
+      },
+      {
+        "nome_instituicao": "UNIEVANGELICA CAMPUS CERES UNIVERSIDADE EVANGELICA DE GOIAS ASSOCIACAO EDU",
+        "cnpj": "01.060.102/0017-22"
+      },
+      {
+        "nome_instituicao": "UNIEVANGELICA CAMPUS JARAGUA UNIVERSIDADE EVANGELICA DE GOIAS ASSOCIACAO",
+        "cnpj": "01.060.102/0013-07"
+      },
+      {
+        "nome_instituicao": "UNIEVANGELICA CAMPUS RUBIATABA UNIVERSIDADE EVANGELICA DE GOIAS ASSOCIACA",
+        "cnpj": "01.060.102/0011-37"
+      },
+      {
+        "nome_instituicao": "UNIEVANGELICA CAMPUS SENADOR CANEDO UNIVERSIDADE EVANGELICA DE GOIAS ASSO",
+        "cnpj": "01.060.102/0009-12"
+      }
+    ]
+  },
+  "ASSOCIACAO JATAIENSE DE EDUCACAO": {
+    "cnpj": "00.079.285/0001-06",
+    "instituicoes": [
+      {
+        "nome_instituicao": "CESUT CENTRO DE ENSINO SUPERIOR DE JATAI ASSOCIACAO JATAIENSE DE EDUCACAO",
+        "cnpj": "00.079.285/0001-06"
+      }
+    ]
+  },
+  "ASSOCIACAO SALGADO DE OLIVEIRA DE EDUCACAO E CULTURA": {
+    "cnpj": "28.638.393/0001-82",
+    "instituicoes": [
+      {
+        "nome_instituicao": "UNIVERSO CENTRO UNIVERSITARIO UNIVERSO GOIANIA ASSOCIACAO SALGA",
+        "cnpj": "28.638.393/0004-25"
+      }
+    ]
+  },
+  "ASSUPERO ENSINO SUPERIOR LTDA.": {
+    "cnpj": "06.099.229/0001-01",
+    "instituicoes": [
+      {
+        "nome_instituicao": "UNIP UNIVERSIDADE PAULISTA CAMPUS I GOIANIA GO ASSUPERO ENSINO SUPERIOR L",
+        "cnpj": "06.099.229/0073-86"
+      }
+    ]
+  },
+  "BRASIL EDUCACAO S/A": {
+    "cnpj": "05.648.257/0001-78",
+    "instituicoes": [
+      {
+        "nome_instituicao": "UNA ITUMBIARA ESCOLA SUPERIOR UNA DE ITUMBIARA BRASIL EDUCACAO SA",
+        "cnpj": "05.648.257/0034-36"
+      }
+    ]
+  },
+  "CENTRO DE CIENCIAS DE JUSSARA LTDA": {
+    "cnpj": "37.622.370/0001-70",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FAJ FACULDADE DE JUSSARA CENTRO DE CIENCIAS DE JUSSARA LTDA",
+        "cnpj": "37.622.370/0001-70"
+      }
+    ]
+  },
+  "CENTRO DE EDUCACAO E CULTURA DE GOIANIA LTDA": {
+    "cnpj": "02.684.686/0001-02",
+    "instituicoes": [
+      {
+        "nome_instituicao": "PADRAO FACULDADE PADRAO UNIDADE GOIANIA CENTRO DE EDUCACAO E CULTURA DE GO",
+        "cnpj": "02.684.686/0001-02"
+      }
+    ]
+  },
+  "CENTRO DE EDUCACAO SUPERIOR DO NORTE GOIANO LTDA": {
+    "cnpj": "07.538.863/0001-66",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FACBRAS PORANGATU FACULDADE UNIBRAS DO NORTE GOIANO CENTRO DE EDUCACAO SUP",
+        "cnpj": "07.538.863/0001-66"
+      }
+    ]
+  },
+  "CENTRO DE EDUCACAO SUPERIOR MAIS LTDA": {
+    "cnpj": "07.242.113/0001-42",
+    "instituicoes": [
+      {
+        "nome_instituicao": "CENTRO UNIVERSITARIO MAIS UNIMAIS FACMAIS INHUMAS CENTRO DE EDUCACAO SUPER",
+        "cnpj": "07.242.113/0001-42"
+      },
+      {
+        "nome_instituicao": "FACMAIS ITABERAI FACULDADE DE ITABERAI CENTRO DE EDUCACAO SUPERIOR MAIS LT",
+        "cnpj": "07.242.113/0002-23"
+      },
+      {
+        "nome_instituicao": "FACMAIS PALMEIRAS DE GOIAS FACULDADE DE PALMEIRAS DE GOIAS CENTRO DE EDUCA",
+        "cnpj": "07.242.113/0004-95"
+      },
+      {
+        "nome_instituicao": "FACMAIS APARECIDA DE GOIANIA FACULDADE MAIS DE APARECIDA DE GOIANIA CENTRO",
+        "cnpj": "07.242.113/0001-42"
+      }
+    ]
+  },
+  "CENTRO DE ENSINO NOROESTE LTDA": {
+    "cnpj": "10.935.440/0001-94",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FAN FACULDADE NOROESTE CENTRO DE ENSINO NOROESTE LTDA ME",
+        "cnpj": "10.935.440/0001-94"
+      }
+    ]
+  },
+  "CENTRO DE ENSINO SUPERIOR ALMEIDA RODRIGUES LTDA": {
+    "cnpj": "04.284.276/0001-08",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FAR FACULDADE ALMEIDA RODRIGUES CENTRO DE ENSINO SUPERIOR ALMEIDA RODRIGUES",
+        "cnpj": "04.284.276/0001-08"
+      },
+      {
+        "nome_instituicao": "ISEAR INSTITUTO SUPERIOR DE EDUCACAO ALMEIDA RODRIGUES CENTRO DE ENSINO SUPE",
+        "cnpj": "04.284.276/0001-08"
+      }
+    ]
+  },
+  "CENTRO DE ENSINO SUPERIOR DE IPORA LTDA": {
+    "cnpj": "05.137.878/0001-97",
+    "instituicoes": [
+      {
+        "nome_instituicao": "UNIPORA CENTRO UNIVERSITARIO DE IPORA CENTRO DE ENSINO SUPERIOR DE IPORA EIR",
+        "cnpj": "05.137.878/0001-97"
+      }
+    ]
+  },
+  "CENTRO DE ENSINO SUPERIOR DO SUDOESTE GOIANO LTDA": {
+    "cnpj": "12.395.280/0001-63",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FAQUI FACULDADE QUIRINOPOLIS CENTRO DE ENSINO SUPERIOR DO SUDOESTE GOIANO LT",
+        "cnpj": "12.395.280/0001-63"
+      }
+    ]
+  },
+  "CENTRO DE ESTUDOS AVANCADOS E FORMACAO INTEGRADA LTDA": {
+    "cnpj": "04.182.760/0001-18",
+    "instituicoes": [
+      {
+        "nome_instituicao": "CEAFI FACULDADE CEAFI CENTRO DE ESTUDOS AVANCADOS E FORMACAO INTEGRADA",
+        "cnpj": "04.182.760/0001-18"
+      }
+    ]
+  },
+  "CENTRO DE ESTUDOS OCTAVIO DIAS DE OLIVEIRA LTDA": {
+    "cnpj": "06.152.582/0001-08",
+    "instituicoes": [
+      {
+        "nome_instituicao": "UNIGOYAZES CENTRO UNIVERSITARIO GOYAZES CENTRO DE ESTUDOS OCTAVIO DIAS DE OL",
+        "cnpj": "06.152.582/0001-08"
+      }
+    ]
+  },
+  "CENTRO EDUCACIONAL ALVES FARIA LTDA.": {
+    "cnpj": "02.850.990/0001-82",
+    "instituicoes": [
+      {
+        "nome_instituicao": "UNIALFA UNIDADE BUENO CENTRO UNIVERSITARIO ALVES FARIA CENTRO EDUCACIONAL",
+        "cnpj": "02.850.990/0003-44"
+      },
+      {
+        "nome_instituicao": "UNIALFA UNIDADE PERIMETRAL CENTRO UNIVERSITARIO ALVES FARIA CENTRO EDUCACI",
+        "cnpj": "02.850.990/0001-82"
+      },
+      {
+        "nome_instituicao": "UNIALFA BUENO T 1 CENTRO UNIVERSITARIO ALVES FARIA CENTRO EDUCACIONAL ALVES",
+        "cnpj": "02.850.990/0024-79"
+      }
+    ]
+  },
+  "CENTRO EDUCACIONAL BRASIL FUTURO LTDA": {
+    "cnpj": "06.368.275/0001-69",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FNSA FACULDADE NOSSA SENHORA APARECIDA CENTRO EDUCACIONAL BRASIL FUTURO LTDA",
+        "cnpj": "06.368.275/0001-69"
+      }
+    ]
+  },
+  "CENTRO EDUCACIONAL DE PALMEIRAS DE GOIAS LTDA": {
+    "cnpj": "20.025.972/0001-48",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FAI PALMEIRAS DE GOIAS FACULDADE INTEGRADA DE PALMEIRAS DE GOIAS CENTRO E",
+        "cnpj": "20.025.972/0001-48"
+      }
+    ]
+  },
+  "CENTRO EDUCACIONAL SULDAMERICA LTDA": {
+    "cnpj": "36.108.812/0001-00",
+    "instituicoes": [
+      {
+        "nome_instituicao": "SULDAMERICA FACULDADE SUL DA AMERICA CENTRO EDUCACIONAL SULDAMERICA EIRELI",
+        "cnpj": "36.108.812/0001-00"
+      }
+    ]
+  },
+  "CENTRO EDUCACIONAL SUPERIOR TECNOLOGICO LTDA": {
+    "cnpj": "24.856.934/0001-98",
+    "instituicoes": [
+      {
+        "nome_instituicao": "ICSH INSTITUTO DE CIENCIAS SOCIAIS E HUMANAS CENTRO DE ENSINO SUPERIOR TECNO",
+        "cnpj": "24.856.934/0001-98"
+      }
+    ]
+  },
+  "CENTRO TECNOLOGICO CAMBURY LTDA": {
+    "cnpj": "26.721.076/0001-08",
+    "instituicoes": [
+      {
+        "nome_instituicao": "UNICAMBURY CENTRO UNIVERSITARIO CAMBURY CENTRO TECNOLOGICO CAMBURY LTDA",
+        "cnpj": "26.721.076/0001-08"
+      }
+    ]
+  },
+  "CENTRO TECNOLOGICO DELTA LTDA": {
+    "cnpj": "07.653.555/0001-81",
+    "instituicoes": [
+      {
+        "nome_instituicao": "DELTA FACULDADES DELTA CENTRO TECNOLOGICO DELTA LTDA",
+        "cnpj": "07.653.555/0001-81"
+      }
+    ]
+  },
+  "CENTRO UNIVERSITARIO FAP UNIFAP PBA LTDA": {
+    "cnpj": "02.497.932/0001-17",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FAP FACULDADE DE PIRACANJUBA CENTRO DE ENSINO SUPERIOR DE PIRACANJUBA LTDA",
+        "cnpj": "02.497.932/0001-17"
+      }
+    ]
+  },
+  "CENTRO UNIVERSITARIO MONTES BELOS LTDA - EM RECUPERACAO JUDICIAL": {
+    "cnpj": "04.907.186/0001-18",
+    "instituicoes": [
+      {
+        "nome_instituicao": "UNIBRAS CENTRO UNIVERSITARIO UNIBRAS MONTES BELOS CENTRO UNIVERSITARIO MONTE",
+        "cnpj": "04.907.186/0001-18"
+      }
+    ]
+  },
+  "CENTRO UNIVERSITARIO SERRA DA MESA LTDA": {
+    "cnpj": "05.995.086/0001-53",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FASEM FACULDADE SERRA DA MESA CENTRO DE EDUCACAO SERRA DA MESA LTDA CESEM",
+        "cnpj": "05.995.086/0001-53"
+      },
+      {
+        "nome_instituicao": "UNISEM CENTRO DE EDUCACAO SERRA DA MESA LTDA",
+        "cnpj": "05.995.086/0001-53"
+      }
+    ]
+  },
+  "CESC - CENTRO DE ENSINO SUPERIOR DA CIDADE LTDA": {
+    "cnpj": "35.608.765/0001-93",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FICEPE FACULDADE FRAGA DE INTEGRACAO DA CULTURA EDUCACAO E PESQUISA",
+        "cnpj": "35.608.765/0001-93"
+      }
+    ]
+  },
+  "CESPEL- CENTRO DE ENSINO SUPERIOR E PESQUISA LOGOS LTDA": {
+    "cnpj": "14.963.715/0001-54",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FALOG FACULDADE LOGOS CENTRO DE ENSINO SUPERIOR E PESQUISA LOGOS LTDA CESP",
+        "cnpj": "14.963.715/0001-54"
+      }
+    ]
+  },
+  "CGESP ASSESSORIA E CONSULTORIA EDUCACIONAL LTDA": {
+    "cnpj": "11.973.890/0001-34",
+    "instituicoes": [
+      {
+        "nome_instituicao": "CGESP FACULDADE CGESP GOIANIA FAC CGESP CGESP ASSESSORIA E CONSULTORIA EDU",
+        "cnpj": "11.973.890/0001-34"
+      }
+    ]
+  },
+  "DINAMICA ADMINISTRACAO CONSULTORIA & GESTAO S/S LTDA": {
+    "cnpj": "17.063.352/0001-99",
+    "instituicoes": [
+      {
+        "nome_instituicao": "CENTRO UNIVERSITARIO FACUNICAMPS GOIANIA FACUNICAMPS GOIANIA",
+        "cnpj": "17.063.352/0001-99"
+      },
+      {
+        "nome_instituicao": "FACUNICAMPS CENTRO UNIVERSITARIO FACUNICAMPS DINAMICA E ASSESSORIA E CONSULT",
+        "cnpj": "36.287.719/0002-83"
+      },
+      {
+        "nome_instituicao": "FACUNICAMPS SH FACUNICAMPS SANTA HELENA DINAMICA ADMINISTRACAO CONSULTORIA E",
+        "cnpj": "50.734.435/0001-38"
+      }
+    ]
+  },
+  "DINAMICA ORGANIZACAO PROJETOS E CONSULTORIA LTDA": {
+    "cnpj": "02.124.897/0001-90",
+    "instituicoes": [
+      {
+        "nome_instituicao": "IFASC FACULDADE SANTA RITA DE CASSIA DINAMICA ORGANIZACAO PROJETOS E CONSUL",
+        "cnpj": "02.124.897/0001-90"
+      }
+    ]
+  },
+  "FACEB EDUCACAO LTDA": {
+    "cnpj": "03.099.921/0001-41",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FACULDADE DE EDUCACAO SUPERIOR DE CATALAO FACEB EDUCACAO LTDA",
+        "cnpj": "03.099.921/0010-32"
+      },
+      {
+        "nome_instituicao": "UNA CATALAO ESCOLA SUPERIOR DE CATALAO FACEB EDUCACAO LTDA",
+        "cnpj": "03.099.921/0010-32"
+      },
+      {
+        "nome_instituicao": "UNA JATAI FACULDADE UNA DE JATAI FACEB EDUCACAO LTDA",
+        "cnpj": "03.099.921/0005-75"
+      }
+    ]
+  },
+  "FACIL EMPREENDIMENTOS EDUCACIONAIS LTDA": {
+    "cnpj": "34.319.410/0001-11",
+    "instituicoes": [
+      {
+        "nome_instituicao": "ESPER FACULDADE ESPER FACIL EMPREENDIMENTOS EDUCACIONAIS LTDA",
+        "cnpj": "34.319.410/0001-11"
+      }
+    ]
+  },
+  "FACULDADE ALFREDO NASSER LTDA": {
+    "cnpj": "03.485.228/0001-07",
+    "instituicoes": [
+      {
+        "nome_instituicao": "UNIFAN CENTRO UNIVERSITARIO ALFREDO NASSER FACULDADE ALFREDO NASSER LTDA",
+        "cnpj": "03.485.228/0001-07"
+      }
+    ]
+  },
+  "FACULDADE DE MEDICINA DE ITUMBIARA LTDA": {
+    "cnpj": "44.422.513/0001-66",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FACULDADE ZARNS ITUMBIARA FACULDADE DE MEDICINA DE ITUMBIARA LTDA",
+        "cnpj": "44.422.513/0001-66"
+      }
+    ]
+  },
+  "FACULDADE DE PRINCIPIOS MILITARES - FPM LTDA": {
+    "cnpj": "57.606.890/0001-05",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FPM FACULDADE DE PRINCIPIOS MILITARES FACULDADE DE PRINCIPIOS MILITARES LTDA",
+        "cnpj": "57.606.890/0001-05"
+      }
+    ]
+  },
+  "FACULDADE DIOFANTO DE CIENCIAS E TECNOLOGIA LTDA": {
+    "cnpj": "12.059.383/0001-52",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FACULDADE TECNOLOGICA FALCAO FTF CENTRO TECNICO DE ENSINO PROFISSIONAL LTDA",
+        "cnpj": "12.059.383/0001-52"
+      }
+    ]
+  },
+  "FACULDADE EVANGELICA DE VALPARAISO LTDA": {
+    "cnpj": "20.049.794/0001-95",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FACEV FACULDADE EVANGELICA DE VALPARAISO FACULDADE EVANGELICA DE VALPARAISO",
+        "cnpj": "20.049.794/0001-95"
+      }
+    ]
+  },
+  "FACULDADE ITAPURANGA LTDA": {
+    "cnpj": "10.439.695/0001-66",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FACULDADE ITAPURANGA FACULDADE ITAPURANGA LTDA ME",
+        "cnpj": "10.439.695/0001-66"
+      }
+    ]
+  },
+  "FACULDADE JURIS LTDA": {
+    "cnpj": "17.024.646/0001-01",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FACULDADES JURIS FACULDADE JURIS LTDA",
+        "cnpj": "17.024.646/0001-01"
+      }
+    ]
+  },
+  "FACULDADES INTEGRADAS DA AMERICA DO SUL LTDA": {
+    "cnpj": "27.083.171/0001-88",
+    "instituicoes": [
+      {
+        "nome_instituicao": "INTEGRA FACULDADES INTEGRADAS DA AMERICA DO SUL FACULDADES INTEGRADAS DA AME",
+        "cnpj": "27.083.171/0001-88"
+      }
+    ]
+  },
+  "FESURV - UNIVERSIDADE DE RIO VERDE": {
+    "cnpj": "01.815.216/0001-78",
+    "instituicoes": [
+      {
+        "nome_instituicao": "UNIRV CAMPUS APARECIDA DE GOIANIA UNIVERSIDADE DE RIO VERDE",
+        "cnpj": "01.815.216/0006-82"
+      },
+      {
+        "nome_instituicao": "UNIRV CAMPUS FORMOSA UNIVERSIDADE DE RIO VERDE",
+        "cnpj": "01.815.216/0004-10"
+      },
+      {
+        "nome_instituicao": "UNIRV CAMPUS GOIANESIA UNIVERSIDADE DE RIO VERDE",
+        "cnpj": "01.815.216/0007-63"
+      },
+      {
+        "nome_instituicao": "UNIRV CAMPUS LUZIANIA UNIVERSIDADE DE RIO VERDE",
+        "cnpj": "01.815.216/0010-69"
+      },
+      {
+        "nome_instituicao": "UNIRV RIO VERDE UNIVERSIDADE DE RIO VERDE",
+        "cnpj": "01.815.216/0001-78"
+      },
+      {
+        "nome_instituicao": "UNIRV CAMPUS CAIAPONIA UNIVERSIDADE DE RIO VERDE",
+        "cnpj": "01.815.216/0008-44"
+      }
+    ]
+  },
+  "FRACTAL CENTRO DE EDUCACAO E ENSINO LTDA": {
+    "cnpj": "09.030.485/0001-30",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FRACTAL FACULDADE FRACTAL FRACTAL CENTRO DE EDUCACAO E ENSINO LTDA",
+        "cnpj": "09.030.485/0001-30"
+      }
+    ]
+  },
+  "FUNDACAO DE ENSINO SUPERIOR DE GOIATUBA": {
+    "cnpj": "01.494.665/0001-61",
+    "instituicoes": [
+      {
+        "nome_instituicao": "UNICERRADO CENTRO UNIVERSITARIO DE GOIATUBA FUNDACAO DE ENSINO SUPERIOR DE G",
+        "cnpj": "01.494.665/0001-61"
+      }
+    ]
+  },
+  "FUNDACAO EDUCACIONAL DE ANICUNS": {
+    "cnpj": "01.203.660/0001-32",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FA FACULDADE DE ANICUNS FUNDACAO EDUCACIONAL DE ANICUNS",
+        "cnpj": "01.203.660/0001-32"
+      }
+    ]
+  },
+  "FUNDACAO EDUCACIONAL DE GOIAS": {
+    "cnpj": "01.405.794/0001-36",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FACLIONS FACULDADE LIONS FUNDACAO EDUCACIONAL DE GOIAS",
+        "cnpj": "01.405.794/0001-36"
+      }
+    ]
+  },
+  "FUNDACAO INTEGRADA MUNICIPAL DE ENSINO SUPERIOR": {
+    "cnpj": "01.465.988/0001-27",
+    "instituicoes": [
+      {
+        "nome_instituicao": "UNIFIMES CAMPUS MINEIROS CENTRO UNIVERSITARIO DE MINEIROS FUNDACAO INTEGR",
+        "cnpj": "01.465.988/0001-27"
+      },
+      {
+        "nome_instituicao": "UNIFIMES CAMPUS TRINDADE CENTRO UNIVERSITARIO DE MINEIROS FUNDACAO INTEGR",
+        "cnpj": "01.465.988/0003-99"
+      }
+    ]
+  },
+  "FUNDACAO SAO MIGUEL ARCANJO": {
+    "cnpj": "00.772.442/0001-56",
+    "instituicoes": [
+      {
+        "nome_instituicao": "CATOLICA DE ANAPOLIS FACULDADE CATOLICA DE ANAPOLIS FUNDACAO SAO MIGUEL ARCA",
+        "cnpj": "00.772.442/0002-37"
+      }
+    ]
+  },
+  "HRN PARTICIPACOES LTDA": {
+    "cnpj": "30.727.019/0001-03",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FAS FACULDADE SENSU HRN PARTICIPACOES LTDA",
+        "cnpj": "30.727.019/0001-03"
+      }
+    ]
+  },
+  "IEDUC - INSTITUTO DE EDUCACAO E CULTURA S/A": {
+    "cnpj": "08.446.503/0001-05",
+    "instituicoes": [
+      {
+        "nome_instituicao": "CENTRO DE ESTUDOS SUPERIORES DE JATAI – INSTITUTO DE EDUCACAO E CULTURA SA",
+        "cnpj": "08.446.503/0017-64"
+      },
+      {
+        "nome_instituicao": "FACULDADE UNA DE ITUMBIARA INSTITUTO DE EDUCACAO E CULTURA SA",
+        "cnpj": "08.446.503/0023-02"
+      }
+    ]
+  },
+  "IEPG GRADUACAO E POS GRADUACAO LTDA": {
+    "cnpj": "29.458.434/0001-11",
+    "instituicoes": [
+      {
+        "nome_instituicao": "IEPG FACULDADE IEPG IEPG GRADUACAO E POS GRADUACAO LTDA",
+        "cnpj": "29.458.434/0001-11"
+      }
+    ]
+  },
+  "INSTITUTO BRASIL DE CIENCIA & TECNOLOGIA LTDA": {
+    "cnpj": "03.512.190/0001-14",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FIBRA FACULDADE DO INSTITUTO BRASIL INSTITUTO BRASIL DE CIENCIA & TECNOLOGIA",
+        "cnpj": "03.512.190/0001-14"
+      }
+    ]
+  },
+  "INSTITUTO CIDADE DE EDUCACAO E CULTURA LTDA": {
+    "cnpj": "46.636.789/0001-72",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FACCIDADE FACULDADE CIDADE DE APARECIDA DE GOIANIA INSTITUTO CIDADE DE EDUC",
+        "cnpj": "46.636.789/0001-72"
+      }
+    ]
+  },
+  "INSTITUTO DE EDUCACAO DO NORTE GOIANO LTDA": {
+    "cnpj": "28.492.687/0001-49",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FIP FACULDADE IMPACTO DE PORANGATU INSTITUTO DE EDUCACAO DO NORTE GOIANO LTD",
+        "cnpj": "28.492.687/0001-49"
+      }
+    ]
+  },
+  "INSTITUTO DE EDUCACAO E CULTURA AGUAS LINDAS S/S LTDA": {
+    "cnpj": "05.261.831/0001-30",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FACULDADE FILOS INSTITUTO DE EDUCACAO E CULTURA AGUAS LINDAS SC LTDA ME",
+        "cnpj": "05.261.831/0001-30"
+      }
+    ]
+  },
+  "INSTITUTO DE EDUCACAO SUPERIOR DE PORANGATU LTDA": {
+    "cnpj": "53.098.900/0001-80",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FACLIBER FACULDADE LIBER DE PORANGATU INSTITUTO DE EDUCACAO SUPERIOR DE POR",
+        "cnpj": "53.098.900/0001-80"
+      }
+    ]
+  },
+  "INSTITUTO DE ENSINO E PESQUISA DO PLANALTO CENTRAL LTDA": {
+    "cnpj": "06.034.951/0001-68",
+    "instituicoes": [
+      {
+        "nome_instituicao": "MAUA FACULDADE MAUA DE GOIAS INSTITUTO DE ENSINO E PESQUISA DO PLANALTO CENT",
+        "cnpj": "06.034.951/0001-68"
+      }
+    ]
+  },
+  "INSTITUTO HEALTH - ITH LTDA": {
+    "cnpj": "15.272.624/0001-35",
+    "instituicoes": [
+      {
+        "nome_instituicao": "ITH FACULDADE ITH INSTITUTO HEALTH ITH EIRELI",
+        "cnpj": "15.272.624/0001-35"
+      }
+    ]
+  },
+  "INSTITUTO INOVA MAIS LTDA": {
+    "cnpj": "30.308.816/0001-48",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FGI FACULDADE DE GESTAO E INOVACAO INSTITUTO INOVA MAIS LTDA",
+        "cnpj": "30.308.816/0002-29"
+      }
+    ]
+  },
+  "INSTITUTO METROPOLITANO DE EDUCACAO E CULTURA LTDA": {
+    "cnpj": "08.814.347/0001-80",
+    "instituicoes": [
+      {
+        "nome_instituicao": "UNIFAMA CENTRO UNIVERSITARIO FAMA INSTITUTO METROPOLITANO DE EDUCACAO E CULT",
+        "cnpj": "08.814.347/0001-80"
+      },
+      {
+        "nome_instituicao": "UNIFAMA FAMA EDUCACAO CENTRO UNIVERSITARIO INSTITUTO METROPOLITANO DE EDUCAC",
+        "cnpj": "08.814.347/0001-80"
+      }
+    ]
+  },
+  "INSTITUTO PROJECAO - INPRO LTDA": {
+    "cnpj": "27.683.733/0001-24",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FACINPRO FACULDADE INPRO INSTITUTO PROJECAO INPRO LTDA",
+        "cnpj": "27.683.733/0001-24"
+      }
+    ]
+  },
+  "INSTITUTO SUMARE": {
+    "cnpj": "11.924.397/0001-24",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FS FACULDADE SUMARE INSTITUTO SUMARE",
+        "cnpj": "11.924.397/0001-24"
+      }
+    ]
+  },
+  "IPOG - INSTITUTO DE POS-GRADUACAO & GRADUACAO LTDA": {
+    "cnpj": "04.688.977/0001-02",
+    "instituicoes": [
+      {
+        "nome_instituicao": "IPOG INSTITUTO DE POS GRADUACAO E GRADUACAO INSTITUTO DE POS GRADUACAO & GRA",
+        "cnpj": "04.688.977/0001-02"
+      }
+    ]
+  },
+  "J X RODOVALHO LTDA": {
+    "cnpj": "01.016.457/0001-57",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FACDIN FACULDADE DINAMICA J X RODOVALHO EIRELI",
+        "cnpj": "01.016.457/0001-57"
+      }
+    ]
+  },
+  "ORGANIZACAO CULTURAL EDUCACIONAL FILANTROPICA": {
+    "cnpj": "37.942.521/0001-78",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FASSEB FACULDADE ASSEMBLEIANA DO BRASIL ORGANIZACAO CULTURAL EDUCACIONAL FIL",
+        "cnpj": "37.942.521/0003-30"
+      }
+    ]
+  },
+  "PHARMACOLOGICA CURSOS E TREINAMENTOS LTDA": {
+    "cnpj": "06.039.059/0001-70",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FACULDADE INPOS INPOS PHARMACOLOGICA CURSOS E TREINAMENTOS EIRELI",
+        "cnpj": "06.039.059/0001-70"
+      }
+    ]
+  },
+  "PREMIER EDUCACIONAL LTDA": {
+    "cnpj": "34.453.618/0001-29",
+    "instituicoes": [
+      {
+        "nome_instituicao": "PREMIER FACULDADE PREMIER PREMIER EDUCACIONAL LTDA",
+        "cnpj": "34.453.618/0001-29"
+      }
+    ]
+  },
+  "SBCE - SOCIEDADE BRASILEIRA DE CULTURA E ENSINO SUPERIOR LTDA": {
+    "cnpj": "03.996.171/0001-00",
+    "instituicoes": [
+      {
+        "nome_instituicao": "ESUP ESCOLA SUPERIOR ASSOCIADA DE GOIANIA KEEP LEARNING EDUCACAO LTDA",
+        "cnpj": "43.793.657/0001-66"
+      }
+    ]
+  },
+  "SERVICO NACIONAL DE APRENDIZAGEM COMERCIAL - SENAC": {
+    "cnpj": "03.608.475/0001-53",
+    "instituicoes": [
+      {
+        "nome_instituicao": "SENAC GO FACULDADE SENAC GOIAS FACSENACGO SERVICO NACIONAL DE APRENDIZAGEM",
+        "cnpj": "03.608.475/0019-82"
+      }
+    ]
+  },
+  "SERVICO NACIONAL DE APRENDIZAGEM INDUSTRIAL SENAI": {
+    "cnpj": "03.783.850/0001-00",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FATEC IB FACULDADE DE TECNOLOGIA SENAI ITALO BOLOGNA SERVICO NACIONAL DE APR",
+        "cnpj": "03.783.850/0003-63"
+      },
+      {
+        "nome_instituicao": "FATEC SENAI RM FACULDADE DE TECNOLOGIA SENAI ROBERTO MANGE SERVICO NACIONAL",
+        "cnpj": "03.783.850/0007-97"
+      },
+      {
+        "nome_instituicao": "FATESG FACULDADE DE TECNOLOGIA SENAI DE DESENVOLVIMENTO GERENCIAL SERVICO",
+        "cnpj": "03.783.850/0008-78"
+      }
+    ]
+  },
+  "SOCIEDADE ANHANGUERA DE ENSINO LTDA": {
+    "cnpj": "01.088.830/0001-85",
+    "instituicoes": [
+      {
+        "nome_instituicao": "UNIGOIAS CENTRO UNIVERSITARIO DE GOIAS SOCIEDADE ANHANGUERA DE ENSINO LTDA",
+        "cnpj": "01.088.830/0001-85"
+      }
+    ]
+  },
+  "SOCIEDADE BRASILEIRA DE ENSINO E PESQUISA DE CRISTALINA LTDA": {
+    "cnpj": "03.110.303/0001-55",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FACULDADE SOBRESP DE CRISTALINA SOCIEDADE BRASILEIRA DE ENSINO E PESQUISA DE C",
+        "cnpj": "03.110.303/0001-55"
+      },
+      {
+        "nome_instituicao": "FACULDADE SOBRESP DE PIRES DO RIO SOCIEDADE BRASILEIRA DE ENSINO E PESQUISA DE",
+        "cnpj": "03.404.395/0001-86"
+      }
+    ]
+  },
+  "SOCIEDADE CATALANA DE EDUCACAO LTDA": {
+    "cnpj": "05.373.130/0001-93",
+    "instituicoes": [
+      {
+        "nome_instituicao": "CATALANA INSTITUTO UNIVERSITARIO UNA DE CATALAO SOCIEDADE CATALANA DE EDUCAC",
+        "cnpj": "05.373.130/0001-93"
+      },
+      {
+        "nome_instituicao": "Catalana - Instituto Universitario Una De Catalao - Faceb Educacao Ltda",
+        "cnpj": "05.373.130/0001-93"
+      }
+    ]
+  },
+  "SOCIEDADE DE EDUCACAO E CULTURA DE GOIAS S/C LTDA": {
+    "cnpj": "00.140.831/0001-69",
+    "instituicoes": [
+      {
+        "nome_instituicao": "UNIARAGUAIA CENTRO UNIVERSITARIO ARAGUAIA SOCIEDADE DE EDUCACAO E CULTURA DE",
+        "cnpj": "00.140.831/0002-40"
+      }
+    ]
+  },
+  "SOCIEDADE DE EDUCACAO E CULTURA INDIARA LTDA": {
+    "cnpj": "21.334.849/0001-71",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FAIND FACULDADE DE INDIARA SOCIEDADE DE EDUCACAO E CULTURA INDIARA LTDA",
+        "cnpj": "21.334.849/0001-71"
+      }
+    ]
+  },
+  "SOCIEDADE DE ENSINO DE CALDAS NOVAS LTDA": {
+    "cnpj": "03.494.082/0001-66",
+    "instituicoes": [
+      {
+        "nome_instituicao": "UNICALDAS FACULDADE DE CALDAS NOVAS SOCIEDADE DE ENSINO CALDAS NOVAS EIRELI",
+        "cnpj": "03.494.082/0001-66"
+      }
+    ]
+  },
+  "SOCIEDADE DE ENSINO SUPERIOR ESTACIO DE SA LTDA": {
+    "cnpj": "34.075.739/0001-84",
+    "instituicoes": [
+      {
+        "nome_instituicao": "ESTACIO GOIAS CENTRO UNIVERSITARIO ESTACIO DE GOIAS SOCIEDADE DE ENSINO SUP",
+        "cnpj": "34.075.739/0140-53"
+      }
+    ]
+  },
+  "SOCIEDADE DE ENSINO SUPERIOR FENIX LTDA": {
+    "cnpj": "03.497.669/0001-29",
+    "instituicoes": [
+      {
+        "nome_instituicao": "IESGO FACULDADES INTEGRADAS IESGO SOCIEDADE DE ENSINO SUPERIOR FENIX LTDA",
+        "cnpj": "03.497.669/0001-29"
+      }
+    ]
+  },
+  "SOCIEDADE GOIANA DE CULTURA": {
+    "cnpj": "01.587.609/0001-71",
+    "instituicoes": [
+      {
+        "nome_instituicao": "PUC GOIAS PONTIFICIA UNIVERSIDADE CATOLICA DE GOIAS SOCIEDADE GOIANA DE CULT",
+        "cnpj": "01.587.609/0001-71"
+      }
+    ]
+  },
+  "SOCIEDADE MESTRA DE EDUCACAO E CULTURA DE GOIAS S/A": {
+    "cnpj": "04.701.425/0001-89",
+    "instituicoes": [
+      {
+        "nome_instituicao": "PADRAO FACULDADE PADRAO UNIDADE APARECIDA SOCIEDADE MESTRA DE EDUCACAO E C",
+        "cnpj": "04.701.425/0001-89"
+      }
+    ]
+  },
+  "SOCIEDADE TRINDADENSE DE EDUCACAO E CULTURA LTDA": {
+    "cnpj": "03.004.995/0001-57",
+    "instituicoes": [
+      {
+        "nome_instituicao": "IAESUP INSTITUTO APHONSIANO DE ENSINO SUPERIOR SOCIEDADE TRINDADENSE DE EDUC",
+        "cnpj": "03.004.995/0001-57"
+      }
+    ]
+  },
+  "ULBRA S.A.": {
+    "cnpj": "88.332.580/0001-65",
+    "instituicoes": [
+      {
+        "nome_instituicao": "ILESULBRA INSTITUTO LUTERANO DE ENSINO SUPERIOR DE ITUMBIARA AELBRA EDUCACA",
+        "cnpj": "88.332.580/0028-85"
+      },
+      {
+        "nome_instituicao": "INSTITUTO LUTERANO DE ENSINO SUPERIOR DE ITUMBIARA ULBRA S A",
+        "cnpj": "88.332.580/0001-65"
+      }
+    ]
+  },
+  "UNIAO BRASIL CENTRAL DE EDUCACAO E ASSISTENCIA": {
+    "cnpj": "02.890.432/0002-21",
+    "instituicoes": [
+      {
+        "nome_instituicao": "IFITEG INSTITUTO DE FILOSOFIA E TEOLOGIA DE GOIAS UNIAO BRASIL CENTRAL DE ED",
+        "cnpj": "02.890.432/0002-21"
+      }
+    ]
+  },
+  "UNIAO CATALANA DA GESTAO DO CONHECIMENTO LTDA": {
+    "cnpj": "10.750.756/0001-01",
+    "instituicoes": [
+      {
+        "nome_instituicao": "FACBRAS CATALAO FACULDADES UNIBRAS CATALAO UNIAO CATALANA DA GEST",
+        "cnpj": "10.750.756/0001-01"
+      }
+    ]
+  },
+  "UNIAO SUL-AMERICANA DE EDUCACAO LTDA": {
+    "cnpj": "03.798.621/0001-50",
+    "instituicoes": [
+      {
+        "nome_instituicao": "UNIFASAM CENTRO UNIVERSITARIO SUL AMERICANA UNIAO SUL AMERICANA DE EDUCACAO",
+        "cnpj": "03.798.621/0001-50"
+      }
+    ]
+  },
+  "UNIDESC LTDA": {
+    "cnpj": "30.112.733/0001-89",
+    "instituicoes": [
+      {
+        "nome_instituicao": "UNIDESC CENTRO UNIVERSITARIO DE DESENVOLVIMENTO DO CENTRO OESTE UNIDESC LTDA",
+        "cnpj": "30.112.733/0001-89"
+      }
+    ]
+  }
+}

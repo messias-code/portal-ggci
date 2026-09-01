@@ -1,0 +1,132 @@
+/*
+=== ARQUIVO: apps/automacoes/analise_ia/static/analise_ia/css/index.css ===
+Propósito: Estilo base para a listagem inicial do Menu de Automações.
+Autor: N/A
+Dependências Principais: Nenhuma (CSS Puro)
+*/
+
+/* 
+ * O QUE FAZ: Ajusta tipografia base.
+ * POR QUÊ EXISTE: Padronização cross-browser fora do reset do Tailwind.
+ */
+html { font-size: 90%; }
+body { font-family: 'Poppins', sans-serif; }
+
+/* Animações de fundo (Bolinhas flutuantes) */
+
+
+/* Customização da Barra de Rolagem (Temática Roxa) */
+.custom-scrollbar::-webkit-scrollbar { width: 6px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { 
+    background: rgba(168, 85, 247, 0.4); 
+    border-radius: 10px; 
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { 
+    background: rgba(168, 85, 247, 0.8); 
+}
+
+/* ==========================================================================
+   PLANO DE FUNDO - MALHA DE GRID (.grid-bg)
+   ========================================================================== */
+.grid-bg {
+    background-image: 
+        linear-gradient(rgba(147, 51, 234, 0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(147, 51, 234, 0.07) 1px, transparent 1px);
+    background-size: 113px 75px;
+}
+
+.neon-btn::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: 0 15px 35px rgba(124, 58, 237, 0.35), 0 0 20px rgba(217, 70, 239, 0.25);
+    opacity: 0;
+    transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: -1;
+    pointer-events: none;
+}
+
+.neon-btn:hover {
+    transform: translateY(-2px);
+}
+
+.neon-btn:hover::after {
+    opacity: 1;
+}
+
+.neon-btn:active {
+    transform: translateY(0);
+}
+
+
+
+
+
+.neon-item:hover::before,
+
+
+/* =========================================
+   EFEITOS DE NAVEGAÇÃO OTIMIZADOS (OVG)
+========================================= */
+
+.nav-active {
+    position: relative;
+    background: linear-gradient(to right, #9333ea, #a855f7); /* OVG purple-600 to purple-500 */
+    box-shadow: 0 10px 20px rgba(147, 51, 234, 0.25);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    isolation: isolate;
+    will-change: transform;
+    color: white !important;
+}
+
+.nav-active::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: 0 15px 30px rgba(147, 51, 234, 0.4), 0 0 15px rgba(168, 85, 247, 0.3);
+    opacity: 0;
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: -1;
+    pointer-events: none;
+}
+
+.nav-active:hover {
+    transform: translateY(-2px);
+}
+
+.nav-active:hover::after {
+    opacity: 1;
+}
+
+.nav-inactive {
+    position: relative;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), color 0.3s ease;
+    isolation: isolate;
+    will-change: transform;
+    color: #4b5563; /* text-gray-600 */
+}
+
+.nav-inactive::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background-color: #ffffff;
+    box-shadow: 0 4px 15px rgba(147, 51, 234, 0.08);
+    opacity: 0;
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: -1;
+    pointer-events: none;
+}
+
+.nav-inactive:hover {
+    transform: translateY(-1px);
+    color: #9333ea !important; /* text-purple-600 */
+}
+
+.nav-inactive:hover::before {
+    opacity: 1;
+}

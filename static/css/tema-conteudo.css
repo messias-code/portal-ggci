@@ -1,0 +1,949 @@
+/* ==========================================================================
+   PORTAL GGCI — MODO ELEITORAL DA ÁREA DE TRABALHO (COMPARTILHADO)
+   ==========================================================================
+   As telas internas das Automações — Análise IA, Recálculo de Bolsas e
+   Enquadramento de Cursos — são densas: centenas de elementos montados
+   direto com utilitárias do Tailwind, sem classes semânticas. Só a Análise IA
+   tem mais de 500 usos de classe de cor espalhados por 1300 linhas.
+
+   ESTRATÉGIA — e o motivo dela
+     Marcar cada elemento no template daria uma lista imensa e frágil, que
+     quebraria a cada ajuste de layout. Em vez disso, as utilitárias NEUTRAS
+     (branco, cinzas) são remapeadas em bloco, escopadas por `.area-trabalho`
+     — a classe posta no `<main>` de cada tela.
+
+     O escopo cumpre dois papéis: dá especificidade sobre as utilitárias e,
+     principalmente, impede vazamento. Fora do `<main>`, `.bg-white` continua
+     branco; a casca (barra lateral e cabeçalho) segue tratada pelo
+     `tema-menu.css`, sem interferência.
+
+     É a mesma técnica usada nos modais da Gestão de Acessos, aplicada a uma
+     superfície maior. Funciona porque a área de trabalho dessas telas é
+     construída sobre uma paleta neutra: o que separa os elementos ali é
+     posição e borda, não matiz — então converter a paleta em bloco preserva a
+     hierarquia visual.
+
+   ONDE ISSO **NÃO** BASTA
+     Cores com significado (vermelho de erro, verde de sucesso, âmbar de
+     alerta) e cores de marca ficam de fora do bloco neutro e são tratadas uma
+     a uma no fim do arquivo.
+
+   COMO USAR NUMA TELA NOVA
+     1. No <head>, depois de `output.css`, carregue `tema.css`, `tema-menu.css`
+        e este arquivo.
+     2. Ponha `area-trabalho` na classe do `<main>`.
+     3. Ponha `area-trabalho` TAMBÉM na raiz de cada overlay/modal — ver abaixo.
+
+   OVERLAYS E MODAIS: POR QUE ELES PRECISAM DA CLASSE OUTRA VEZ
+     Um modal quase nunca é descendente do `<main>` na árvore que o navegador
+     monta, mesmo quando o markup do template sugere que é. Dois motivos, os
+     dois presentes neste projeto:
+
+       - O template declara o modal DEPOIS do `</main>`, porque ele é irmão da
+         tela, não conteúdo dela (Recálculo de Bolsas, modais de erro).
+       - Uma `</div>` a mais fecha o `<main>` antes da hora e o parser promove
+         todo o resto a filho do `<body>` (era o caso do Análise IA).
+
+     Em qualquer um dos dois, `.area-trabalho .bg-white` não alcança nada e o
+     modal abre BRANCO sobre a tela escura — foi assim que o modo eleitoral
+     "sumia" ao abrir Configurar Documentos.
+
+     A correção não é mover o markup. Modal é `position: fixed` e precisa cobrir
+     o viewport inteiro; arrastá-lo para dentro do `<main>` o prenderia à moldura
+     arredondada da página, porque a casca tem `backdrop-blur` e um ancestral com
+     `backdrop-filter` vira o bloco de contenção de qualquer descendente fixo.
+
+     A correção é declarar o escopo no próprio overlay: basta acrescentar
+     `area-trabalho` à lista de classes da div raiz do modal. A classe não pinta
+     nada — ela existe só como ponto de ancoragem — então o modo claro não muda
+     um pixel, e no eleitoral o modal inteiro passa a ser remapeado.
+   ========================================================================== */
+
+
+/* --------------------------------------------------------------------------
+   CABEÇALHO: ÍCONE DECORATIVO E BOTÃO VOLTAR
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] .tela-header-icone {
+    background-image: linear-gradient(to bottom right, rgba(111, 211, 191, 0.22), rgba(111, 211, 191, 0.10));
+    color: var(--tema-primaria-suave);
+}
+
+html[data-tema="eleitoral"] .tela-voltar {
+    background-color: rgba(255, 255, 255, 0.06);
+    border-color: var(--tema-borda-forte);
+    color: var(--tema-texto-medio);
+}
+
+html[data-tema="eleitoral"] .tela-voltar:hover {
+    background-color: rgba(111, 211, 191, 0.16);
+    border-color: var(--tema-primaria-borda);
+    color: var(--tema-primaria-suave);
+}
+
+
+/* --------------------------------------------------------------------------
+   SUPERFÍCIES
+   O branco vira a superfície elevada; os cinzas viram véus brancos de baixa
+   opacidade, que é o que preserva a diferença entre "card" e "faixa interna"
+   sem precisar inventar um tom novo para cada caso.
+
+   As variantes com opacidade são classes DIFERENTES das sólidas — `bg-white`
+   e `bg-white/80` não se cobrem — por isso todas aparecem explicitamente.
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] .area-trabalho .bg-white,
+html[data-tema="eleitoral"] .area-trabalho .bg-white\/95,
+html[data-tema="eleitoral"] .area-trabalho .bg-white\/90 {
+    background-color: var(--tema-superficie-2);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .bg-white\/80,
+html[data-tema="eleitoral"] .area-trabalho .bg-white\/70,
+html[data-tema="eleitoral"] .area-trabalho .bg-white\/60 {
+    background-color: rgba(66, 76, 91, 0.72);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .bg-white\/50,
+html[data-tema="eleitoral"] .area-trabalho .bg-white\/40,
+html[data-tema="eleitoral"] .area-trabalho .bg-white\/30 {
+    background-color: rgba(66, 76, 91, 0.48);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .bg-gray-50,
+html[data-tema="eleitoral"] .area-trabalho .bg-gray-50\/80,
+html[data-tema="eleitoral"] .area-trabalho .bg-gray-50\/50,
+html[data-tema="eleitoral"] .area-trabalho .bg-slate-50 {
+    background-color: rgba(255, 255, 255, 0.04);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .bg-gray-100,
+html[data-tema="eleitoral"] .area-trabalho .bg-gray-100\/50 {
+    background-color: rgba(255, 255, 255, 0.07);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .bg-gray-200 {
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Fundos escuros já existentes no modo claro (blocos de log/terminal) ficam
+   como estão: no escuro eles continuam fazendo sentido. */
+
+
+/* --------------------------------------------------------------------------
+   BORDAS
+   Todas as variações claras convergem para o mesmo fio de baixa opacidade —
+   no escuro, a diferença entre gray-100 e gray-300 é imperceptível, e mantê-las
+   separadas só criaria ruído.
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] .area-trabalho .border-gray-100,
+html[data-tema="eleitoral"] .area-trabalho .border-gray-200,
+html[data-tema="eleitoral"] .area-trabalho .border-gray-200\/60,
+html[data-tema="eleitoral"] .area-trabalho .border-gray-200\/80,
+html[data-tema="eleitoral"] .area-trabalho .border-gray-300,
+html[data-tema="eleitoral"] .area-trabalho .border-white,
+html[data-tema="eleitoral"] .area-trabalho .border-white\/80,
+html[data-tema="eleitoral"] .area-trabalho .border-white\/60,
+html[data-tema="eleitoral"] .area-trabalho .border-white\/50,
+html[data-tema="eleitoral"] .area-trabalho .border-purple-100,
+html[data-tema="eleitoral"] .area-trabalho .border-purple-100\/50,
+html[data-tema="eleitoral"] .area-trabalho .border-purple-100\/60 {
+    border-color: var(--tema-borda) !important;
+}
+
+html[data-tema="eleitoral"] .area-trabalho .hover\:border-gray-300:hover,
+html[data-tema="eleitoral"] .area-trabalho .hover\:border-gray-400:hover {
+    border-color: var(--tema-borda-forte);
+}
+
+/* Divisórias criadas por `divide-*`, que pinta `border-top-color` a partir do
+   segundo filho. */
+html[data-tema="eleitoral"] .area-trabalho .divide-gray-100 > :not([hidden]) ~ :not([hidden]),
+html[data-tema="eleitoral"] .area-trabalho .divide-gray-200 > :not([hidden]) ~ :not([hidden]),
+html[data-tema="eleitoral"] .area-trabalho .divide-gray-300 > :not([hidden]) ~ :not([hidden]),
+html[data-tema="eleitoral"] .area-trabalho .divide-purple-100 > :not([hidden]) ~ :not([hidden]),
+html[data-tema="eleitoral"] .area-trabalho .divide-purple-100\/50 > :not([hidden]) ~ :not([hidden]) {
+    border-color: var(--tema-borda) !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   TEXTO
+   Três degraus, seguindo a escala de tokens: forte para títulos, médio para
+   corpo, fraco para apoio e placeholders.
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] .area-trabalho .text-gray-900,
+html[data-tema="eleitoral"] .area-trabalho .text-gray-800 {
+    color: var(--tema-texto-forte);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .text-gray-700,
+html[data-tema="eleitoral"] .area-trabalho .text-gray-600,
+html[data-tema="eleitoral"] .area-trabalho .text-gray-500 {
+    color: var(--tema-texto-medio);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .text-gray-400,
+html[data-tema="eleitoral"] .area-trabalho .text-gray-300 {
+    color: var(--tema-texto-fraco);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .hover\:text-gray-800:hover,
+html[data-tema="eleitoral"] .area-trabalho .hover\:text-gray-900:hover {
+    color: var(--tema-texto-forte);
+}
+
+
+/* --------------------------------------------------------------------------
+   ESTADOS DE HOVER SOBRE SUPERFÍCIE
+   No modo claro são cinzas sólidos; mantê-los produziria um flash claro a cada
+   passagem do mouse — o efeito mais destoante possível num tema escuro.
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] .area-trabalho .hover\:bg-gray-50:hover,
+html[data-tema="eleitoral"] .area-trabalho .hover\:bg-gray-50\/50:hover {
+    background-color: rgba(255, 255, 255, 0.06);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .hover\:bg-gray-100:hover {
+    background-color: rgba(255, 255, 255, 0.09);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .hover\:bg-gray-200:hover {
+    background-color: rgba(255, 255, 255, 0.13);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .hover\:bg-white:hover,
+html[data-tema="eleitoral"] .area-trabalho .hover\:bg-white\/80:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+
+/* --------------------------------------------------------------------------
+   CAMPOS DE FORMULÁRIO
+   Alcançados pelo seletor de elemento, e não por classe: nessas telas os
+   campos raramente têm classe própria, e o `input`/`select`/`textarea` cobre
+   todos de uma vez sem depender do markup.
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] .area-trabalho input[type="text"],
+html[data-tema="eleitoral"] .area-trabalho input[type="number"],
+html[data-tema="eleitoral"] .area-trabalho input[type="search"],
+html[data-tema="eleitoral"] .area-trabalho input[type="date"],
+html[data-tema="eleitoral"] .area-trabalho input:not([type]),
+html[data-tema="eleitoral"] .area-trabalho select,
+html[data-tema="eleitoral"] .area-trabalho textarea {
+    background-color: var(--tema-superficie-3);
+    border-color: var(--tema-borda);
+    color: var(--tema-texto-forte);
+}
+
+html[data-tema="eleitoral"] .area-trabalho input::placeholder,
+html[data-tema="eleitoral"] .area-trabalho textarea::placeholder {
+    color: var(--tema-texto-fraco);
+}
+
+html[data-tema="eleitoral"] .area-trabalho input:focus,
+html[data-tema="eleitoral"] .area-trabalho select:focus,
+html[data-tema="eleitoral"] .area-trabalho textarea:focus {
+    border-color: var(--tema-primaria);
+}
+
+/* As opções do <select> são desenhadas pelo sistema operacional; sem uma cor
+   de fundo explícita, várias combinações renderizam texto claro sobre branco. */
+html[data-tema="eleitoral"] .area-trabalho select option {
+    background-color: var(--tema-superficie-2);
+    color: var(--tema-texto-forte);
+}
+
+
+/* --------------------------------------------------------------------------
+   COR DE MARCA
+   Roxo e rosa são a identidade que o modo eleitoral não pode exibir; ambos
+   convergem para o teal do tema.
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] .area-trabalho .text-purple-500,
+html[data-tema="eleitoral"] .area-trabalho .text-purple-600,
+html[data-tema="eleitoral"] .area-trabalho .text-purple-700,
+html[data-tema="eleitoral"] .area-trabalho .text-pink-500,
+html[data-tema="eleitoral"] .area-trabalho .text-pink-600,
+html[data-tema="eleitoral"] .area-trabalho .text-pink-700 {
+    color: var(--tema-primaria-suave);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .hover\:text-purple-600:hover,
+html[data-tema="eleitoral"] .area-trabalho .hover\:text-pink-600:hover {
+    color: var(--tema-primaria-suave);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .hover\:bg-purple-100:hover,
+html[data-tema="eleitoral"] .area-trabalho .hover\:bg-pink-100:hover,
+html[data-tema="eleitoral"] .area-trabalho .hover\:bg-purple-50:hover,
+html[data-tema="eleitoral"] .area-trabalho .hover\:bg-pink-50:hover {
+    background-color: rgba(111, 211, 191, 0.16);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .bg-purple-100,
+html[data-tema="eleitoral"] .area-trabalho .bg-pink-100,
+html[data-tema="eleitoral"] .area-trabalho .bg-purple-50,
+html[data-tema="eleitoral"] .area-trabalho .bg-pink-50 {
+    background-color: rgba(111, 211, 191, 0.16);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .border-pink-100,
+html[data-tema="eleitoral"] .area-trabalho .border-pink-100\/50,
+html[data-tema="eleitoral"] .area-trabalho .border-pink-200,
+html[data-tema="eleitoral"] .area-trabalho .border-purple-200 {
+    border-color: var(--tema-primaria-borda);
+}
+
+/* Degradês de marca. `from-*`/`to-*` alimentam as variáveis que o Tailwind usa
+   para montar o gradiente, então basta redefini-las. */
+html[data-tema="eleitoral"] .area-trabalho .from-pink-100,
+html[data-tema="eleitoral"] .area-trabalho .from-purple-100 {
+    --tw-gradient-from: rgba(111, 211, 191, 0.24);
+    --tw-gradient-to: rgba(111, 211, 191, 0);
+    --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .to-pink-200,
+html[data-tema="eleitoral"] .area-trabalho .to-purple-200 {
+    --tw-gradient-to: rgba(111, 211, 191, 0.12);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .from-purple-500,
+html[data-tema="eleitoral"] .area-trabalho .from-pink-500 {
+    --tw-gradient-from: var(--tema-acento-esmeralda);
+    --tw-gradient-to: rgba(62, 158, 140, 0);
+    --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .to-purple-500,
+html[data-tema="eleitoral"] .area-trabalho .to-purple-600,
+html[data-tema="eleitoral"] .area-trabalho .to-pink-500,
+html[data-tema="eleitoral"] .area-trabalho .to-pink-600 {
+    --tw-gradient-to: var(--tema-acento-ciano);
+}
+
+
+/* --------------------------------------------------------------------------
+   CORES SEMÂNTICAS
+   Vermelho, verde, âmbar e azul comunicam RESULTADO — erro, sucesso, alerta,
+   informação. Elas permanecem, porque converter tudo para o teal do tema
+   apagaria a única informação que carregam. O que muda é o fundo: de sólido
+   claro para véu translúcido, e o texto para uma versão mais clara, legível
+   sobre o escuro.
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] .area-trabalho .bg-red-50,
+html[data-tema="eleitoral"] .area-trabalho .bg-red-100 {
+    background-color: rgba(242, 147, 125, 0.14);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .text-red-600,
+html[data-tema="eleitoral"] .area-trabalho .text-red-700,
+html[data-tema="eleitoral"] .area-trabalho .text-red-800 {
+    color: #F2937D;
+}
+
+html[data-tema="eleitoral"] .area-trabalho .border-red-100,
+html[data-tema="eleitoral"] .area-trabalho .border-red-200 {
+    border-color: rgba(242, 147, 125, 0.30);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .bg-green-50,
+html[data-tema="eleitoral"] .area-trabalho .bg-green-100,
+html[data-tema="eleitoral"] .area-trabalho .bg-emerald-50 {
+    background-color: rgba(98, 209, 145, 0.14);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .text-green-600,
+html[data-tema="eleitoral"] .area-trabalho .text-green-700,
+html[data-tema="eleitoral"] .area-trabalho .text-green-800,
+html[data-tema="eleitoral"] .area-trabalho .text-emerald-600 {
+    color: #62D191;
+}
+
+html[data-tema="eleitoral"] .area-trabalho .border-green-200,
+html[data-tema="eleitoral"] .area-trabalho .border-green-100 {
+    border-color: rgba(98, 209, 145, 0.30);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .bg-amber-50,
+html[data-tema="eleitoral"] .area-trabalho .bg-amber-100,
+html[data-tema="eleitoral"] .area-trabalho .bg-yellow-50,
+html[data-tema="eleitoral"] .area-trabalho .bg-orange-50 {
+    background-color: rgba(239, 177, 105, 0.14);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .text-amber-600,
+html[data-tema="eleitoral"] .area-trabalho .text-amber-700,
+html[data-tema="eleitoral"] .area-trabalho .text-amber-800,
+html[data-tema="eleitoral"] .area-trabalho .text-yellow-500,
+html[data-tema="eleitoral"] .area-trabalho .text-yellow-600,
+html[data-tema="eleitoral"] .area-trabalho .text-orange-600 {
+    color: #EFB169;
+}
+
+html[data-tema="eleitoral"] .area-trabalho .border-amber-200,
+html[data-tema="eleitoral"] .area-trabalho .border-yellow-200,
+html[data-tema="eleitoral"] .area-trabalho .border-orange-200 {
+    border-color: rgba(239, 177, 105, 0.30);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .bg-blue-50,
+html[data-tema="eleitoral"] .area-trabalho .bg-blue-100 {
+    background-color: rgba(143, 173, 235, 0.14);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .text-blue-500,
+html[data-tema="eleitoral"] .area-trabalho .text-blue-600,
+html[data-tema="eleitoral"] .area-trabalho .text-blue-700,
+html[data-tema="eleitoral"] .area-trabalho .text-blue-800 {
+    color: #8FADEB;
+}
+
+html[data-tema="eleitoral"] .area-trabalho .border-blue-200,
+html[data-tema="eleitoral"] .area-trabalho .border-blue-100 {
+    border-color: rgba(143, 173, 235, 0.30);
+}
+
+
+/* --------------------------------------------------------------------------
+   BOTÃO DE AÇÃO DOS CARDS (.btn-acao-card — Recálculo de Bolsas)
+   Definido no CSS da própria automação com rosa fixo (#ec4899) no fundo, na
+   borda e no anel de foco. Fica fora do bloco `.area-trabalho` porque o rosa
+   está no CSS, não numa utilitária — o remapeamento acima não o alcança.
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] .btn-acao-card {
+    background-color: var(--tema-primaria-forte);
+    border-color: var(--tema-primaria-forte);
+}
+
+html[data-tema="eleitoral"] .btn-acao-card:hover {
+    background-color: var(--tema-primaria);
+    border-color: var(--tema-primaria);
+}
+
+html[data-tema="eleitoral"] .btn-acao-card:focus-visible {
+    outline-color: var(--tema-primaria-suave);
+}
+
+
+/* ==========================================================================
+   DEGRADÊS, SOMBRAS COLORIDAS E ANÉIS DE FOCO
+   --------------------------------------------------------------------------
+   Este bloco cobre o que o remapeamento de superfícies acima NÃO alcança.
+   `bg-*` e `text-*` são cor direta; já degradê, sombra e anel de foco são
+   montados pelo Tailwind através de variáveis CSS (`--tw-gradient-*`,
+   `--tw-shadow-color`, `--tw-ring-color`). Pintar o fundo não muda nenhuma
+   delas — por isso um botão podia ficar com o miolo certo e um halo rosa em
+   volta, ou um degradê cinza-claro que lia como branco sobre o escuro.
+   ========================================================================== */
+
+/* --- Degradês de marca: pontos intermediários e finais ------------------- */
+html[data-tema="eleitoral"] .area-trabalho .from-pink-400,
+html[data-tema="eleitoral"] .area-trabalho .from-purple-400 {
+    --tw-gradient-from: var(--tema-acento-esmeralda);
+    --tw-gradient-to: rgba(62, 158, 140, 0);
+    --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .via-pink-600,
+html[data-tema="eleitoral"] .area-trabalho .via-purple-600,
+html[data-tema="eleitoral"] .area-trabalho .via-pink-500,
+html[data-tema="eleitoral"] .area-trabalho .via-purple-500 {
+    --tw-gradient-stops: var(--tw-gradient-from), var(--tema-primaria), var(--tw-gradient-to);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .to-pink-700,
+html[data-tema="eleitoral"] .area-trabalho .to-purple-700,
+html[data-tema="eleitoral"] .area-trabalho .to-fuchsia-100,
+html[data-tema="eleitoral"] .area-trabalho .to-fuchsia-500 {
+    --tw-gradient-to: var(--tema-acento-ciano);
+}
+
+/* Degradê cinza-claro do botão de baixar em repouso. No claro ele lê como
+   "desabilitado"; no escuro virava uma barra branca gritando na tela. Vira um
+   véu translúcido, que continua dizendo "indisponível" sem roubar atenção. */
+html[data-tema="eleitoral"] .area-trabalho .from-gray-100,
+html[data-tema="eleitoral"] .area-trabalho .from-gray-200 {
+    --tw-gradient-from: rgba(255, 255, 255, 0.10);
+    --tw-gradient-to: rgba(255, 255, 255, 0);
+    --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .via-gray-200 {
+    --tw-gradient-stops: var(--tw-gradient-from), rgba(255, 255, 255, 0.13), var(--tw-gradient-to);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .to-gray-300,
+html[data-tema="eleitoral"] .area-trabalho .to-gray-200 {
+    --tw-gradient-to: rgba(255, 255, 255, 0.16);
+}
+
+/* --- Sombras coloridas --------------------------------------------------- */
+/* Halos rosa/roxo em volta dos botões. Sobre fundo escuro ficam muito mais
+   evidentes do que eram no claro — é o mesmo efeito que precisou ser corrigido
+   nos botões de opção do Formatador de Dados. Viram profundidade neutra. */
+html[data-tema="eleitoral"] .area-trabalho .shadow-pink-500\/30,
+html[data-tema="eleitoral"] .area-trabalho .shadow-pink-500\/40,
+html[data-tema="eleitoral"] .area-trabalho .shadow-pink-700\/30,
+html[data-tema="eleitoral"] .area-trabalho .shadow-purple-500\/30,
+html[data-tema="eleitoral"] .area-trabalho .shadow-purple-500\/40 {
+    --tw-shadow-color: rgba(0, 0, 0, 0.45);
+    --tw-shadow: var(--tw-shadow-colored);
+}
+
+/* --- Anéis de foco ------------------------------------------------------- */
+html[data-tema="eleitoral"] .area-trabalho .focus\:ring-pink-300:focus,
+html[data-tema="eleitoral"] .area-trabalho .focus\:ring-pink-500:focus,
+html[data-tema="eleitoral"] .area-trabalho .focus\:ring-purple-300:focus,
+html[data-tema="eleitoral"] .area-trabalho .focus\:ring-purple-500:focus,
+html[data-tema="eleitoral"] .area-trabalho .focus\:ring-\[\#8B009B\]:focus {
+    --tw-ring-color: var(--tema-primaria);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .focus\:ring-gray-200:focus,
+html[data-tema="eleitoral"] .area-trabalho .focus\:ring-gray-300:focus {
+    --tw-ring-color: rgba(255, 255, 255, 0.20);
+}
+
+
+/* ==========================================================================
+   BOTÕES DE AÇÃO DAS AUTOMAÇÕES (Análise IA, Recálculo, Enquadramento)
+   --------------------------------------------------------------------------
+   As três telas compartilham a mesma barra de comando, com os mesmos IDs:
+   #btn-start, #btn-stop e #btn-download. No modo claro cada um vem com um
+   degradê de marca (roxo para iniciar, rosa para parar, cinza para baixar).
+
+   O QUE ESTAVA ERRADO — e é o motivo deste bloco existir
+
+   1. O remapeamento de marca lá em cima converte roxo E rosa para a mesma
+      escala teal→azul. Correto para decoração, desastroso aqui: "Iniciar" e
+      "Parar" saíam com a MESMA cor. Dois botões vizinhos, um que dispara e
+      outro que interrompe, indistinguíveis a não ser pelo rótulo.
+
+   2. "Baixar" usa `from-gray-100 via-gray-200 to-gray-300` no estado inativo.
+      Os cinzas viram véus brancos translúcidos — daí a impressão de que "nem
+      cor colocaram". O botão sumia.
+
+   A REGRA ADOTADA: cor por SIGNIFICADO, não por decoração. Cada ação recebe um
+   dos acentos sólidos do tema, e as quatro são distintas entre si:
+
+       Iniciar     teal   — é a ação primária da tela, e primária = marca
+       Parar       coral  — interrupção, o único vermelho da barra
+       Baixar      verde  — o processo terminou, há resultado pronto
+       Configurar  azul   — ação secundária, de preparo
+
+   Os fundos vêm dos tokens `--tema-solido-*`, calibrados para o BRANCO por
+   cima passar em AA. Este é o lugar certo do branco puro no tema: sobre acento
+   sólido, nunca sobre superfície comum.
+   ========================================================================== */
+
+/* Iniciar. O seletor por ID (0,3,0 com o prefixo do tema) vence o remapeamento
+   de degradê acima sem precisar de `!important`. `background-image: none`
+   é obrigatório: sem ele o degradê continua pintado POR CIMA da cor de fundo. */
+html[data-tema="eleitoral"] .area-trabalho #btn-start {
+    background-image: none;
+    background-color: var(--tema-solido-marca);
+    color: #FFFFFF;
+}
+
+html[data-tema="eleitoral"] .area-trabalho #btn-start:hover {
+    background-color: var(--tema-primaria-forte);
+    filter: brightness(1.15);
+}
+
+/* Parar. Coral em vez do vermelho puro: dentro da paleta, e ainda assim a
+   única cor quente da barra — que é o que faz um botão de interrupção ser
+   encontrado sem precisar ler o rótulo. */
+html[data-tema="eleitoral"] .area-trabalho #btn-stop {
+    background-image: none;
+    background-color: var(--tema-solido-erro);
+    color: #FFFFFF;
+}
+
+html[data-tema="eleitoral"] .area-trabalho #btn-stop:hover:not(:disabled) {
+    filter: brightness(1.15);
+}
+
+/* Baixar, inativo: um véu neutro com texto fraco. Continua dizendo
+   "indisponível" — mas agora existe na tela, em vez de desaparecer nela. */
+html[data-tema="eleitoral"] .area-trabalho #btn-download {
+    background-image: none;
+    background-color: rgba(255, 255, 255, 0.08);
+    color: var(--tema-texto-fraco);
+}
+
+/* Baixar, ativo. O JS troca as classes de cinza para `from-green-*`, então é
+   por elas que o estado habilitado é reconhecido — e não por `:disabled`, que
+   o script não usa de forma consistente. */
+html[data-tema="eleitoral"] .area-trabalho #btn-download.from-green-500 {
+    background-image: none;
+    background-color: var(--tema-solido-sucesso);
+    color: #FFFFFF;
+}
+
+html[data-tema="eleitoral"] .area-trabalho #btn-download.from-green-500:hover {
+    filter: brightness(1.15);
+}
+
+/* Botões que ABREM MODAL DE CONFIGURAÇÃO. São o mesmo componente em duas
+   telas, com nomes diferentes por acidente histórico:
+
+       .btn-config-acao   Análise IA        "Configurar Documentos"
+       .btn-abre-painel   Recálculo Bolsas  "Instituições", "Benefícios",
+                                            "Financiamentos", "Formulário"
+
+   Ficam juntos aqui de propósito. Tratá-los separado foi o erro que deixou o
+   Recálculo com os botões roxos enquanto a Análise IA já estava certa — e é o
+   tipo de divergência que reaparece toda vez que a paleta muda.
+
+   Os dois recebem AZUL, a cor de ação secundária/preparo definida na barra de
+   comando acima. Nenhum deles é utilitária do Tailwind: um traz o roxo em
+   atributo `style` no HTML, o outro em `background-color: #7e22ce` no CSS do
+   app. Como estilo inline só perde para `!important`, ele aparece aqui — é a
+   exceção deliberada, não conveniência. */
+html[data-tema="eleitoral"] .area-trabalho .btn-config-acao,
+html[data-tema="eleitoral"] .area-trabalho .btn-abre-painel {
+    background-color: var(--tema-solido-info) !important;
+    color: #FFFFFF;
+}
+
+html[data-tema="eleitoral"] .area-trabalho .btn-config-acao:hover,
+html[data-tema="eleitoral"] .area-trabalho .btn-abre-painel:hover {
+    filter: brightness(1.15);
+}
+
+/* Estado desabilitado: o CSS do app usa `#e5e7eb` sobre `#9ca3af` — no escuro,
+   uma barra clara com texto cinza, mais chamativa que os botões ativos. */
+html[data-tema="eleitoral"] .area-trabalho .btn-abre-painel[disabled] {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    color: var(--tema-texto-fraco);
+}
+
+/* O anel de foco por teclado também é roxo literal nos dois. */
+html[data-tema="eleitoral"] .area-trabalho .btn-config-acao:focus-visible,
+html[data-tema="eleitoral"] .area-trabalho .btn-abre-painel:focus-visible {
+    outline-color: var(--tema-primaria);
+}
+
+
+/* ==========================================================================
+   CARTÕES DE SELEÇÃO (Formato de Saída — Excel/CSV)
+   --------------------------------------------------------------------------
+   O estado marcado é pintado por variantes `has-[:checked]:` do Tailwind —
+   `has-[:checked]:border-purple-500`, `has-[:checked]:bg-purple-50/40`. São
+   classes DIFERENTES de `.border-purple-500` e `.bg-purple-50`, e por isso o
+   remapeamento de marca não as alcançava: no escuro, marcar Excel ou CSV não
+   mudava absolutamente nada. O cartão selecionado ficava igual ao não
+   selecionado — a queixa de que "nem cor colocou".
+
+   Em vez de escapar os nomes dessas classes (`.has-\[\:checked\]\:...`), o
+   ancoramento é pelo próprio `:has()` sobre o input, que é o que a variante do
+   Tailwind faz por baixo. Fica legível e não quebra se a utilitária mudar.
+   ========================================================================== */
+html[data-tema="eleitoral"] .area-trabalho label:has(input.chk-formato:checked) {
+    border-color: var(--tema-primaria);
+    background-color: var(--tema-primaria-lavada);
+}
+
+html[data-tema="eleitoral"] .area-trabalho label:has(input.chk-formato:checked) span {
+    color: var(--tema-primaria-suave);
+}
+
+/* O selo "Padrão" no canto do cartão do Excel. */
+html[data-tema="eleitoral"] .area-trabalho label:has(input.chk-formato:checked) span.absolute {
+    background-color: rgba(111, 211, 191, 0.22);
+    color: var(--tema-primaria-suave);
+}
+
+/* Os ícones de arquivo mantêm a cor semântica do formato — verde para Excel,
+   coral para CSV. É a única pista cromática que diferencia os dois cartões. */
+html[data-tema="eleitoral"] .area-trabalho .peer:checked ~ .peer-checked\:text-green-600 {
+    color: var(--tema-status-sucesso);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .peer:checked ~ .peer-checked\:text-pink-600 {
+    color: var(--tema-status-erro);
+}
+
+
+/* ==========================================================================
+   BARRA DE PROGRESSO (Análise IA)
+   --------------------------------------------------------------------------
+   O percentual traz `drop-shadow-[0_0_2px_rgba(255,255,255,0.8)]`: um halo
+   BRANCO desenhado para destacar o número sobre a barra clara. No escuro esse
+   halo vira um brilho neon em volta do texto — exatamente o efeito que o modo
+   eleitoral evita. Ancorado pelo ID, que é mais simples e estável do que
+   escapar o nome da classe arbitrária.
+   ========================================================================== */
+html[data-tema="eleitoral"] #progress-text {
+    color: var(--tema-texto-forte);
+    /* Sombra escura e curta: continua descolando o número do preenchimento da
+       barra, sem acender nada. */
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.75));
+}
+
+html[data-tema="eleitoral"] #progress-bar {
+    background-image: linear-gradient(to right,
+            var(--tema-acento-esmeralda),
+            var(--tema-primaria),
+            var(--tema-acento-ciano));
+}
+
+
+/* ==========================================================================
+   SELETORES DE ABA (.btn-quantitativo — Análise IA)
+   --------------------------------------------------------------------------
+   Dois problemas se somavam aqui, e juntos deixavam o rótulo ilegível.
+
+   1. O template traz um <style> embutido com
+        .btn-quantitativo:has(input:checked) { background-color: #ec4899 !important }
+      O `!important` só perde para outro `!important` de especificidade maior —
+      daí o par de `!important` abaixo, que é a exceção deliberada à regra de
+      nunca usá-lo no tema.
+
+   2. O rótulo usa `text-gray-500` no repouso e `peer-checked:text-white` no
+      estado marcado. A variante do Tailwind tem especificidade (0,2,0), menor
+      que a do remapeamento de texto deste arquivo (0,3,0) — então o cinza
+      vencia SEMPRE, inclusive com a aba marcada. Resultado: texto acinzentado
+      sobre fundo forte. A regra abaixo devolve a precedência ao estado marcado.
+   ========================================================================== */
+html[data-tema="eleitoral"] .btn-quantitativo:has(input:checked) {
+    background-color: var(--tema-primaria-forte) !important;
+    border-color: var(--tema-primaria) !important;
+}
+
+html[data-tema="eleitoral"] .area-trabalho .peer:checked ~ .peer-checked\:text-white {
+    color: #FFFFFF;
+}
+
+
+/* ==========================================================================
+   COBERTURA DAS VARIANTES DE ESTADO (hover:, focus:, group-*, peer-*)
+   --------------------------------------------------------------------------
+   POR QUE ESTE BLOCO EXISTE — e por que ele não é "mais do mesmo"
+
+   O remapeamento de marca lá em cima trata `.text-purple-600`, `.bg-pink-100`
+   e afins. Mas `hover:border-pink-200` é uma classe DIFERENTE de
+   `border-pink-200`: o Tailwind gera um seletor próprio para cada variante.
+   Cobrir a versão em repouso não cobre a versão em estado.
+
+   O resultado era o que se via: a tela parecia tematizada até o mouse passar
+   por cima, e então voltava um rosa ou um roxo que já não existe em lugar
+   nenhum do portal. Um cruzamento entre as classes de marca usadas em todos os
+   templates e as cobertas por este arquivo apontou 48 dessas lacunas — o bloco
+   abaixo fecha a lista inteira, não os casos que alguém notou por acaso.
+
+   SOBRE A ESPECIFICIDADE — o detalhe que faz isto funcionar sem `!important`
+   O Tailwind v4 gera as variantes com aninhamento nativo e `:where()`:
+       .group-hover\:text-purple-600 { &:is(:where(.group):hover *) { … } }
+   Como `:where()` tem especificidade ZERO, a regra inteira vale (0,1,0). Nossos
+   seletores, prefixados por `html[data-tema]` e `.area-trabalho`, ficam em
+   (0,3,0) ou mais e vencem com folga.
+
+   O que NÃO se pode omitir é o ESTADO. Escrever a regra sem `:hover` faria a
+   cor valer sempre, e o elemento nasceria já no estilo de hover.
+   ========================================================================== */
+
+/* --- Bordas em foco e hover ---------------------------------------------- */
+html[data-tema="eleitoral"] .area-trabalho .focus\:border-pink-500:focus,
+html[data-tema="eleitoral"] .area-trabalho .focus\:border-pink-400:focus,
+html[data-tema="eleitoral"] .area-trabalho .focus\:border-purple-500:focus {
+    border-color: var(--tema-primaria);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .hover\:border-pink-200:hover,
+html[data-tema="eleitoral"] .area-trabalho .hover\:border-pink-300:hover,
+html[data-tema="eleitoral"] .area-trabalho .hover\:border-pink-400:hover,
+html[data-tema="eleitoral"] .area-trabalho .hover\:border-purple-300:hover {
+    border-color: var(--tema-primaria-borda);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .border-pink-400,
+html[data-tema="eleitoral"] .area-trabalho .border-purple-300,
+html[data-tema="eleitoral"] .area-trabalho .border-pink-200\/60 {
+    border-color: var(--tema-primaria-borda);
+}
+
+/* --- Texto de marca em estado -------------------------------------------- */
+html[data-tema="eleitoral"] .area-trabalho .text-purple-400,
+html[data-tema="eleitoral"] .area-trabalho .text-pink-500\/80 {
+    color: var(--tema-primaria-suave);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .group:hover .group-hover\:text-purple-600,
+html[data-tema="eleitoral"] .area-trabalho .group:hover .group-hover\:text-pink-700,
+html[data-tema="eleitoral"] .area-trabalho .group:focus-within .group-focus-within\:text-pink-600 {
+    color: var(--tema-primaria-suave);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .hover\:text-pink-800:hover {
+    color: var(--tema-primaria-suave);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .peer:checked ~ .peer-checked\:text-purple-800,
+html[data-tema="eleitoral"] .area-trabalho .peer:checked ~ .peer-checked\:text-purple-700 {
+    color: var(--tema-primaria-suave);
+}
+
+/* --- Fundos de marca em estado -------------------------------------------
+   `bg-pink-500` preenche áreas sólidas com texto branco por cima, então usa o
+   token SÓLIDO — o tom de traço aqui produziria o mesmo neon já corrigido no
+   botão das ferramentas. */
+html[data-tema="eleitoral"] .area-trabalho .bg-pink-500 {
+    background-color: var(--tema-solido-marca);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .hover\:bg-pink-600:hover {
+    background-color: var(--tema-primaria-forte);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .peer:checked ~ .peer-checked\:bg-purple-500 {
+    background-color: var(--tema-solido-marca);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .peer:checked ~ .peer-checked\:bg-purple-100 {
+    background-color: var(--tema-primaria-lavada);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .hover\:bg-pink-50\/50:hover {
+    background-color: rgba(111, 211, 191, 0.12);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .bg-purple-200\/50 {
+    background-color: var(--tema-borda);
+}
+
+/* --- Degradês de marca em estado ----------------------------------------- */
+html[data-tema="eleitoral"] .area-trabalho .from-pink-600 {
+    --tw-gradient-from: var(--tema-solido-marca);
+    --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .hover\:from-pink-700:hover {
+    --tw-gradient-from: var(--tema-primaria-forte);
+    --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .hover\:to-pink-800:hover {
+    --tw-gradient-to: var(--tema-solido-info);
+}
+
+/* --- Sombras coloridas: o "neon" ------------------------------------------
+   Halo colorido é o efeito que mais engana ao migrar tema. No claro ele some
+   contra o fundo branco; no escuro vira luz de verdade em volta do elemento.
+   Todas viram profundidade preta. */
+html[data-tema="eleitoral"] .area-trabalho .hover\:shadow-pink-500\/30:hover,
+html[data-tema="eleitoral"] .area-trabalho .hover\:shadow-pink-700\/30:hover,
+html[data-tema="eleitoral"] .area-trabalho .shadow-pink-300\/40 {
+    --tw-shadow-color: rgba(0, 0, 0, 0.45);
+    --tw-shadow: var(--tw-shadow-colored);
+}
+
+/* --- Índigo: já é azul, só precisa entrar na escala do tema --------------- */
+html[data-tema="eleitoral"] .area-trabalho .text-indigo-500,
+html[data-tema="eleitoral"] .area-trabalho .text-indigo-600 {
+    color: var(--tema-status-info);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .bg-indigo-50 {
+    background-color: rgba(143, 173, 235, 0.14);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .border-indigo-100 {
+    border-color: rgba(143, 173, 235, 0.30);
+}
+
+/* --- Rose: é semântica, não marca ----------------------------------------
+   Rose sinaliza atenção/remoção nesta base de código (chip de SLA estourado,
+   botão de limpar filtro). Segue o token de erro, não o da marca — converter
+   para teal apagaria a informação que a cor carrega. */
+html[data-tema="eleitoral"] .area-trabalho .text-rose-600 {
+    color: var(--tema-status-erro);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .hover\:text-rose-600:hover {
+    color: var(--tema-status-erro);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .hover\:bg-rose-50:hover {
+    background-color: rgba(242, 147, 125, 0.14);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .border-rose-200\/80 {
+    border-color: rgba(242, 147, 125, 0.32);
+}
+
+html[data-tema="eleitoral"] .area-trabalho .from-rose-500 {
+    --tw-gradient-from: var(--tema-solido-erro);
+    --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+
+
+/* ==========================================================================
+   MODAIS DE CONFIGURAÇÃO — O QUE O REMAPEAMENTO NEUTRO NÃO ALCANÇA
+   --------------------------------------------------------------------------
+   Com `area-trabalho` na raiz do overlay (ver o cabeçalho deste arquivo), as
+   superfícies, bordas e textos do modal já vêm dos tokens. O que sobra é a cor
+   de MARCA, e ela sobra porque não está em utilitária do Tailwind: parte vem em
+   atributo `style` no HTML, parte vem de blocos <style> embutidos no template
+   com `!important`.
+
+   Esses dois casos são a razão do `!important` daqui — estilo inline só perde
+   para `!important`, e `!important` só perde para outro de especificidade
+   maior. É a mesma exceção deliberada já aberta para `.btn-config-acao` e
+   `.btn-quantitativo`, não conveniência.
+   ========================================================================== */
+
+/* --- Cabeçalho e rodapé do modal -----------------------------------------
+   O quadrado do ícone e o botão de confirmação trazem o mesmo degradê roxo
+   (`#6B007B → #9B00B3`) direto no atributo `style` — no modal de "processados
+   hoje" ele é rosa (`#ec4899 → #be185d`), mesma função, outra matiz.
+
+   Os dois viram acento SÓLIDO, não degradê: `--tema-solido-marca` é o tom
+   calibrado para o branco por cima passar em AA, e é o mesmo do botão Iniciar
+   da barra de comando — o que mantém "ação primária" com uma cor só em toda a
+   automação. O `background-image: none` é obrigatório, senão o degradê
+   continua sendo pintado por cima da cor de fundo. */
+html[data-tema="eleitoral"] .area-trabalho .modal-header-icone,
+html[data-tema="eleitoral"] .area-trabalho .modal-confirmar {
+    background-image: none !important;
+    background-color: var(--tema-solido-marca) !important;
+    color: #FFFFFF !important;
+}
+
+html[data-tema="eleitoral"] .area-trabalho .modal-confirmar:hover {
+    filter: brightness(1.15);
+}
+
+/* --- Estados marcados dentro do modal (Análise IA) ------------------------
+   Os blocos <style> embutidos no template pintam a seleção com `#8B009B`. São
+   quatro componentes com o mesmo papel — "este item está escolhido" — e todos
+   seguem a regra já usada nas abas do Levantamento Estratégico: preenchimento
+   em `--tema-primaria-forte`, contorno em `--tema-primaria`.
+
+   O texto branco desses estados vem do próprio <style> do template e é mantido:
+   sobre `--tema-primaria-forte` ele dá 5,2:1, dentro de AA. */
+html[data-tema="eleitoral"] .area-trabalho .chk-periodo-inline:checked + .period-chip,
+html[data-tema="eleitoral"] .area-trabalho .btn-selecionar-todos-semestres:has(+ .chk-doc-master:checked),
+html[data-tema="eleitoral"] .area-trabalho .contratos-sem-item:has(.chk-sortable:checked),
+html[data-tema="eleitoral"] .area-trabalho .riaf-sem-item:has(.chk-sortable:checked) {
+    background-color: var(--tema-primaria-forte) !important;
+    border-color: var(--tema-primaria) !important;
+}
+
+/* O grupo de documento inteiro reage quando algum semestre dele é marcado: a
+   borda externa acende e o cabeçalho ganha um véu da cor da marca. Aqui o teal
+   é TRAÇO e VÉU, não área — por isso vem dos tokens de borda e não do sólido. */
+html[data-tema="eleitoral"] .area-trabalho .doc-group:has(.chk-periodo-inline:checked) {
+    border-color: var(--tema-primaria-borda) !important;
+}
+
+html[data-tema="eleitoral"] .area-trabalho .doc-group:has(.chk-periodo-inline:checked) .doc-header {
+    background-color: rgba(111, 211, 191, 0.08) !important;
+}
+
+/* O ícone do documento é o único ponto onde a marca aparece como texto sobre
+   superfície escura: usa o tom de traço, que é o legível nesse papel. */
+html[data-tema="eleitoral"] .area-trabalho .doc-group:has(.chk-periodo-inline:checked) .doc-icon {
+    color: var(--tema-primaria) !important;
+    border-color: var(--tema-primaria-borda) !important;
+}

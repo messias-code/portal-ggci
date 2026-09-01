@@ -1,0 +1,361 @@
+/* ==========================================================================
+   PORTAL GGCI — SISTEMA DE TEMAS (GLOBAL)
+   ==========================================================================
+   Base compartilhada do mecanismo de temas do portal. Este arquivo NÃO estiliza
+   telas específicas: ele declara os tokens de cor de cada modo, o botão de
+   alternância e a regra de troca das logos.
+
+   O modo ativo vive no atributo `data-tema` do elemento <html>, aplicado pelo
+   `static/js/tema.js` antes da primeira pintura. Qualquer página que carregue
+   este CSS + aquele JS herda o modo já escolhido pelo usuário, sem piscar.
+
+   MODOS DISPONÍVEIS
+     data-tema="claro"      → identidade institucional colorida (padrão)
+     data-tema="eleitoral"  → modo escuro, ancorado no verde da OVG
+
+   POR QUE O MODO ESCURO SE CHAMA "ELEITORAL"
+     O nome guarda o motivo de negócio, não a aparência. Durante o período de
+     restrição eleitoral a marca colorida da OVG não pode ser exibida, e a única
+     regra realmente inegociável do modo é usar a logo `ovg-eleitoral.png`.
+     Fora isso, ele é um dark mode completo e livre — não uma versão apagada do
+     modo claro.
+
+   COMO ESTENDER PARA UMA NOVA TELA
+     1. Carregue este CSS e o tema.js no <head> do template.
+     2. No CSS da tela, escreva os ajustes sob
+        `html[data-tema="eleitoral"] .sua-classe { ... }` consumindo os tokens
+        `--tema-*`. Nunca fixe uma cor na mão.
+   ========================================================================== */
+
+
+/* ==========================================================================
+   1. TOKENS — MODO CLARO (PADRÃO)
+   --------------------------------------------------------------------------
+   Espelham as cores que já estão escritas nas classes utilitárias do Tailwind
+   ao longo dos templates. Ficam aqui para que telas novas possam ser escritas
+   inteiramente sobre tokens, sem depender do bundle pré-compilado.
+   ========================================================================== */
+
+:root,
+:root[data-tema="claro"] {
+    /* Marca */
+    --tema-primaria: #7C3AED;
+    --tema-primaria-forte: #6D28D9;
+    --tema-primaria-suave: #8B5CF6;
+    --tema-primaria-lavada: #F5F3FF;
+    --tema-primaria-borda: #DDD6FE;
+
+    /* Superfícies */
+    --tema-fundo: #FFFFFF;
+    --tema-superficie: #FFFFFF;
+    --tema-superficie-2: #FAFAFB;
+    --tema-superficie-3: #F9FAFB;
+    --tema-borda: #E5E7EB;
+    --tema-borda-forte: #D1D5DB;
+
+    /* Texto */
+    --tema-texto-forte: #111827;
+    --tema-texto-medio: #4B5563;
+    --tema-texto-fraco: #9CA3AF;
+    --tema-texto-marca: #5B21B6;
+
+    /* Estruturais */
+    --tema-grade: rgba(147, 51, 234, 0.07);
+    --tema-brilho: rgba(124, 58, 237, 0.25);
+    --tema-brilho-hover: rgba(124, 58, 237, 0.35);
+}
+
+
+/* ==========================================================================
+   2. TOKENS — MODO ELEITORAL (ESCURO), PALETA ARDÓSIA
+   --------------------------------------------------------------------------
+   O corpo do tema é ARDÓSIA: um cinza-azulado neutro, a ~8% de saturação.
+   Baixo o bastante para ler como neutro, alto o bastante para não parecer um
+   cinza morto de fotografia dessaturada.
+
+   POR QUE O CORPO É NEUTRO E NÃO VERDE
+     A primeira versão deste tema tinha fundos pretos COM VIÉS VERDE (#0E2320),
+     na intenção de fazer a marca "nascer do fundo". O cliente reprovou, com
+     duas críticas que na verdade são a mesma: "escuro demais" e "verde demais".
+     A raiz é que o verde era, ao mesmo tempo, o fundo e o destaque — e quando
+     as duas coisas compartilham a matiz, o destaque deixa de ser percebido como
+     destaque. A tela inteira vira uma nota só.
+
+     A regra que ficou: CORPO NEUTRO, ACENTO COLORIDO. O teal continua sendo a
+     cor da marca, mas só aparece onde tem trabalho a fazer — traços, estados,
+     destaques. É o fundo neutro que devolve força ao acento.
+
+   DE ONDE VÊM AS CORES
+     De um painel de referência aprovado pelo cliente, amostrado pixel a pixel:
+       #1E2631  fundo profundo        #282F3C  superfície dos cartões
+       #50B09E  teal                  #5672B3  azul índigo
+       #447380  petróleo              #E49A4E  laranja
+       #DF6E53  coral
+     O teal daquele painel é vizinho do verde da logo eleitoral, o que permitiu
+     adotar a atmosfera inteira sem tocar na única regra inegociável do modo:
+     a logo `ovg-eleitoral.png`.
+
+   A ESCALA DE CLARIDADE, MEDIDA EM L*
+     (claridade percebida: 0 é preto, 100 é branco)
+
+         superfície      versão verde     agora
+         fundo           L* 12,0          L* 20,1
+         superfície      L* 19,1          L* 24,2
+         superfície-2    L* 23,7          L* 28,5
+         superfície-3    L* 27,5          L* 32,8
+
+     O fundo — maior área da tela, e portanto o responsável pela sensação de
+     "escuro" — subiu 8 pontos. O topo da escala subiu menos DE PROPÓSITO:
+     `--tema-superficie-3` é o fundo dos campos de formulário, e cada ponto de
+     L* ali é contraste que o texto digitado e o placeholder perdem. Medido:
+     com a escala aberta até L* 36,6 o placeholder caía para 2,80:1 e reprovava.
+
+     Continua sendo um tema escuro — a superfície padrão do Material Design
+     (#121212) fica em L* 5,5 — mas com quatro degraus visivelmente separados,
+     que é o que dá relevo sem precisar de sombra.
+
+   AO MEXER NESTA ESCALA, LEMBRE
+     Clarear superfície sem clarear o que vai por cima troca um problema pelo
+     outro. Cada ponto de L* que o fundo ganha, o traço e o halo precisam
+     acompanhar — halo é cor por CONTRASTE com o que está atrás, e acento que
+     não sobe junto perde legibilidade.
+   ========================================================================== */
+
+:root[data-tema="eleitoral"] {
+    /* Marca — dois papéis distintos, porque nenhum tom serve aos dois:
+           --tema-primaria       #66CBB6  traços finos: texto, ícones, bordas
+                                          (5,1:1 sobre a superfície-2, AA)
+           --tema-primaria-forte #35786D  áreas sólidas: fundo de botão
+                                          (5,2:1 com texto branco por cima)
+       O teal da referência (#50B09E) fica exatamente entre os dois: ótimo como
+       preenchimento de área, curto de contraste para texto pequeno. */
+    --tema-primaria: #6FD3BF;
+    --tema-primaria-forte: #2E7F72;
+    --tema-primaria-suave: #96E5D4;
+    --tema-primaria-lavada: rgba(111, 211, 191, 0.12);
+    --tema-primaria-borda: rgba(111, 211, 191, 0.30);
+
+    /* Acentos. Os nomes vêm da paleta anterior, quando o par ia de esmeralda a
+       ciano — duas vizinhas do verde, o que produzia degradês quase
+       monocromáticos. O destino mudou: agora vai de TEAL a AZUL ÍNDIGO, que é
+       o eixo cromático da referência. O degradê passa a ter percurso real, e é
+       dele que vem a profundidade sem precisar clarear mais nada. */
+    --tema-acento-esmeralda: #3E9E8C;
+    --tema-acento-ciano: #5672B3;
+
+    /* Superfícies, do mais profundo ao mais elevado. A escala segue a lógica de
+       elevação: quanto mais "acima" na hierarquia visual, mais clara a
+       superfície. É o que substitui as sombras do modo claro, que praticamente
+       não se enxergam no escuro. */
+    --tema-fundo: #2E3643;
+    --tema-superficie: #38414F;
+    --tema-superficie-2: #424C5B;
+    --tema-superficie-3: #4D5867;
+    --tema-borda: rgba(255, 255, 255, 0.13);
+    --tema-borda-forte: rgba(255, 255, 255, 0.22);
+
+    /* Texto. Os cinzas carregam o mesmo viés azul das superfícies: um cinza
+       neutro puro sobre fundo azulado é lido como levemente amarelado — o olho
+       compara, não mede. Pior caso da interface (placeholder sobre campo de
+       formulário): 3,34:1, dentro do mínimo para texto de apoio. */
+    --tema-texto-forte: #F2F5F9;
+    --tema-texto-medio: #C8D1DD;
+    --tema-texto-fraco: #AAB5C4;
+    --tema-texto-marca: #96E5D4;
+
+    /* Estruturais. A grade de fundo é azul, não verde: ela cobre a tela inteira
+       e era uma das razões de tudo puxar para o verde na versão anterior. */
+    --tema-grade: rgba(86, 114, 179, 0.10);
+    --tema-brilho: rgba(0, 0, 0, 0.45);
+    --tema-brilho-hover: rgba(111, 211, 191, 0.30);
+
+    /* --- Acentos de estado ------------------------------------------------
+       Fonte única das cores semânticas do escuro: existem para que nenhuma
+       tela precise inventar o próprio verde de "sucesso". Todos calibrados
+       para passar em AA sobre `--tema-superficie`.
+
+       DOIS VERDES, DE PROPÓSITO. O teal da marca (168°) e o verde de sucesso
+       (145°) estão a 23° de distância — perto o bastante para pertencerem à
+       mesma família, longe o bastante para não serem confundidos. É o que
+       permite um botão "Iniciar" verde ao lado de um destaque teal sem que os
+       dois virem a mesma coisa. Quando precisar de "mais verde", use o de
+       sucesso; quando precisar da marca, use a primária. */
+    --tema-status-sucesso: #62D191;
+    --tema-status-info: #8FADEB;
+    --tema-status-alerta: #EFB169;
+    --tema-status-erro: #F2937D;
+
+    /* --- Versões sólidas dos acentos --------------------------------------
+       Os tokens acima são para TRAÇO — texto, ícone, borda — sobre superfície
+       escura. Um botão preenchido precisa do caminho inverso: fundo escuro o
+       bastante para o BRANCO por cima passar em AA. Usar o tom de traço como
+       fundo é o erro clássico; dá 1,5:1 e o rótulo desaparece.
+
+       É aqui que o branco tem seu lugar certo no tema: sobre estes quatro
+       fundos, e em nenhum outro. Em superfície comum, o texto máximo é
+       `--tema-texto-forte`, que não é branco puro — branco puro sobre ardósia
+       vibra e cansa a leitura. */
+    --tema-solido-marca: #2E7F72;
+    --tema-solido-sucesso: #2A7F52;
+    --tema-solido-info: #3A5BA8;
+    --tema-solido-erro: #AF4028;
+}
+
+/* Informa ao navegador que a página é escura. Sem isso, controles nativos
+   (barra de rolagem, autofill, seletores) continuam sendo pintados em claro e
+   destoam do restante da tela. */
+:root[data-tema="eleitoral"] {
+    color-scheme: dark;
+}
+
+
+/* ==========================================================================
+   3. TROCA DE LOGO
+   --------------------------------------------------------------------------
+   A logo não pode ser trocada por CSS quando vive num atributo `src`, então o
+   template publica as DUAS versões e aqui decidimos qual fica visível. Como
+   `display: none` remove o elemento da árvore de acessibilidade, o leitor de
+   tela enxerga apenas uma logo — não há texto alternativo duplicado.
+   ========================================================================== */
+
+.logo-tema--eleitoral {
+    display: none;
+}
+
+html[data-tema="eleitoral"] .logo-tema--claro {
+    display: none;
+}
+
+html[data-tema="eleitoral"] .logo-tema--eleitoral {
+    display: block;
+
+    /* O arquivo da logo eleitoral é pintado em #0F7871, um verde escuro pensado
+       para fundo branco. Sobre as superfícies escuras do tema ele quase
+       desaparece. O brilho a leva para perto de #36C4BB — mesma matiz, mesma
+       identidade, agora com contraste real contra o fundo. Ajustar aqui evita
+       precisar manter um segundo arquivo de imagem só para o escuro.
+
+       Os valores subiram junto com a paleta ardósia: o `brightness` antigo
+       (1.45) foi calibrado contra fundos em L* 12 e deixava a logo apagada
+       sobre os fundos atuais, oito pontos mais claros. O `saturate` abaixo de 1
+       é o que impede o resultado de virar um ciano neon — ele aproxima o
+       resultado do teal #66CBB6 usado no resto do tema.
+
+       O `drop-shadow` é reintroduzido de propósito: o template aplica sombra na
+       logo via `drop-shadow-md`, do Tailwind, que age na MESMA propriedade
+       `filter`. Declará-la aqui substitui o valor inteiro, então omitir a sombra
+       a faria sumir. */
+    filter: brightness(1.7) saturate(0.8) drop-shadow(0 4px 6px rgba(0, 0, 0, .45));
+}
+
+
+/* ==========================================================================
+   4. BOTÃO DE ALTERNÂNCIA (SOL / LUA)
+   --------------------------------------------------------------------------
+   Botão circular único, na convenção já consagrada de dark mode: o ícone
+   mostrado é sempre o do modo para o qual se vai, não o do modo atual.
+       modo claro ativo      → mostra a LUA  (clique leva ao escuro)
+       modo eleitoral ativo  → mostra o SOL  (clique leva ao claro)
+
+   Os dois ícones ficam empilhados no mesmo ponto e alternam por opacidade e
+   rotação, o que dá a transição contínua — trocar o `src`/`display` cortaria
+   a animação pela metade.
+
+   Escrito em CSS puro de propósito: `static/css/output.css` é um bundle
+   Tailwind pré-compilado e purgado, sem processo de build no projeto, então
+   classes utilitárias novas simplesmente não existem nele.
+   ========================================================================== */
+
+.tema-toggle {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid var(--tema-borda-forte);
+    background-color: var(--tema-superficie-2);
+    color: var(--tema-texto-medio);
+    cursor: pointer;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+        background-color .3s ease,
+        border-color .3s ease,
+        color .3s ease,
+        transform .2s ease;
+}
+
+.tema-toggle:hover {
+    color: var(--tema-primaria);
+    border-color: var(--tema-primaria-borda);
+    transform: translateY(-1px);
+}
+
+.tema-toggle:active {
+    transform: translateY(0);
+}
+
+.tema-toggle:focus-visible {
+    outline: 2px solid var(--tema-primaria);
+    outline-offset: 3px;
+}
+
+/* No escuro o botão ganha um halo teal sutil, para não sumir no fundo. */
+html[data-tema="eleitoral"] .tema-toggle {
+    background-color: rgba(102, 203, 182, 0.12);
+    border-color: var(--tema-primaria-borda);
+    color: var(--tema-primaria-suave);
+}
+
+html[data-tema="eleitoral"] .tema-toggle:hover {
+    background-color: rgba(102, 203, 182, 0.20);
+    color: #B4EEE0;
+}
+
+/* Os dois ícones ocupam exatamente a mesma célula, sobrepostos. */
+.tema-toggle__icone {
+    position: absolute;
+    width: 19px;
+    height: 19px;
+    transition:
+        opacity .32s ease,
+        transform .42s cubic-bezier(.34, 1.4, .64, 1);
+}
+
+/* Estado de repouso: a lua está visível (modo claro ativo). */
+.tema-toggle__icone--lua {
+    opacity: 1;
+    transform: rotate(0deg) scale(1);
+}
+
+.tema-toggle__icone--sol {
+    opacity: 0;
+    transform: rotate(-90deg) scale(.5);
+}
+
+/* No modo eleitoral os papéis se invertem: o sol entra girando. */
+html[data-tema="eleitoral"] .tema-toggle__icone--lua {
+    opacity: 0;
+    transform: rotate(90deg) scale(.5);
+}
+
+html[data-tema="eleitoral"] .tema-toggle__icone--sol {
+    opacity: 1;
+    transform: rotate(0deg) scale(1);
+}
+
+/* Respeita quem pediu menos movimento no sistema operacional. */
+@media (prefers-reduced-motion: reduce) {
+
+    .tema-toggle,
+    .tema-toggle__icone {
+        transition: opacity .01ms;
+    }
+
+    .tema-toggle:hover {
+        transform: none;
+    }
+}

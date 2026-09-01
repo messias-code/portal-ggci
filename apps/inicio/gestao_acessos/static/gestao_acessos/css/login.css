@@ -1,0 +1,490 @@
+/* ==========================================================================
+   CONFIGURAÇÕES GLOBAIS
+   ========================================================================== */
+
+/* Define a fonte padrão para toda a página (A fonte 'Poppins' é importada no <head> dos arquivos HTML) */
+body {
+    font-family: 'Poppins', sans-serif;
+}
+
+
+/* ==========================================================================
+   ANIMAÇÕES DO CARD DE LOGIN (FORMAS INTERNAS)
+   Onde editar no HTML: divs com classes .shape-1, .shape-2 e .shape-3 dentro
+   do painel esquerdo em 'templates/login/index.html'.
+   ========================================================================== /* Animação de flutuação vertical simplificada e leve */
+@keyframes float {
+    0% {
+        transform: translate3d(0, 0, 0);
+    }
+
+    33% {
+        transform: translate3d(0, -30px, 0);
+    }
+
+    66% {
+        transform: translate3d(0, 20px, 0);
+    }
+
+    100% {
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+/* Animação de deslize horizontal simplificada com leve rotação */
+@keyframes slide {
+    0% {
+        transform: translate3d(0, 0, 0) rotate(0deg);
+    }
+
+    50% {
+        transform: translate3d(20px, 0, 0) rotate(5deg);
+    }
+
+    100% {
+        transform: translate3d(0, 0, 0) rotate(0deg);
+    }
+}
+
+/* Aplicação das animações nas formas geométricas decorativas */
+.shape-1 {
+    animation: float 8s ease-in-out infinite;
+    will-change: transform;
+}
+
+.shape-2 {
+    animation: float 12s ease-in-out infinite reverse;
+    will-change: transform;
+}
+
+/* Executa ao contrário para criar contraste, centralizado com margens */
+.shape-3 {
+    left: 50%;
+    top: 50%;
+    margin-left: -160px; /* -w-80 / 2 */
+    margin-top: -160px;  /* -h-80 / 2 */
+    animation: slide 10s ease-in-out infinite;
+    will-change: transform;
+}
+
+
+/* ======================================================================================
+   PLANO DE FUNDO (BOLHAS COLORIDAS BLUR ESTÁTICAS)
+   As bolhas coloridas de fundo agora são estáticas para garantir 100% de performance 
+   e resposta instantânea aos cliques no navegador, mantendo o visual rico e vibrante.
+   =================================================================================== */
+
+/* ==========================================================================
+   PLANO DE FUNDO - MALHA DE GRID (.grid-bg)
+   Cria um efeito sutil de linhas de grade (grid) roxas cruzadas no plano de fundo,
+   proporcionando profundidade visual e um aspecto técnico/moderno à interface.
+   ========================================================================== */
+.grid-bg {
+    background-image: 
+        linear-gradient(rgba(147, 51, 234, 0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(147, 51, 234, 0.07) 1px, transparent 1px);
+    background-size: 113px 75px;
+}
+
+
+/* =========================================
+   BOTÃO NEON EXTREMAMENTE LEVE E OTIMIZADO
+========================================= */
+
+.neon-btn {
+    position: relative;
+    background: linear-gradient(135deg,
+            #7c3aed,
+            #8b5cf6,
+            #6d28d9);
+
+    /* Sombra normal leve */
+    box-shadow: 0 10px 25px rgba(124, 58, 237, 0.25);
+
+    /* Transição suave de transformação simples */
+    transition: transform .25s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    isolation: isolate;
+}
+
+
+/* GPU Shadow Trick: Sombra extra de hover isolada via opacidade */
+.neon-btn::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 1rem;
+    box-shadow:
+        0 15px 35px rgba(124, 58, 237, 0.35),
+        0 0 20px rgba(217, 70, 239, 0.25);
+    opacity: 0;
+    transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: -1;
+    pointer-events: none;
+}
+
+.neon-btn:hover {
+    transform: translateY(-2px);
+}
+
+.neon-btn:hover::after {
+    opacity: 1;
+}
+
+.neon-btn:active {
+    transform: translateY(0);
+}
+
+
+/* ==========================================================================
+   ==========================================================================
+   MODO ELEITORAL — TELA DE LOGIN
+   ==========================================================================
+   ==========================================================================
+   Reveste a tela de login com um MODO ESCURO completo, sobre a paleta ardósia
+   definida em `static/css/tema.css`.
+
+   O que ele NÃO é: uma versão dessaturada do modo claro. Não é uma troca de
+   roxo por verde mantendo tudo branco — é um tema escuro próprio, com seus
+   próprios fundos, profundidades e acentos. A única regra herdada do período
+   eleitoral é a logo: `ovg-eleitoral.png` no lugar da marca colorida.
+
+   CORPO NEUTRO, ACENTO COLORIDO
+     A primeira versão deste tema era verde no fundo E no destaque, e o cliente
+     reprovou ("escuro demais", "verde demais"). O corpo passou a ser ardósia —
+     um cinza-azulado neutro — e o teal ficou reservado a traços e estados. É o
+     fundo neutro que devolve força ao acento. Ao mexer em qualquer cor aqui,
+     mantenha essa divisão: se a superfície ganhar matiz, o acento a perde.
+
+   COMO ISSO FUNCIONA
+     Todas as regras pendem de `html[data-tema="eleitoral"]`, atributo escrito
+     no <html> pelo `static/js/tema.js`. Sem ele, nada aqui tem efeito e o modo
+     claro permanece exatamente como o Tailwind o pinta, intocado.
+
+   POR QUE CSS MANUAL E NÃO CLASSES UTILITÁRIAS
+     O projeto consome `static/css/output.css`, um bundle Tailwind já compilado
+     e purgado, sem processo de build no repositório. Classes utilitárias novas
+     não existiriam nesse arquivo.
+
+   SOBRE A ESPECIFICIDADE
+     O Tailwind aplica cor por classe simples (0,1,0). Prefixar com
+     `html[data-tema="eleitoral"]` eleva cada regra para 0,2,x e garante a
+     sobreposição sem recorrer a `!important`.
+
+   AS CORES VÊM DOS TOKENS DE `static/css/tema.css`
+     Nunca escreva uma cor direto aqui sem necessidade: use as variáveis
+     `--tema-*`. É o que mantém login e futuras telas na mesma língua cromática.
+   ========================================================================== */
+
+
+/* --------------------------------------------------------------------------
+   POSICIONAMENTO DO BOTÃO DE MODO
+   Ancorado no canto superior direito do painel de formulário (que já é
+   `relative`). Fica FORA do bloco escuro de propósito: o botão precisa estar
+   visível nos dois modos.
+
+   Escrito aqui em vez de com utilitários porque `output.css` é um bundle
+   purgado — `top-6` e `right-6` não foram gerados nele, e o controle acabaria
+   solto no fluxo da página.
+   -------------------------------------------------------------------------- */
+.login-tema-toggle {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    z-index: 20;
+}
+
+
+/* --------------------------------------------------------------------------
+   FUNDO DA PÁGINA
+   O <body> não declara cor de fundo no modo claro (herda o branco do
+   navegador), então aqui ela precisa ser pintada explicitamente — caso
+   contrário sobraria uma moldura branca em volta do card.
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] body {
+    background-color: var(--tema-fundo);
+}
+
+html[data-tema="eleitoral"] .grid-bg {
+    background-image:
+        linear-gradient(var(--tema-grade) 1px, transparent 1px),
+        linear-gradient(90deg, var(--tema-grade) 1px, transparent 1px);
+}
+
+
+/* --------------------------------------------------------------------------
+   HALOS DE FUNDO (BLOBS)
+   O eixo é teal → petróleo → azul índigo, com os halos azuis embaixo: o peso
+   cromático desce para o rodapé da tela e o conteúdo fica recortado contra a
+   parte mais fria do fundo, em vez de nadar num campo de cor uniforme.
+   Valores idênticos nas telas de login e de menu, para que todo o portal
+   compartilhe a mesma atmosfera de fundo.
+
+   SOBRE AS OPACIDADES — elas subiram junto com a paleta ardósia, e por um
+   motivo que não é óbvio: halo é cor por CONTRASTE com o que está atrás. Num
+   fundo mais claro, o mesmo alfa produz menos diferença. Manter os valores
+   antigos teria transformado o ganho de claridade em perda de cor — que era
+   justamente a queixa a resolver.
+   -------------------------------------------------------------------------- */
+
+html[data-tema="eleitoral"] .login-blob--1 {
+    background-color: rgba(86, 114, 179, 0.42);
+}
+
+html[data-tema="eleitoral"] .login-blob--2 {
+    background-color: rgba(72, 110, 150, 0.34);
+}
+
+html[data-tema="eleitoral"] .login-blob--3 {
+    background-color: rgba(58, 91, 168, 0.32);
+}
+
+html[data-tema="eleitoral"] .login-blob--4 {
+    background-color: rgba(53, 120, 109, 0.24);
+}
+
+
+/* --------------------------------------------------------------------------
+   CARD PRINCIPAL
+   Semitransparente para que os halos continuem sendo percebidos por trás dele.
+   A borda clara vira um fio de luz de baixa opacidade — é o que define o
+   contorno do card contra o fundo escuro, papel que a sombra sozinha não
+   cumpre quando tudo em volta já é escuro.
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] .login-card {
+    /* rgba equivalente a --tema-superficie (#38414F). Precisa ser literal
+       porque o alfa faz parte do efeito: é a transparência que deixa os halos
+       de fundo aparecerem através do card. */
+    background-color: rgba(56, 65, 79, 0.88);
+    border-color: var(--tema-borda);
+    box-shadow:
+        0 25px 60px rgba(0, 0, 0, 0.55),
+        /* Fio de contorno incolor. Quando era teal, competia com o conteúdo:
+           num tema de corpo neutro, quem carrega a cor é o acento, não a
+           moldura. */
+        0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+
+/* --------------------------------------------------------------------------
+   PAINEL ESQUERDO (MARCA)
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] .login-painel-marca {
+    /* Teal no topo, a ardósia do tema no meio e uma virada para o azul índigo
+       embaixo — o mesmo percurso dos halos e do botão de acesso, na escala do
+       painel. É o lugar da tela onde a cor pode ser mais assumida, porque não
+       há texto pequeno por cima: só a logo e o slogan. */
+    background-image: linear-gradient(to bottom right, #2C5D55, #303B4A 55%, #354470);
+}
+
+/* As formas flutuantes usam `mix-blend-multiply`, que sobre fundo escuro só
+   escurece ainda mais — elas simplesmente desapareceriam. Trocar para `screen`
+   inverte o comportamento: agora elas CLAREIAM o fundo, funcionando como
+   halos de luz. Sem esta linha, todo o painel esquerdo perde a profundidade. */
+html[data-tema="eleitoral"] .shape-1,
+html[data-tema="eleitoral"] .shape-2,
+html[data-tema="eleitoral"] .shape-3 {
+    mix-blend-mode: screen;
+}
+
+html[data-tema="eleitoral"] .shape-1 {
+    background-color: #378477;
+    opacity: .58;
+}
+
+html[data-tema="eleitoral"] .shape-2 {
+    background-color: #40808C;
+    opacity: .48;
+}
+
+html[data-tema="eleitoral"] .shape-3 {
+    background-color: #4568A6;
+    opacity: .52;
+}
+
+/* --------------------------------------------------------------------------
+   ILUSTRAÇÃO
+   Aqui esteve o maior buraco de cor do tema, e a lição vale para qualquer
+   tela: a versão anterior filtrava a arte com
+   `grayscale(1) sepia() hue-rotate()`. Essa cadeia zera a cor e reconstrói UMA
+   matiz só — o resultado é monocromático por construção. Como a ilustração
+   ocupa metade da tela e é o único elemento pictórico do login, ela sozinha
+   respondia pela impressão de que o modo escuro "não tinha cor".
+
+   A troca é por ARQUIVO, não por filtro. Ao amostrar `job.png` descobriu-se
+   que ela já era quase toda da paleta: 40% dos pixels são o petróleo #1A2E35 e
+   a pele é o coral #E9A394. Só o roxo do laptop e das roupas destoava. A
+   variante `job-eleitoral.png` tem apenas a faixa de matiz roxa (225°–305°)
+   deslocada para o azul índigo da referência (205°–232°), com pele, petróleo e
+   brancos intactos.
+
+   REGRA GERAL: `filter` é a ferramenta errada quando se quer PRESERVAR cor —
+   ele age sobre a imagem inteira e não distingue o que deve mudar do que não
+   deve. Para isso, gere uma variante do asset, como já se faz com a logo.
+
+   O mecanismo de troca é o mesmo da logo: as duas versões vão no HTML e o CSS
+   decide qual aparece. `display: none` tira o elemento da árvore de
+   acessibilidade, então o leitor de tela enxerga só uma imagem — não há texto
+   alternativo duplicado.
+   -------------------------------------------------------------------------- */
+.login-ilustracao--eleitoral {
+    display: none;
+}
+
+html[data-tema="eleitoral"] .login-ilustracao--claro {
+    display: none;
+}
+
+html[data-tema="eleitoral"] .login-ilustracao--eleitoral {
+    display: block;
+}
+
+html[data-tema="eleitoral"] .login-slogan {
+    color: var(--tema-texto-forte);
+}
+
+html[data-tema="eleitoral"] .login-slogan span {
+    color: var(--tema-primaria-suave);
+}
+
+
+/* --------------------------------------------------------------------------
+   PAINEL DIREITO (FORMULÁRIO) E TIPOGRAFIA
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] .login-painel-form {
+    background-color: transparent;
+}
+
+html[data-tema="eleitoral"] .login-titulo {
+    color: var(--tema-texto-forte);
+}
+
+html[data-tema="eleitoral"] .login-subtitulo {
+    color: var(--tema-texto-medio);
+}
+
+
+/* --------------------------------------------------------------------------
+   BANNER INFORMATIVO
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] .login-aviso {
+    background-color: var(--tema-primaria-lavada);
+    border-left-color: var(--tema-primaria);
+    color: #CDEAE2;
+}
+
+
+/* --------------------------------------------------------------------------
+   CAMPOS DO FORMULÁRIO
+   Os seletores repetem a estrutura que o Tailwind gera para as variantes
+   `group-focus-within:` e `focus:`, para que a sobreposição aconteça
+   exatamente nos mesmos estados.
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] .login-label {
+    color: var(--tema-texto-medio);
+}
+
+html[data-tema="eleitoral"] .group:focus-within .login-label {
+    color: var(--tema-primaria-suave);
+}
+
+html[data-tema="eleitoral"] .login-icone {
+    color: var(--tema-texto-fraco);
+}
+
+html[data-tema="eleitoral"] .group:focus-within .login-icone {
+    color: var(--tema-primaria-suave);
+}
+
+html[data-tema="eleitoral"] .login-input {
+    background-color: var(--tema-superficie-3);
+    border-color: var(--tema-borda);
+    color: var(--tema-texto-forte);
+}
+
+html[data-tema="eleitoral"] .login-input::placeholder {
+    color: var(--tema-texto-fraco);
+}
+
+html[data-tema="eleitoral"] .login-input:focus {
+    background-color: var(--tema-superficie-2);
+    border-color: var(--tema-primaria);
+    box-shadow: 0 0 0 4px rgba(111, 211, 191, 0.18);
+}
+
+/* Preenchimento automático do navegador.
+   O Chrome pinta o campo autopreenchido com um amarelo/branco fixo que ignora
+   `background-color` — num tema escuro o resultado é uma faixa clara berrante
+   com texto ilegível. A única saída é cobrir o fundo com uma sombra interna
+   sólida e forçar a cor do texto pelo `-webkit-text-fill-color`. O delay
+   absurdo na transição impede que o amarelo reapareça durante a animação. */
+html[data-tema="eleitoral"] .login-input:-webkit-autofill,
+html[data-tema="eleitoral"] .login-input:-webkit-autofill:hover,
+html[data-tema="eleitoral"] .login-input:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--tema-texto-forte);
+    -webkit-box-shadow: 0 0 0 1000px var(--tema-superficie-3) inset;
+    caret-color: var(--tema-texto-forte);
+    transition: background-color 9999s ease-in-out 0s;
+}
+
+html[data-tema="eleitoral"] .login-olho {
+    color: var(--tema-texto-fraco);
+}
+
+html[data-tema="eleitoral"] .login-olho:hover {
+    color: var(--tema-primaria-suave);
+}
+
+/* O script inline do template alterna a classe `text-purple-600` no botão do
+   olho para sinalizar que a senha está visível. Como essa classe é imposta via
+   JavaScript, ela precisa ser reinterpretada aqui em vez de removida de lá —
+   assim o modo claro segue intacto. */
+html[data-tema="eleitoral"] .login-olho.text-purple-600 {
+    color: var(--tema-primaria-suave);
+}
+
+
+/* --------------------------------------------------------------------------
+   BOTÃO PRINCIPAL DE ACESSO
+   O degradê atravessa esmeralda → teal → ciano. É a mesma ideia dos halos:
+   variar a matiz dentro da família em vez de escurecer um único verde, o que
+   dá ao botão um brilho com movimento em vez de um bloco chapado.
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] .neon-btn {
+    background: linear-gradient(135deg,
+            var(--tema-acento-esmeralda),
+            var(--tema-primaria),
+            var(--tema-acento-ciano));
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45);
+}
+
+html[data-tema="eleitoral"] .neon-btn::after {
+    box-shadow:
+        0 15px 35px rgba(0, 0, 0, 0.5),
+        0 0 22px rgba(111, 211, 191, 0.42);
+}
+
+
+/* --------------------------------------------------------------------------
+   NOTIFICAÇÕES (TOASTS)
+   O `login.js` monta o toast com `bg-white` fixo no JavaScript. Em vez de
+   alterar o script — o que arriscaria o modo claro —, o container é usado como
+   gancho e o filho é repintado aqui. O `id` no seletor dá especificidade de
+   sobra sobre as utilitárias.
+
+   O vermelho da barra e do ícone é preservado: é sinalização de erro, e trocá-lo
+   por verde num tema verde apagaria justamente a informação que o toast carrega.
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] #toast-container > div {
+    background-color: var(--tema-superficie-2);
+    border-left-color: var(--tema-status-erro);
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.6);
+}
+
+html[data-tema="eleitoral"] #toast-container p {
+    color: var(--tema-texto-forte);
+}
+
+html[data-tema="eleitoral"] #toast-container .bg-pink-100 {
+    background-color: rgba(242, 147, 125, 0.18);
+}

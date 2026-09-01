@@ -1,0 +1,283 @@
+/* ==========================================================================
+   PORTAL GGCI — MODO ELEITORAL DAS TELAS DE FERRAMENTA (COMPARTILHADO)
+   ==========================================================================
+   As telas internas de Ferramentas — Formatador de Listas e Formatador de
+   Dados — repetem a mesma anatomia: a casca de menu (já tratada em
+   `static/css/tema-menu.css`) mais uma área de trabalho com painéis de vidro,
+   rótulos, selos de contagem, campos de texto grandes e um par de botões
+   Limpar/Processar. Este arquivo cobre essa área de trabalho uma única vez,
+   em vez de repetir o mesmo bloco no CSS de cada ferramenta.
+
+   COMO USAR NUMA TELA NOVA
+     1. No <head>, depois de `output.css`:
+            <script src="{% static 'js/tema.js' %}"></script>   (no topo, síncrono)
+            <link rel="stylesheet" href="{% static 'css/tema.css' %}">
+            <link rel="stylesheet" href="{% static 'css/tema-menu.css' %}">
+            <link rel="stylesheet" href="{% static 'css/tema-ferramenta.css' %}">
+     2. Marque os elementos com as classes `fmt-*` abaixo. Elas não pintam nada
+        no modo claro — servem só de ponto de ancoragem.
+
+   Doutrina, igual ao resto do portal: toda regra pende de
+   `html[data-tema="eleitoral"]`, as cores saem dos tokens `--tema-*`, e o CSS
+   é manual porque `static/css/output.css` é um bundle Tailwind purgado.
+   ========================================================================== */
+
+
+/* --------------------------------------------------------------------------
+   CABEÇALHO: ÍCONE DECORATIVO E BOTÃO VOLTAR
+   Mesmos elementos das telas de Alteração de Senha e Gestão de Acessos.
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] .tela-header-icone {
+    background-image: linear-gradient(to bottom right, rgba(111, 211, 191, 0.22), rgba(111, 211, 191, 0.10));
+    color: var(--tema-primaria-suave);
+}
+
+html[data-tema="eleitoral"] .tela-voltar {
+    background-color: rgba(255, 255, 255, 0.06);
+    border-color: var(--tema-borda-forte);
+    color: var(--tema-texto-medio);
+}
+
+html[data-tema="eleitoral"] .tela-voltar:hover {
+    background-color: rgba(111, 211, 191, 0.16);
+    border-color: var(--tema-primaria-borda);
+    color: var(--tema-primaria-suave);
+}
+
+
+/* --------------------------------------------------------------------------
+   PAINÉIS DE TRABALHO
+   Ficam acima do painel principal na hierarquia, então recebem uma superfície
+   um degrau mais clara — é assim que o escuro comunica elevação.
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] .fmt-painel {
+    background-color: rgba(66, 76, 91, 0.62);
+    border-color: var(--tema-borda);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+}
+
+html[data-tema="eleitoral"] .fmt-label {
+    color: var(--tema-texto-forte);
+}
+
+html[data-tema="eleitoral"] .fmt-label-mini {
+    color: var(--tema-texto-medio);
+}
+
+/* Divisórias verticais entre grupos de opções. */
+html[data-tema="eleitoral"] .fmt-divisor {
+    background-color: var(--tema-borda);
+}
+
+
+/* --------------------------------------------------------------------------
+   SELOS DE CONTAGEM
+   Três variantes no modo claro: neutro (cinza), destaque (rosa) e informativo
+   (roxo). No escuro o neutro vira um véu branco, e os dois coloridos passam a
+   compartilhar o teal do tema — a distinção que importa é entrada × saída,
+   e ela já está no texto ao lado.
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] .fmt-badge {
+    background-color: rgba(255, 255, 255, 0.09);
+    color: var(--tema-texto-medio);
+}
+
+html[data-tema="eleitoral"] .fmt-badge--destaque,
+html[data-tema="eleitoral"] .fmt-badge--info {
+    background-color: rgba(111, 211, 191, 0.18);
+    color: var(--tema-primaria-suave);
+}
+
+
+/* --------------------------------------------------------------------------
+   CAMPOS DE TEXTO
+   São a maior superfície da tela: se ficarem claros, dominam tudo.
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] .fmt-entrada {
+    background-color: var(--tema-superficie-3);
+    border-color: var(--tema-borda);
+    color: var(--tema-texto-forte);
+}
+
+html[data-tema="eleitoral"] .fmt-entrada::placeholder {
+    color: var(--tema-texto-fraco);
+}
+
+html[data-tema="eleitoral"] .fmt-entrada:focus {
+    border-color: var(--tema-primaria);
+}
+
+/* Caixa do resultado ("Lista Formatada", "Filtro SQL") e o texto monoespaçado
+   dentro dela.
+
+   ERRO CORRIGIDO — esta caixa era um preto quase puro, MAIS ESCURO que o fundo
+   da página. A intenção era imitar um terminal, mas o efeito prático foi o
+   oposto do pretendido: a maior superfície da tela virava um buraco preto no
+   meio de um tema ardósia, e o resultado — que é o produto da ferramenta —
+   parecia desligado.
+
+   Agora ela sobe para a superfície-3, o degrau mais ELEVADO da escala. A lógica
+   é a mesma de qualquer painel de saída: o que o usuário veio buscar deve ser
+   a área mais destacada da tela, não a mais afundada. */
+html[data-tema="eleitoral"] .fmt-saida-caixa {
+    background-color: var(--tema-superficie-3);
+    border-color: var(--tema-primaria-borda);
+}
+
+/* O texto vem em teal claro, não em branco: é o que mantém a leitura de
+   "saída de código" sem recorrer ao fundo preto para consegui-la. */
+html[data-tema="eleitoral"] .fmt-saida-caixa textarea {
+    color: var(--tema-primaria-suave);
+}
+
+
+/* --------------------------------------------------------------------------
+   BOTÕES DE AÇÃO
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] .fmt-btn-limpar {
+    background-color: rgba(255, 255, 255, 0.07);
+    color: var(--tema-texto-medio);
+}
+
+html[data-tema="eleitoral"] .fmt-btn-limpar:hover {
+    background-color: rgba(255, 255, 255, 0.13);
+    color: var(--tema-texto-forte);
+}
+
+/* O degradê atravessa teal → azul índigo: a mesma ideia usada no botão
+   de acesso do login — variar a matiz dentro da família em vez de escurecer
+   uma única matiz. */
+/* ERRO CORRIGIDO — o botão "Normalizar Dados" saía NEON.
+
+   A causa é um equívoco de papel entre os dois tipos de token. Os tons como
+   `--tema-primaria` (#6FD3BF) são de TRAÇO: claros de propósito, para terem
+   contraste como texto ou ícone SOBRE superfície escura. Ao usá-los como
+   preenchimento de um botão largo, inverte-se a lógica — uma área grande, de
+   alta claridade e alta saturação, sobre um fundo escuro. Isso é a definição
+   de neon, e o gradiente piorava: a parada do meio era o tom mais claro dos
+   três, criando uma faixa acesa no centro do botão.
+
+   O caminho certo é o inverso: fundo ESCURO o bastante para o branco por cima
+   passar em AA. É para isso que existem os tokens `--tema-solido-*`. O degradê
+   permanece — teal → azul, o eixo do tema —, mas agora entre duas cores
+   profundas, e a sombra volta a ser preta em vez de halo colorido. */
+html[data-tema="eleitoral"] .fmt-btn-processar {
+    background-image: linear-gradient(135deg,
+            var(--tema-solido-marca),
+            var(--tema-solido-info));
+    color: #FFFFFF;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.38);
+}
+
+/* O hover clareia por `filter`, não trocando as cores: mantém o degradê e o
+   contraste do rótulo, sem reintroduzir brilho de cor. */
+html[data-tema="eleitoral"] .fmt-btn-processar:hover {
+    filter: brightness(1.18);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+}
+
+
+/* --------------------------------------------------------------------------
+   BOTÕES DE OPÇÃO (.btn-option — Formatador de Dados)
+   A classe é definida no CSS da própria ferramenta; aqui só as cores mudam.
+   O estado `.active` precisa continuar obviamente distinto do repouso, que é
+   a única forma de o usuário saber qual transformação está selecionada.
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] .btn-option {
+    background-color: rgba(255, 255, 255, 0.06);
+    border-color: var(--tema-borda);
+    color: var(--tema-texto-medio);
+}
+
+html[data-tema="eleitoral"] .btn-option:hover {
+    background-color: rgba(111, 211, 191, 0.14);
+    border-color: var(--tema-primaria-borda);
+    color: var(--tema-primaria-suave);
+}
+
+/* O estado ativo traz `box-shadow: rgba(236, 72, 153, .35)` no CSS da própria
+   ferramenta — um halo ROSA em volta do botão. Sobrescrever só o degradê e a
+   borda deixava esse brilho intacto, e sobre fundo escuro ele fica muito mais
+   evidente do que era no claro: lia-se como uma luz rosa contornando o botão.
+   Trocar a cor não bastaria; o halo colorido é justamente o tipo de destaque
+   que o modo eleitoral não pode ter, então vira profundidade neutra. */
+html[data-tema="eleitoral"] .btn-option.active {
+    background-image: linear-gradient(to right, var(--tema-primaria-forte), var(--tema-primaria));
+    border-color: var(--tema-primaria);
+    color: #FFFFFF;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.38);
+}
+
+/* Cursor de digitação dos campos grandes. O CSS da ferramenta o pinta de
+   #f472b6 (rosa) via `textarea.custom-caret` — pouco visível no claro, mas
+   piscando em rosa sobre o fundo escuro a cada tecla. */
+html[data-tema="eleitoral"] textarea.custom-caret {
+    caret-color: var(--tema-primaria-suave);
+}
+
+
+/* --------------------------------------------------------------------------
+   BOTÃO FLUTUANTE DE COPIAR (#btn-copiar)
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] #btn-copiar {
+    background-color: var(--tema-primaria-forte);
+    color: #FFFFFF;
+}
+
+html[data-tema="eleitoral"] #btn-copiar:hover {
+    background-color: var(--tema-primaria);
+}
+
+
+/* --------------------------------------------------------------------------
+   ALERTA DE DUPLICATAS (#alert-duplicatas)
+   No modo claro é inteiramente rosa. Como avisa sobre dados descartados, e
+   não sobre erro, ele segue o teal do tema em vez de virar vermelho — o
+   vermelho aqui sugeriria falha onde houve apenas limpeza.
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] #alert-duplicatas {
+    background-color: rgba(111, 211, 191, 0.10);
+    border-top-color: var(--tema-primaria);
+}
+
+html[data-tema="eleitoral"] #alert-duplicatas .text-pink-800,
+html[data-tema="eleitoral"] #alert-duplicatas .text-pink-700,
+html[data-tema="eleitoral"] #alert-duplicatas .text-pink-600 {
+    color: var(--tema-primaria-suave);
+}
+
+html[data-tema="eleitoral"] #alert-duplicatas .border-pink-200 {
+    border-color: var(--tema-primaria-borda);
+}
+
+html[data-tema="eleitoral"] #alert-duplicatas .bg-white {
+    background-color: rgba(26, 32, 41, 0.55);
+}
+
+html[data-tema="eleitoral"] #alert-duplicatas .hover\:bg-pink-100:hover {
+    background-color: rgba(111, 211, 191, 0.18);
+}
+
+html[data-tema="eleitoral"] #conteudo-duplicatas {
+    color: var(--tema-primaria-suave);
+}
+
+/* --- Escolha do separador (Formatador de Listas) --------------------------
+   Mais um caso de cor escrita à mão no CSS da ferramenta: as utilitárias
+   neutras não alcançam botões desenhados fora do Tailwind. */
+html[data-tema="eleitoral"] .fmt-sep {
+    background-color: var(--tema-superficie-2);
+    border-color: var(--tema-borda);
+    color: var(--tema-texto-medio);
+}
+html[data-tema="eleitoral"] .fmt-sep:hover {
+    background-color: var(--tema-superficie-3);
+    border-color: var(--tema-primaria-borda);
+    color: var(--tema-primaria-suave);
+}
+html[data-tema="eleitoral"] .fmt-sep--ativo,
+html[data-tema="eleitoral"] .fmt-sep--ativo:hover {
+    background-color: var(--tema-primaria-forte);
+    border-color: var(--tema-primaria-forte);
+    color: #FFFFFF;
+}

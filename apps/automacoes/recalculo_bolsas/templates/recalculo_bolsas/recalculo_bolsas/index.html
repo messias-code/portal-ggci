@@ -1,0 +1,444 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    {% comment %}
+    === ARQUIVO: templates/recalculo_bolsas/recalculo_bolsas/index.html ===
+    Propósito: Estrutura visual da automação de Recálculo de Bolsas.
+    Dependências: bundle Tailwind pré-compilado (static/css/output.css), Font Awesome, Turbo.
+
+    O QUE FAZ: Monta a área de trabalho em três faixas — o card de configuração com os blocos
+               Base de Extração e Formulário de Recálculo, a barra de controle e o console de
+               processamento.
+    POR QUÊ EXISTE: Permite disparar o recálculo sem CLI, no mesmo vocabulário visual do
+                    app Análise IA (mesma casca, mesma barra, mesmo terminal).
+    COMO FUNCIONA: Utilitários do bundle no HTML; o que o bundle não cobre vive em
+                   `static/recalculo_bolsas/css/recalculo_bolsas.css`. Toda classe usada aqui
+                   foi conferida contra o bundle — utilitário ausente falha em silêncio.
+    {% endcomment %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recálculo de Bolsas - Portal GGCI</title>
+
+    <!--
+        MOTOR DE TEMAS — precisa vir antes de tudo.
+        Carregado SEM 'defer'/'async' de propósito: executado de forma síncrona
+        aqui no <head>, grava o atributo data-tema no <html> antes da primeira
+        pintura, eliminando o flash do tema padrão. Como a preferência vive no
+        localStorage, o modo escolhido em qualquer tela já chega aplicado aqui.
+    -->
+    <script src="{% static 'js/tema.js' %}"></script>
+
+    <link rel="stylesheet" href="{% static 'css/output.css' %}">
+    <!-- Console de processamento: utilitárias que o bundle purgou + os dois temas. -->
+    <link rel="stylesheet" href="{% static 'css/console.css' %}?v=1">
+
+    <!-- Tokens de cor dos temas e o botão sol/lua (compartilhado por todo o portal) -->
+    <link rel="stylesheet" href="{% static 'css/tema.css' %}">
+
+    <!-- Modo escuro da casca de menu (barra lateral + cabeçalho), compartilhado -->
+    <link rel="stylesheet" href="{% static 'css/tema-menu.css' %}">
+
+    <!-- Modo escuro da área de trabalho (painéis, campos, botões), compartilhado -->
+    <link rel="stylesheet" href="{% static 'css/tema-ferramenta.css' %}">
+
+    <!-- Remapeia em bloco as utilitárias neutras dentro de .area-trabalho -->
+    <link rel="stylesheet" href="{% static 'css/tema-conteudo.css' %}">
+
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <link rel="stylesheet" href="{% static 'recalculo_bolsas/css/recalculo_bolsas.css' %}">
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@8.0.4/dist/turbo.es.2017-esm.js"></script>
+</head>
+
+<body class="grid-bg bg-[#f8f6fb] text-gray-800 fixed inset-0 p-4 lg:p-6 flex transition-colors duration-500 overflow-hidden">
+
+    <!--
+        ======================================================================
+        1. ELEMENTOS DECORATIVOS DE BACKGROUND (LIGHT BLOBS / BLUR EFFECTS)
+        ----------------------------------------------------------------------
+        Divs com desfoque gaussiano (blur-[140px]) e alta opacidade que criam o
+        efeito estético de iluminação colorida flutuante nos quatro cantos da tela,
+        trazendo profundidade visual sem prejudicar o desempenho.
+        ======================================================================
+    -->
+    <div class="menu-blob menu-blob--1 absolute top-[-20%] left-[-15%] w-[70vw] h-[70vh] bg-pink-500/70 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="menu-blob menu-blob--2 absolute top-[-20%] right-[-15%] w-[70vw] h-[70vh] bg-yellow-400/75 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="menu-blob menu-blob--3 absolute bottom-[-20%] left-[-15%] w-[70vw] h-[70vh] bg-purple-700/60 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="menu-blob menu-blob--4 absolute bottom-[-20%] right-[-15%] w-[70vw] h-[70vh] bg-green-600/65 rounded-full blur-[140px] pointer-events-none z-0"></div>
+
+    <div class="menu-shell w-full h-full bg-white/70 backdrop-blur-2xl border border-white/80 rounded-[2rem] shadow-2xl flex overflow-hidden relative z-10">
+
+        <aside class="menu-sidebar w-[18rem] lg:w-[20rem] flex flex-col border-r border-gray-200/60 bg-white/40">
+            <div class="h-28 flex items-center justify-center border-b border-gray-200/60">
+                <!--
+                    As duas versões da logo são publicadas e o CSS de tema decide
+                    qual fica visível. O elemento oculto sai da árvore de
+                    acessibilidade, então o leitor de tela anuncia apenas uma.
+                -->
+                <img src="{% static 'img/logos/ovg.png' %}" alt="OVG Logo"
+                    class="logo-tema logo-tema--claro h-[4.46rem] drop-shadow-md">
+                <img src="{% static 'img/logos/ovg-eleitoral.png' %}" alt="OVG Logo"
+                    class="logo-tema logo-tema--eleitoral h-[4.46rem] drop-shadow-md">
+            </div>
+            <nav class="flex-1 px-6 py-8 space-y-2 overflow-hidden">
+                <p class="menu-nav-titulo text-[13px] font-bold text-purple-700 uppercase tracking-widest mb-4 px-2">Navegação Principal</p>
+
+                <a href="{% url 'inicio' %}"
+                    class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
+                    <i class="fa-solid fa-user-shield text-[23px] w-6 text-center"></i><span>Início</span>
+                </a>
+
+                {% if user.p_ferramentas or user.usuario == 'admin@ovg.org.br' %}
+                <a href="{% url 'ferramentas' %}"
+                    class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
+                    <i class="fa-solid fa-screwdriver-wrench text-[23px] w-6 text-center"></i><span>Ferramentas</span>
+                </a>
+                {% else %}
+                <div class="flex items-center space-x-4 px-4 py-3 text-gray-500 bg-gray-50/50 rounded-xl font-semibold text-base cursor-not-allowed opacity-70"
+                    title="Acesso Restrito">
+                    <i class="fa-solid fa-lock text-[23px] w-6 text-center"></i><span>Ferramentas</span>
+                </div>
+                {% endif %}
+
+                <a href="{% url 'automacoes' %}"
+                    class="nav-active flex items-center space-x-3 px-4 py-3 rounded-xl font-bold text-base">
+                    <i class="fa-brands fa-whmcs text-[28px] w-6 text-center"></i><span>Automações</span>
+                </a>
+
+                {% if user.p_dash_polichat or user.p_dash_documentos_ia or user.usuario == 'admin@ovg.org.br' %}
+                <a href="{% url 'dashboards' %}"
+                    class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
+                    <i class="fa-solid fa-chart-line text-[23px] w-6 text-center"></i><span>Dashboards</span>
+                </a>
+                {% else %}
+                <div class="flex items-center space-x-4 px-4 py-3 text-gray-500 bg-gray-50/50 rounded-xl font-semibold text-base cursor-not-allowed opacity-70"
+                    title="Acesso Restrito">
+                    <i class="fa-solid fa-lock text-[23px] w-6 text-center"></i><span>Dashboards</span>
+                </div>
+                {% endif %}
+
+                {% if user.p_documentacoes or user.usuario == 'admin@ovg.org.br' %}
+                <a href="#"
+                    class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
+                    <i class="fa-solid fa-folder-open text-[23px] w-6 text-center"></i><span>Documentações</span>
+                </a>
+                {% else %}
+                <div class="flex items-center space-x-4 px-4 py-3 text-gray-500 bg-gray-50/50 rounded-xl font-semibold text-base cursor-not-allowed opacity-70"
+                    title="Acesso Restrito">
+                    <i class="fa-solid fa-lock text-[23px] w-6 text-center"></i><span>Documentações</span>
+                </div>
+                {% endif %}
+            </nav>
+            <div class="menu-divisoria p-6 border-t border-purple-100/50">
+                <a href="{% url 'logout' %}"
+                    class="menu-sair flex items-center justify-center space-x-2 w-full px-4 py-3 bg-red-50 text-red-600 rounded-xl font-extrabold text-sm hover:bg-red-500 hover:text-white transition-all shadow-sm">
+                    <i class="fa-solid fa-right-from-bracket"></i><span>SAIR DO SISTEMA</span>
+                </a>
+            </div>
+        </aside>
+
+        <main class="area-trabalho flex-1 flex flex-col h-full overflow-hidden relative">
+
+            <header
+                class="h-28 px-8 lg:px-10 flex justify-between items-center border-b border-gray-200/60 bg-white/40 backdrop-blur-md shrink-0 z-10">
+                <div class="flex items-center gap-5">
+                    <div class="tela-header-icone w-16 h-16 bg-gradient-to-br from-pink-100 to-fuchsia-100 text-pink-600 rounded-2xl flex items-center justify-center border border-pink-200 shadow-sm">
+                        <i class="fa-solid fa-calculator text-3xl"></i>
+                    </div>
+                    <div>
+                        <h2 class="menu-header-titulo text-2xl font-black text-gray-800 tracking-tight">Recálculo de Bolsas</h2>
+                        <p class="text-[14px] text-gray-500 font-semibold mt-0.5">Automação para recálculo e auditoria de bolsas.</p>
+                    </div>
+                </div>
+                <!--
+                    Agrupa o seletor de modo e o botão Voltar no canto direito do
+                    cabeçalho. O <header> é 'justify-between' e este bloco é o
+                    segundo filho, então o alinhamento à direita já vem de graça.
+                -->
+                <div class="flex items-center gap-4">
+                    <button type="button"
+                        class="tema-toggle"
+                        data-tema-toggle
+                        aria-label="Ativar modo eleitoral"
+                        aria-pressed="false">
+                        <svg class="tema-toggle__icone tema-toggle__icone--lua" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"
+                            stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                        <svg class="tema-toggle__icone tema-toggle__icone--sol" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.6"/>
+                            <path d="M12 2.4V4.4M12 19.6V21.6M21.6 12H19.6M4.4 12H2.4M18.79 5.21L17.38 6.62M6.62 17.38L5.21 18.79M18.79 18.79L17.38 17.38M6.62 6.62L5.21 5.21"
+                                stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+
+                    <a href="{% url 'automacoes' %}"
+                    class="tela-voltar px-5 py-2.5 bg-white/80 hover:bg-pink-50 text-pink-600 font-bold rounded-xl transition-all shadow-sm border border-pink-100 inline-flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-arrow-left mr-2 mt-[1px]"></i>
+                    <span class="leading-none">Voltar</span>
+                </a>
+                </div>
+            </header>
+
+            <!--
+                ======================================================================
+                ÁREA DE TRABALHO — TRÊS FAIXAS
+                ----------------------------------------------------------------------
+                  1. Faixa superior: card "Configurações de Extração" com dois blocos
+                     independentes lado a lado
+                     • Base de Extração        — o que entra no recálculo;
+                     • Formulário de Recálculo — fluxo próprio, com painel de orientações,
+                       que não alimenta a barra de progresso da faixa 2.
+                  2. Barra de controle — iniciar, parar, progresso e download.
+                  3. Console de processamento — saída do motor de recálculo.
+
+                As alturas das faixas 1 e 3 vêm de `.faixa-painéis` / `.faixa-console` no CSS
+                do app: o bundle não traz `flex-[2]` nem `basis-0`, então a proporção não
+                poderia ser expressa por utilitário sem falhar em silêncio.
+                ======================================================================
+            -->
+            <div class="flex-1 p-4 lg:p-6 flex flex-col gap-3 overflow-hidden relative z-10">
+
+                <!-- ============ 1. CONFIGURAÇÕES DE EXTRAÇÃO ============ -->
+                <!--
+                    Card externo, na mesma casca do Análise IA: um único painel de configuração
+                    contendo os dois blocos do layout — Base de Extração e Formulário de Recálculo.
+                -->
+                <div
+                    class="faixa-paineis bg-white/80 backdrop-blur-xl border border-white/80 px-5 pb-5 pt-3 lg:px-6 lg:pb-6 rounded-[1.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col overflow-hidden">
+
+                    <h3
+                        class="font-extrabold text-[16px] text-gray-800 mb-3 flex items-center gap-2 border-b border-gray-200/80 pb-2 shrink-0">
+                        <i class="fa-solid fa-sliders text-purple-600"></i> Configurações de Extração
+                    </h3>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0">
+
+                        <!-- ---------- BLOCO A: BASE DE EXTRAÇÃO ---------- -->
+                        <!--
+                            O título fica fora da região rolável de propósito: em telas baixas o
+                            miolo rola, mas o usuário nunca perde de vista em que bloco está.
+                        -->
+                        <div class="flex flex-col p-5 border border-gray-200 rounded-2xl bg-white shadow-sm gap-3 overflow-hidden">
+
+                            <h4 class="text-[11px] font-black text-gray-700 uppercase tracking-widest flex items-center gap-2 shrink-0">
+                                <i class="fa-solid fa-layer-group text-purple-500 text-xl"></i> Base de Extração
+                            </h4>
+
+                            <div class="flex flex-col gap-3 painel-rolavel custom-scrollbar">
+
+                                <!--
+                                    Bloco de seleção por IES. `data-bloco-ies` marca a região que o JS
+                                    neutraliza quando a lista de beneficiários específicos é preenchida —
+                                    a regra do desenho: lista específica preenchida ignora a base por IES.
+                                -->
+                                <div data-bloco-ies class="flex flex-col gap-3 shrink-0">
+                                    <button type="button" id="btn-instituicoes" onclick="abrirModal('modal-instituicoes')"
+                                        class="btn-abre-painel w-full flex items-center justify-center gap-2 px-4 py-2 text-white rounded-xl transition-all shadow-md font-bold text-[12px] uppercase tracking-wider cursor-pointer">
+                                        <i class="fa-solid fa-building-columns"></i> Instituições de Ensino
+                                    </button>
+
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <button type="button" id="btn-beneficios" onclick="abrirModal('modal-beneficios')"
+                                            class="btn-abre-painel w-full flex items-center justify-center gap-2 px-4 py-2 text-white rounded-xl transition-all shadow-md font-bold text-[12px] uppercase tracking-wider cursor-pointer">
+                                            <i class="fa-solid fa-hand-holding-dollar"></i> Benefícios
+                                        </button>
+                                        <button type="button" id="btn-financiamentos" onclick="abrirModal('modal-financiamentos')"
+                                            class="btn-abre-painel w-full flex items-center justify-center gap-2 px-4 py-2 text-white rounded-xl transition-all shadow-md font-bold text-[12px] uppercase tracking-wider cursor-pointer">
+                                            <i class="fa-solid fa-file-invoice-dollar"></i> Financiamentos
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!--
+                                    ---------- Beneficiários específicos ----------
+                                    Sem caixa própria: é continuação da Base de Extração, no mesmo
+                                    alinhamento dos botões acima. Uma borda aqui sugeriria um bloco
+                                    à parte, que é justamente o que não é.
+                                -->
+                                <div class="flex flex-col gap-2 bloco-beneficiarios">
+
+                                    <div class="flex items-center justify-between gap-3 shrink-0">
+                                        <h4 class="text-[11px] font-black text-gray-700 uppercase tracking-widest">
+                                            Beneficiários Específicos
+                                        </h4>
+                                        <span id="contador-inscricoes"
+                                            class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">0 inscrições</span>
+                                    </div>
+
+                                    <!--
+                                        A instrução vive no placeholder do campo, não num parágrafo acima:
+                                        é onde o usuário olha ao colar e some sozinha quando o campo é
+                                        preenchido, em vez de ocupar altura permanente.
+                                    -->
+                                    <textarea id="txt-beneficiarios" spellcheck="false"
+                                        class="flex-1 min-h-0 w-full text-[12px] font-mono p-3 border border-gray-200 rounded-xl focus:border-purple-500 outline-none resize-none shadow-sm transition-all bg-gray-50"
+                                        placeholder="Cole a Lista separada por vírgula — preenchê-la substitui a seleção por instituição."></textarea>
+
+                                    <!-- Aviso não bloqueante: a lista continua valendo, só sinaliza o formato. -->
+                                    <p id="aviso-formato" class="hidden text-[11px] font-semibold text-yellow-500 shrink-0">
+                                        <i class="fa-solid fa-triangle-exclamation"></i>
+                                        A lista parece não estar formatada — use apenas números separados por vírgula.
+                                    </p>
+
+                                    <!--
+                                        Fica aqui, e não junto do botão desativado, de propósito: é neste campo
+                                        que o usuário está agindo quando a regra dispara, então é aqui que ele
+                                        precisa ler o efeito. O botão lá em cima já aparece cinza.
+                                    -->
+                                    <p id="aviso-ies-ignorada"
+                                        class="hidden text-[11px] font-semibold text-purple-700 shrink-0 flex items-center gap-2">
+                                        <i class="fa-solid fa-circle-info"></i>
+                                        <span>Seleção por instituição desativada enquanto esta lista estiver preenchida.</span>
+                                    </p>
+
+                                    <div class="flex items-center justify-between gap-3 shrink-0">
+                                        <span id="status-beneficiarios" class="text-[11px] font-semibold text-gray-400">Nenhuma lista salva.</span>
+                                        <button type="button" id="btn-salvar-beneficiarios"
+                                            class="btn-acao-card text-white border-2 shadow-sm font-bold rounded-xl text-[12px] px-5 py-2 tracking-wider uppercase flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer">
+                                            <i class="fa-solid fa-floppy-disk"></i><span>Salvar</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                            </div><!-- /miolo rolável -->
+                        </div>
+
+                        <!-- ---------- BLOCO B: FORMULÁRIO DE RECÁLCULO ---------- -->
+                        <!--
+                            Fluxo deliberadamente isolado do da barra de controle: botão próprio e
+                            área de orientações própria. Nada aqui alimenta a barra de progresso.
+                        -->
+                        <div class="flex flex-col p-5 border border-gray-200 rounded-2xl bg-white shadow-sm gap-3 overflow-hidden">
+
+                            <h4 class="text-[11px] font-black text-gray-700 uppercase tracking-widest flex items-center gap-2 shrink-0">
+                                <i class="fa-solid fa-file-pen text-purple-500 text-xl"></i> Formulário de Recálculo
+                            </h4>
+
+                            <div class="flex flex-col gap-3 shrink-0">
+                                <p class="text-[12px] text-gray-500 font-medium leading-relaxed">
+                                    Preencha o formulário e dispare o processamento por aqui. Esta execução é
+                                    <strong class="text-gray-700">independente</strong> da barra de progresso abaixo.
+                                </p>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <button type="button" id="btn-formulario" onclick="abrirModal('modal-formulario')"
+                                        class="btn-abre-painel w-full flex items-center justify-center gap-2 px-4 py-2 text-white rounded-xl transition-all shadow-md font-bold text-[12px] uppercase tracking-wider cursor-pointer">
+                                        <i class="fa-solid fa-pen-to-square"></i> Formulário
+                                    </button>
+                                    <button type="button" id="btn-iniciar-formulario"
+                                        class="btn-acao-card text-white border-2 shadow-sm font-bold rounded-xl text-[12px] px-4 py-2 tracking-wider uppercase flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer">
+                                        <i class="fa-solid fa-play"></i><span>Iniciar</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!--
+                                ÁREA DE ORIENTAÇÕES — deliberadamente NÃO é um terminal.
+                                O console de baixo transmite execução em andamento (fundo escuro, fonte
+                                monoespaçada, cores de severidade). Aqui o propósito é outro: exibir um
+                                texto explicativo para quem preencheu o formulário. Por isso é um painel
+                                claro, na tipografia da página, sem semáforo e sem cores de log.
+                            -->
+                            <div id="painel-formulario"
+                                class="flex-1 min-h-0 overflow-y-auto custom-scrollbar bg-gray-50 border border-gray-200 rounded-xl p-4 flex flex-col gap-2">
+                                <p class="text-[12px] text-gray-400 font-medium leading-relaxed italic flex items-start gap-2">
+                                    <i class="fa-solid fa-circle-info mt-0.5"></i>
+                                    <span>As orientações do recálculo aparecem aqui depois que você iniciar.</span>
+                                </p>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+
+                <!-- ================= 2. BARRA DE CONTROLE ================= -->
+                <div
+                    class="bg-white/90 backdrop-blur-xl border border-white/80 p-2 rounded-[1rem] shadow-[0_8px_20px_rgb(0,0,0,0.03)] flex items-center shrink-0">
+
+                    <button id="btn-start"
+                        class="text-white bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-purple-300 shadow-lg shadow-purple-500/40 font-bold rounded-xl text-[13px] px-5 py-2.5 tracking-widest uppercase flex items-center justify-center gap-2 w-36 transition-all cursor-pointer">
+                        <i class="fa-solid fa-play"></i><span>Iniciar</span>
+                    </button>
+
+                    <button id="btn-stop"
+                        class="ml-2 text-white bg-gradient-to-r from-pink-500 via-pink-600 to-pink-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-pink-300 shadow-md shadow-pink-500/30 font-bold rounded-xl text-[13px] px-5 py-2.5 tracking-widest uppercase flex items-center justify-center gap-2 w-36 transition-all cursor-not-allowed opacity-90">
+                        <i class="fa-solid fa-stop"></i><span>Parar</span>
+                    </button>
+
+                    <div
+                        class="flex-1 mx-4 bg-gray-100 rounded-lg h-7 border border-gray-200 shadow-inner relative flex items-center justify-center overflow-hidden">
+                        <div id="progress-bar"
+                            class="absolute top-0 left-0 h-full bg-gradient-to-r from-pink-400 to-purple-500 transition-all duration-500 ease-out"
+                            style="width: 0%;"></div>
+                        <span id="progress-text"
+                            class="relative z-10 text-[13px] font-black text-gray-700 tracking-wide drop-shadow-[0_0_2px_rgba(255,255,255,0.8)]">0%</span>
+                    </div>
+
+                    <button id="btn-download"
+                        class="text-gray-500 bg-gradient-to-r from-gray-100 via-gray-200 to-gray-300 focus:ring-4 focus:outline-none focus:ring-gray-200 shadow-sm font-bold rounded-xl text-[13px] px-5 py-2.5 tracking-widest uppercase flex items-center justify-center gap-2 w-72 transition-all cursor-not-allowed">
+                        <i class="fa-solid fa-download"></i><span>Baixar</span>
+                    </button>
+
+                </div>
+
+                <!-- ================= 3. CONSOLE DE PROCESSAMENTO ================= -->
+                <div class="faixa-console min-h-[150px] console-ggci border rounded-[1.5rem] flex flex-col overflow-hidden">
+                    <!-- Barra de título, no estilo de uma janela de terminal. As três
+                         bolinhas são a convenção do macOS e valem igual nos dois temas. -->
+                    <div class="console-ggci__cromo px-5 py-2.5 flex items-center justify-between border-b shrink-0">
+                        <div class="flex space-x-2.5">
+                            <div class="w-3.5 h-3.5 rounded-full bg-[#ff5f56] shadow-sm"></div>
+                            <div class="w-3.5 h-3.5 rounded-full bg-[#ffbd2e] shadow-sm"></div>
+                            <div class="w-3.5 h-3.5 rounded-full bg-[#27c93f] shadow-sm"></div>
+                        </div>
+                        <span class="text-purple-800 text-[11px] font-mono tracking-widest font-bold flex items-center gap-2">
+                            <i class="fa-solid fa-terminal text-pink-500"></i> CONSOLE DE PROCESSAMENTO
+                        </span>
+                        <div class="w-10"></div>
+                    </div>
+
+                    <div id="console-logs"
+                        class="console-ggci__log p-6 flex-1 overflow-y-auto overflow-x-hidden font-mono text-[13px] leading-relaxed text-gray-700 break-words">
+                        <div class="flex gap-2 mb-1">
+                            <span class="text-pink-600 font-bold">ovg@probem-ai:</span>
+                            <span class="text-purple-600">~</span>
+                            <span class="text-purple-400">$</span>
+                            <span class="text-purple-900 font-bold animate-pulse">init_recalculo_bolsas --verbose</span>
+                        </div>
+                        <div class="text-pink-500 italic mb-2">
+                            <i class="fa-solid fa-angle-right"></i> Aguardando início...
+                        </div>
+                        <span class="console-spinner"></span>
+                    </div>
+                </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!--
+        ======================================================================
+        MODAIS DE CONFIGURAÇÃO
+        ----------------------------------------------------------------------
+        Os quatro painéis usam a mesma casca; o conteúdo de cada um entra quando as
+        regras de negócio forem definidas. Ver `modais/_modal_configuracao.html`.
+        ======================================================================
+    -->
+    {% include "recalculo_bolsas/recalculo_bolsas/modais/_modal_configuracao.html" with id_modal="modal-instituicoes" titulo="Instituições de Ensino" subtitulo="Delimite quais IES entram no recálculo" icone="fa-solid fa-building-columns" %}
+    {% include "recalculo_bolsas/recalculo_bolsas/modais/_modal_configuracao.html" with id_modal="modal-beneficios" titulo="Benefícios" subtitulo="Defina as opções do relatório de benefícios" icone="fa-solid fa-hand-holding-dollar" %}
+    {% include "recalculo_bolsas/recalculo_bolsas/modais/_modal_configuracao.html" with id_modal="modal-financiamentos" titulo="Financiamentos" subtitulo="Defina as opções do relatório de financiamentos" icone="fa-solid fa-file-invoice-dollar" %}
+    {% include "recalculo_bolsas/recalculo_bolsas/modais/_modal_configuracao.html" with id_modal="modal-formulario" titulo="Formulário de Recálculo" subtitulo="Preencha os dados do recálculo" icone="fa-solid fa-pen-to-square" %}
+
+    <script src="{% static 'recalculo_bolsas/js/recalculo_bolsas.js' %}?v=8"></script>
+
+</body>
+
+</html>

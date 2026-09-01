@@ -1,0 +1,208 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <!-- 
+    ======================================================================
+    TEMPLATE: Menu de Ferramentas (index.html)
+    O QUE FAZ: Renderiza o painel de navegação (Grid) que dá acesso às sub-ferramentas do portal.
+    POR QUÊ EXISTE: Fornecer um hub centralizado e estilizado para o usuário escolher entre Formatador de Listas e Formatador de Dados.
+    COMO FUNCIONA: Utiliza TailwindCSS embarcado via CDN e condicinais Django (if user.p_*) para habilitar ou bloquear links baseado em permissões.
+    ======================================================================
+    -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ferramentas - Portal GGCI</title>
+    
+    <!--
+        MOTOR DE TEMAS — precisa vir antes de tudo.
+        Carregado SEM 'defer'/'async' de propósito: executado de forma síncrona
+        aqui no <head>, grava o atributo data-tema no <html> antes da primeira
+        pintura, eliminando o flash do tema padrão. Como a preferência vive no
+        localStorage, o modo escolhido em qualquer tela já chega aplicado aqui.
+    -->
+    <script src="{% static 'js/tema.js' %}"></script>
+
+    <link rel="stylesheet" href="{% static 'css/output.css' %}">
+
+    <!-- Tokens de cor dos temas e o botão sol/lua (compartilhado por todo o portal) -->
+    <link rel="stylesheet" href="{% static 'css/tema.css' %}">
+
+    <!-- Modo escuro da casca de menu, compartilhado por Início/Ferramentas/Automações/Dashboards -->
+    <link rel="stylesheet" href="{% static 'css/tema-menu.css' %}">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="{% static 'menu_ferramentas/css/ferramentas.css' %}">
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@8.0.4/dist/turbo.es.2017-esm.js"></script>
+</head>
+
+<body class="grid-bg bg-[#f8f6fb] text-gray-800 fixed inset-0 p-4 lg:p-6 flex transition-colors duration-500 overflow-hidden">
+
+        <!-- 
+        ======================================================================
+        1. ELEMENTOS DECORATIVOS DE BACKGROUND (LIGHT BLOBS / BLUR EFFECTS)
+        ----------------------------------------------------------------------
+        Divs com desfoque gaussiano (blur-[140px]) e alta opacidade que criam o
+        efeito estético de iluminação colorida flutuante nos quatro cantos da tela,
+        trazendo profundidade visual sem prejudicar o desempenho.
+        ======================================================================
+    -->
+    <div class="menu-blob menu-blob--1 absolute top-[-20%] left-[-15%] w-[70vw] h-[70vh] bg-pink-500/70 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="menu-blob menu-blob--2 absolute top-[-20%] right-[-15%] w-[70vw] h-[70vh] bg-yellow-400/75 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="menu-blob menu-blob--3 absolute bottom-[-20%] left-[-15%] w-[70vw] h-[70vh] bg-purple-700/60 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="menu-blob menu-blob--4 absolute bottom-[-20%] right-[-15%] w-[70vw] h-[70vh] bg-green-600/65 rounded-full blur-[140px] pointer-events-none z-0"></div>
+
+    <div class="menu-shell w-full h-full bg-white/70 backdrop-blur-2xl border border-white/80 rounded-[2rem] shadow-2xl flex overflow-hidden relative z-10">
+
+        <aside class="menu-sidebar w-[18rem] lg:w-[20rem] flex flex-col border-r border-purple-100/50 bg-white/40">
+            <div class="menu-divisoria h-28 flex items-center justify-center border-b border-purple-100/50">
+                <!--
+                    As duas versões da logo são publicadas e o CSS de tema decide
+                    qual fica visível. O elemento oculto sai da árvore de
+                    acessibilidade, então o leitor de tela anuncia apenas uma.
+                -->
+                <img src="{% static 'img/logos/ovg.png' %}" alt="OVG Logo"
+                    class="logo-tema logo-tema--claro h-[4.46rem] drop-shadow-md">
+                <img src="{% static 'img/logos/ovg-eleitoral.png' %}" alt="OVG Logo"
+                    class="logo-tema logo-tema--eleitoral h-[4.46rem] drop-shadow-md">
+            </div>
+            <nav class="flex-1 px-6 py-8 space-y-2 overflow-hidden">
+                <p class="menu-nav-titulo text-[13px] font-bold text-purple-700 uppercase tracking-widest mb-4 px-2">Navegação Principal</p>
+                
+                <a href="{% url 'inicio' %}" class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
+                    <i class="fa-solid fa-user-shield text-[23px] w-6 text-center"></i><span>Início</span>
+                </a>
+                
+                <a href="{% url 'ferramentas' %}" class="nav-active flex items-center space-x-3 px-4 py-3 rounded-xl font-bold text-base">
+                    <i class="fa-solid fa-screwdriver-wrench text-[23px] w-6 text-center"></i><span>Ferramentas</span>
+                </a>
+                
+                {% if user.p_analise_ia or user.p_recalculo_bolsas or user.p_enquadramento_cursos or user.usuario == 'admin@ovg.org.br' %}
+                    <a href="{% url 'automacoes' %}" class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
+                        <i class="fa-brands fa-whmcs text-[28px] w-6 text-center"></i><span>Automações</span>
+                    </a>
+                {% else %}
+                    <div class="menu-nav-bloqueado flex items-center space-x-4 px-4 py-3 text-gray-400 bg-gray-50/50 rounded-xl font-semibold text-base cursor-not-allowed opacity-70" title="Acesso Restrito">
+                        <i class="fa-solid fa-lock text-[23px] w-6 text-center"></i><span>Automações</span>
+                    </div>
+                {% endif %}
+
+                {% if user.p_dash_polichat or user.p_dash_documentos_ia or user.usuario == 'admin@ovg.org.br' %}
+                    <a href="{% url 'dashboards' %}" class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
+                        <i class="fa-solid fa-chart-line text-[23px] w-6 text-center"></i><span>Dashboards</span>
+                    </a>
+                {% else %}
+                    <div class="menu-nav-bloqueado flex items-center space-x-4 px-4 py-3 text-gray-400 bg-gray-50/50 rounded-xl font-semibold text-base cursor-not-allowed opacity-70" title="Acesso Restrito">
+                        <i class="fa-solid fa-lock text-[23px] w-6 text-center"></i><span>Dashboards</span>
+                    </div>
+                {% endif %}
+                
+                {% if user.p_documentacoes or user.usuario == 'admin@ovg.org.br' %}
+                    <a href="#" class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
+                        <i class="fa-solid fa-folder-open text-[23px] w-6 text-center"></i><span>Documentações</span>
+                    </a>
+                {% else %}
+                    <div class="menu-nav-bloqueado flex items-center space-x-4 px-4 py-3 text-gray-400 bg-gray-50/50 rounded-xl font-semibold text-base cursor-not-allowed opacity-70" title="Acesso Restrito">
+                        <i class="fa-solid fa-lock text-[23px] w-6 text-center"></i><span>Documentações</span>
+                    </div>
+                {% endif %}
+            </nav>
+            <div class="menu-divisoria p-6 border-t border-purple-100/50">
+                <a href="{% url 'logout' %}" class="menu-sair flex items-center justify-center space-x-2 w-full px-4 py-3 bg-red-50 text-red-600 rounded-xl font-extrabold text-sm hover:bg-red-500 hover:text-white transition-all shadow-sm">
+                    <i class="fa-solid fa-right-from-bracket"></i><span>SAIR DO SISTEMA</span>
+                </a>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+            <header class="menu-header menu-divisoria h-28 px-10 flex justify-between items-center border-b border-purple-100/50 bg-white/40 backdrop-blur-md shrink-0">
+                <div>
+                    <h2 class="menu-header-titulo text-3xl font-extrabold text-gray-800 tracking-tight">Ferramentas</h2>
+                    <p class="menu-header-sub text-lg text-gray-500 font-medium mt-1">Otimização de Rotinas Administrativas</p>
+                </div>
+                <!--
+                    BOTÃO DE ALTERNÂNCIA DE MODO (SOL / LUA)
+                    Componente compartilhado, definido em 'static/css/tema.css'.
+                    O ícone exibido é o do modo PARA O QUAL se vai: no claro
+                    aparece a lua; no escuro, o sol.
+
+                    O clique é capturado por delegação em 'static/js/tema.js' via
+                    'data-tema-toggle' — não há listener preso a este elemento, o
+                    que o mantém funcional após o Turbo substituir o <body>. O
+                    aria-label é preenchido pelo JS, pois descreve a ação e muda
+                    junto com o modo.
+
+                    Como o <header> é 'justify-between' e este é o segundo filho,
+                    o botão se alinha à direita sem precisar de posicionamento.
+                -->
+                <button type="button"
+                    class="tema-toggle"
+                    data-tema-toggle
+                    aria-label="Ativar modo eleitoral"
+                    aria-pressed="false">
+                    <svg class="tema-toggle__icone tema-toggle__icone--lua" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"
+                            stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <svg class="tema-toggle__icone tema-toggle__icone--sol" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.6"/>
+                        <path d="M12 2.4V4.4M12 19.6V21.6M21.6 12H19.6M4.4 12H2.4M18.79 5.21L17.38 6.62M6.62 17.38L5.21 18.79M18.79 18.79L17.38 17.38M6.62 6.62L5.21 5.21"
+                            stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </header>
+
+            <div class="flex-1 p-8 lg:p-10 flex flex-wrap gap-6 lg:gap-8 content-start overflow-y-auto custom-scrollbar">
+
+                <a href="{% url 'formatador_listas' %}" class="card-modulo card-modulo--a group flex flex-row items-center bg-gradient-to-br from-pink-400 to-pink-500 p-5 lg:p-6 border border-white/30 rounded-[2rem] shadow-xl hover:shadow-2xl hover:shadow-pink-500/30 transition-all duration-300 hover:-translate-y-1 relative overflow-hidden w-full max-w-[28rem] min-h-[14rem] h-[14rem]">
+                    <div class="card-modulo__halo absolute -right-10 -top-10 w-48 h-48 bg-white/10 blur-3xl rounded-full group-hover:bg-white/20 transition-all"></div>
+                    <div class="card-modulo__icone flex-shrink-0 w-24 h-24 bg-white/10 backdrop-blur-md rounded-[1.2rem] border border-white/30 shadow-[inset_0_0_20px_rgba(255,255,255,0.1)] flex items-center justify-center relative overflow-hidden mr-5 group-hover:bg-white/20 transition-all text-white">
+                        <i class="fa-solid fa-brain text-[2.75rem] m-auto leading-none drop-shadow-lg transform group-hover:scale-110 transition-transform duration-500"></i>
+                    </div>
+                    <div class="flex flex-col justify-center text-left flex-1 z-10 w-full">
+                        <h5 class="mb-1.5 text-xl font-extrabold tracking-tight text-white drop-shadow-sm">Formatador de Listas</h5>
+
+                        <!-- ADICIONE ESTA LINHA ABAIXO: -->
+                        <p class="card-modulo__desc mb-4 text-pink-50/90 text-[12px] leading-relaxed font-medium">Padronização de listas para consultas e cruzamento de informações.</p>
+
+                        {% if user.p_formatador_listas or user.usuario == 'admin@ovg.org.br' %}
+                            <button type="button" class="card-modulo__btn inline-flex items-center justify-center w-max text-pink-600 bg-white hover:bg-gray-100 hover:scale-[1.03] transition-all font-bold rounded-xl text-[13px] px-4 py-2 shadow-md">
+                                Acessar Ferramenta <svg class="w-4 h-4 ml-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                            </button>
+                        {% else %}
+                            <button type="button" class="card-modulo__restrito inline-flex items-center justify-center w-max text-pink-700 bg-white/70 font-bold rounded-xl text-[13px] px-4 py-2 shadow-sm pointer-events-none opacity-80">
+                                <i class="fa-solid fa-lock mr-2"></i> Acesso Restrito
+                            </button>
+                        {% endif %}
+                    </div>
+                </a>
+
+                <a href="{% url 'formatador_dados' %}" class="card-modulo card-modulo--b group flex flex-row items-center bg-gradient-to-br from-pink-600 to-pink-700 p-5 lg:p-6 border border-white/30 rounded-[2rem] shadow-xl hover:shadow-2xl hover:shadow-pink-700/30 transition-all duration-300 hover:-translate-y-1 relative overflow-hidden w-full max-w-[28rem] min-h-[14rem] h-[14rem]">
+                    <div class="card-modulo__halo absolute -right-10 -top-10 w-48 h-48 bg-white/10 blur-3xl rounded-full group-hover:bg-white/20 transition-all"></div>
+                    <div class="card-modulo__icone flex-shrink-0 w-24 h-24 bg-white/10 backdrop-blur-md rounded-[1.2rem] border border-white/30 shadow-[inset_0_0_20px_rgba(255,255,255,0.1)] flex items-center justify-center relative overflow-hidden mr-5 group-hover:bg-white/20 transition-all text-white">
+                        <i class="fa-solid fa-language text-[3.75rem] m-auto leading-none drop-shadow-lg transform group-hover:scale-110 transition-transform duration-500"></i>
+                    </div>
+                    <div class="flex flex-col justify-center text-left flex-1 z-10 w-full">
+                        <h5 class="mb-1.5 text-xl font-extrabold tracking-tight text-white drop-shadow-sm">Formatador de Dados</h5>
+                        <p class="card-modulo__desc mb-4 text-pink-50/90 text-[12px] leading-relaxed font-medium">Padronização e correção de registros para bases de dados da OVG.</p>
+                        {% if user.p_formatador_dados or user.usuario == 'admin@ovg.org.br' %}
+                            <button type="button" class="card-modulo__btn inline-flex items-center justify-center w-max text-pink-700 bg-white hover:bg-gray-100 hover:scale-[1.03] transition-all font-bold rounded-xl text-[13px] px-4 py-2 shadow-md">
+                                Acessar Ferramenta <svg class="w-4 h-4 ml-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                            </button>
+                        {% else %}
+                            <button type="button" class="card-modulo__restrito inline-flex items-center justify-center w-max text-pink-800 bg-white/70 font-bold rounded-xl text-[13px] px-4 py-2 shadow-sm pointer-events-none opacity-80">
+                                <i class="fa-solid fa-lock mr-2"></i> Acesso Restrito
+                            </button>
+                        {% endif %}
+                    </div>
+                </a>
+
+            </div>
+        </main>
+    </div>
+
+    <script src="{% static 'menu_ferramentas/js/ferramentas.js' %}" defer></script>
+</body>
+</html>

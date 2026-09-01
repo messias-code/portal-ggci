@@ -1,0 +1,860 @@
+/* ==========================================================================
+   ESTILOS: MÓDULO DE DASHBOARDS
+   ========================================================================== */
+
+html { font-size: 90%; }
+body { font-family: 'Poppins', sans-serif; }
+
+/* Animações de fundo (Bolinhas flutuantes) */
+
+
+/* Customização da Barra de Rolagem (Temática Roxa) */
+.custom-scrollbar::-webkit-scrollbar { width: 6px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { 
+    background: rgba(168, 85, 247, 0.4); 
+    border-radius: 10px; 
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { 
+    background: rgba(168, 85, 247, 0.8); 
+}
+
+
+/* ======================================================================================
+   PLANO DE FUNDO (BOLHAS COLORIDAS BLUR ESTÁTICAS)
+   As bolhas coloridas de fundo agora são estáticas para garantir 100% de performance 
+   e resposta instantânea aos cliques no navegador, mantendo o visual rico e vibrante.
+   =================================================================================== */
+
+/* ==========================================================================
+   PLANO DE FUNDO - MALHA DE GRID (.grid-bg)
+   Cria um efeito sutil de linhas de grade (grid) roxas cruzadas no plano de fundo,
+   proporcionando profundidade visual e um aspecto técnico/moderno à interface.
+   ========================================================================== */
+.grid-bg {
+    background-image: 
+        linear-gradient(rgba(147, 51, 234, 0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(147, 51, 234, 0.07) 1px, transparent 1px);
+    background-size: 113px 75px;
+}
+
+
+
+.neon-btn::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: 0 15px 35px rgba(124, 58, 237, 0.35), 0 0 20px rgba(217, 70, 239, 0.25);
+    opacity: 0;
+    transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: -1;
+    pointer-events: none;
+}
+
+.neon-btn:hover {
+    transform: translateY(-2px);
+}
+
+.neon-btn:hover::after {
+    opacity: 1;
+}
+
+.neon-btn:active {
+    transform: translateY(0);
+}
+
+
+
+
+
+.neon-item:hover::before,
+
+
+
+/* =========================================
+   EFEITOS DE NAVEGAÇÃO OTIMIZADOS (OVG)
+   Alta performance: Anima apenas opacity e transform (GPU 60fps)
+========================================= */
+
+.nav-active {
+    position: relative;
+    background: linear-gradient(to right, #9333ea, #a855f7); /* OVG purple-600 to purple-500 */
+    box-shadow: 0 10px 20px rgba(147, 51, 234, 0.25);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    isolation: isolate;
+    will-change: transform;
+    color: white !important;
+}
+
+.nav-active::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: 0 15px 30px rgba(147, 51, 234, 0.4), 0 0 15px rgba(168, 85, 247, 0.3);
+    opacity: 0;
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: -1;
+    pointer-events: none;
+}
+
+.nav-active:hover {
+    transform: translateY(-2px);
+}
+
+.nav-active:hover::after {
+    opacity: 1;
+}
+
+.nav-inactive {
+    position: relative;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), color 0.3s ease;
+    isolation: isolate;
+    will-change: transform;
+    color: #4b5563; /* text-gray-600 */
+}
+
+.nav-inactive::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background-color: #ffffff;
+    box-shadow: 0 4px 15px rgba(147, 51, 234, 0.08);
+    opacity: 0;
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: -1;
+    pointer-events: none;
+}
+
+.nav-inactive:hover {
+    transform: translateY(-1px);
+    color: #9333ea !important; /* text-purple-600 */
+}
+
+.nav-inactive:hover::before {
+    opacity: 1;
+}
+
+/* Customização da Barra de Rolagem da Tabela (Light) */
+.custom-scrollbar-light::-webkit-scrollbar { 
+    width: 6px;  
+    height: 12px; /* <-- VITAL: Altura física da barra horizontal */
+}
+.custom-scrollbar-light::-webkit-scrollbar-track { 
+    background: rgba(0, 0, 0, 0.02); 
+    border-radius: 4px;
+}
+.custom-scrollbar-light::-webkit-scrollbar-thumb { 
+    background: rgba(168, 85, 247, 0.4); 
+    border-radius: 10px; 
+}
+.custom-scrollbar-light::-webkit-scrollbar-thumb:hover { 
+    background: rgba(168, 85, 247, 0.8); 
+}
+.custom-scrollbar-light { scrollbar-width: thin; scrollbar-color: rgba(168, 85, 247, 0.4) rgba(0, 0, 0, 0.02); }
+
+/* Extracted from index.html */
+                    @keyframes pulseLateral {
+                        0%, 100% { transform: translateX(0); }
+                        50% { transform: translateX(3px); }
+                    }
+                    .animate-cta .icon-wrapper {
+                        animation: pulseLateral 1.5s ease-in-out infinite;
+                    }
+                    
+                    .sidebar-btn {
+                        right: -94px;
+                        width: 94px;
+                    }
+                    .sidebar-btn:hover {
+                        right: -100px;
+                        width: 100px;
+                    }
+                    .sidebar-icon-wrapper {
+                        margin-right: 10px;
+                    }
+
+/* Classes geradas para substituir inline styles */
+.docia-icone-bg { background-color: rgba(107, 0, 123, 0.1); }
+.docia-icone-color { color: #6B007B; }
+.docia-modal-gradiente { background: linear-gradient(135deg, #6B007B, #9B00B3); }
+.docia-texto-selecionado { color: #6B007B; font-weight: 700; }
+.docia-bg-selecionado { background-color: rgba(107, 0, 123, 0.03); }
+
+/* ==========================================================================
+   CONSOLE DE ATUALIZAÇÃO
+   ==========================================================================
+   A barra de rolagem escura NÃO é utilitária do Tailwind: pseudo-elementos de
+   scrollbar não têm classe utilitária, e mesmo que tivessem, o bundle deste
+   projeto é purgado sem build no repositório — classe nova não é gerada e
+   falharia em silêncio. Por isso mora aqui, como CSS próprio.
+
+   O console é sempre escuro nos dois temas, de propósito: ele imita uma janela
+   de terminal, e um terminal claro não leria como terminal. As cores do texto
+   vêm do JS, que escreve o HTML de cada linha.
+   ========================================================================== */
+.docia-scroll-escuro::-webkit-scrollbar { width: 8px; }
+.docia-scroll-escuro::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.3); border-radius: 10px; }
+.docia-scroll-escuro::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 10px; }
+.docia-scroll-escuro::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+/* Firefox não implementa os pseudo-elementos acima. */
+.docia-scroll-escuro { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.2) rgba(0,0,0,0.3); }
+
+/* O cursor piscante que fecha a última linha enquanto o processo roda. */
+.docia-cursor-terminal {
+    display: inline-block;
+    width: 0.5rem;
+    height: 1rem;
+    margin-left: 0.25rem;
+    vertical-align: middle;
+    background-color: #ec4899;
+    animation: docia-piscar 1s steps(2, start) infinite;
+}
+@keyframes docia-piscar { to { visibility: hidden; } }
+
+/* ==========================================================================
+   BARRA DE ROLAGEM ROSINHA — DETALHAMENTO DE BENEFICIÁRIOS
+   ==========================================================================
+   Mesmos valores do `.scroll-rosinha` do polichat: é o padrão de rolagem
+   sutil do portal. Vive aqui, com prefixo `docia-`, porque aquele arquivo
+   pertence a outro app e não é carregado nesta tela — e porque pseudo-elemento
+   de scrollbar não tem utilitária no Tailwind, então o bundle purgado nunca
+   geraria nada equivalente.
+
+   `height` existe por causa da barra HORIZONTAL: sem ele, o WebKit desenha a
+   barra de baixo com altura zero e a rolagem lateral vira um gesto invisível.
+   ========================================================================== */
+.docia-scroll-rosinha::-webkit-scrollbar { width: 6px; height: 6px; }
+.docia-scroll-rosinha::-webkit-scrollbar-track { background: transparent; }
+.docia-scroll-rosinha::-webkit-scrollbar-corner { background: transparent; }
+.docia-scroll-rosinha::-webkit-scrollbar-thumb { background: rgba(236, 72, 153, 0.3); border-radius: 10px; }
+.docia-scroll-rosinha::-webkit-scrollbar-thumb:hover { background: rgba(236, 72, 153, 0.6); }
+/* Firefox não implementa os pseudo-elementos acima. */
+.docia-scroll-rosinha { scrollbar-width: thin; scrollbar-color: rgba(236, 72, 153, 0.4) transparent; }
+
+/* ==========================================================================
+   LEGENDA DAS ROSCAS DO QUANTITATIVO
+   ==========================================================================
+   Por que não é a legenda do ApexCharts: ela se dimensiona pelo TEXTO, e com cinco
+   cards dividindo a mesma largura cada um quebrava num número diferente de linhas —
+   "Proc" e "Não Proc" cabiam juntos aqui, sozinhos ali. Como o Apex desconta a altura
+   da legenda do anel, os cinco anéis saíam de tamanhos diferentes, e comparar as
+   proporções entre eles — a única razão de estarem lado a lado — ficava impossível.
+
+   Em HTML a legenda tem SEMPRE três linhas e a mesma altura nos cinco cards, então os
+   cinco anéis nascem idênticos. As três colunas com largura fixa alinham valor e
+   percentual verticalmente, e `tabular-nums` mantém o alinhamento mesmo quando os
+   dígitos mudam a cada atualização.
+
+   Continua clicável, como a do Apex: cada linha é um `<button>` que esconde a fatia.
+   ========================================================================== */
+.docia-legenda {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px 4px 0;
+    /*  ALTURA RESERVADA ANTES DE HAVER CONTEÚDO — não é cosmético.
+
+        O ApexCharts recebe a altura como número no render e, logo depois, escreve
+        `min-height` INLINE na caixa do gráfico, travando o piso dela. Na primeira
+        pintura a legenda ainda está vazia, então o gráfico media a altura do card
+        INTEIRA e a travava; quando as três linhas chegavam, o card precisava de mais
+        58px que ele já não tinha como tirar de lugar nenhum — e a legenda vazava para
+        fora do card, por baixo da tabela.
+
+        Reservando o espaço aqui, o gráfico já nasce medindo o que sobra de verdade.
+        `pintarResumo` ainda chama `ajustarAlturas()` depois, como segunda linha de
+        defesa para quando o card muda de tamanho (F11, sidebar).
+
+        58px reservavam TRÊS linhas, de quando a legenda tinha três. Hoje são seis, e o
+        número tem de acompanhar: deixá-lo curto reproduz exatamente o vazamento que ele
+        existe para evitar.  */
+    min-height: 116px;
+    font-size: 10px;
+    line-height: 1.35;
+    font-weight: 600;
+    color: #4B5563;
+}
+
+.docia-legenda__item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    padding: 3px 6px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+.docia-legenda__item:hover { background-color: rgba(236, 72, 153, 0.08); }
+
+/*  Linha da legenda que está recortando o Detalhamento neste momento.
+
+    O estado tem de ser óbvio: a tabela abaixo passou a mostrar só aquela fatia, e sem
+    um destaque aqui não haveria nada na tela dizendo por quê. A barra à esquerda e o
+    fundo tinto são o mesmo vocabulário das pílulas de filtro da barra lateral.  */
+.docia-legenda__item--ativo {
+    background-color: rgba(107, 0, 123, 0.09);
+    box-shadow: inset 2px 0 0 0 #6B007B;
+}
+.docia-legenda__item--ativo .docia-legenda__nome { font-weight: 800; color: #6B007B; }
+.docia-legenda__item--ativo:hover { background-color: rgba(107, 0, 123, 0.14); }
+
+.docia-legenda__ponto {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex: 0 0 auto;
+}
+
+.docia-legenda__nome {
+    flex: 1 1 auto;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* As duas colunas numéricas têm largura fixa: é isso que faz os valores e os
+   percentuais ficarem em coluna, e não escadinha.
+
+   Foram de 52/46px para 46/40px quando os rótulos deixaram de ser abreviados a `Inad.`:
+   os 12px devolvidos vão para o nome, que é onde a largura passou a fazer falta. O que
+   sobra ainda acomoda com folga o maior conteúdo real de cada coluna — `16.487` e
+   `100,0%`. */
+.docia-legenda__valor {
+    flex: 0 0 auto;
+    width: 46px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    color: #111827;
+    font-weight: 700;
+}
+.docia-legenda__pct {
+    flex: 0 0 auto;
+    width: 40px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    color: #9CA3AF;
+}
+
+/* --- Pílulas dos filtros do Detalhamento ---------------------------------
+   O bundle purgado tem `peer-checked:bg-[#6B007B]` e `peer-checked:text-white`,
+   mas nenhuma variante `peer-checked:border-*` na cor da marca — sem isto a
+   pílula marcada ficava roxa por dentro com a borda cinza clara em volta. */
+.docia-pilula-filtro { border-color: #D1D5DB; }
+.filter-documento:checked + .docia-pilula-filtro,
+.filter-status-doc:checked + .docia-pilula-filtro { border-color: #6B007B; }
+
+/* ==========================================================================
+   DETALHAMENTO EXPANDIDO
+   ==========================================================================
+   São 32 colunas: no card de sempre elas cabem por rolagem horizontal, mas comparar
+   duas colunas distantes obriga a rolar de um lado para o outro perdendo a referência.
+   Expandido, o card toma a janela e a maioria das colunas passa a caber de uma vez.
+
+   `position: fixed`, e não uma reorganização do flex da tela: o card é neto de dois
+   containers com `overflow: hidden`, e crescer por dentro deles esbarraria neles antes
+   de chegar à borda da janela.
+
+   ATENÇÃO: só funciona porque o JS move o card para o `body` ao expandir. `.menu-shell`
+   tem `backdrop-filter`, que cria containing block para `position: fixed` — dentro dela
+   estas coordenadas valeriam contra a casca, e não contra a janela.
+
+   `z-index: 1050` fica acima da sidebar (1000) e ABAIXO dos dois modais — o de IES (1100)
+   e o do console (1200) precisam continuar cobrindo isto aqui.
+
+   O fundo deixa de ser translúcido: sobre a tela inteira, `bg-white/80` deixaria os
+   gráficos aparecendo por baixo das linhas da tabela.
+   ========================================================================== */
+.docia-detalhamento--expandido {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    bottom: 1rem;
+    left: 1rem;
+    z-index: 1050;
+    background-color: #FFFFFF;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+}
+
+/* O botão fica "ligado" enquanto o modo está ativo, senão nada na tela diz como sair. */
+.docia-botao-ativo {
+    background-color: #6B007B !important;
+    border-color: #6B007B !important;
+    color: #FFFFFF !important;
+}
+.docia-botao-ativo:hover { background-color: #540060 !important; }
+
+/* O selo de contagem enquanto a consulta está no ar. Sem isto ele mantinha o número
+   ANTERIOR durante o carregamento, e quem trocava um filtro via o total antigo ao lado
+   do "Carregando dados..." — parecendo que o filtro não tinha surtido efeito. */
+.docia-contagem--carregando { opacity: 0.45; }
+
+/* ==========================================================================
+   FILTROS ATIVOS — as etiquetas acima da tabela
+   ==========================================================================
+   As linhas do Detalhamento podem estar recortadas por quatro lugares: a barra
+   lateral, o campo de busca, a legenda das roscas e o teto de linhas. Três deles
+   ficam fora do campo de visão de quem está lendo a tabela — a barra pode estar
+   fechada, a legenda fica acima. Sem estas etiquetas, um filtro esquecido lê como
+   "só existem 299 linhas", que é uma conclusão errada e cara.
+
+   Cada etiqueta remove o SEU filtro no X. É a única maneira de desfazer sem ter de
+   descobrir de onde o recorte veio.
+   ========================================================================== */
+.docia-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+    padding: 4px 6px 4px 12px;
+    border: 1px solid rgba(107, 0, 123, 0.18);
+    border-radius: 999px;
+    background-color: rgba(107, 0, 123, 0.05);
+    box-shadow: 0 1px 3px rgba(107, 0, 123, 0.04);
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.4;
+    color: #6B007B;
+    white-space: nowrap;
+}
+
+/* O rótulo do tipo de filtro ("Semestre", "Busca") em tom mais fraco: o que importa
+   é o VALOR, e ele é que fica em caixa alta e escuro. */
+.docia-chip__tipo {
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    opacity: 0.65;
+}
+
+.docia-chip__valor {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 22rem;
+}
+
+.docia-chip__x {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 15px;
+    height: 15px;
+    flex: 0 0 auto;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: inherit;
+    font-size: 9px;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+.docia-chip__x:hover { background-color: rgba(107, 0, 123, 0.22); }
+
+/* "Limpar tudo" não é um filtro: é uma ação, e não deve parecer uma etiqueta. */
+.docia-chip--acao {
+    border-style: dashed;
+    background-color: transparent;
+    padding: 3px 10px;
+    cursor: pointer;
+}
+.docia-chip--acao:hover { background-color: rgba(107, 0, 123, 0.09); }
+
+/* O aviso do teto é informativo, não removível — daí o cinza em vez do roxo. */
+.docia-chip--aviso {
+    border-color: #E5E7EB;
+    background-color: #F9FAFB;
+    color: #6B7280;
+    padding: 3px 10px;
+}
+
+/*  Fatia que ficou DE FORA do recorte, quando há algum recorte ativo.
+
+    Escolher uma fatia é, ao mesmo tempo, deixar catorze de fora — e sem isto as outras
+    catorze continuavam com a mesma aparência de sempre, sem nada dizendo que os números
+    delas não estão na tabela. O risco diz exatamente isso, e some no clique.
+
+    Apagado o suficiente para recuar, não tanto que deixe de ser legível: os valores
+    continuam sendo informação, e é olhando para eles que se decide qual somar em
+    seguida. */
+.docia-legenda__item--fora { opacity: 0.82; }
+.docia-legenda__item--fora .docia-legenda__nome,
+.docia-legenda__item--fora .docia-legenda__valor,
+.docia-legenda__item--fora .docia-legenda__pct { text-decoration: line-through; }
+.docia-legenda__item--fora .docia-legenda__ponto { opacity: 0.87; }
+.docia-legenda__item--fora:hover { opacity: 0.95; }
+
+/* Selo no botão de engrenagem: há configuração aplicada esperando a próxima atualização. */
+.docia-selo-config {
+    position: absolute;
+    top: 0.55rem;
+    right: 0.35rem;
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 999px;
+    background-color: #6B007B;
+    box-shadow: 0 0 0 2px #FFFFFF;
+}
+
+/* ==========================================================================
+   ESCOPO DA ATUALIZAÇÃO — O MODAL DA ENGRENAGEM
+   ==========================================================================
+   Desenhado inteiro aqui, e não em utilitárias: nada disto existe no bundle purgado
+   deste projeto (linha de documento com dois estados de ação, chip de período com
+   marca de seleção, campo que abre e fecha), e classe utilitária ausente falha em
+   silêncio. Tokens de cor à mão porque a camada de tema não alcança CSS próprio — a
+   contraparte escura vive em `dash_documentos_ia-eleitoral.css`.
+   ========================================================================== */
+.cfgx {
+    width: 720px;
+    max-width: 94vw;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    background-color: #FFFFFF;
+    border-radius: 1.5rem;
+    box-shadow: 0 30px 70px rgba(15, 23, 42, 0.3);
+    overflow: hidden;
+}
+
+/* --- cabeçalho ---------------------------------------------------------- */
+.cfgx__topo {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 1.3rem 1.5rem;
+    background: linear-gradient(135deg, rgba(107, 0, 123, 0.06), rgba(236, 72, 153, 0.05));
+    border-bottom: 1px solid #F0EDF2;
+}
+.cfgx__icone {
+    width: 2.9rem;
+    height: 2.9rem;
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.9rem;
+    background: linear-gradient(135deg, #6B007B, #B4008F);
+    color: #FFFFFF;
+    font-size: 1.05rem;
+    box-shadow: 0 6px 16px rgba(107, 0, 123, 0.28);
+}
+.cfgx__titulo { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 0.12rem; }
+.cfgx__titulo strong { font-size: 1.25rem; font-weight: 800; color: #1A1023; letter-spacing: -0.01em; }
+.cfgx__titulo span { font-size: 0.85rem; color: #7A7183; }
+.cfgx__fechar {
+    width: 2.3rem; height: 2.3rem; flex: 0 0 auto;
+    border: 0; border-radius: 0.75rem;
+    background: rgba(255, 255, 255, 0.7);
+    color: #9A93A3; cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+.cfgx__fechar:hover { background-color: #FFFFFF; color: #6B007B; }
+
+/* --- corpo e seções ----------------------------------------------------- */
+.cfgx__corpo {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 1.3rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+.cfgx__secao { display: flex; flex-direction: column; gap: 0.85rem; }
+.cfgx__secao-topo { display: flex; align-items: flex-start; gap: 0.7rem; }
+
+/* O número do passo dá a ordem de leitura sem precisar de texto explicando. */
+.cfgx__passo {
+    width: 1.8rem; height: 1.8rem; flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 999px;
+    background-color: rgba(107, 0, 123, 0.1);
+    color: #6B007B;
+    font-size: 0.85rem; font-weight: 800;
+    margin-top: 0.08rem;
+}
+.cfgx__secao-texto { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 0.12rem; }
+.cfgx__secao-texto strong { font-size: 1.05rem; font-weight: 800; color: #241A2E; }
+.cfgx__secao-texto span { font-size: 0.85rem; line-height: 1.45; color: #8A8394; }
+
+.cfgx__mini {
+    flex: 0 0 auto;
+    padding: 0.28rem 0.75rem;
+    border: 1px solid #E7E3EC;
+    border-radius: 0.6rem;
+    background-color: #FFFFFF;
+    color: #7A7183;
+    font-size: 0.68rem; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+}
+.cfgx__mini:hover { border-color: #6B007B; color: #6B007B; background-color: rgba(107, 0, 123, 0.04); }
+
+/* --- período ------------------------------------------------------------ */
+.cfgx__periodos { display: flex; flex-wrap: wrap; gap: 0.55rem; padding-left: 2.2rem; }
+.cfgx-periodo { cursor: pointer; }
+.cfgx-periodo__caixa {
+    /* O TEXTO FICAVA TORTO, e a causa era o check. Ele é `opacity: 0` quando o período
+       está desmarcado — e opacity não tira do fluxo: o ícone continuava ocupando a
+       largura dele MAIS o gap, empurrando "2025-1" para a direita dentro do botão.
+       Só o estado marcado parecia certo, porque aí o ícone aparecia no espaço que já
+       estava reservado.
+
+       A saída é tirar o check do fluxo (`position: absolute`, logo abaixo) e centrar o
+       texto num padding simétrico grande o bastante para ele caber à esquerda. Assim o
+       rótulo nasce centrado, e marcar ou desmarcar não move um pixel.
+
+       `min-width` uniformiza a fileira: os quatro períodos passam a ter a mesma
+       largura, que é o que faz a linha ler como um grupo em vez de quatro retângulos
+       de tamanhos parecidos. */
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 2.4rem;
+    min-width: 6.9rem;
+    padding: 0 1.75rem;
+    border: 1.5px solid #E7E3EC;
+    border-radius: 0.75rem;
+    background-color: #FFFFFF;
+    color: #6C6479;
+    font-size: 0.8rem;
+    font-weight: 700;
+    transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+.cfgx-periodo__caixa:hover { border-color: #D9B6E0; color: #6B007B; }
+/* A marca só aparece quando o período está escolhido; sem ela o chip seria só uma
+   mudança de cor, e mudança de cor sozinha não diz "isto está selecionado". */
+.cfgx-periodo__marca {
+    position: absolute;
+    left: 0.72rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.62rem;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+.cfg-periodo:checked + .cfgx-periodo__caixa {
+    border-color: #6B007B;
+    background-color: #6B007B;
+    color: #FFFFFF;
+    box-shadow: 0 4px 12px rgba(107, 0, 123, 0.22);
+}
+.cfg-periodo:checked + .cfgx-periodo__caixa .cfgx-periodo__marca { opacity: 1; }
+
+/* --- documentos --------------------------------------------------------- */
+.cfgx__docs { display: flex; flex-direction: column; gap: 0.5rem; padding-left: 2.2rem; }
+
+.cfgx-doc {
+    border: 1px solid #EFECF3;
+    border-radius: 0.9rem;
+    background-color: #FCFBFD;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+/* Documento que saiu do padrão fica visivelmente diferente: é o que responde
+   "o que exatamente vai rodar" de relance, sem abrir cada linha. */
+.cfgx-doc.tem-ajuste { border-color: #D9B6E0; background-color: rgba(107, 0, 123, 0.035); }
+
+.cfgx-doc__linha { display: flex; align-items: center; gap: 0.9rem; padding: 0.9rem 1.1rem; }
+.cfgx-doc__icone {
+    width: 2.3rem; height: 2.3rem; flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 0.6rem;
+    background-color: rgba(107, 0, 123, 0.08);
+    color: #6B007B;
+    font-size: 0.85rem;
+}
+.cfgx-doc__texto { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.cfgx-doc__texto strong { font-size: 0.95rem; font-weight: 800; color: #2B2033; }
+.cfgx-doc__modo { font-size: 0.75rem; color: #9A93A3; }
+.cfgx-doc.tem-ajuste .cfgx-doc__modo { color: #6B007B; font-weight: 700; }
+
+.cfgx-acao {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    /* Mesma altura do ícone do documento (2rem): as duas ações e o ícone passam a
+       assentar na mesma linha óptica, em vez de cada um flutuar na sua altura. */
+    height: 2rem;
+    padding: 0 0.8rem;
+    border: 1px solid #E7E3EC;
+    border-radius: 0.6rem;
+    background-color: #FFFFFF;
+    color: #8A8394;
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+}
+.cfgx-acao i { font-size: 0.85rem;
+}
+.cfgx-acao:hover { border-color: #D9B6E0; color: #6B007B; }
+.cfgx-acao.is-ativo,
+.cfgx-acao.is-ativo:hover {
+    border-color: #6B007B;
+    background-color: #6B007B;
+    color: #FFFFFF;
+}
+
+.cfgx-doc__lista {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.6rem;
+    padding: 0 0.8rem 0.75rem 3.5rem;
+}
+/*  `.hidden` do bundle é `display: none` com a MESMA especificidade que a regra acima,
+    e este arquivo é carregado depois do `output.css` — então o `display: flex` vencia e
+    as cinco caixas nasciam abertas. Regra própria, com especificidade maior, devolve a
+    palavra final ao `.hidden`. */
+.cfgx-doc__lista.hidden { display: none; }
+.cfgx-doc__lista textarea {
+    flex: 1 1 auto;
+    padding: 0.55rem 0.7rem;
+    border: 1.5px solid #E7E3EC;
+    border-radius: 0.65rem;
+    background-color: #FFFFFF;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.73rem;
+    line-height: 1.5;
+    color: #2B2033;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.15s ease;
+}
+.cfgx-doc__lista textarea:focus { border-color: #B4008F; }
+.cfgx-doc__lista textarea::placeholder { color: #BDB7C6; }
+.cfgx-doc__contagem {
+    flex: 0 0 auto;
+    padding-bottom: 0.5rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #9A93A3;
+    white-space: nowrap;
+}
+
+/* --- rodapé ------------------------------------------------------------- */
+.cfgx__rodape {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #F0EDF2;
+    background-color: #FBFAFC;
+}
+.cfgx__resumo {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.74rem;
+    line-height: 1.4;
+    color: #8A8394;
+}
+.cfgx__resumo i { color: #B9B2C4; }
+.cfgx__resumo.tem-escopo { color: #6B007B; font-weight: 700; }
+.cfgx__resumo.tem-escopo i { color: #6B007B; }
+
+.cfgx__btn {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.6rem 1.35rem;
+    border-radius: 0.75rem;
+    font-size: 0.79rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: background-color 0.15s ease, opacity 0.15s ease, border-color 0.15s ease;
+}
+.cfgx__btn--secundario {
+    border: 1px solid #E7E3EC;
+    background-color: #FFFFFF;
+    color: #7A7183;
+}
+.cfgx__btn--secundario:hover { background-color: #F4F2F7; color: #2B2033; }
+.cfgx__btn--primario {
+    border: 0;
+    background: linear-gradient(135deg, #6B007B, #B4008F);
+    color: #FFFFFF;
+    box-shadow: 0 6px 16px rgba(107, 0, 123, 0.26);
+}
+.cfgx__btn--primario:hover { opacity: 0.93; }
+
+
+/* ==========================================================================
+   ESCOPO DA ATUALIZAÇÃO — FOCO DE TECLADO, MOVIMENTO E LARGURA CURTA
+   ==========================================================================
+   O modal estava completo no mouse e vazio no teclado: nenhum controle desenhava
+   foco, e este arquivo inteiro não tinha uma única regra `:focus-visible`.
+
+   O CASO GRAVE É O PERÍODO. Ele é um `<input class="sr-only">` seguido de um
+   `<span>` desenhado à mão — o mesmo padrão do resto do portal. O foco cai no
+   input, que é invisível por definição, então o Tab atravessava os quatro
+   períodos sem absolutamente nada acontecer na tela. Quem não usa mouse não
+   tinha como saber onde estava, nem o que o Espaço ia marcar.
+
+   `:focus-visible`, e não `:focus`: o anel aparece para quem navega por teclado
+   e não pisca a cada clique de mouse — é a diferença entre acessível e barulhento.
+   ========================================================================== */
+
+.cfgx__fechar:focus-visible,
+.cfgx__mini:focus-visible,
+.cfgx-acao:focus-visible,
+.cfgx__btn:focus-visible {
+    outline: 2px solid #6B007B;
+    outline-offset: 2px;
+}
+
+/* Quem recebe o foco é o input invisível; quem pinta o anel é o irmão desenhado. */
+.cfg-periodo:focus-visible + .cfgx-periodo__caixa {
+    outline: 2px solid #6B007B;
+    outline-offset: 2px;
+}
+
+/* O textarea já responde ao foco pela borda (`:focus`), que é mais legível num campo
+   de texto do que um anel externo. Anular o outline aqui evita os dois ao mesmo tempo. */
+.cfgx-doc__lista textarea:focus-visible { outline: none; }
+
+/* --- movimento ---------------------------------------------------------- */
+/* Sete transições convivem neste modal. Para quem pediu menos movimento no sistema,
+   elas viram ruído — e a regra é local ao `.cfgx` de propósito: desligar animação do
+   dashboard inteiro é decisão maior do que este componente comporta. */
+@media (prefers-reduced-motion: reduce) {
+    .cfgx,
+    .cfgx * { transition: none; }
+    .cfgx-periodo__marca { transition: none; }
+}
+
+/* --- largura curta ------------------------------------------------------ */
+/* O modal é `94vw` no celular, e a linha de documento não quebrava: nome longo mais
+   dois botões de ação espremiam o texto até sobrar reticência. Abaixo de 560px as
+   ações descem para a própria linha, e as sangrias de 2.2rem/3.5rem — que existem
+   para alinhar o conteúdo sob o número do passo — deixam de fazer sentido e saem. */
+@media (max-width: 560px) {
+    .cfgx__periodos,
+    .cfgx__docs { padding-left: 0; }
+
+    .cfgx-doc__linha { flex-wrap: wrap; }
+    .cfgx-doc__texto { flex: 1 1 100%; }
+    .cfgx-acao { flex: 1 1 auto; justify-content: center; }
+
+    .cfgx-doc__lista { padding-left: 0.8rem; flex-wrap: wrap; }
+    .cfgx-doc__lista textarea { flex: 1 1 100%; }
+    .cfgx-doc__contagem { padding-bottom: 0; }
+
+    .cfgx__rodape { flex-wrap: wrap; }
+    .cfgx__resumo { flex: 1 1 100%; }
+    .cfgx__btn { flex: 1 1 auto; justify-content: center; }
+}

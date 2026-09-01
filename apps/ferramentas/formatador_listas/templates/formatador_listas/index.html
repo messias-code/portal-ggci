@@ -1,0 +1,244 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <!-- 
+    ======================================================================
+    TEMPLATE: Formatador de Listas (index.html)
+    O QUE FAZ: Constrói a UI da aplicação estática para converter dados brutos.
+    POR QUÊ EXISTE: Reduz atrito com o banco de dados. Um analista precisa apenas colar
+    uma coluna do Excel para receber em tempo real o array formatado.
+    COMO FUNCIONA: Dois painéis estáticos acoplados ao script `formatador_listas.js`.
+    Nenhum form submission é disparado para o servidor.
+    ======================================================================
+    -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formatador de Listas - Portal GGCI</title>
+    
+    <!--
+        MOTOR DE TEMAS — precisa vir antes de tudo.
+        Carregado SEM 'defer'/'async' de propósito: executado de forma síncrona
+        aqui no <head>, grava o atributo data-tema no <html> antes da primeira
+        pintura, eliminando o flash do tema padrão. Como a preferência vive no
+        localStorage, o modo escolhido em qualquer tela já chega aplicado aqui.
+    -->
+    <script src="{% static 'js/tema.js' %}"></script>
+
+    <link rel="stylesheet" href="{% static 'css/output.css' %}">
+
+    <!-- Tokens de cor dos temas e o botão sol/lua (compartilhado por todo o portal) -->
+    <link rel="stylesheet" href="{% static 'css/tema.css' %}">
+
+    <!-- Modo escuro da casca de menu (barra lateral + cabeçalho), compartilhado -->
+    <link rel="stylesheet" href="{% static 'css/tema-menu.css' %}">
+
+    <!-- Modo escuro da área de trabalho das ferramentas, compartilhado -->
+    <link rel="stylesheet" href="{% static 'css/tema-ferramenta.css' %}">
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="{% static 'formatador_listas/css/formatador_listas.css' %}">
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@8.0.4/dist/turbo.es.2017-esm.js"></script>
+</head>
+
+<body class="grid-bg bg-[#f8f6fb] text-gray-800 fixed inset-0 p-4 lg:p-6 flex overflow-hidden transition-colors duration-500">
+
+    <div id="toast-container" class="fixed top-5 right-5 z-[70] flex flex-col items-end"></div>
+
+        <!-- 
+        ======================================================================
+        1. ELEMENTOS DECORATIVOS DE BACKGROUND (LIGHT BLOBS / BLUR EFFECTS)
+        ----------------------------------------------------------------------
+        Divs com desfoque gaussiano (blur-[140px]) e alta opacidade que criam o
+        efeito estético de iluminação colorida flutuante nos quatro cantos da tela,
+        trazendo profundidade visual sem prejudicar o desempenho.
+        ======================================================================
+    -->
+    <div class="menu-blob menu-blob--1 absolute top-[-20%] left-[-15%] w-[70vw] h-[70vh] bg-pink-500/70 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="menu-blob menu-blob--2 absolute top-[-20%] right-[-15%] w-[70vw] h-[70vh] bg-yellow-400/75 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="menu-blob menu-blob--3 absolute bottom-[-20%] left-[-15%] w-[70vw] h-[70vh] bg-purple-700/60 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="menu-blob menu-blob--4 absolute bottom-[-20%] right-[-15%] w-[70vw] h-[70vh] bg-green-600/65 rounded-full blur-[140px] pointer-events-none z-0"></div>
+
+    <div class="menu-shell w-full h-full bg-white/70 backdrop-blur-2xl border border-white/80 rounded-[2rem] shadow-2xl flex overflow-hidden relative z-10 transition-all duration-300">
+
+        <aside class="menu-sidebar w-[18rem] lg:w-[20rem] flex flex-col border-r border-purple-100/50 bg-white/40 shrink-0">
+            <div class="menu-divisoria h-28 flex items-center justify-center border-b border-purple-100/50">
+                <!--
+                    As duas versões da logo são publicadas e o CSS de tema decide
+                    qual fica visível. O elemento oculto sai da árvore de
+                    acessibilidade, então o leitor de tela anuncia apenas uma.
+                -->
+                <img src="{% static 'img/logos/ovg.png' %}" alt="OVG Logo"
+                    class="logo-tema logo-tema--claro h-[4.46rem] drop-shadow-md">
+                <img src="{% static 'img/logos/ovg-eleitoral.png' %}" alt="OVG Logo"
+                    class="logo-tema logo-tema--eleitoral h-[4.46rem] drop-shadow-md">
+            </div>
+            <nav class="flex-1 px-6 py-8 space-y-2 overflow-hidden">
+                <p class="menu-nav-titulo text-[13px] font-bold text-purple-700 uppercase tracking-widest mb-4 px-2">Navegação Principal</p>
+                
+                <a href="{% url 'inicio' %}" class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
+                    <i class="fa-solid fa-user-shield text-[23px] w-6 text-center"></i><span>Início</span>
+                </a>
+                
+                <a href="{% url 'ferramentas' %}" class="nav-active flex items-center space-x-3 px-4 py-3 rounded-xl font-bold text-base">
+                    <i class="fa-solid fa-screwdriver-wrench text-[23px] w-6 text-center"></i><span>Ferramentas</span>
+                </a>
+                
+                {% if user.p_analise_ia or user.p_recalculo_bolsas or user.p_enquadramento_cursos or user.usuario == 'admin@ovg.org.br' %}
+                    <a href="{% url 'automacoes' %}" class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
+                        <i class="fa-brands fa-whmcs text-[28px] w-6 text-center"></i><span>Automações</span>
+                    </a>
+                {% else %}
+                    <div class="menu-nav-bloqueado flex items-center space-x-4 px-4 py-3 text-gray-400 bg-gray-50/50 rounded-xl font-semibold text-base cursor-not-allowed opacity-70" title="Acesso Restrito">
+                        <i class="fa-solid fa-lock text-[23px] w-6 text-center"></i><span>Automações</span>
+                    </div>
+                {% endif %}
+
+                {% if user.p_dash_polichat or user.p_dash_documentos_ia or user.usuario == 'admin@ovg.org.br' %}
+                    <a href="{% url 'dashboards' %}" class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
+                        <i class="fa-solid fa-chart-line text-[23px] w-6 text-center"></i><span>Dashboards</span>
+                    </a>
+                {% else %}
+                    <div class="menu-nav-bloqueado flex items-center space-x-4 px-4 py-3 text-gray-400 bg-gray-50/50 rounded-xl font-semibold text-base cursor-not-allowed opacity-70" title="Acesso Restrito">
+                        <i class="fa-solid fa-lock text-[23px] w-6 text-center"></i><span>Dashboards</span>
+                    </div>
+                {% endif %}
+                
+                {% if user.p_documentacoes or user.usuario == 'admin@ovg.org.br' %}
+                    <a href="#" class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
+                        <i class="fa-solid fa-folder-open text-[23px] w-6 text-center"></i><span>Documentações</span>
+                    </a>
+                {% else %}
+                    <div class="menu-nav-bloqueado flex items-center space-x-4 px-4 py-3 text-gray-400 bg-gray-50/50 rounded-xl font-semibold text-base cursor-not-allowed opacity-70" title="Acesso Restrito">
+                        <i class="fa-solid fa-lock text-[23px] w-6 text-center"></i><span>Documentações</span>
+                    </div>
+                {% endif %}
+            </nav>
+            <div class="menu-divisoria p-6 border-t border-purple-100/50">
+                <a href="{% url 'logout' %}" class="menu-sair flex items-center justify-center space-x-2 w-full px-4 py-3 bg-red-50 text-red-600 rounded-xl font-extrabold text-sm hover:bg-red-500 hover:text-white transition-all shadow-sm">
+                    <i class="fa-solid fa-right-from-bracket"></i><span>SAIR DO SISTEMA</span>
+                </a>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+            
+            <header class="menu-header menu-divisoria h-28 px-8 lg:px-10 flex justify-between items-center border-b border-purple-100/50 bg-white/40 backdrop-blur-md shrink-0">
+                <div class="flex items-center gap-4">
+                    <div class="tela-header-icone w-14 h-14 rounded-2xl bg-gradient-to-br from-pink-100 to-pink-200 text-pink-500 flex items-center justify-center shadow-inner shrink-0 hidden sm:flex">
+                        <i class="fa-solid fa-brain text-2xl drop-shadow-sm"></i>
+                    </div>
+                    <div>
+                        <h2 class="menu-header-titulo text-2xl lg:text-3xl font-extrabold text-gray-800 tracking-tight">Formatador de Listas</h2>
+                        <p class="menu-header-sub text-sm lg:text-lg text-gray-500 font-medium mt-1">Limpeza automática para filtros SQL e Planilhas</p>
+                    </div>
+                </div>
+                <!--
+                    Agrupa o seletor de modo e o botão Voltar no canto direito do
+                    cabeçalho. O <header> é 'justify-between' e este bloco é o
+                    segundo filho, então o alinhamento à direita já vem de graça.
+                -->
+                <div class="flex items-center gap-4">
+                    <button type="button"
+                        class="tema-toggle"
+                        data-tema-toggle
+                        aria-label="Ativar modo eleitoral"
+                        aria-pressed="false">
+                        <svg class="tema-toggle__icone tema-toggle__icone--lua" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"
+                            stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                        <svg class="tema-toggle__icone tema-toggle__icone--sol" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.6"/>
+                            <path d="M12 2.4V4.4M12 19.6V21.6M21.6 12H19.6M4.4 12H2.4M18.79 5.21L17.38 6.62M6.62 17.38L5.21 18.79M18.79 18.79L17.38 17.38M6.62 6.62L5.21 5.21"
+                                stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+
+                    <a href="{% url 'ferramentas' %}" class="tela-voltar px-5 py-2.5 bg-white/80 hover:bg-pink-50 text-pink-600 font-bold rounded-xl transition-all shadow-sm border border-pink-100 inline-flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-arrow-left mr-2 mt-[1px]"></i>
+                    <span class="leading-none">Voltar</span>
+                </a>
+                </div>
+            </header>
+
+            <div class="flex-1 p-6 lg:p-10 flex flex-col overflow-hidden">
+                <div class="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 min-h-0">
+                    
+                    <div class="fmt-painel flex flex-col bg-white/60 backdrop-blur-md border border-white/50 p-6 rounded-[2rem] shadow-sm overflow-hidden h-full">
+                        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-2 shrink-0">
+                            <label class="fmt-label font-extrabold text-gray-700 text-sm uppercase tracking-wide">Lista Original (Excel/Texto)</label>
+                            <span id="badge-in" class="fmt-badge bg-gray-200 text-gray-600 text-xs font-bold px-3 py-1 rounded-full shadow-inner">0 itens</span>
+                        </div>
+                        
+                        <div class="flex-1 min-h-0 mb-4 transition-all duration-300">
+                            <textarea id="input-list" spellcheck="false" class="fmt-entrada w-full h-full bg-white/80 border-2 border-purple-100/60 rounded-2xl p-5 text-gray-700 focus:ring-0 focus:border-pink-400 outline-none resize-none custom-scrollbar transition-colors font-medium text-[16px] leading-relaxed custom-caret" placeholder="   Cole a coluna de inscrições aqui..."></textarea>
+                        </div>
+                        
+                        <div class="flex gap-4 shrink-0">
+                            <button id="btn-limpar" class="fmt-btn-limpar px-6 py-3.5 bg-gray-100 text-gray-600 font-extrabold rounded-xl hover:bg-gray-200 transition-all w-1/3 text-[15px]">
+                                Limpar
+                            </button>
+                            <button id="btn-processar" class="fmt-btn-processar px-6 py-3.5 bg-gradient-to-r from-pink-400 to-pink-500 text-white font-extrabold rounded-xl shadow-lg shadow-pink-500/30 hover:scale-[1.02] transition-all w-2/3 text-[15px]">
+                                Normalizar Dados
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="fmt-painel flex flex-col bg-white/60 backdrop-blur-md border border-white/50 p-6 rounded-[2rem] shadow-sm overflow-hidden h-full relative">
+                        
+                        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-2 shrink-0">
+                            <label class="fmt-label font-extrabold text-gray-700 text-sm uppercase tracking-wide">Lista Formatada</label>
+                            <span id="badge-out" class="fmt-badge fmt-badge--destaque bg-pink-100 text-pink-600 text-xs font-bold px-3 py-1 rounded-full shadow-inner">0 itens</span>
+                        </div>
+
+                        <!--
+                            ESCOLHA DO SEPARADOR.
+                            A vírgula segue sendo o padrão (é o `IN ('A','B')` do SQL, para
+                            o qual a ferramenta nasceu), mas a mesma lista vira parâmetro de
+                            URL, chave composta ou nome de arquivo — e cada um desses quer
+                            um caractere diferente. Trocar aqui refaz a saída na hora, sem
+                            precisar normalizar de novo.
+                        -->
+                        <div class="flex items-center gap-2 mb-4 shrink-0 flex-wrap">
+                            <span class="fmt-label-mini text-[11px] font-bold text-gray-400 uppercase tracking-wider">Separador</span>
+                            <div class="flex items-center gap-1" role="group" aria-label="Separador da lista">
+                                <button type="button" class="fmt-sep fmt-sep--ativo" data-sep="," title="Vírgula">,</button>
+                                <button type="button" class="fmt-sep" data-sep=";" title="Ponto e vírgula">;</button>
+                                <button type="button" class="fmt-sep" data-sep="-" title="Hífen">-</button>
+                                <button type="button" class="fmt-sep" data-sep="_" title="Sublinhado">_</button>
+                            </div>
+                        </div>
+                        
+                        <div class="relative flex-1 min-h-0 flex flex-col gap-4 overflow-hidden">
+                            <div class="fmt-saida-caixa relative flex-1 min-h-0 border-2 border-pink-200/60 rounded-2xl overflow-hidden bg-white/60 shadow-inner group">
+                                <textarea id="output-list" readonly class="w-full h-full bg-transparent p-5 text-pink-700 font-mono text-[16px] leading-relaxed focus:ring-0 outline-none resize-none custom-scrollbar custom-caret"></textarea>
+                                
+                                <button id="btn-copiar" class="absolute top-4 right-4 w-12 h-12 bg-pink-500 text-white rounded-xl shadow-lg flex items-center justify-center hover:bg-pink-600 hover:scale-105 transition-all opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto" title="Copiar para área de transferência">
+                                    <i class="fa-solid fa-copy text-xl"></i>
+                                </button>
+                            </div>
+
+                            <div id="alert-duplicatas" class="hidden bg-pink-50 border-t-4 border-pink-400 rounded-2xl p-5 flex flex-col shrink-0 max-h-[50%] shadow-lg transition-all duration-500 ease-in-out">
+                                <div class="flex items-center justify-between gap-2 text-pink-800 font-extrabold mb-1.5 text-[15px]">
+                                    <div class="flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation"></i> <span id="titulo-qtd-duplicatas">Itens Duplicados</span></div>
+                                    <button id="btn-fechar-alerta" class="text-pink-600 hover:text-pink-800 transition-colors p-1 rounded-full hover:bg-pink-100"><i class="fa-solid fa-xmark"></i></button>
+                                </div>
+                                <p class="text-[13px] text-pink-700 mb-3 font-medium border-b border-pink-200 pb-2">Os seguintes valores foram detectados como duplicados e removidos automaticamente da lista final:</p>
+                                <div class="flex-1 min-h-0 border border-pink-200 rounded-xl bg-white overflow-hidden p-3 shadow-inner">
+                                    <div id="conteudo-duplicatas" class="text-[14px] font-mono text-pink-800 overflow-y-auto custom-scrollbar h-full pr-2 leading-relaxed break-words"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{% static 'formatador_listas/js/formatador_listas.js' %}?v=4"></script>
+</body>
+</html>

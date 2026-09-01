@@ -1,0 +1,1078 @@
+/* ==========================================================================
+   POLICHAT — MODO ELEITORAL (CAMADA ESCURA DA TELA)
+   ==========================================================================
+   Carregado DEPOIS de `polichat.css`, sempre. Este arquivo não redesenha nada:
+   ele só reapresenta, no escuro, o que aquele arquivo já desenhou.
+
+   POR QUE UM ARQUIVO SEPARADO
+     O `tema-conteudo.css` cobre as telas construídas com utilitárias do
+     Tailwind — ele remapeia `.bg-white`, `.text-gray-*` e companhia dentro de
+     `.area-trabalho`. O Polichat é diferente: a Mesa de Trabalho, o dropdown de
+     agentes e os cartões de atendimento são CSS próprio, escrito à mão sobre
+     as variáveis `--c-*` e `--pink*` do `polichat.css`. Nenhuma utilitária
+     passa por ali, então o remapeamento global não alcança essa parte da tela.
+
+   A ESTRATÉGIA, EM DUAS CAMADAS
+     1. PONTE DE VARIÁVEIS (bloco 1). Quase tudo no `polichat.css` já lê de uma
+        variável. Reapontar essas variáveis para os tokens `--tema-*` reveste a
+        tela inteira de uma vez — chips, pílulas de status, contadores das abas
+        e até os totais que o `polichat.js` monta com `style="background:
+        var(--c-green-bg)"` mudam junto, sem tocar no JS.
+     2. EXCEÇÕES (blocos seguintes). O que ficou com cor literal no CSS
+        original (`#f2f3f8` na divisória do cartão, `#b45309` no texto do chip
+        âmbar) e o que vem de fora do projeto (o CSS do Flatpickr, servido por
+        CDN) precisa ser nomeado um a um.
+
+   SOBRE O USO DE `!important`
+     Ele aparece por dois motivos concretos, nunca por conveniência: o tema do
+     Flatpickr no `polichat.css` já é escrito inteiro com `!important` (para
+     vencer o CSS do CDN), e alguns elementos carregam cor em atributo `style`
+     no HTML — que só perde para `!important`. Fora esses casos, a ordem de
+     carregamento basta.
+   ========================================================================== */
+
+
+/* ==========================================================================
+   1. PONTE DE VARIÁVEIS
+   --------------------------------------------------------------------------
+   O `polichat.css` declara sua paleta em `:root`. Redeclarar os mesmos nomes
+   sob `html[data-tema="eleitoral"]` vence por especificidade (0,1,1 contra
+   0,1,0) e a cascata de custom properties faz o resto: todo componente que já
+   lia `var(--c-surface)` passa a ler o valor escuro sem nenhuma regra nova.
+
+   Os pares de status merecem uma explicação. No claro eles são
+   `cor + fundo pastel + borda pastel` (ex.: âmbar `#f59e0b` sobre `#fffbeb`).
+   No escuro o fundo pastel viraria uma mancha branca, então cada `-bg` vira um
+   VÉU translúcido da própria cor e o tom base sobe até ficar legível sobre o
+   escuro. Os tons vêm dos tokens `--tema-status-*`, o que mantém o verde de
+   "concluído" idêntico entre esta tela e as Automações.
+
+   Exceção: o roxo. Ele é cor de identidade, que o modo eleitoral não exibe —
+   mas aqui carrega significado ("Retorno", "Transferido"). Em vez de apagá-lo
+   no teal do tema, o que confundiria com "concluído", ele migra para um
+   azul-ciano claro: continua sendo uma quinta cor distinta, agora dentro da
+   paleta — e separada do índigo, que já é o "info".
+   ========================================================================== */
+
+html[data-tema="eleitoral"] {
+    /* Marca — o rosa OVG cede lugar ao teal da paleta ardósia. */
+    --pink: var(--tema-primaria);
+    --pink-dark: var(--tema-primaria-forte);
+    --pink-light: var(--tema-primaria-suave);
+    --pink-glow: rgba(111, 211, 191, .18);
+
+    /* Base */
+    --c-bg: var(--tema-fundo);
+    --c-surface: var(--tema-superficie-2);
+    --c-border: var(--tema-borda);
+    --c-text: var(--tema-texto-forte);
+    --c-muted: var(--tema-texto-medio);
+
+    /* Vidro. No claro é branco translúcido sobre os blobs coloridos; no escuro
+       precisa de opacidade alta, senão os halos de fundo atravessam a Mesa e
+       lavam o contraste do texto sobre os cartões. */
+    --glass: rgba(56, 65, 79, .92);
+    --glass-border: var(--tema-borda);
+
+    /* Status */
+    --c-amber: #EFB169;
+    --c-amber-bg: rgba(239, 177, 105, .14);
+    --c-amber-bd: rgba(239, 177, 105, .30);
+    --c-blue: #8FADEB;
+    --c-blue-bg: rgba(143, 173, 235, .14);
+    --c-blue-bd: rgba(143, 173, 235, .30);
+    --c-green: #62D191;
+    --c-green-bg: rgba(98, 209, 145, .14);
+    --c-green-bd: rgba(98, 209, 145, .30);
+    /* No claro este é o verde escuro de texto; no escuro ele se iguala ao tom
+       de traço, que é o legível sobre o véu. */
+    --c-green-txt: #62D191;
+    --c-rose: #F2937D;
+    --c-rose-bg: rgba(242, 147, 125, .14);
+    --c-rose-bd: rgba(242, 147, 125, .30);
+    --c-purple: #7FC3DA;
+    --c-purple-bg: rgba(86, 114, 179, .16);
+    --c-purple-bd: rgba(86, 114, 179, .32);
+
+    /* Sombras. As do claro são pretos de 4% a 12% — invisíveis sobre fundo
+       escuro. Aqui elas voltam a existir como profundidade real. */
+    --shadow-sm: 0 8px 30px rgba(0, 0, 0, .28);
+    --shadow-md: 0 12px 40px rgba(0, 0, 0, .38);
+    --shadow-lg: 0 16px 50px rgba(0, 0, 0, .48);
+}
+
+
+/* ==========================================================================
+   2. CASCA DA PÁGINA
+   --------------------------------------------------------------------------
+   Três elementos do template trazem cor em atributo `style` ou em utilitária
+   fora de `.area-trabalho`, e por isso escapam tanto da ponte acima quanto do
+   `tema-conteudo.css`.
+   ========================================================================== */
+
+/* A moldura arredondada da página tem `box-shadow` inline com um contorno
+   branco interno de 50% — no escuro vira um risco luminoso na borda da tela. */
+html[data-tema="eleitoral"] .menu-shell {
+    box-shadow:
+        0 25px 50px -12px rgba(0, 0, 0, .5),
+        inset 0 0 0 1px rgba(255, 255, 255, .02) !important;
+}
+
+/* Véu de carregamento: branco a 60% acende a tela inteira a cada sincronismo. */
+html[data-tema="eleitoral"] #global-loader {
+    background-color: rgba(46, 54, 67, .72);
+}
+
+html[data-tema="eleitoral"] #global-loader p {
+    background-color: var(--tema-superficie-2);
+    color: var(--tema-texto-forte);
+}
+
+/* A barra de filtros não precisa mais de regra própria aqui.
+   Havia um fundo sólido escuro nesta posição para compensar o branco que o
+   `#filter-sidebar.is-animating` do polichat.css aplicava durante o slide. Só
+   que os dois valores nunca coincidiram com a cor de repouso — que é composta
+   pelo backdrop-blur a partir do conteúdo atrás — e o resultado era a barra
+   abrir escura e assentar clara. O polichat.css agora reduz o raio do blur em
+   vez de desligá-lo, então a cor continua vindo do conteúdo real durante todo o
+   movimento e não há nada para compensar. */
+
+/* Bolhas decorativas de dentro dos cartões e da tabela: no claro são reflexos
+   pastel quase imperceptíveis; no escuro cada uma vira um borrão colorido. */
+html[data-tema="eleitoral"] .blob-tabela,
+html[data-tema="eleitoral"] [class*="opacity-50 group-hover:scale-150"] {
+    display: none !important;
+}
+
+/* Ícones decorativos em degradê rosa. São dezenas, sempre com o mesmo par
+   `from-pink-* to-pink-*`; um seletor único evita listar todos. */
+html[data-tema="eleitoral"] .bg-gradient-to-br {
+    background-image: linear-gradient(to bottom right, rgba(111, 211, 191, .22), rgba(111, 211, 191, .10)) !important;
+    border-color: transparent !important;
+    color: var(--tema-primaria-suave) !important;
+    box-shadow: inset 0 0 0 1px rgba(111, 211, 191, .2) !important;
+}
+
+html[data-tema="eleitoral"] .text-pink-400,
+html[data-tema="eleitoral"] .text-pink-500,
+html[data-tema="eleitoral"] .text-pink-600 {
+    color: var(--tema-primaria-suave) !important;
+}
+
+html[data-tema="eleitoral"] .bg-pink-100,
+html[data-tema="eleitoral"] .bg-pink-50 {
+    background-color: rgba(111, 211, 191, 0.16) !important;
+}
+
+/* --- Aba lateral de filtros ----------------------------------------------
+   O botão "FILTROS" que fica colado na borda esquerda traz
+   `shadow-[4px_0_15px_rgba(236,72,153,0.2)]` — uma sombra ROSA escrita como
+   valor arbitrário do Tailwind. Sobre o fundo claro ela passa despercebida;
+   sobre o escuro vira um halo neon saindo da lateral da tela, que foi
+   exatamente o que se viu.
+
+   Sombra colorida é o efeito que mais engana ao migrar um tema: ela quase não
+   aparece no claro e domina o escuro. Aqui vira profundidade neutra. */
+html[data-tema="eleitoral"] #toggle-sidebar-btn {
+    background-color: var(--tema-superficie-2) !important;
+    border-color: var(--tema-borda) !important;
+    color: var(--tema-primaria-suave) !important;
+    box-shadow: 4px 0 15px rgba(0, 0, 0, 0.35) !important;
+}
+
+html[data-tema="eleitoral"] #toggle-sidebar-btn:hover {
+    background-color: var(--tema-superficie-3) !important;
+    color: var(--tema-primaria) !important;
+}
+
+/* --- Abas Mesa de Trabalho / Painel do Gestor -----------------------------
+   A aba ativa é pintada pelo `polichat.js` com
+   `elemento.style.backgroundColor = '#6B007B'` — o roxo institucional, escrito
+   direto no atributo `style` a cada troca de aba. Estilo inline só perde para
+   `!important`, e como o JS reescreve o valor a cada clique, não adianta
+   ancorar por classe: as regras precisam pegar os dois IDs em qualquer estado.
+
+   A distinção entre ativa e inativa deixa de ser "roxo x branco" e passa a ser
+   ELEVAÇÃO — a ativa é a superfície mais clara, a inativa é translúcida. É a
+   mesma lógica que separa card de fundo no resto do tema. */
+html[data-tema="eleitoral"] #tab-mesa,
+html[data-tema="eleitoral"] #tab-gestor {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    color: var(--tema-texto-medio) !important;
+    border-color: var(--tema-borda) !important;
+}
+
+html[data-tema="eleitoral"] #tab-mesa:hover,
+html[data-tema="eleitoral"] #tab-gestor:hover {
+    background-color: rgba(111, 211, 191, 0.14) !important;
+    color: var(--tema-primaria-suave) !important;
+}
+
+/* A aba ativa é a única SEM `bg-white` na lista de classes — o JS remove essa
+   utilitária de quem está ativo e a devolve a quem sai. Isso dá um seletor
+   estável para o estado, sem precisar observar o atributo `style`. */
+html[data-tema="eleitoral"] #tab-mesa:not(.bg-white),
+html[data-tema="eleitoral"] #tab-gestor:not(.bg-white) {
+    background-color: var(--tema-solido-marca) !important;
+    color: #FFFFFF !important;
+}
+
+/* Fundos de ícone dos KPIs que o tema-conteudo.css não lista. */
+html[data-tema="eleitoral"] .bg-emerald-100 {
+    background-color: rgba(98, 209, 145, .14) !important;
+}
+
+html[data-tema="eleitoral"] .bg-yellow-100 {
+    background-color: rgba(234, 179, 8, .14) !important;
+}
+
+html[data-tema="eleitoral"] .bg-amber-100 {
+    background-color: rgba(239, 177, 105, .14) !important;
+}
+
+
+/* ==========================================================================
+   3. BARRA DE FILTROS — SELETOR DE AGENTE
+   --------------------------------------------------------------------------
+   O `<select>` real fica oculto; o que se vê é uma lista montada à mão
+   (`.cs-*`) com fundo de vidro branco fixo em `rgba(255,255,255,.92)`. Como o
+   valor é literal, a ponte de variáveis não o alcança.
+   ========================================================================== */
+
+html[data-tema="eleitoral"] .cs-dropdown {
+    background: rgba(66, 76, 91, .96);
+    border-color: var(--tema-primaria-borda);
+    /* O contorno interno claro do modo original vira sombra projetada: é o que
+       destaca o painel flutuante do fundo, já que no escuro não há brilho. */
+    box-shadow:
+        0 12px 40px rgba(0, 0, 0, .5),
+        inset 0 0 0 1px rgba(255, 255, 255, .05);
+}
+
+html[data-tema="eleitoral"] .cs-search-wrap {
+    border-bottom-color: var(--tema-borda);
+}
+
+html[data-tema="eleitoral"] .cs-search::placeholder {
+    color: var(--tema-texto-fraco);
+}
+
+html[data-tema="eleitoral"] .cs-option:hover {
+    background: rgba(111, 211, 191, .14);
+    color: var(--tema-primaria-suave);
+}
+
+html[data-tema="eleitoral"] .cs-option.active {
+    background: rgba(111, 211, 191, .20);
+    color: var(--tema-primaria-suave);
+}
+
+html[data-tema="eleitoral"] .cs-options::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, .18);
+}
+
+/* O avatar do filtro carrega o roxo institucional em atributo `style`, tanto
+   no fundo quanto no ícone. Ancorado pela posição dentro do gatilho: são os
+   dois únicos elementos ali, e nenhum tem classe própria. */
+html[data-tema="eleitoral"] .cs-display > div > div:first-child {
+    background-color: rgba(111, 211, 191, .14) !important;
+}
+
+html[data-tema="eleitoral"] .cs-display > div > div:first-child i {
+    color: var(--tema-primaria-suave) !important;
+}
+
+/* Atalhos de período (Hoje / Mês / Ano). O estado ativo é pintado com o roxo
+   institucional e `!important` no polichat.css — daí o par de `!important`. */
+html[data-tema="eleitoral"] .qd-btn {
+    background-color: rgba(255, 255, 255, .06) !important;
+    border-color: var(--tema-borda) !important;
+    color: var(--tema-texto-medio) !important;
+    box-shadow: none !important;
+}
+
+html[data-tema="eleitoral"] .qd-btn:hover {
+    background-color: rgba(111, 211, 191, .18) !important;
+    border-color: var(--tema-primaria-borda) !important;
+    color: var(--tema-primaria-suave) !important;
+    box-shadow: none !important;
+}
+
+html[data-tema="eleitoral"] .qd-btn.qd-active {
+    background-color: var(--tema-primaria-forte) !important;
+    border-color: var(--tema-primaria) !important;
+    color: #FFFFFF !important;
+    box-shadow: none !important;
+}
+
+
+/* ==========================================================================
+   4. CALENDÁRIO (FLATPICKR)
+   --------------------------------------------------------------------------
+   Dois calendários embutidos — Data Início e Data Fim — desenhados pelo CSS do
+   Flatpickr vindo do CDN, que é claro por construção: `#fff` no corpo,
+   `rgba(0,0,0,.9)` no cabeçalho, `#393939` nos dias.
+
+   O tema já existente no `polichat.css` recolore esse pacote com `!important`
+   em cada linha, para vencer o CDN. Toda regra daqui compete com aquela — por
+   isso repete o `!important`. Não é excesso: sem ele, a versão clara vence.
+
+   O corpo do calendário fica TRANSPARENTE de propósito. Ele já mora dentro de
+   um cartão `bg-white` da barra de filtros, que o `tema-conteudo.css` escurece;
+   pintar um segundo fundo por cima criaria um retângulo com tom levemente
+   diferente dentro do cartão.
+   ========================================================================== */
+
+html[data-tema="eleitoral"] .flatpickr-calendar,
+html[data-tema="eleitoral"] .flatpickr-months,
+html[data-tema="eleitoral"] .flatpickr-weekdays,
+html[data-tema="eleitoral"] .flatpickr-days,
+html[data-tema="eleitoral"] .dayContainer {
+    background: transparent !important;
+}
+
+html[data-tema="eleitoral"] .flatpickr-calendar {
+    border-color: transparent !important;
+    box-shadow: none !important;
+    color: var(--tema-texto-forte) !important;
+}
+
+/* Cabeçalho: nome do mês, ano e as setas (que são SVG, e portanto usam
+   `fill`, não `color`). */
+html[data-tema="eleitoral"] .flatpickr-months .flatpickr-month,
+html[data-tema="eleitoral"] .flatpickr-current-month,
+html[data-tema="eleitoral"] .flatpickr-months .flatpickr-prev-month,
+html[data-tema="eleitoral"] .flatpickr-months .flatpickr-next-month {
+    color: var(--tema-texto-forte) !important;
+    fill: var(--tema-texto-forte) !important;
+}
+
+html[data-tema="eleitoral"] .flatpickr-months .flatpickr-prev-month svg,
+html[data-tema="eleitoral"] .flatpickr-months .flatpickr-next-month svg {
+    fill: var(--tema-texto-medio) !important;
+}
+
+html[data-tema="eleitoral"] .flatpickr-months .flatpickr-prev-month:hover svg,
+html[data-tema="eleitoral"] .flatpickr-months .flatpickr-next-month:hover svg {
+    fill: var(--tema-primaria-suave) !important;
+}
+
+/* O seletor de mês é um <select> nativo e o ano é um <input type="number">.
+   As opções do menu são desenhadas pelo sistema operacional: sem cor de fundo
+   explícita, várias combinações renderizam texto claro sobre branco. */
+html[data-tema="eleitoral"] .flatpickr-current-month .flatpickr-monthDropdown-months,
+html[data-tema="eleitoral"] .flatpickr-current-month input.cur-year {
+    background: transparent !important;
+    border: none !important;
+    color: var(--tema-texto-forte) !important;
+}
+
+html[data-tema="eleitoral"] .flatpickr-current-month .flatpickr-monthDropdown-months .flatpickr-monthDropdown-month {
+    background-color: var(--tema-superficie-2) !important;
+    color: var(--tema-texto-forte) !important;
+}
+
+html[data-tema="eleitoral"] .flatpickr-current-month .flatpickr-monthDropdown-months:hover {
+    background: rgba(111, 211, 191, .14) !important;
+}
+
+/* As setinhas do campo de ano ficam sobre um retângulo branco no hover. */
+html[data-tema="eleitoral"] .numInputWrapper:hover {
+    background: rgba(255, 255, 255, .07) !important;
+}
+
+html[data-tema="eleitoral"] .numInputWrapper span {
+    border-color: var(--tema-borda) !important;
+}
+
+html[data-tema="eleitoral"] .numInputWrapper span:hover {
+    background: rgba(111, 211, 191, .18) !important;
+}
+
+html[data-tema="eleitoral"] .numInputWrapper span.arrowUp::after {
+    border-bottom-color: var(--tema-texto-medio) !important;
+}
+
+html[data-tema="eleitoral"] .numInputWrapper span.arrowDown::after {
+    border-top-color: var(--tema-texto-medio) !important;
+}
+
+/* Iniciais dos dias da semana — já no teal pela ponte de variáveis; aqui só
+   ganham o tom claro, que é o legível sobre o escuro. */
+html[data-tema="eleitoral"] .flatpickr-weekday {
+    color: var(--tema-primaria-suave) !important;
+}
+
+html[data-tema="eleitoral"] .flatpickr-day {
+    color: var(--tema-texto-medio) !important;
+    border-color: transparent !important;
+}
+
+/* Dias de fora do mês e datas bloqueadas: presentes, mas em segundo plano. */
+html[data-tema="eleitoral"] .flatpickr-day.prevMonthDay,
+html[data-tema="eleitoral"] .flatpickr-day.nextMonthDay,
+html[data-tema="eleitoral"] .flatpickr-day.flatpickr-disabled,
+html[data-tema="eleitoral"] .flatpickr-day.flatpickr-disabled:hover,
+html[data-tema="eleitoral"] .flatpickr-day.notAllowed {
+    color: rgba(170, 181, 196, .55) !important;
+}
+
+/* Hoje, quando não é o dia selecionado: marcado só pelo contorno. */
+html[data-tema="eleitoral"] .flatpickr-day.today:not(.selected) {
+    border-color: var(--tema-primaria-borda) !important;
+    color: var(--tema-primaria-suave) !important;
+}
+
+html[data-tema="eleitoral"] .flatpickr-day:hover,
+html[data-tema="eleitoral"] .flatpickr-day.today:not(.selected):hover {
+    background: rgba(111, 211, 191, .18) !important;
+    border-color: transparent !important;
+    color: var(--tema-primaria-suave) !important;
+}
+
+/* Dia selecionado. Usa o teal ESCURO como fundo, não o claro: o claro
+   (#6FD3BF) com texto branco por cima fica em 2,6:1 de contraste — o número do
+   dia praticamente some. Com #2E7F72 e o texto do tema, passa de 4,5:1. */
+html[data-tema="eleitoral"] .flatpickr-day.selected,
+html[data-tema="eleitoral"] .flatpickr-day.startRange,
+html[data-tema="eleitoral"] .flatpickr-day.endRange,
+html[data-tema="eleitoral"] .flatpickr-day.selected:hover,
+html[data-tema="eleitoral"] .flatpickr-day.startRange:hover,
+html[data-tema="eleitoral"] .flatpickr-day.endRange:hover,
+html[data-tema="eleitoral"] .flatpickr-day.selected:focus,
+html[data-tema="eleitoral"] .flatpickr-day.startRange:focus,
+html[data-tema="eleitoral"] .flatpickr-day.endRange:focus,
+html[data-tema="eleitoral"] .flatpickr-day.selected.prevMonthDay,
+html[data-tema="eleitoral"] .flatpickr-day.selected.nextMonthDay {
+    background: var(--tema-primaria-forte) !important;
+    border-color: var(--tema-primaria) !important;
+    color: var(--tema-texto-forte) !important;
+}
+
+html[data-tema="eleitoral"] .flatpickr-day.inRange {
+    background: rgba(111, 211, 191, .14) !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+    color: var(--tema-texto-forte) !important;
+}
+
+
+/* ==========================================================================
+   5. MESA DE TRABALHO — PAINEL, ABAS E BUSCA
+   --------------------------------------------------------------------------
+   O painel em si já vem da ponte (`--glass`, `--glass-border`, `--c-border`).
+   O que sobra aqui são as faixas pintadas com branco literal: a barra de abas,
+   o rodapé de paginação e a caixa de busca — todas `rgba(255,255,255,.5~.8)`.
+
+   Elas existem para separar "moldura" de "conteúdo" por elevação. No escuro a
+   lógica se inverte: em vez de clarear com branco, a moldura ESCURECE em
+   relação à lista, que é onde o olho precisa pousar.
+   ========================================================================== */
+
+html[data-tema="eleitoral"] .master-tabs {
+    background: rgba(0, 0, 0, .16);
+}
+
+html[data-tema="eleitoral"] .mtab:hover {
+    background: rgba(255, 255, 255, .05);
+}
+
+html[data-tema="eleitoral"] .mtab.active {
+    background: rgba(255, 255, 255, .08);
+    color: var(--tema-texto-forte);
+}
+
+html[data-tema="eleitoral"] .mtab-search {
+    background: rgba(255, 255, 255, .06);
+}
+
+html[data-tema="eleitoral"] .mtab-search input::placeholder {
+    color: var(--tema-texto-fraco);
+}
+
+/* Contadores das abas: os fundos vieram da ponte, mas o texto é literal no
+   polichat.css (`#b45309`, `#1d4ed8`, …) e ficaria escuro sobre o véu. */
+html[data-tema="eleitoral"] .amber-c {
+    color: var(--c-amber);
+}
+
+html[data-tema="eleitoral"] .blue-c {
+    color: var(--c-blue);
+}
+
+html[data-tema="eleitoral"] .green-c {
+    color: var(--c-green);
+}
+
+html[data-tema="eleitoral"] .rose-c {
+    color: var(--c-rose);
+}
+
+html[data-tema="eleitoral"] .purple-c {
+    color: var(--c-purple);
+}
+
+
+/* ==========================================================================
+   6. MESA DE TRABALHO — CARTÕES DE ATENDIMENTO
+   ========================================================================== */
+
+/* Divisória entre cartões: `#f2f3f8` no claro, um traço branco no escuro. */
+html[data-tema="eleitoral"] .item-card {
+    border-bottom-color: var(--tema-borda);
+}
+
+/* O hover original é um rosa-claro a 15%. Vira uma elevação neutra: continua
+   dizendo "esta é a linha sob o cursor" sem acender a faixa. */
+html[data-tema="eleitoral"] .item-card:hover {
+    background: rgba(255, 255, 255, .05);
+}
+
+html[data-tema="eleitoral"] .card-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, .18);
+}
+
+/* Chips de status. Fundo e borda saem da ponte; o texto é literal no original.
+   `neutral` e `redir` não usavam variável nenhuma e vão inteiros. */
+html[data-tema="eleitoral"] .chip.amber,
+html[data-tema="eleitoral"] .status-pill.aguardando {
+    color: var(--c-amber);
+}
+
+html[data-tema="eleitoral"] .chip.blue,
+html[data-tema="eleitoral"] .status-pill.atendimento {
+    color: var(--c-blue);
+}
+
+html[data-tema="eleitoral"] .chip.green,
+html[data-tema="eleitoral"] .status-pill.fechado {
+    color: var(--c-green);
+}
+
+html[data-tema="eleitoral"] .chip.rose,
+html[data-tema="eleitoral"] .status-pill.fechado-outro {
+    color: var(--c-rose);
+}
+
+html[data-tema="eleitoral"] .chip.purple,
+html[data-tema="eleitoral"] .status-pill.retorno {
+    color: var(--c-purple);
+}
+
+html[data-tema="eleitoral"] .chip.neutral {
+    background: rgba(255, 255, 255, .06);
+    color: var(--tema-texto-medio);
+    border-color: var(--tema-borda);
+}
+
+html[data-tema="eleitoral"] .chip.redir {
+    background: rgba(239, 177, 105, .14);
+    color: var(--c-amber);
+    border-color: rgba(239, 177, 105, .30);
+}
+
+/* Nome do cliente. No claro ele não tem cor própria: herda do `body`, que o
+   polichat.css pinta com `--c-text`. No escuro quem pinta o `body` é o
+   `tema-menu.css`, e ele usa o tom MÉDIO — correto para a página inteira,
+   fraco demais para o dado principal de cada linha. Aqui o nome volta ao topo
+   da escala, que é o que separa "cliente" de "metadados" na leitura rápida.
+
+   O total à direita não precisa de regra: o polichat.js o escreve lendo as
+   mesmas variáveis de status, então acompanha a ponte do bloco 1. */
+html[data-tema="eleitoral"] .ic-name {
+    color: var(--c-text);
+}
+
+html[data-tema="eleitoral"] .empty-state .empty-icon {
+    opacity: .5;
+}
+
+/* Marcador de chat fora do SLA na tabela do gestor: vermelho puro (#dc2626)
+   sobre fundo escuro fica denso demais para um número em corpo pequeno. */
+html[data-tema="eleitoral"] .critico-flutuante {
+    color: #F2937D;
+}
+
+html[data-tema="eleitoral"] .critico-flutuante:hover {
+    background: rgba(242, 147, 125, .18);
+}
+
+/* Etiqueta "Chats fora do SLA de <agente>", que só aparece no drill-down. */
+html[data-tema="eleitoral"] #chip-filtro-critico {
+    border-color: rgba(242, 147, 125, .30);
+}
+
+html[data-tema="eleitoral"] #chip-filtro-critico .text-rose-600 {
+    color: var(--c-rose);
+}
+
+
+/* ==========================================================================
+   7. RODAPÉ E PAGINAÇÃO
+   ========================================================================== */
+
+html[data-tema="eleitoral"] .list-footer {
+    background: rgba(0, 0, 0, .16);
+}
+
+html[data-tema="eleitoral"] .pg-btn {
+    background: rgba(255, 255, 255, .06);
+    border-color: var(--tema-borda);
+}
+
+html[data-tema="eleitoral"] .pg-btn:hover:not(:disabled):not(.active) {
+    background: rgba(255, 255, 255, .11);
+    border-color: var(--tema-borda-forte);
+}
+
+/* A página atual é um degradê rosa com halo da mesma cor. */
+/* Página atual em AZUL, não no teal da marca. Esta tela tem muita coisa
+   pintada com a primária ao mesmo tempo — aba ativa, setas, contadores,
+   barras de rolagem — e o acúmulo é o que dá a impressão de "tudo verde".
+   Navegação é um papel diferente de marca, e ganhar cor própria alivia a
+   carga do teal sem inventar matiz nenhuma fora da paleta. */
+html[data-tema="eleitoral"] .pg-btn.active {
+    background: var(--tema-solido-info);
+    color: #FFFFFF;
+    border-color: transparent;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, .35);
+}
+
+/* Pela mesma razão, os adornos de baixa importância saem do teal e voltam ao
+   cinza: o separador de datas e a seta do seletor não comunicam estado
+   nenhum, só apontam. Teal ali é cor gasta à toa. */
+html[data-tema="eleitoral"] .date-sep,
+html[data-tema="eleitoral"] .cs-arrow,
+html[data-tema="eleitoral"] .cs-search-wrap i {
+    color: var(--tema-texto-fraco);
+}
+
+html[data-tema="eleitoral"] .card-list::-webkit-scrollbar-thumb,
+html[data-tema="eleitoral"] .cs-options::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.20);
+}
+
+
+/* ==========================================================================
+   8. TELA DE BOAS-VINDAS (antes de escolher o agente)
+   ========================================================================== */
+
+html[data-tema="eleitoral"] .prompt-box {
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, .5);
+}
+
+html[data-tema="eleitoral"] .prompt-box::before {
+    background: radial-gradient(circle at center, rgba(111, 211, 191, 0.05) 0%, transparent 50%);
+}
+
+html[data-tema="eleitoral"] .prompt-icon-wrapper {
+    background: linear-gradient(135deg, var(--pink-light), var(--pink), var(--pink-dark));
+    box-shadow: 0 10px 25px rgba(111, 211, 191, 0.3);
+}
+
+
+/* ==========================================================================
+   9. ELEVAÇÃO E COR — revisão de design
+   --------------------------------------------------------------------------
+   Duas queixas legítimas sobre esta tela: continuava escura demais e continuava
+   "presa no verde". Elas têm causas diferentes e correções diferentes.
+
+   ESCURA DEMAIS — a barra de abas e o rodapé estavam pintados com
+   `rgba(0,0,0,.16)`, ou seja, ESCURECENDO sobre a superfície. Era a herança de
+   uma leitura errada: no modo claro essas faixas são brancas translúcidas
+   porque precisam se destacar de um fundo branco; no escuro a tradução literal
+   ("inverter para preto") empurra a moldura para baixo do fundo e achata a
+   tela. Elevação no escuro se faz com LUZ, não com sombra — véu branco.
+
+   PRESA NO VERDE — este é um problema de DISTRIBUIÇÃO, não de matiz. Todo
+   estado da tela era sinalizado com a mesma cor da marca: aba ativa, foco,
+   ícones, barras de rolagem, paginação. Acrescentar mais teal não resolveria;
+   a saída é dar a cada informação a SUA cor.
+
+   A tela já tem uma taxonomia pronta e ignorada: os quatro estados de
+   atendimento, cada um com semântica própria e cor definida no bloco 1 —
+   concluído (verde), transferido (coral), em atendimento (azul), aguardando
+   (âmbar). Eles já pintam os chips e os contadores. Passam agora a pintar
+   também os indicadores de navegação, que é onde o olho procura orientação.
+
+   O ganho não é decorativo: a aba ativa passa a dizer QUAL lista está aberta
+   pela cor, e o cartão de KPI passa a se ligar visualmente à aba que ele abre
+   ao ser clicado. Cor virando informação, em vez de enfeite.
+   ========================================================================== */
+
+/* --- Elevação: a moldura sobe, em vez de afundar ------------------------- */
+html[data-tema="eleitoral"] .master-tabs {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+html[data-tema="eleitoral"] .list-footer {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+/* O painel da Mesa é a superfície principal de leitura: sobe um degrau para
+   se separar do fundo da página em vez de se misturar a ele. */
+html[data-tema="eleitoral"] .master-panel {
+    background: var(--tema-superficie-2);
+}
+
+html[data-tema="eleitoral"] .item-card:hover {
+    background: rgba(255, 255, 255, 0.07);
+}
+
+/* --- Cor por estado: indicador da aba ativa ------------------------------
+   Cada aba assume a cor do estado que representa. Ancorado por `data-tab`, o
+   atributo que o próprio JS usa para trocar de lista — não há classe nova a
+   manter em sincronia. */
+html[data-tema="eleitoral"] .mtab[data-tab="mim"].active {
+    border-bottom-color: var(--c-green);
+}
+
+html[data-tema="eleitoral"] .mtab[data-tab="outro"].active {
+    border-bottom-color: var(--c-rose);
+}
+
+html[data-tema="eleitoral"] .mtab[data-tab="andamento"].active {
+    border-bottom-color: var(--c-blue);
+}
+
+html[data-tema="eleitoral"] .mtab[data-tab="aguardando"].active {
+    border-bottom-color: var(--c-amber);
+}
+
+/* --- Cor por estado: cartões de KPI --------------------------------------
+   Os quatro cartões clicáveis levam à aba correspondente. A borda os liga ao
+   destino, e é o que traz cor à faixa superior da tela sem tocar no fundo —
+   o corpo continua neutro, que é a regra do tema. */
+html[data-tema="eleitoral"] .js-kpi-card[data-tab-target="mim"] {
+    border-color: rgba(98, 209, 145, 0.38);
+}
+
+html[data-tema="eleitoral"] .js-kpi-card[data-tab-target="outro"] {
+    border-color: rgba(242, 147, 125, 0.38);
+}
+
+html[data-tema="eleitoral"] .js-kpi-card[data-tab-target="andamento"] {
+    border-color: rgba(143, 173, 235, 0.38);
+}
+
+html[data-tema="eleitoral"] .js-kpi-card[data-tab-target="aguardando"] {
+    border-color: rgba(239, 177, 105, 0.38);
+}
+
+html[data-tema="eleitoral"] .js-kpi-card:hover {
+    background-color: var(--tema-superficie-3);
+}
+
+/* --- Ícones dos KPIs -----------------------------------------------------
+   O remapeamento global de `.bg-gradient-to-br` no bloco 2 é agressivo e
+   alcança estes quadradinhos, pintando os quatro de teal. Devolvê-los à cor do
+   próprio estado é o que impede a faixa de KPIs de virar uma fileira de
+   ícones idênticos. */
+html[data-tema="eleitoral"] .bg-green-100 {
+    background-color: rgba(98, 209, 145, 0.18) !important;
+}
+
+html[data-tema="eleitoral"] .text-green-600 {
+    color: var(--c-green) !important;
+}
+
+html[data-tema="eleitoral"] .bg-blue-100 {
+    background-color: rgba(143, 173, 235, 0.18) !important;
+}
+
+html[data-tema="eleitoral"] .text-blue-600 {
+    color: var(--c-blue) !important;
+}
+
+html[data-tema="eleitoral"] .text-yellow-600 {
+    color: var(--c-amber) !important;
+}
+
+html[data-tema="eleitoral"] .bg-purple-100 {
+    background-color: rgba(143, 173, 235, 0.18) !important;
+}
+
+html[data-tema="eleitoral"] .text-purple-600 {
+    color: var(--c-blue) !important;
+}
+
+
+/* ==========================================================================
+   10. ECONOMIA DE COR NA LISTA
+   --------------------------------------------------------------------------
+   O AMARELO ESTAVA EXAGERADO — e a causa não é o tom, é a frequência.
+
+   O `polichat.js` monta um `<span class="chip amber">Espera: …</span>` em TODO
+   cartão das listas Concluídos, Transferidos e Em Atendimento. Não é um alerta:
+   é o tempo de espera daquele atendimento, um dado como qualquer outro. Só que
+   âmbar é a cor que o olho lê como "atenção", e repetida em cinquenta linhas
+   seguidas ela vira o segundo elemento mais forte da tela, competindo com o
+   próprio status do atendimento.
+
+   O princípio aplicado: COR É INFORMAÇÃO, e informação repetida em toda linha
+   não é informação — é textura. Quem aparece em todo cartão volta ao neutro;
+   quem distingue um cartão dos outros mantém a cor.
+
+       chip "Espera" (todo cartão)      → neutro
+       chip "Atend." (todo cartão)      → neutro
+       pílula de status (varia)         → cor cheia
+       total à direita (varia)          → cor cheia
+       contador da aba (varia)          → cor cheia
+
+   O âmbar continua existindo exatamente onde significa alguma coisa: a pílula
+   "Aguardando" e o contador daquela aba. Ali ele é um entre quatro estados, não
+   um carimbo em toda linha.
+
+   E POUCO AZUL — o azul ficava preso aos chips "Atend.", que agora
+   neutralizamos. Ele se muda para onde estrutura a tela: paginação (bloco 7),
+   busca em foco, séries do gráfico do Painel do Gestor (no polichat.js) e o
+   tempo de atendimento em curso, que é o único número vivo da Mesa.
+   ========================================================================== */
+
+/* Chips informativos: presentes em todo cartão, portanto sem cor. A borda
+   segura a leitura de "etiqueta" que a cor de fundo dava. */
+html[data-tema="eleitoral"] .ic-meta .chip.amber,
+html[data-tema="eleitoral"] .ic-meta .chip.blue {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: var(--tema-borda);
+    color: var(--tema-texto-medio);
+}
+
+/* O ícone dentro do chip guarda um resquício da cor de origem: o suficiente
+   para diferenciar espera de atendimento num relance, longe de pintar a linha
+   inteira. */
+html[data-tema="eleitoral"] .ic-meta .chip.amber i {
+    color: var(--c-amber);
+}
+
+html[data-tema="eleitoral"] .ic-meta .chip.blue i {
+    color: var(--c-blue);
+}
+
+/* Exceção deliberada: "Transferido para" é o dado que DIFERENCIA um cartão
+   transferido dos demais, então mantém a cor cheia. */
+html[data-tema="eleitoral"] .ic-meta .chip.rose {
+    background: var(--c-rose-bg);
+    border-color: var(--c-rose-bd);
+    color: var(--c-rose);
+}
+
+/* --- Azul como cor de estrutura ------------------------------------------ */
+
+/* A busca em foco: azul, acompanhando a paginação. Navegação e filtragem são
+   o mesmo papel — mexer na lista sem mexer nos dados. */
+html[data-tema="eleitoral"] .mtab-search:focus-within {
+    border-color: var(--tema-status-info);
+    background: rgba(143, 173, 235, 0.10);
+}
+
+/* O cronômetro de "Em Atendimento" é o único número que corre na tela. Azul
+   cheio, com o fundo em véu — é onde o olho deve cair primeiro na aba. */
+html[data-tema="eleitoral"] #pane-andamento .ic-time-val {
+    background: rgba(143, 173, 235, 0.18) !important;
+    color: var(--c-blue) !important;
+}
+
+/* Cabeçalho da Mesa: um fio azul no topo do painel amarra a barra de abas ao
+   resto da estrutura sem acrescentar nenhuma área colorida. */
+html[data-tema="eleitoral"] .master-panel {
+    border-top: 2px solid rgba(143, 173, 235, 0.34);
+}
+
+
+/* ==========================================================================
+   11. EIXO DE HORÁRIOS DO GRÁFICO "TRÁFEGO DE FLUXO DIÁRIO"
+   --------------------------------------------------------------------------
+   Único ajuste do gráfico no modo escuro, e de propósito: as cores das séries,
+   dos rótulos sobre as barras e da grade foram avaliadas e aprovadas como
+   estão. O que não dava para ler eram os HORÁRIOS do eixo X, pintados em
+   `#6b7280` — um cinza médio calibrado para fundo branco, que sobre o cartão
+   escuro cai para cerca de 1,9:1.
+
+   POR QUE EM CSS E NÃO NO JS
+     O ApexCharts recebe cor por JavaScript, então o caminho óbvio seria mexer
+     nas `options`. Só que ele DESENHA em SVG, e todo `<text>` sai da biblioteca
+     com a classe `.apexcharts-xaxis-label`. Alcançá-lo por CSS tem três
+     vantagens concretas sobre editar o JS:
+
+       1. O arquivo de opções continua com um valor só, o do modo claro — não há
+          ramificação por tema espalhada pelo gráfico.
+       2. A troca de tema é instantânea. Pela via do JS seria preciso um
+          `updateOptions`, que redesenha o gráfico e perde a posição da barra de
+          rolagem — e este gráfico é rolável, com janela de foco de 6h.
+       3. O ajuste fica aqui, junto do resto do tema escuro, e desaparece com
+          ele se o modo eleitoral for desligado.
+
+   O `!important` é necessário e não é preguiça: a biblioteca escreve
+   `style="fill: #6b7280"` diretamente no elemento, e estilo inline só perde
+   para `!important`. Note que a propriedade é `fill`, não `color` — em SVG,
+   `color` não pinta texto.
+   ========================================================================== */
+html[data-tema="eleitoral"] .apexcharts-xaxis-label {
+    fill: var(--tema-texto-medio) !important;
+}
+
+/* ==========================================================================
+   12. CORREÇÕES DE PÍLULAS E KPIS (TAILWIND JIT EXCEÇÕES)
+   --------------------------------------------------------------------------
+   O Polichat gera classes via CDN (JIT) que não estão cobertas pelo
+   remapeamento global do `tema-conteudo.css`, resultando em fundos e bordas 
+   claras (quase brancas) que destroem o contraste no Modo Eleitoral.
+   ========================================================================== */
+
+/* 1. Tráfego de Fluxo Diário: Horário de Pico (Matutino / Laranja) */
+html[data-tema="eleitoral"] .bg-orange-50 { background-color: var(--c-amber-bg) !important; }
+html[data-tema="eleitoral"] .border-orange-100 { border-color: var(--c-amber-bd) !important; }
+html[data-tema="eleitoral"] .text-orange-600, html[data-tema="eleitoral"] .text-orange-500 { color: var(--c-amber) !important; }
+
+/* 1. Tráfego de Fluxo Diário: Horário de Pico (Vespertino / Índigo) */
+html[data-tema="eleitoral"] .bg-indigo-50 { background-color: var(--c-blue-bg) !important; }
+html[data-tema="eleitoral"] .border-indigo-100 { border-color: var(--c-blue-bd) !important; }
+html[data-tema="eleitoral"] .text-indigo-600, html[data-tema="eleitoral"] .text-indigo-500 { color: var(--c-blue) !important; }
+
+/* 2. Atendimentos fora do SLA: Flags "Aguardando" (Âmbar) */
+html[data-tema="eleitoral"] .bg-amber-50 { background-color: var(--c-amber-bg) !important; }
+html[data-tema="eleitoral"] .border-amber-100 { border-color: var(--c-amber-bd) !important; }
+html[data-tema="eleitoral"] .text-amber-600 { color: var(--c-amber) !important; }
+
+/* 2. Atendimentos fora do SLA: Flags "Em Andamento" (Emerald) */
+html[data-tema="eleitoral"] .bg-emerald-50 { background-color: var(--c-green-bg) !important; }
+html[data-tema="eleitoral"] .border-emerald-100 { border-color: var(--c-green-bd) !important; }
+html[data-tema="eleitoral"] .text-emerald-600 { color: var(--c-green-txt) !important; }
+
+/* 3. KPIs de Quedas e Subidas (Rose / Verde / Vermelho) */
+html[data-tema="eleitoral"] .bg-rose-100, html[data-tema="eleitoral"] .bg-red-100, html[data-tema="eleitoral"] .bg-red-50 { background-color: var(--c-rose-bg) !important; }
+html[data-tema="eleitoral"] .text-rose-600, html[data-tema="eleitoral"] .text-red-600, html[data-tema="eleitoral"] .text-red-700 { color: var(--c-rose) !important; }
+html[data-tema="eleitoral"] .border-red-100 { border-color: var(--c-rose-bd) !important; }
+html[data-tema="eleitoral"] .bg-green-100 { background-color: var(--c-green-bg) !important; }
+html[data-tema="eleitoral"] .text-green-600 { color: var(--c-green-txt) !important; }
+
+
+/* ==========================================================================
+   N. CONSOLE DE ATUALIZAÇÃO (MODAL DO TERMINAL)
+   --------------------------------------------------------------------------
+   O console nasceu depois desta camada e ficou de fora dela: ao trocar para o
+   eleitoral, a tela inteira escurecia e o modal do terminal continuava lavanda
+   e rosa, como um recorte do modo claro colado por cima.
+
+   POR QUE ELE NÃO FOI ALCANÇADO SOZINHO
+     Dois motivos somados. Primeiro, o modal é irmão do `<main>`, e não filho:
+     ele fica solto no `<body>` porque precisa de `position: fixed` cobrindo o
+     viewport — então a ponte de variáveis do bloco 1, que reveste o que está
+     dentro da área de trabalho, não passa por ele. Segundo, o console é escrito
+     em utilitárias do Tailwind (é uma peça trazida do dash_documentos_ia), e
+     não sobre as variáveis `--c-*` do polichat.css, que é o que a ponte
+     reaponta.
+
+   COMO ELE É REVESTIDO AQUI
+     As SUPERFÍCIES vêm de variáveis (`--poli-console-*`, declaradas no
+     polichat.css). O HTML aponta o atributo `style` para elas, então basta
+     redefini-las abaixo — sem `!important`, apesar de a cor estar inline.
+     Os TRAÇOS (texto, ícone, borda dos selos) são utilitárias, e cada uma
+     recebe uma regra escopada em `#poli-modal-console`. O id dá especificidade
+     de sobra sobre a utilitária, e o escopo garante que nada disso vaze para o
+     resto da tela — `.text-purple-800` continua roxo em qualquer outro lugar.
+
+   O QUE NÃO MUDA
+     As três bolinhas do semáforo. Elas são a convenção da janela de terminal do
+     macOS e valem igual nos dois modos; num terminal escuro de verdade elas
+     continuam vermelha, amarela e verde.
+   ========================================================================== */
+
+/* --- Superfícies: só reapontar as variáveis -------------------------------
+   O corpo do log recebe a superfície MAIS PROFUNDA da escala e a moldura
+   (barra de título e rodapé) recebe a mais elevada. É a mesma lógica de
+   elevação do resto do tema, e por acaso é também como um terminal de verdade
+   se parece: a área de texto afunda, o cromo da janela flutua. */
+html[data-tema="eleitoral"] {
+    --poli-console-veu: rgba(0, 0, 0, 0.55);
+    --poli-console-superficie: var(--tema-superficie);
+    --poli-console-cromo: var(--tema-superficie-2);
+    --poli-console-borda: var(--tema-borda);
+    --poli-console-fundo-log: linear-gradient(to bottom right, var(--tema-fundo), var(--tema-superficie));
+    --poli-console-trilho: var(--tema-fundo);
+    --poli-console-trilho-borda: var(--tema-borda);
+}
+
+/* A sombra rosa da janela é da identidade colorida; no escuro ela não aparece
+   e no lugar dela entra a sombra de profundidade do tema. */
+html[data-tema="eleitoral"] #poli-modal-console .shadow-\[0_20px_60px_-15px_rgba\(236\,72\,153\,0\.2\)\] {
+    --tw-shadow: 0 24px 64px -16px var(--tema-brilho);
+    box-shadow: var(--tw-shadow);
+}
+
+/* --- Texto base e cromo da janela ---------------------------------------- */
+html[data-tema="eleitoral"] #poli-console-logs { color: var(--tema-texto-medio); }
+html[data-tema="eleitoral"] #poli-modal-console .text-gray-700 { color: var(--tema-texto-medio); }
+html[data-tema="eleitoral"] #poli-console-progress-text { color: var(--tema-texto-forte); }
+
+/* Título da barra, rótulo de status e botão de fechar. */
+html[data-tema="eleitoral"] #poli-modal-console .text-purple-800 { color: var(--tema-texto-medio); }
+html[data-tema="eleitoral"] #poli-modal-console .text-purple-400 { color: var(--tema-texto-fraco); }
+html[data-tema="eleitoral"] #poli-modal-console .hover\:text-pink-600:hover { color: var(--tema-primaria); }
+
+/* --- Linha de comando do prompt ------------------------------------------
+   `ovg@probem-ai:` é o traço de identidade da peça e vai para a primária;
+   o comando em si é o texto de maior contraste da tela. */
+html[data-tema="eleitoral"] #poli-modal-console .text-pink-500 { color: var(--tema-primaria); }
+html[data-tema="eleitoral"] #poli-modal-console .text-purple-900 { color: var(--tema-texto-forte); }
+/* O ÚNICO !important deste bloco, e ele é obrigatório: a ponte do bloco 1 já
+   remapeia `.text-purple-600` para o azul, com !important, e essa classe veste
+   tanto o `~` do prompt quanto o rótulo do selo de SAÍDA. Herdando o azul, SAÍDA
+   ficaria idêntica a SISTEMA (que também é azul) e ainda por cima com o rótulo
+   azul dentro de um selo de fundo teal. Aqui ela volta para a primária. */
+html[data-tema="eleitoral"] #poli-modal-console .text-purple-600 { color: var(--tema-primaria) !important; }
+
+/* Separadores: o `│` das linhas tabulares e o `—` do exit 0. São estrutura,
+   não conteúdo — ficam na cor de borda para não competirem com o texto. */
+html[data-tema="eleitoral"] #poli-modal-console .text-purple-200,
+html[data-tema="eleitoral"] #poli-modal-console .text-purple-300 { color: var(--tema-borda-forte); }
+
+/* --- Selos de etapa -------------------------------------------------------
+   No claro cada selo é `cor + fundo pastel + borda pastel`. No escuro o pastel
+   viraria uma mancha clara, então o fundo passa a ser um VÉU translúcido da
+   própria cor.
+
+   ATENÇÃO AO QUE NÃO ESTÁ AQUI. A ponte do bloco 1 já remapeia globalmente, com
+   !important, as classes `.text-emerald-600`, `.bg-emerald-50`, `.text-blue-600`,
+   `.text-red-600`, `.bg-red-50` e `.text-pink-600` — e para valores que são os
+   mesmos que este console quer (`--c-green-txt` é o próprio
+   `--tema-status-sucesso`, por exemplo). Repeti-las aqui seria código morto: a
+   regra global venceria de qualquer jeito, por causa do !important, e a duplicata
+   passaria a mentir sobre quem manda na cor. Só ficam nesta seção as BORDAS e os
+   separadores, que a ponte não cobre. */
+
+/* ✔ OK — conclusão de etapa */
+html[data-tema="eleitoral"] #poli-modal-console .border-emerald-200 { border-color: rgba(98, 209, 145, 0.30); }
+html[data-tema="eleitoral"] #poli-modal-console .text-emerald-300 { color: rgba(98, 209, 145, 0.45); }
+
+/* ⚙ SISTEMA — housekeeping do pipeline */
+html[data-tema="eleitoral"] #poli-modal-console .bg-blue-50 { background-color: rgba(143, 173, 235, 0.12); }
+html[data-tema="eleitoral"] #poli-modal-console .border-blue-200 { border-color: rgba(143, 173, 235, 0.30); }
+html[data-tema="eleitoral"] #poli-modal-console .text-blue-300 { color: rgba(143, 173, 235, 0.45); }
+
+/* 📁 SAÍDA — onde o arquivo foi parar */
+html[data-tema="eleitoral"] #poli-modal-console .bg-purple-50 { background-color: var(--tema-primaria-lavada); }
+html[data-tema="eleitoral"] #poli-modal-console .border-purple-200 { border-color: var(--tema-primaria-borda); }
+
+/* ! FALHA — aborto ou erro crítico */
+html[data-tema="eleitoral"] #poli-modal-console .border-red-200 { border-color: rgba(242, 147, 125, 0.30); }
+html[data-tema="eleitoral"] #poli-modal-console .text-red-300 { color: rgba(242, 147, 125, 0.45); }
+
+/* --- Ícones de estado das linhas do log ---------------------------------- */
+html[data-tema="eleitoral"] #poli-modal-console .text-green-500 { color: var(--tema-status-sucesso); }
+html[data-tema="eleitoral"] #poli-modal-console .text-yellow-500 { color: var(--tema-status-alerta); }
+html[data-tema="eleitoral"] #poli-modal-console .text-red-500 { color: var(--tema-status-erro); }
+
+/* --- Barra de progresso ---------------------------------------------------
+   O degradê rosa→roxo é da identidade colorida. No escuro ele percorre o eixo
+   teal→índigo do tema, que é o mesmo par usado nos degradês do resto da tela. */
+html[data-tema="eleitoral"] #poli-console-progress-bar {
+    background-image: linear-gradient(to right, var(--tema-acento-esmeralda), var(--tema-acento-ciano));
+}
+
+/* --- Cursor e rolagem ----------------------------------------------------- */
+html[data-tema="eleitoral"] #poli-modal-console .docia-cursor-terminal,
+html[data-tema="eleitoral"] #poli-modal-console .bg-pink-500 { background-color: var(--tema-primaria); }
+html[data-tema="eleitoral"] .scroll-rosinha::-webkit-scrollbar-thumb { background: var(--tema-primaria-borda); }
+html[data-tema="eleitoral"] .scroll-rosinha::-webkit-scrollbar-thumb:hover { background: var(--tema-primaria); }

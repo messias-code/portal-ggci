@@ -1,0 +1,47 @@
+/* ==========================================================================
+   MENU DE AUTOMAÇÕES — ESTILOS PRÓPRIOS
+   --------------------------------------------------------------------------
+   POR QUE ESTE ARQUIVO EXISTE:
+   1) O roxo institucional da OVG (#816BAE, extraído do "V" da logo) não é
+      nenhum tom do Tailwind. O bundle `static/css/output.css` é pré-compilado
+      e purgado, então uma classe arbitrária tipo `from-[#7965a4]` simplesmente
+      não existiria lá e falharia em silêncio.
+   2) O `menu_automacoes` não tinha CSS próprio: importava o do `analise_ia`,
+      que é usado também pela página daquele app. Escrever aqui evita alterar
+      o visual do `analise_ia` por tabela.
+
+   PRECEDÊNCIA: o bundle declara seus utilitários dentro de `@layer utilities`.
+   Como este arquivo não está em nenhuma camada, ele vence qualquer regra de lá
+   independentemente de especificidade — inclusive `hover:shadow-2xl`.
+   ========================================================================== */
+
+:root {
+    /* Base institucional (o "V" da logo) e um passo de ~6% para baixo em
+       cada parada do gradiente — o suficiente para encorpar sem sair do
+       roxo claro e sutil da marca. */
+    --ovg-roxo: #7965a4;
+    --ovg-roxo-claro: #917eb8;
+    --ovg-roxo-escuro: #64528c;
+}
+
+/* Superfície do card: roxo claro e sutil, no mesmo sentido de gradiente
+   (to bottom right) já usado pelos demais cards do menu. */
+.card-ovg {
+    background-image: linear-gradient(to bottom right, var(--ovg-roxo-claro), var(--ovg-roxo));
+}
+
+/* Substitui o par `hover:shadow-2xl hover:shadow-<cor>/30` do Tailwind,
+   mantendo a mesma geometria de sombra e trocando apenas o matiz. */
+.card-ovg:hover {
+    box-shadow: 0 25px 50px -12px rgba(121, 101, 164, 0.35);
+}
+
+/* Texto de apoio dentro do card (equivalente ao `text-pink-50/90`). */
+.card-ovg-desc {
+    color: rgba(255, 255, 255, 0.88);
+}
+
+/* Rótulo do botão de ação sobre o fundo branco do chip. */
+.card-ovg-btn {
+    color: var(--ovg-roxo-escuro);
+}

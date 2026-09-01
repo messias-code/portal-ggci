@@ -1,0 +1,939 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentos IA - Dashboards</title>
+    
+    <!--
+        MOTOR DE TEMAS — precisa vir antes de tudo.
+        Carregado SEM 'defer'/'async' de propósito: executado de forma síncrona
+        aqui no <head>, grava o atributo data-tema no <html> antes da primeira
+        pintura, eliminando o flash do tema padrão. Como a preferência vive no
+        localStorage, o modo escolhido em qualquer tela já chega aplicado aqui.
+    -->
+    <script src="{% static 'js/tema.js' %}"></script>
+
+    <link rel="stylesheet" href="{% static 'css/output.css' %}">
+    <!-- Console de atualização: utilitárias que o bundle purgou + os dois temas. -->
+    <link rel="stylesheet" href="{% static 'css/console.css' %}?v=1">
+
+    <!-- Tokens de cor dos temas e a troca de logo (compartilhado por todo o portal) -->
+    <link rel="stylesheet" href="{% static 'css/tema.css' %}">
+
+    <!-- Modo escuro da casca (fundo, halos, painel e cabeçalho), compartilhado -->
+    <link rel="stylesheet" href="{% static 'css/tema-menu.css' %}">
+
+    <!-- Remapeia em bloco as utilitárias neutras dentro de .area-trabalho -->
+    <link rel="stylesheet" href="{% static 'css/tema-conteudo.css' %}">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia.css' %}">
+
+    <!-- Camada escura desta tela: o que os arquivos compartilhados não alcançam -->
+    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia-eleitoral.css' %}">
+</head>
+
+<body class="grid-bg bg-[#f8f6fb] text-gray-800 fixed inset-0 p-4 lg:p-6 flex transition-colors duration-500 overflow-hidden">
+
+    <div class="menu-blob menu-blob--1 absolute top-[-20%] left-[-15%] w-[70vw] h-[70vh] bg-pink-500/70 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="menu-blob menu-blob--2 absolute top-[-20%] right-[-15%] w-[70vw] h-[70vh] bg-yellow-400/75 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="menu-blob menu-blob--3 absolute bottom-[-20%] left-[-15%] w-[70vw] h-[70vh] bg-purple-700/60 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="menu-blob menu-blob--4 absolute bottom-[-20%] right-[-15%] w-[70vw] h-[70vh] bg-green-600/65 rounded-full blur-[140px] pointer-events-none z-0"></div>
+
+    <div class="menu-shell w-full h-full bg-white/70 backdrop-blur-2xl border border-white/80 rounded-[2rem] shadow-2xl flex overflow-hidden relative z-10" style="min-width: 0;">
+
+        <main id="main-content" class="flex-1 flex flex-col h-full overflow-hidden relative transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]" style="min-width: 0;">
+            <header class="menu-divisoria relative h-28 pl-[120px] pr-10 flex justify-between items-center border-b border-purple-100/50 shrink-0 gap-4" style="z-index: 999;">
+                <div class="menu-header absolute inset-0 bg-white/70 backdrop-blur-md z-0"></div>
+                <div class="flex items-center gap-6 min-w-0 flex-1 relative z-10">
+                    <!--
+                        As duas versões da logo são publicadas e o CSS de
+                        tema decide qual fica visível. O elemento oculto sai
+                        da árvore de acessibilidade, então o leitor de tela
+                        anuncia apenas uma.
+                    -->
+                    <img src="{% static 'img/logos/ovg.png' %}" alt="OVG Logo"
+                        class="logo-tema logo-tema--claro h-[4.46rem] drop-shadow-md shrink-0">
+                    <img src="{% static 'img/logos/ovg-eleitoral.png' %}" alt="OVG Logo"
+                        class="logo-tema logo-tema--eleitoral h-[4.46rem] drop-shadow-md shrink-0">
+                    <div class="menu-header-divisor h-12 w-px bg-purple-200/50 shrink-0"></div>
+                    
+                    <div class="flex items-center gap-4 min-w-0 flex-1">
+                        <div class="tela-header-icone w-14 h-14 rounded-2xl bg-gradient-to-br from-pink-100 to-pink-200 text-pink-600 flex items-center justify-center shadow-inner shrink-0 hidden sm:flex">
+                            <i class="fa-solid fa-magnifying-glass-chart text-2xl drop-shadow-sm"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <h2 class="menu-header-titulo text-2xl lg:text-3xl font-extrabold text-gray-800 tracking-tight truncate">Documentos IA</h2>
+                            <p class="menu-header-sub text-sm lg:text-md text-gray-500 font-medium mt-1">Acompanhamento de desempenho da IA, volume de processamento e rastreamento de<br>alucinações.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3 shrink-0 relative z-10">
+                    <!-- Abas de Navegação -->
+                    <div class="shrink-0">
+                        <div class="docia-abas inline-flex h-10 rounded-2xl shadow-sm border border-gray-200 overflow-hidden bg-white/90 backdrop-blur-md hide-scrollbar">
+                            <a href="{% url 'dash_documentos_ia' %}" class="docia-aba docia-aba--ativa px-4 h-full flex items-center justify-center text-[12px] font-black text-white transition-colors border-r border-[#8A009B] whitespace-nowrap shrink-0" style="background-color: #6B007B;">Quantitativo</a>
+                            <a href="{% url 'dash_documentos_ia_relatorio_ies' %}" class="docia-aba px-4 h-full flex items-center justify-center text-[12px] font-bold text-gray-600 bg-white hover:text-[#6B007B] hover:bg-pink-50 transition-colors whitespace-nowrap shrink-0 border-r border-gray-200">Relatório IES</a>
+                            <a href="{% url 'dash_documentos_ia_relatorio_riaf' %}" class="docia-aba px-4 h-full flex items-center justify-center text-[12px] font-bold text-gray-600 bg-white hover:text-[#6B007B] hover:bg-pink-50 transition-colors whitespace-nowrap shrink-0">Relatório RIAF</a>
+                        </div>
+                    </div>
+
+                    <!-- `docia-caixa-atualizar` é o gancho do tema escuro: o `bg-white/80` daqui não
+                         é alcançado por nenhuma das camadas compartilhadas, e no eleitoral
+                         a caixa ficava branca no meio de um cabeçalho escuro. -->
+                    <div class="docia-caixa-atualizar flex items-center bg-white/80 rounded-2xl shadow-sm border border-pink-100 h-10 transition-all text-sm overflow-hidden flex-nowrap shrink-0 focus-within:ring-2 focus-within:ring-pink-200">
+                        <button type="button" id="btn-atualizar" class="h-full px-5 text-pink-600 font-bold flex items-center gap-2 hover:bg-pink-50 transition-colors shrink-0">
+                            <span>Atualizar</span> <span class="text-gray-400 font-medium whitespace-nowrap">| <span id="data-atualizacao">{{ data_atualizacao }}</span></span>
+                        </button>
+                        <div class="h-6 w-px bg-pink-100 shrink-0"></div>
+                        <button type="button" id="btn-config-atualizacao" class="h-full px-3 text-pink-500 hover:text-pink-700 hover:bg-pink-50 transition-colors shrink-0 flex items-center justify-center relative" title="Configurar o escopo da atualização">
+                            <i class="fa-solid fa-sliders"></i>
+                            <!-- Aceso quando há configuração aplicada: sem isto, um recorte
+                                 esquecido faria a próxima atualização parecer completa. -->
+                            <span id="selo-config" class="docia-selo-config hidden"></span>
+                        </button>
+                        <div class="h-6 w-px bg-pink-100 shrink-0"></div>
+                        <button type="button" id="btn-abrir-console" class="h-full px-3 text-pink-500 hover:text-pink-700 hover:bg-pink-50 transition-colors shrink-0 flex items-center justify-center" title="Ver logs">
+                            <i class="fa-solid fa-terminal"></i>
+                        </button>
+                    </div>
+
+                    <button type="button" class="tela-voltar tema-toggle shrink-0 w-10 h-10 flex items-center justify-center bg-white/80 hover:bg-pink-50 text-pink-600 rounded-xl transition-all shadow-sm border border-pink-100" data-tema-toggle aria-label="Alternar tema" aria-pressed="false">
+                        <svg class="tema-toggle__icone tema-toggle__icone--lua w-5 h-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"
+                            stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                        <svg class="tema-toggle__icone tema-toggle__icone--sol w-5 h-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.6"/>
+                            <path d="M12 2.4V4.4M12 19.6V21.6M21.6 12H19.6M4.4 12H2.4M18.79 5.21L17.38 6.62M6.62 17.38L5.21 18.79M18.79 18.79L17.38 17.38M6.62 6.62L5.21 5.21" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+
+                    <a href="{% url 'dashboards' %}" class="tela-voltar h-10 px-5 bg-white/80 hover:bg-pink-50 text-pink-600 font-bold rounded-xl transition-all shadow-sm border border-pink-100 inline-flex items-center justify-center text-sm">
+                        <i class="fa-solid fa-arrow-left mr-2 mt-[1px]"></i>
+                        <span class="leading-none">Voltar</span>
+                    </a>
+                </div>
+            </header>
+
+            <div class="area-trabalho flex-1 p-4 lg:p-6 flex flex-col overflow-hidden" style="min-width: 0; min-height: 0;">
+                <!-- KPIs — do recorte inteiro (os cinco documentos, sob os filtros da barra lateral) -->
+                <div class="flex w-full gap-3 lg:gap-4 mb-4 shrink-0">
+                    <div class="flex-1 bg-gradient-to-br from-white/90 to-pink-50/30 backdrop-blur-md border border-white/60 shadow-[0_4px_20px_rgb(0,0,0,0.08)] rounded-3xl py-2.5 px-4 flex items-center justify-between transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_12px_40px_rgb(236,72,153,0.12)] group cursor-default">
+                        <div class="pr-2" style="min-width: 0;">
+                            <p class="text-[9px] xl:text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="QTDE DE BENEFICIÁRIOS ÚNICOS">QTDE DE BENEFICIÁRIOS ÚNICOS</p>
+                            <h4 class="text-xl font-black text-gray-800 transition-colors" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="kpi-beneficiarios">0</h4>
+                        </div>
+                        <div class="w-10 h-10 rounded-2xl bg-gray-50 border border-gray-100 text-gray-800 flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform duration-300 shrink-0">
+                            <i class="fa-solid fa-users text-base"></i>
+                        </div>
+                    </div>
+                    <div class="flex-1 bg-gradient-to-br from-white/90 to-gray-50/50 backdrop-blur-md border border-white/60 shadow-[0_4px_20px_rgb(0,0,0,0.08)] rounded-3xl py-2.5 px-4 flex items-center justify-between transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_12px_40px_rgb(0,0,0,0.12)] group cursor-default">
+                        <div class="pr-2" style="min-width: 0;">
+                            <p class="text-[9px] xl:text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="QTDE DE ATIVOS ÚNICOS">QTDE DE ATIVOS ÚNICOS</p>
+                            <h4 class="text-xl font-black text-gray-800 transition-colors" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="kpi-ativos">0</h4>
+                        </div>
+                        <div class="w-10 h-10 rounded-2xl bg-gray-50 border border-gray-100 text-gray-800 flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform duration-300 shrink-0">
+                            <i class="fa-solid fa-user-check text-base"></i>
+                        </div>
+                    </div>
+                    <div class="flex-1 bg-gradient-to-br from-white/90 to-gray-50/50 backdrop-blur-md border border-white/60 shadow-[0_4px_20px_rgb(0,0,0,0.08)] rounded-3xl py-2.5 px-4 flex items-center justify-between transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_12px_40px_rgb(0,0,0,0.12)] group cursor-default">
+                        <div class="pr-2" style="min-width: 0;">
+                            <p class="text-[9px] xl:text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="QTDE DE INATIVOS ÚNICOS">QTDE DE INATIVOS ÚNICOS</p>
+                            <h4 class="text-xl font-black text-gray-800 transition-colors" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="kpi-inativos">0</h4>
+                        </div>
+                        <div class="w-10 h-10 rounded-2xl bg-gray-50 border border-gray-100 text-gray-800 flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform duration-300 shrink-0">
+                            <i class="fa-solid fa-user-xmark text-base"></i>
+                        </div>
+                    </div>
+                    <div class="flex-1 bg-gradient-to-br from-white/90 to-gray-50/50 backdrop-blur-md border border-white/60 shadow-[0_4px_20px_rgb(0,0,0,0.08)] rounded-3xl py-2.5 px-4 flex items-center justify-between transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_12px_40px_rgb(0,0,0,0.12)] group cursor-default">
+                        <div class="pr-2" style="min-width: 0;">
+                            <p class="text-[9px] xl:text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="QTDE TOTAL DE DOCUMENTOS">QTDE TOTAL DE DOCUMENTOS</p>
+                            <h4 class="text-xl font-black text-gray-800 transition-colors" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="kpi-documentos">0</h4>
+                        </div>
+                        <div class="w-10 h-10 rounded-2xl bg-gray-50 border border-gray-100 text-gray-800 flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform duration-300 shrink-0">
+                            <i class="fa-solid fa-file-lines text-base"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!--
+                    QUANTITATIVO POR DOCUMENTO — as cinco roscas de uma vez.
+                    Antes a tela tinha uma aba por documento e dois gráficos dentro dela
+                    (o quantitativo e o veredito da IA). A pergunta que ela responde é
+                    "quem ainda não mandou o quê", e essa pergunta se responde comparando
+                    os cinco documentos lado a lado — não trocando de aba e guardando o
+                    número anterior de cabeça. O gráfico do veredito saiu junto com as
+                    abas: ele detalhava um balde de UM documento e não sobrevive à
+                    comparação entre cinco.
+
+                    Os cards são gerados aqui, e não pelo JS, porque o conjunto de
+                    documentos é fixo (`ABAS_DOCUMENTOS` no back-end): markup montado em
+                    runtime só se justifica quando a lista vem do servidor.
+                -->
+                <div class="flex flex-row w-full gap-3 mb-4" style="flex: 1.3 1 0; min-height: 0; min-width: 0;">
+                    <div class="bg-gradient-to-b from-white to-gray-50/40 backdrop-blur-md border border-white/60 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-3xl py-4 px-2 flex flex-col transition-shadow hover:shadow-[0_8px_32px_rgb(0,0,0,0.12)]"
+                         style="flex: 1 1 0; min-width: 0; min-height: 0;">
+                        <h3 class="text-sm font-extrabold text-gray-700 m-0 text-center mb-1 shrink-0" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">CONTRATOS</h3>
+                        <div class="chart-doc w-full" id="chart-doc-0" data-doc="CONTRATO" style="flex: 1 1 0; min-height: 0;"></div>
+                        <div class="docia-legenda shrink-0" id="legenda-doc-0" data-doc="CONTRATO"></div>
+                    </div>
+
+                    <div class="bg-gradient-to-b from-white to-gray-50/40 backdrop-blur-md border border-white/60 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-3xl py-4 px-2 flex flex-col transition-shadow hover:shadow-[0_8px_32px_rgb(0,0,0,0.12)]"
+                         style="flex: 1 1 0; min-width: 0; min-height: 0;">
+                        <h3 class="text-sm font-extrabold text-gray-700 m-0 text-center mb-1 shrink-0" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">RIAF'S</h3>
+                        <div class="chart-doc w-full" id="chart-doc-1" data-doc="RIAF" style="flex: 1 1 0; min-height: 0;"></div>
+                        <div class="docia-legenda shrink-0" id="legenda-doc-1" data-doc="RIAF"></div>
+                    </div>
+
+                    <div class="bg-gradient-to-b from-white to-gray-50/40 backdrop-blur-md border border-white/60 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-3xl py-4 px-2 flex flex-col transition-shadow hover:shadow-[0_8px_32px_rgb(0,0,0,0.12)]"
+                         style="flex: 1 1 0; min-width: 0; min-height: 0;">
+                        <h3 class="text-sm font-extrabold text-gray-700 m-0 text-center mb-1 shrink-0" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">HISTÓRICOS</h3>
+                        <div class="chart-doc w-full" id="chart-doc-2" data-doc="HISTÓRICO" style="flex: 1 1 0; min-height: 0;"></div>
+                        <div class="docia-legenda shrink-0" id="legenda-doc-2" data-doc="HISTÓRICO"></div>
+                    </div>
+
+                    <div class="bg-gradient-to-b from-white to-gray-50/40 backdrop-blur-md border border-white/60 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-3xl py-4 px-2 flex flex-col transition-shadow hover:shadow-[0_8px_32px_rgb(0,0,0,0.12)]"
+                         style="flex: 1 1 0; min-width: 0; min-height: 0;">
+                        <h3 class="text-sm font-extrabold text-gray-700 m-0 text-center mb-1 shrink-0" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">BENEFÍCIOS</h3>
+                        <div class="chart-doc w-full" id="chart-doc-3" data-doc="BENEFÍCIOS" style="flex: 1 1 0; min-height: 0;"></div>
+                        <div class="docia-legenda shrink-0" id="legenda-doc-3" data-doc="BENEFÍCIOS"></div>
+                    </div>
+
+                    <div class="bg-gradient-to-b from-white to-gray-50/40 backdrop-blur-md border border-white/60 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-3xl py-4 px-2 flex flex-col transition-shadow hover:shadow-[0_8px_32px_rgb(0,0,0,0.12)]"
+                         style="flex: 1 1 0; min-width: 0; min-height: 0;">
+                        <h3 class="text-sm font-extrabold text-gray-700 m-0 text-center mb-1 shrink-0" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">FINANCIAMENTOS</h3>
+                        <div class="chart-doc w-full" id="chart-doc-4" data-doc="FINANCIAMENTO" style="flex: 1 1 0; min-height: 0;"></div>
+                        <div class="docia-legenda shrink-0" id="legenda-doc-4" data-doc="FINANCIAMENTO"></div>
+                    </div>
+                </div>
+
+                <!--
+                    DETALHAMENTO DE BENEFICIÁRIOS — os cinco documentos numa tabela só.
+                    Cada linha é um documento ESPERADO de um aluno num semestre, e a
+                    linha existir já é informação: se uma inscrição aparece com Contrato,
+                    RIAF e Histórico e mais nada, é porque Benefício e Financiamento não
+                    são devidos por ela. `Status Doc` responde o resto.
+
+                    O cabeçalho continua vindo do JS a partir do que a API devolve. A
+                    lista de colunas agora é fixa (`COLUNAS_TABELA` na view), mas repetir
+                    os 31 nomes aqui criaria uma segunda verdade que envelhece calada.
+                -->
+                <div id="card-detalhamento"
+                     class="bg-white/80 backdrop-blur-md border border-white/60 shadow-[0_4px_20px_rgb(0,0,0,0.08)] rounded-3xl flex flex-col overflow-hidden"
+                     style="flex: 1 1 0; min-height: 0; min-width: 0;">
+                    <div class="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-gray-50/50 to-white/50 shrink-0">
+                      <div class="flex justify-between items-center">
+                        <h3 class="text-base font-bold text-gray-700 flex items-center gap-2 leading-none m-0">
+                            <i class="fa-solid fa-table-list text-pink-600 mt-[1px]"></i> 
+                            <span>DETALHAMENTO DE BENEFICIÁRIOS</span>
+                        </h3>
+                        <div class="flex items-center gap-2">
+
+                            <span id="tabela-contagem" class="hidden inline-block text-[12px] font-medium px-3 py-1 rounded-md border border-gray-200 bg-white text-gray-500 shadow-sm normal-case tracking-normal align-middle"></span>
+                            <div class="relative">
+                                <i class="fa-solid fa-magnifying-glass absolute text-gray-400 text-xs" style="left: 10px; top: 50%; transform: translateY(-50%);"></i>
+                                <!--
+                                    Aceita vários termos separados por `;` (ou `,`) — a
+                                    pergunta real quase nunca é sobre uma pessoa, é sobre
+                                    a lista de pendências que alguém tem na mão. Auditado:
+                                    nenhum dos campos buscáveis contém esses caracteres
+                                    em nenhuma das 184 mil linhas.
+                                -->
+                                <input type="text" id="tabela-busca" placeholder="Inscrição, CPF ou nome — separe por ;"
+                                       title="Vários de uma vez: 2090214;2103058;Maria Silva"
+                                       class="text-xs bg-white border border-gray-200 rounded-lg py-1.5 text-gray-700 focus:outline-none focus:border-pink-400 transition-colors"
+                                       style="padding-left: 28px; padding-right: 26px; width: 268px;">
+                                <!-- Só aparece quando há texto; quem digitou precisa
+                                     poder desfazer sem apagar caractere por caractere. -->
+                                <button type="button" id="btn-limpar-busca"
+                                        class="hidden absolute text-gray-400 hover:text-pink-600 transition-colors"
+                                        style="right: 8px; top: 50%; transform: translateY(-50%);"
+                                        aria-label="Limpar a busca" title="Limpar a busca">
+                                    <i class="fa-solid fa-circle-xmark text-xs"></i>
+                                </button>
+                            </div>
+
+                            <!--
+                                EXPORTAR e EXPANDIR.
+                                A exportação existe porque a tela tem teto e o arquivo não:
+                                em HTML a base inteira são 5,9 milhões de células, no .xlsx
+                                é uma planilha comum. Ela leva os MESMOS filtros da tela.
+                            -->
+                            <button type="button" id="btn-exportar"
+                                    class="h-8 px-3 shrink-0 flex items-center justify-center gap-2 bg-white border border-gray-200 rounded-lg text-pink-600 hover:bg-pink-50 transition-colors shadow-sm"
+                                    title="Baixar o detalhamento filtrado em Excel">
+                                <i class="fa-solid fa-file-excel text-xs"></i>
+                                <span class="text-[10px] font-bold uppercase tracking-wider leading-none">Excel</span>
+                            </button>
+                            <button type="button" id="btn-expandir"
+                                    class="h-8 w-8 shrink-0 flex items-center justify-center bg-white border border-gray-200 rounded-lg text-pink-600 hover:bg-pink-50 transition-colors shadow-sm"
+                                    title="Expandir o detalhamento" aria-pressed="false">
+                                <i class="fa-solid fa-expand text-xs" id="icone-expandir"></i>
+                            </button>
+                        </div>
+                      </div>
+
+                      <!--
+                          FILTROS ATIVOS.
+                          Fica vazio (e escondido) quando não há recorte nenhum. Existe
+                          porque as linhas desta tabela podem estar sendo recortadas por
+                          quatro lugares diferentes — a barra lateral, a busca, a legenda
+                          das roscas e o próprio teto — e três deles ficam FORA do campo
+                          de visão de quem está lendo a tabela. Sem isto, um recorte
+                          esquecido na barra fechada lê como "só existem 299 linhas".
+
+                          Montado pelo JS: o conteúdo é o estado atual dos filtros, não
+                          markup fixo.
+                      -->
+                      <div id="tabela-filtros" class="hidden flex-wrap items-center gap-2 mt-2"></div>
+                    </div>
+                    <!--
+                        `overflow-x-auto overflow-y-auto` e NÃO `overflow-auto`: a
+                        utilitária curta não existe no bundle purgado (só as duas por
+                        eixo existem), então ela falhava em silêncio e a área ficava em
+                        `overflow: visible` — sem barra nenhuma nos dois sentidos.
+                    -->
+                    <div id="tabela-rolagem" class="flex-1 overflow-x-auto overflow-y-auto docia-scroll-rosinha" style="min-height: 0;">
+                        <table id="tabela-detalhamento" class="text-left border-collapse text-xs whitespace-nowrap" style="width: max-content; min-width: 100%;">
+                            <thead class="sticky top-0 bg-white z-10 shadow-sm"><tr id="tabela-cabecalho"></tr></thead>
+                            <tbody id="tabela-corpo" class="text-gray-600"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Painel de Filtros (Sidebar) -->
+            <aside id="filter-sidebar" class="area-trabalho absolute top-0 left-0 h-full w-[345px] bg-white/80 backdrop-blur-3xl border-r border-white/60 shadow-[10px_0_30px_rgba(0,0,0,0.05)] transform -translate-x-full transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] flex flex-col" style="width: 335px; z-index: 1000;">
+                
+                <!-- Botão Toggle -->
+                <button id="toggle-sidebar-btn" class="absolute top-8 sidebar-btn h-11 bg-white/95 backdrop-blur-xl border border-white/80 border-l-0 shadow-[4px_0_15px_rgba(236,72,153,0.2)] rounded-r-xl flex items-center justify-center text-pink-600 hover:bg-pink-50 transition-all duration-300 group" style="z-index: 1001;">
+                    <div class="icon-wrapper sidebar-icon-wrapper flex items-center justify-center w-4 h-4">
+                        <i class="fa-solid fa-chevron-right text-xs transition-transform duration-500 group-hover:scale-125" id="toggle-sidebar-icon"></i>
+                    </div>
+                    <span class="text-[11px] font-bold uppercase tracking-wider leading-none">Filtros</span>
+                </button>
+
+                <div class="h-28 px-8 border-b border-purple-100/50 flex items-center justify-between shrink-0">
+                    <h3 class="text-xl font-extrabold text-gray-800 tracking-tight flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-100 to-pink-200 text-pink-600 flex items-center justify-center shadow-inner">
+                            <i class="fa-solid fa-filter"></i>
+                        </div>
+                        Filtros
+                    </h3>
+                    <button type="button" id="btn-clear-filters" class="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 hover:text-pink-600 hover:bg-pink-50 px-3 py-2 rounded-xl transition-all" title="Restaurar visualização original">
+                        Restaurar Padrão
+                    </button>
+                </div>
+                <div class="flex-1 p-6 lg:p-8 overflow-y-auto custom-scrollbar-light">
+                    <!-- Filtros -->
+                    <div class="space-y-6">
+                        <div>
+                            <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">SEMESTRES</h4>
+                            
+                            <!-- Filtro de Semestres (1x3) -->
+                            <div class="grid bg-white border border-gray-300 rounded-xl overflow-hidden mb-4 shadow-sm divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(4, minmax(0, 1fr));">
+                                <label class="cursor-pointer block relative">
+                                    <input type="checkbox" value="2025-1" class="filter-semestre peer sr-only">
+                                    <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                        <span class="text-[9px] sm:text-[10px] font-bold text-center leading-tight uppercase relative z-10">2025-1</span>
+                                    </div>
+                                </label>
+                                <label class="cursor-pointer block relative">
+                                    <input type="checkbox" value="2025-2" class="filter-semestre peer sr-only">
+                                    <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                        <span class="text-[9px] sm:text-[10px] font-bold text-center leading-tight uppercase relative z-10">2025-2</span>
+                                    </div>
+                                </label>
+                                <label class="cursor-pointer block relative">
+                                    <input type="checkbox" value="2026-1" class="filter-semestre peer sr-only">
+                                    <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                        <span class="text-[9px] sm:text-[10px] font-bold text-center leading-tight uppercase relative z-10">2026-1</span>
+                                    </div>
+                                </label>
+                                <label class="cursor-pointer block relative">
+                                    <input type="checkbox" value="2026-2" class="filter-semestre peer sr-only">
+                                    <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                        <span class="text-[9px] sm:text-[10px] font-bold text-center leading-tight uppercase relative z-10">2026-2</span>
+                                    </div>
+                                </label>
+                            </div>
+
+                        </div>
+                        
+                        <!-- NOVOS FILTROS -->
+                        <div class="mt-6 grid grid-cols-2 gap-4">
+                            <!-- Mudou IES -->
+                            <div>
+                                <h4 class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Mudou IES</h4>
+                                <div class="grid bg-white border border-gray-300 rounded-xl overflow-hidden shadow-sm divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(2, minmax(0, 1fr));">
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="S" class="filter-mudou-ies peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">Sim</span>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="N" class="filter-mudou-ies peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">Não</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                            <!-- Mudou Bolsa -->
+                            <div>
+                                <h4 class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Mudou Bolsa</h4>
+                                <div class="grid bg-white border border-gray-300 rounded-xl overflow-hidden shadow-sm divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(2, minmax(0, 1fr));">
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="S" class="filter-mudou-bolsa peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">Sim</span>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="N" class="filter-mudou-bolsa peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">Não</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 grid grid-cols-2 gap-4">
+                            <!-- Status Vínculo -->
+                            <div>
+                                <h4 class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Vínculo</h4>
+                                <div class="grid bg-white border border-gray-300 rounded-xl overflow-hidden shadow-sm divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(2, minmax(0, 1fr));">
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="ATIVO" class="filter-vinculo peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[9px] font-bold text-center leading-tight uppercase relative z-10">Ativo</span>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="DESLIGADO" class="filter-vinculo peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[9px] font-bold text-center leading-tight uppercase relative z-10">Deslig</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                            <!-- Perfil -->
+                            <div>
+                                <h4 class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Perfil</h4>
+                                <div class="grid bg-white border border-gray-300 rounded-xl overflow-hidden shadow-sm divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(2, minmax(0, 1fr));">
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="Veterano" class="filter-perfil peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[9px] font-bold text-center leading-tight uppercase relative z-10">Vet</span>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="Ingresso" class="filter-perfil peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[9px] font-bold text-center leading-tight uppercase relative z-10">Ingr</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- NOVOS FILTROS -->
+                        <div class="mt-6 grid grid-cols-2 gap-4">
+                            <!-- Mudou IES -->
+                            <div>
+                                <h4 class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Mudou IES</h4>
+                                <div class="grid bg-white border border-gray-300 rounded-xl overflow-hidden shadow-sm divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(2, minmax(0, 1fr));">
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="S" class="filter-mudou-ies peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">Sim</span>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="N" class="filter-mudou-ies peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">Não</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                            <!-- Mudou Bolsa -->
+                            <div>
+                                <h4 class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Mudou Bolsa</h4>
+                                <div class="grid bg-white border border-gray-300 rounded-xl overflow-hidden shadow-sm divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(2, minmax(0, 1fr));">
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="S" class="filter-mudou-bolsa peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">Sim</span>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="N" class="filter-mudou-bolsa peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">Não</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 grid grid-cols-2 gap-4">
+                            <!-- Status Vínculo -->
+                            <div>
+                                <h4 class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Vínculo</h4>
+                                <div class="grid bg-white border border-gray-300 rounded-xl overflow-hidden shadow-sm divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(2, minmax(0, 1fr));">
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="ATIVO" class="filter-vinculo peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[9px] font-bold text-center leading-tight uppercase relative z-10">Ativo</span>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="DESLIGADO" class="filter-vinculo peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[9px] font-bold text-center leading-tight uppercase relative z-10">Deslig</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                            <!-- Perfil -->
+                            <div>
+                                <h4 class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Perfil</h4>
+                                <div class="grid bg-white border border-gray-300 rounded-xl overflow-hidden shadow-sm divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(2, minmax(0, 1fr));">
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="Veterano" class="filter-perfil peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[9px] font-bold text-center leading-tight uppercase relative z-10">Vet</span>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="Ingresso" class="filter-perfil peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[9px] font-bold text-center leading-tight uppercase relative z-10">Ingr</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Filter IES -->
+                        <div class="mt-6">
+                            <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">INSTITUIÇÃO DE ENSINO SUPERIOR</h4>
+                            <button type="button" onclick="openModalIES()" class="w-full flex items-center justify-between bg-white border border-gray-200 rounded-xl p-2 hover:bg-gray-50 transition-all shadow-sm group">
+                                <div class="flex items-center gap-3 overflow-hidden min-w-0">
+                                    <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-colors" class="docia-icone-bg">
+                                        <i class="fa-solid fa-building-columns" class="docia-icone-color"></i>
+                                    </div>
+                                    <div class="flex flex-col items-start overflow-hidden min-w-0">
+                                        <span class="text-[10px] text-gray-400 font-semibold uppercase">Filtro de IES</span>
+                                        <span class="text-xs font-bold text-gray-700 uppercase w-full text-left" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="ies-selecionadas-text" title="Todas as Instituições">Todas as Instituições</span>
+                                    </div>
+                                </div>
+                                <i class="fa-solid fa-chevron-right text-gray-400 text-xs shrink-0 ml-2 pr-2"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </aside>
+            
+            <!-- Modal IES -->
+            <!--
+                CONSOLE DE ATUALIZAÇÃO
+                Abre ao clicar em "Atualizar". Aqui é um modal, e não um painel fixo como no
+                Análise IA, porque esta tela é um dashboard: o espaço já é todo dos KPIs e
+                gráficos. Fechar o modal NÃO cancela nada — a extração roda em background e
+                o botão do cabeçalho continua mostrando o progresso.
+
+                As cores vêm do componente compartilhado `static/css/console.css`, que
+                serve o mesmo terminal aqui, no Análise IA, no Enquadramento de Cursos e no
+                Recálculo de Bolsas — e é também quem repõe as utilitárias que o bundle
+                purgado do Tailwind não tem. A observação vale repetir: classe utilitária
+                nova não é gerada por nenhum build neste repositório, e sem essa reposição
+                ela falha em silêncio. Este console já esteve nesse estado — o selo "OK"
+                renderizava com fundo transparente, borda preta e rótulo preto.
+            -->
+
+            
+        
+    
+
+    
+        </main>
+    </div>
+
+
+    <!--
+        OS OVERLAYS VIVEM AQUI, IRMÃOS DO `.menu-shell` — E NÃO DENTRO DELE.
+
+        Dois motivos, os dois descobertos com o modal de IES aberto e a sidebar
+        de filtros aberta junto:
+
+        1. `.menu-shell` tem `backdrop-blur`, e todo elemento com filtro vira
+           BLOCO CONTENDO para os descendentes `position: fixed`. Dentro dele,
+           `top/left/right/bottom: 0` deixa de significar "a janela" e passa a
+           significar "a caixa do shell" — o modal herdava até o `padding-left`
+           de 335px que o `<main>` ganha quando a sidebar abre, e aparecia
+           deslocado, com a coluna da esquerda cortada.
+
+        2. A sidebar tem `z-index: 1000` inline. As utilitárias `z-[60]`/`z-[70]`
+           que os modais usavam perdiam para ela, então a sidebar era desenhada
+           POR CIMA do modal.
+
+        Daqui, `position: fixed` volta a se referir à janela e os z-index (1100 e
+        1200) ficam acima da sidebar. As classes `area-trabalho` continuam nos
+        dois: os seletores do tema eleitoral partem de `html`, não do shell.
+    -->
+    <div id="modal-ies" class="area-trabalho hidden items-center justify-center p-4" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1100; background-color: rgba(15, 23, 42, 0.2); backdrop-filter: blur(2px); display: none;">
+        <div class="bg-gray-50 rounded-2xl flex flex-col overflow-hidden animate-fade-in-up shadow-2xl border border-gray-200" style="width: 95%; max-width: 1400px; height: 85vh; max-height: 800px; min-height: 600px;">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0 bg-white">
+                <div class="flex items-center gap-4">
+                    <div class="modal-header-icone w-12 h-12 rounded-xl flex items-center justify-center shadow-sm docia-modal-gradiente text-white">
+                        <i class="fa-solid fa-building-columns text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-800 tracking-tight">Filtro de Instituições</h3>
+                        <p class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mt-0.5">Selecione as Mantenedoras e IES</p>
+                    </div>
+                </div>
+                <button onclick="closeModalIES()" class="text-gray-400 hover:text-gray-800 hover:bg-gray-100 w-10 h-10 flex items-center justify-center rounded-xl transition-colors shrink-0">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="flex-1 flex overflow-hidden bg-transparent" style="min-height: 0;">
+                <!-- Left Pane: Search and List -->
+                <div class="flex flex-col border-r border-gray-200 bg-gray-50/50" style="width: 55%; min-height: 0;">
+                    <div class="p-5 border-b border-gray-200 shrink-0 bg-white">
+                        <div class="relative group">
+                            <i class="fa-solid fa-search absolute text-gray-400 group-focus-within:text-pink-600 transition-colors" style="left: 1.25rem; top: 50%; transform: translateY(-50%);"></i>
+                            <input type="text" id="search-ies" placeholder="Pesquisar por nome da Mantenedora ou Instituição..." class="w-full pr-10 py-3 bg-white border-2 border-gray-100 rounded-xl text-sm text-gray-700 shadow-sm focus:outline-none focus:border-pink-500 transition-colors" style="padding-left: 3rem;">
+                            <button type="button" id="clear-search-ies" onclick="document.getElementById('search-ies').value = ''; document.getElementById('search-ies').dispatchEvent(new Event('input')); document.getElementById('search-ies').focus();" class="absolute hidden text-gray-400 hover:text-pink-600 focus:outline-none transition-colors" style="right: 1.25rem; top: 50%; transform: translateY(-50%);">
+                                <i class="fa-solid fa-circle-xmark text-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                                        <div class="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar-light" id="list-mantenedoras" style="min-height: 0;">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+                
+                <!-- Right Pane: Selected -->
+                <div class="flex flex-col bg-gray-100/50" style="width: 45%; min-height: 0;">
+                    <div class="px-6 py-5 border-b border-gray-200 flex justify-between items-center bg-white shrink-0">
+                        <div class="flex items-center gap-3">
+                            <div class="docia-marcador w-2 h-6 rounded-full" style="background-color: #6B007B;"></div>
+                            <h4 class="text-sm font-extrabold text-gray-800 uppercase tracking-wide">Selecionadas (<span id="count-selected-ies" class="docia-icone-color">0</span>)</h4>
+                        </div>
+                        <button onclick="clearSelectedIES()" class="docia-btn-limpar text-xs font-bold px-4 py-2 rounded-xl transition-colors border shadow-sm hover:bg-gray-50" style="color: #6B007B; border-color: rgba(107,0,123,0.2); background-color: white;">Limpar Tudo</button>
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-6 space-y-2 custom-scrollbar-light" id="list-selected-ies" style="min-height: 0;">
+                        <div class="flex flex-col items-center justify-center h-full opacity-40" id="empty-selected-msg">
+                            <i class="fa-solid fa-inbox text-4xl text-gray-400 mb-3"></i>
+                            <div class="text-center text-gray-500 text-sm font-medium">Nenhuma instituição selecionada.<br>Use o painel ao lado para adicionar.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 bg-white shrink-0">
+                <button onclick="closeModalIES()" class="px-6 py-2.5 text-sm font-bold text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl transition-colors shadow-sm">Cancelar</button>
+                <button onclick="applyIESFilter()" class="modal-confirmar px-8 py-2.5 text-sm font-bold rounded-xl transition-all shadow-md hover:opacity-90 flex items-center gap-2 docia-modal-gradiente text-white">
+                    <i class="fa-solid fa-check"></i> Aplicar
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!--
+        ESCOPO DA ATUALIZAÇÃO
+        =====================
+        Vive aqui fora, irmão dos outros overlays e do `.menu-shell` — pelo mesmo motivo
+        deles: a casca tem `backdrop-filter`, que cria containing block para
+        `position: fixed`, e de dentro dela este modal se ancoraria na casca.
+
+        DUAS DECISÕES, E SÓ DUAS:
+
+          1. O PERÍODO, que é global. Diferente do analise_ia, aqui não se atualiza "só
+             os RIAF": o dashboard compara os cinco documentos entre si, e trazer um sem
+             os outros deixaria a comparação torta. Os cinco vêm sempre; o que se escolhe
+             é de QUAIS semestres.
+
+          2. COMO cada documento vem. O padrão é a atualização inteligente — pedir ao ScriptCase
+             só o que o espelho ainda não tem. Por documento dá para trocar isso por
+             "bruta" (o período inteiro, ignorando o espelho) ou por uma lista de
+             inscrições, quando o reprocessamento foi focado.
+    -->
+    <div id="modal-config" class="area-trabalho hidden items-center justify-center p-4" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1150; background-color: rgba(15, 23, 42, 0.45); backdrop-filter: blur(5px); display: none;">
+        <div class="cfgx">
+            <header class="cfgx__topo">
+                <div class="w-12 h-12 rounded-xl flex items-center justify-center shadow-sm docia-modal-gradiente text-white shrink-0"><i class="fa-solid fa-sliders text-xl"></i></div>
+                <span class="cfgx__titulo">
+                    <strong>Escopo da atualização</strong>
+                    <span>Escolha o período e como cada documento deve vir</span>
+                </span>
+                <button type="button" id="btn-fechar-config" class="cfgx__fechar" aria-label="Fechar">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </header>
+
+            <div class="cfgx__corpo custom-scrollbar-light">
+                <section class="cfgx__secao">
+                    <div class="cfgx__secao-topo">
+                        <span class="cfgx__passo">1</span>
+                        <span class="cfgx__secao-texto">
+                            <strong>Período</strong>
+                            <span>Quais semestres entram nesta atualização. Vale para os cinco documentos.</span>
+                        </span>
+                        <button type="button" class="cfgx__mini" id="btn-config-periodos">todos</button>
+                    </div>
+                    <div class="cfgx__periodos">
+                        <label class="cfgx-periodo">
+                            <input type="checkbox" class="cfg-periodo sr-only" value="2025-1">
+                            <span class="cfgx-periodo__caixa">
+                                <i class="fa-solid fa-check cfgx-periodo__marca"></i>
+                                <span>2025-1</span>
+                            </span>
+                        </label>
+                        <label class="cfgx-periodo">
+                            <input type="checkbox" class="cfg-periodo sr-only" value="2025-2">
+                            <span class="cfgx-periodo__caixa">
+                                <i class="fa-solid fa-check cfgx-periodo__marca"></i>
+                                <span>2025-2</span>
+                            </span>
+                        </label>
+                        <label class="cfgx-periodo">
+                            <input type="checkbox" class="cfg-periodo sr-only" value="2026-1">
+                            <span class="cfgx-periodo__caixa">
+                                <i class="fa-solid fa-check cfgx-periodo__marca"></i>
+                                <span>2026-1</span>
+                            </span>
+                        </label>
+                        <label class="cfgx-periodo">
+                            <input type="checkbox" class="cfg-periodo sr-only" value="2026-2">
+                            <span class="cfgx-periodo__caixa">
+                                <i class="fa-solid fa-check cfgx-periodo__marca"></i>
+                                <span>2026-2</span>
+                            </span>
+                        </label>
+                    </div>
+                </section>
+
+                <section class="cfgx__secao">
+                    <div class="cfgx__secao-topo">
+                        <span class="cfgx__passo">2</span>
+                        <span class="cfgx__secao-texto">
+                            <strong>Como cada documento vem</strong>
+                            <span>Sem marcar nada, todos usarão a atualização inteligente — baixando apenas o que falta no espelho.</span>
+                        </span>
+                    </div>
+                    <div class="cfgx__docs">
+                    <div class="cfgx-doc" data-doc="CONTRATOS">
+                        <div class="cfgx-doc__linha">
+                            <span class="cfgx-doc__icone"><i class="fa-solid fa-file-contract"></i></span>
+                            <span class="cfgx-doc__texto">
+                                <strong>Contratos</strong>
+                                <span class="cfgx-doc__modo" data-doc="CONTRATOS">atualização inteligente</span>
+                            </span>
+                            <button type="button" class="cfgx-acao cfg-bruta" data-doc="CONTRATOS"
+                                    aria-pressed="false"
+                                    title="Baixa o período inteiro deste documento, ignorando o que já está no espelho">
+                                <i class="fa-solid fa-arrows-rotate"></i><span>Bruta</span>
+                            </button>
+                            <button type="button" class="cfgx-acao cfg-abrir-lista" data-doc="CONTRATOS"
+                                    aria-expanded="false"
+                                    title="Reprocessar apenas as inscrições que você informar">
+                                <i class="fa-solid fa-list-ul"></i><span>Inscrições</span>
+                            </button>
+                        </div>
+                        <div class="cfgx-doc__lista hidden" data-doc="CONTRATOS">
+                            <textarea class="cfg-inscricoes" data-doc="CONTRATOS" rows="2" spellcheck="false"
+                                      placeholder="Inscrições separadas por vírgula, ponto e vírgula ou quebra de linha"></textarea>
+                            <span class="cfgx-doc__contagem" data-doc="CONTRATOS">nenhuma inscrição</span>
+                        </div>
+                    </div>
+                    <div class="cfgx-doc" data-doc="RIAF">
+                        <div class="cfgx-doc__linha">
+                            <span class="cfgx-doc__icone"><i class="fa-solid fa-file-signature"></i></span>
+                            <span class="cfgx-doc__texto">
+                                <strong>RIAF's</strong>
+                                <span class="cfgx-doc__modo" data-doc="RIAF">atualização inteligente</span>
+                            </span>
+                            <button type="button" class="cfgx-acao cfg-bruta" data-doc="RIAF"
+                                    aria-pressed="false"
+                                    title="Baixa o período inteiro deste documento, ignorando o que já está no espelho">
+                                <i class="fa-solid fa-arrows-rotate"></i><span>Bruta</span>
+                            </button>
+                            <button type="button" class="cfgx-acao cfg-abrir-lista" data-doc="RIAF"
+                                    aria-expanded="false"
+                                    title="Reprocessar apenas as inscrições que você informar">
+                                <i class="fa-solid fa-list-ul"></i><span>Inscrições</span>
+                            </button>
+                        </div>
+                        <div class="cfgx-doc__lista hidden" data-doc="RIAF">
+                            <textarea class="cfg-inscricoes" data-doc="RIAF" rows="2" spellcheck="false"
+                                      placeholder="Inscrições separadas por vírgula, ponto e vírgula ou quebra de linha"></textarea>
+                            <span class="cfgx-doc__contagem" data-doc="RIAF">nenhuma inscrição</span>
+                        </div>
+                    </div>
+                    <div class="cfgx-doc" data-doc="HISTORICO">
+                        <div class="cfgx-doc__linha">
+                            <span class="cfgx-doc__icone"><i class="fa-solid fa-clock-rotate-left"></i></span>
+                            <span class="cfgx-doc__texto">
+                                <strong>Históricos</strong>
+                                <span class="cfgx-doc__modo" data-doc="HISTORICO">atualização inteligente</span>
+                            </span>
+                            <button type="button" class="cfgx-acao cfg-bruta" data-doc="HISTORICO"
+                                    aria-pressed="false"
+                                    title="Baixa o período inteiro deste documento, ignorando o que já está no espelho">
+                                <i class="fa-solid fa-arrows-rotate"></i><span>Bruta</span>
+                            </button>
+                            <button type="button" class="cfgx-acao cfg-abrir-lista" data-doc="HISTORICO"
+                                    aria-expanded="false"
+                                    title="Reprocessar apenas as inscrições que você informar">
+                                <i class="fa-solid fa-list-ul"></i><span>Inscrições</span>
+                            </button>
+                        </div>
+                        <div class="cfgx-doc__lista hidden" data-doc="HISTORICO">
+                            <textarea class="cfg-inscricoes" data-doc="HISTORICO" rows="2" spellcheck="false"
+                                      placeholder="Inscrições separadas por vírgula, ponto e vírgula ou quebra de linha"></textarea>
+                            <span class="cfgx-doc__contagem" data-doc="HISTORICO">nenhuma inscrição</span>
+                        </div>
+                    </div>
+                    <div class="cfgx-doc" data-doc="BENEFICIOS">
+                        <div class="cfgx-doc__linha">
+                            <span class="cfgx-doc__icone"><i class="fa-solid fa-hand-holding-heart"></i></span>
+                            <span class="cfgx-doc__texto">
+                                <strong>Benefícios</strong>
+                                <span class="cfgx-doc__modo" data-doc="BENEFICIOS">atualização inteligente</span>
+                            </span>
+                            <button type="button" class="cfgx-acao cfg-bruta" data-doc="BENEFICIOS"
+                                    aria-pressed="false"
+                                    title="Baixa o período inteiro deste documento, ignorando o que já está no espelho">
+                                <i class="fa-solid fa-arrows-rotate"></i><span>Bruta</span>
+                            </button>
+                            <button type="button" class="cfgx-acao cfg-abrir-lista" data-doc="BENEFICIOS"
+                                    aria-expanded="false"
+                                    title="Reprocessar apenas as inscrições que você informar">
+                                <i class="fa-solid fa-list-ul"></i><span>Inscrições</span>
+                            </button>
+                        </div>
+                        <div class="cfgx-doc__lista hidden" data-doc="BENEFICIOS">
+                            <textarea class="cfg-inscricoes" data-doc="BENEFICIOS" rows="2" spellcheck="false"
+                                      placeholder="Inscrições separadas por vírgula, ponto e vírgula ou quebra de linha"></textarea>
+                            <span class="cfgx-doc__contagem" data-doc="BENEFICIOS">nenhuma inscrição</span>
+                        </div>
+                    </div>
+                    <div class="cfgx-doc" data-doc="FINANCIAMENTO">
+                        <div class="cfgx-doc__linha">
+                            <span class="cfgx-doc__icone"><i class="fa-solid fa-money-check-dollar"></i></span>
+                            <span class="cfgx-doc__texto">
+                                <strong>Financiamentos</strong>
+                                <span class="cfgx-doc__modo" data-doc="FINANCIAMENTO">atualização inteligente</span>
+                            </span>
+                            <button type="button" class="cfgx-acao cfg-bruta" data-doc="FINANCIAMENTO"
+                                    aria-pressed="false"
+                                    title="Baixa o período inteiro deste documento, ignorando o que já está no espelho">
+                                <i class="fa-solid fa-arrows-rotate"></i><span>Bruta</span>
+                            </button>
+                            <button type="button" class="cfgx-acao cfg-abrir-lista" data-doc="FINANCIAMENTO"
+                                    aria-expanded="false"
+                                    title="Reprocessar apenas as inscrições que você informar">
+                                <i class="fa-solid fa-list-ul"></i><span>Inscrições</span>
+                            </button>
+                        </div>
+                        <div class="cfgx-doc__lista hidden" data-doc="FINANCIAMENTO">
+                            <textarea class="cfg-inscricoes" data-doc="FINANCIAMENTO" rows="2" spellcheck="false"
+                                      placeholder="Inscrições separadas por vírgula, ponto e vírgula ou quebra de linha"></textarea>
+                            <span class="cfgx-doc__contagem" data-doc="FINANCIAMENTO">nenhuma inscrição</span>
+                        </div>
+                    </div>
+                    </div>
+                </section>
+            </div>
+
+            <footer class="cfgx__rodape">
+                <span class="cfgx__resumo" id="config-contador">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <span>Sem período marcado, a atualização vem completa.</span>
+                </span>
+                <button type="button" id="btn-config-cancelar" class="px-6 py-2.5 text-sm font-bold text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl transition-colors shadow-sm">Cancelar</button>
+                <button type="button" id="btn-config-aplicar" class="px-8 py-2.5 text-sm font-bold rounded-xl transition-all shadow-md hover:opacity-90 flex items-center gap-2 docia-modal-gradiente text-white">
+                    <i class="fa-solid fa-check"></i> Aplicar
+                </button>
+            </footer>
+        </div>
+    </div>
+
+    <div id="modal-console" class="area-trabalho hidden items-center justify-center p-4" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1200; background-color: rgba(15, 23, 42, 0.4); backdrop-filter: blur(4px);">
+        <div class="console-ggci rounded-[1.5rem] flex flex-col overflow-hidden border" style="width: 95%; max-width: 1200px; height: 70vh; max-height: 650px; min-height: 400px;">
+
+            <!-- Barra de título, no estilo de uma janela de terminal -->
+            <div class="console-ggci__cromo px-5 py-2.5 flex items-center justify-between border-b shrink-0">
+                <div class="flex space-x-2.5">
+                    <div class="w-3.5 h-3.5 rounded-full bg-[#ff5f56] shadow-sm"></div>
+                    <div class="w-3.5 h-3.5 rounded-full bg-[#ffbd2e] shadow-sm"></div>
+                    <div class="w-3.5 h-3.5 rounded-full bg-[#27c93f] shadow-sm"></div>
+                </div>
+                <span class="text-purple-800 text-[11px] font-mono tracking-widest font-bold flex items-center gap-2">
+                    <i class="fa-solid fa-terminal text-pink-500"></i> ATUALIZAÇÃO DE DADOS
+                </span>
+                <div class="flex items-center gap-3">
+                    <span id="console-status" class="text-[10px] font-mono uppercase tracking-widest text-purple-400 shrink-0">Aguardando</span>
+                    <button type="button" id="btn-fechar-console" title="Fechar (a atualização continua em segundo plano)"
+                            class="text-purple-400 hover:text-pink-600 w-8 h-8 flex items-center justify-center rounded-lg transition-colors">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Saída -->
+            <div id="console-logs"
+                 class="console-ggci__log p-6 flex-1 overflow-y-auto overflow-x-hidden font-mono text-[13px] leading-relaxed text-gray-700 whitespace-pre-wrap break-words">
+                <div class="flex flex-wrap items-center gap-1 mb-1.5 font-mono text-[14px] break-words">
+                    <span class="text-pink-600 font-bold">ovg@probem-ai:</span>
+                    <span class="text-purple-600">~</span>
+                    <span class="text-purple-400">$</span>
+                    <span class="text-purple-900 font-bold animate-pulse">extracao_docs_ia --run</span>
+                </div>
+                <div class="text-pink-500 italic mb-2">
+                    <i class="fa-solid fa-angle-right"></i> Aguardando início...
+                </div>
+                <span class="console-spinner"></span>
+            </div>
+
+            <!-- Barra de progresso -->
+            <div class="console-ggci__cromo px-5 py-3 border-t shrink-0 flex items-center gap-4">
+                <div class="console-ggci__trilho flex-1 rounded-xl h-7 border shadow-inner relative flex items-center justify-center overflow-hidden">
+                    <div id="console-progress-bar"
+                         class="console-ggci__barra absolute top-0 left-0 h-full bg-gradient-to-r from-pink-400 to-purple-500 transition-all duration-500 ease-out"
+                         style="width: 0%;"></div>
+                    <span id="console-progress-text"
+                          class="relative z-10 text-[12px] font-black text-gray-700 tracking-wide">0%</span>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        window.DASH_DOC_IA_INICIAR_URL = "{% url 'dash_documentos_ia_iniciar' %}";
+        window.CSRF_TOKEN = "{{ csrf_token }}";
+    </script>
+    <!--
+        ApexCharts é a biblioteca de gráficos do portal — a mesma que o Polichat
+        usa. Esta tela era a única ainda em ECharts.
+    -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script src="{% static 'dash_documentos_ia/js/dash_documentos_ia.js' %}?v=20260825a"></script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+[Unit]
+Description=Watchdog do acesso publico do Portal GGCI (Nginx + Gunicorn + Tailscale Funnel)
+Documentation=file:///home/labs/portal-ggci-dev/scripts/ggci_watchdog.sh
+After=network-online.target tailscaled.service nginx.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/ggci-watchdog.sh
+
+# Pior caso do ciclo: sondas de internet e das portas locais (~36s), sondagem
+# do ingress nos dois IPs (~24s), restart do tailscaled com reanuncio (~31s) e
+# a confirmacao paciente do ingress, que insiste por ate 40s (~58s com as
+# tentativas). Da algo perto de 150s. O teto de 300s cobre isso com folga e
+# ainda impede que uma sonda travada segure o timer indefinidamente.
+TimeoutStartSec=300
+
+# Precisa de root para systemctl, tailscale (socket do daemon) e para escrever
+# em /var/lib e /var/log.
+User=root
+
+[Install]
+WantedBy=multi-user.target

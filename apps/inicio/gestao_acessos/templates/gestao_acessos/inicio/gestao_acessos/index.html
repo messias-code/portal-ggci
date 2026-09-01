@@ -1,0 +1,349 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Acessos - Portal GGCI</title>
+
+    <!-- Configuração do Tailwind CSS e Fontes -->
+    <!--
+        MOTOR DE TEMAS — precisa vir antes de tudo.
+        Carregado SEM 'defer'/'async' de propósito: executado de forma síncrona
+        aqui no <head>, grava o atributo data-tema no <html> antes da primeira
+        pintura, eliminando o flash do tema padrão. Como a preferência vive no
+        localStorage, o modo escolhido em qualquer tela já chega aplicado aqui.
+    -->
+    <script src="{% static 'js/tema.js' %}"></script>
+
+    <link rel="stylesheet" href="{% static 'css/output.css' %}">
+
+    <!-- Tokens de cor dos temas e o botão sol/lua (compartilhado por todo o portal) -->
+    <link rel="stylesheet" href="{% static 'css/tema.css' %}">
+
+    <!-- Modo escuro da casca de menu (barra lateral + cabeçalho), compartilhado -->
+    <link rel="stylesheet" href="{% static 'css/tema-menu.css' %}">
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- CSS Externo: Estilos específicos da tabela e animações de fundo desta página -->
+    <!-- Arquivo localizado em: static/css/menu/inicio/gestao_acessos.css -->
+    <link rel="stylesheet" href="{% static 'gestao_acessos/css/gestao_acessos.css' %}">
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@8.0.4/dist/turbo.es.2017-esm.js"></script>
+</head>
+
+<body class="grid-bg bg-[#f8f6fb] text-gray-800 fixed inset-0 p-4 lg:p-6 flex overflow-hidden">
+
+    <!-- Container de Notificações (Toasts) gerados dinamicamente pelo JS -->
+    <div id="toast-container" class="fixed top-5 right-5 z-[70] flex flex-col items-end"></div>
+
+    <!-- INÍCIO: Elementos visuais de fundo animados -->
+        <!-- 
+        ======================================================================
+        1. ELEMENTOS DECORATIVOS DE BACKGROUND (LIGHT BLOBS / BLUR EFFECTS)
+        ----------------------------------------------------------------------
+        Divs com desfoque gaussiano (blur-[140px]) e alta opacidade que criam o
+        efeito estético de iluminação colorida flutuante nos quatro cantos da tela,
+        trazendo profundidade visual sem prejudicar o desempenho.
+        ======================================================================
+    -->
+    <div class="menu-blob menu-blob--1 absolute top-[-20%] left-[-15%] w-[70vw] h-[70vh] bg-pink-500/70 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="menu-blob menu-blob--2 absolute top-[-20%] right-[-15%] w-[70vw] h-[70vh] bg-yellow-400/75 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="menu-blob menu-blob--3 absolute bottom-[-20%] left-[-15%] w-[70vw] h-[70vh] bg-purple-700/60 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="menu-blob menu-blob--4 absolute bottom-[-20%] right-[-15%] w-[70vw] h-[70vh] bg-green-600/65 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <!-- FIM: Elementos visuais de fundo animados -->
+
+    <div
+        class="menu-shell w-full h-full bg-white/70 backdrop-blur-2xl border border-white/80 rounded-[2rem] shadow-2xl flex overflow-hidden relative z-10 transition-all duration-300">
+
+        <!-- ==========================================================================
+             MENU LATERAL (SIDEBAR)
+             ========================================================================== -->
+        <aside class="menu-sidebar w-[18rem] lg:w-[20rem] flex flex-col border-r border-purple-100/50 bg-white/40 shrink-0">
+            <div class="menu-divisoria h-28 flex items-center justify-center border-b border-purple-100/50">
+                <!--
+                    As duas versões da logo são publicadas e o CSS de tema decide
+                    qual fica visível. O elemento oculto sai da árvore de
+                    acessibilidade, então o leitor de tela anuncia apenas uma.
+                -->
+                <img src="{% static 'img/logos/ovg.png' %}" alt="OVG Logo"
+                    class="logo-tema logo-tema--claro h-[4.46rem] drop-shadow-md">
+                <img src="{% static 'img/logos/ovg-eleitoral.png' %}" alt="OVG Logo"
+                    class="logo-tema logo-tema--eleitoral h-[4.46rem] drop-shadow-md">
+            </div>
+
+            <nav class="flex-1 px-6 py-8 space-y-2 overflow-hidden">
+                <p class="menu-nav-titulo text-[13px] font-bold text-purple-700 uppercase tracking-widest mb-4 px-2">Navegação Principal
+                </p>
+
+                <!-- Link ATIVO (Início) -->
+                <a href="{% url 'inicio' %}"
+                    class="nav-active flex items-center space-x-3 px-4 py-3 rounded-xl font-bold text-base">
+                    <i class="fa-solid fa-user-shield text-[23px] w-6 text-center"></i><span>Início</span>
+                </a>
+
+                <!-- Menu Ferramentas Dinâmico -->
+                {% if user.p_ferramentas or user.usuario == 'admin@ovg.org.br' %}
+                <a href="{% url 'ferramentas' %}"
+                    class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
+                    <i class="fa-solid fa-screwdriver-wrench text-[23px] w-6 text-center"></i><span>Ferramentas</span>
+                </a>
+                {% else %}
+                <div class="menu-nav-bloqueado flex items-center space-x-4 px-4 py-3 text-gray-400 bg-gray-50/50 rounded-xl font-semibold text-base cursor-not-allowed opacity-70"
+                    title="Acesso Restrito">
+                    <i class="fa-solid fa-lock text-[23px] w-6 text-center"></i><span>Ferramentas</span>
+                </div>
+                {% endif %}
+
+                <!-- Menu Automações Dinâmico -->
+                {% if user.p_analise_ia or user.p_recalculo_bolsas or user.p_enquadramento_cursos or user.usuario == 'admin@ovg.org.br' %}
+                <a href="{% url 'automacoes' %}"
+                    class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
+                    <i class="fa-brands fa-whmcs text-[28px] w-6 text-center"></i><span>Automações</span>
+                </a>
+                {% else %}
+                <div class="menu-nav-bloqueado flex items-center space-x-4 px-4 py-3 text-gray-400 bg-gray-50/50 rounded-xl font-semibold text-base cursor-not-allowed opacity-70"
+                    title="Acesso Restrito">
+                    <i class="fa-solid fa-lock text-[23px] w-6 text-center"></i><span>Automações</span>
+                </div>
+                {% endif %}
+
+                {% if user.p_dash_polichat or user.p_dash_documentos_ia or user.usuario == 'admin@ovg.org.br' %}
+                <a href="{% url 'dashboards' %}"
+                    class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
+                    <i class="fa-solid fa-chart-line text-[23px] w-6 text-center"></i><span>Dashboards</span>
+                </a>
+                {% else %}
+                <div class="menu-nav-bloqueado flex items-center space-x-4 px-4 py-3 text-gray-400 bg-gray-50/50 rounded-xl font-semibold text-base cursor-not-allowed opacity-70"
+                    title="Acesso Restrito">
+                    <i class="fa-solid fa-lock text-[23px] w-6 text-center"></i><span>Dashboards</span>
+                </div>
+                {% endif %}
+
+                <!-- Menu Documentações Dinâmico -->
+                {% if user.p_documentacoes or user.usuario == 'admin@ovg.org.br' %}
+                <a href="#"
+                    class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
+                    <i class="fa-solid fa-folder-open text-[23px] w-6 text-center"></i><span>Documentações</span>
+                </a>
+                {% else %}
+                <div class="menu-nav-bloqueado flex items-center space-x-4 px-4 py-3 text-gray-400 bg-gray-50/50 rounded-xl font-semibold text-base cursor-not-allowed opacity-70"
+                    title="Acesso Restrito">
+                    <i class="fa-solid fa-lock text-[23px] w-6 text-center"></i><span>Documentações</span>
+                </div>
+                {% endif %}
+            </nav>
+
+            <!-- Botão Sair - Redireciona para a view 'fazer_logout' em apps/gestao_acessos/views.py -->
+            <div class="menu-divisoria p-6 border-t border-purple-100/50">
+                <a href="{% url 'logout' %}"
+                    class="menu-sair flex items-center justify-center space-x-2 w-full px-4 py-3 bg-red-50 text-red-600 rounded-xl font-extrabold text-sm hover:bg-red-500 hover:text-white transition-all shadow-sm">
+                    <i class="fa-solid fa-right-from-bracket"></i><span>SAIR DO SISTEMA</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- ==========================================================================
+             ÁREA PRINCIPAL (MAIN CONTENT)
+             ========================================================================== -->
+        <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+
+            <!-- Cabeçalho com Título e Botão Voltar -->
+            <header
+                class="menu-header menu-divisoria h-28 px-8 lg:px-10 flex justify-between items-center border-b border-purple-100/50 bg-white/40 backdrop-blur-md shrink-0 transition-all duration-300">
+                <div class="flex items-center gap-4">
+                    <div
+                        class="tela-header-icone w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-100 to-purple-200 text-purple-600 flex items-center justify-center shadow-inner shrink-0 hidden sm:flex">
+                        <i class="fa-solid fa-building-lock text-2xl drop-shadow-sm"></i>
+                    </div>
+                    <div>
+                        <h2 class="menu-header-titulo text-2xl lg:text-3xl font-extrabold text-gray-800 tracking-tight">Gestão de Acessos
+                        </h2>
+                        <p class="menu-header-sub text-sm lg:text-lg text-gray-500 font-medium mt-1">Controle de permissões e usuários
+                        </p>
+                    </div>
+                </div>
+                <!--
+                    Agrupa o seletor de modo e o botão Voltar no canto direito do
+                    cabeçalho. O <header> é 'justify-between' e este bloco é o
+                    segundo filho, então o alinhamento à direita já vem de graça.
+                -->
+                <div class="flex items-center gap-4">
+                    <!--
+                        BOTÃO DE ALTERNÂNCIA DE MODO (SOL / LUA)
+                        Componente compartilhado, definido em 'static/css/tema.css'.
+                        O ícone exibido é o do modo PARA O QUAL se vai. O clique é
+                        capturado por delegação em 'static/js/tema.js' via
+                        'data-tema-toggle', e o aria-label é preenchido por lá.
+                    -->
+                    <button type="button"
+                        class="tema-toggle"
+                        data-tema-toggle
+                        aria-label="Ativar modo eleitoral"
+                        aria-pressed="false">
+                        <svg class="tema-toggle__icone tema-toggle__icone--lua" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"
+                            stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                        <svg class="tema-toggle__icone tema-toggle__icone--sol" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.6"/>
+                            <path d="M12 2.4V4.4M12 19.6V21.6M21.6 12H19.6M4.4 12H2.4M18.79 5.21L17.38 6.62M6.62 17.38L5.21 18.79M18.79 18.79L17.38 17.38M6.62 6.62L5.21 5.21"
+                                stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+
+                    <a href="{% url 'inicio' %}" class="tela-voltar px-5 py-2.5 bg-white/80 hover:bg-pink-50 text-pink-600 font-bold rounded-xl transition-all shadow-sm border border-pink-100 inline-flex items-center justify-center text-sm">
+                        <i class="fa-solid fa-arrow-left mr-2 mt-[1px]"></i>
+                        <span class="leading-none">Voltar</span>
+                    </a>
+                </div>
+            </header>
+
+            <div class="flex-1 p-8 lg:p-10 flex flex-col gap-6 overflow-y-auto custom-scrollbar">
+
+                <!-- INÍCIO: Barra de Ferramentas -->
+                <div
+                    class="ga-barra flex flex-col md:flex-row justify-between items-center gap-4 bg-white/40 backdrop-blur-md border border-white/50 p-4 rounded-2xl shadow-sm">
+
+                    <!-- Campo de Busca: Lógica de filtragem visual feita pelo static/js/menu/inicio/gestao_acessos.js -->
+                    <div class="relative w-full md:w-96">
+                        <i class="ga-busca-icone fa-solid fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        <input type="text" id="inputBusca" placeholder="Buscar por nome, login ou email..."
+                            class="ga-busca w-full pl-11 pr-4 py-3 bg-white/60 border border-purple-100 rounded-xl text-sm focus:ring-2 focus:ring-purple-400 outline-none transition-all placeholder-gray-500">
+                    </div>
+
+                    <!-- Botão Novo Usuário: Aciona a função abrirModalNovo() definida no script.js -->
+                    <button onclick="abrirModalNovo()"
+                        class="ga-btn-novo w-full md:w-auto px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white font-bold rounded-xl shadow-lg shadow-pink-500/30 hover:scale-[1.03] transition-all flex items-center justify-center gap-2 relative z-10">
+                        <i class="fa-solid fa-user-plus"></i> Novo Usuário
+                    </button>
+                </div>
+                <!-- FIM: Barra de Ferramentas -->
+
+                <!-- INÍCIO: Tabela de Usuários -->
+                <!-- A variável 'lista_usuarios' é enviada pela função gestao_acessos() em apps/gestao_acessos/views.py -->
+                <div
+                    class="ga-painel bg-white/40 backdrop-blur-md border border-white/50 rounded-2xl shadow-sm overflow-hidden flex-1 relative">
+                    <div class="overflow-x-auto h-full">
+                        <table class="ga-tabela w-full text-sm text-left text-gray-600 relative">
+                            <thead
+                                class="ga-thead text-xs uppercase bg-white/50 border-b border-purple-100 text-purple-700 relative z-20">
+                                <tr>
+                                    <th class="px-6 py-5 font-bold">ID</th>
+                                    <th class="px-6 py-5 font-bold">Nome</th>
+                                    <th class="px-6 py-5 font-bold">Login</th>
+                                    <th class="px-6 py-5 font-bold">Email</th>
+                                    <th class="px-6 py-5 font-bold text-center">Perfil</th>
+                                    <th class="px-6 py-5 font-bold text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaUsuarios" class="ga-tbody divide-y divide-purple-100/50 relative">
+
+                                {% if lista_usuarios %}
+                                {% for u in lista_usuarios %}
+                                <tr class="ga-linha group hover:bg-white/80 relative transition-colors duration-300 rounded-xl">
+                                    <td class="px-6 py-4 font-bold relative">
+                                        <div
+                                            class="ga-marcador absolute left-0 top-1/2 -translate-y-1/2 w-1 h-0 bg-purple-500 group-hover:h-3/4 rounded-r-md transition-all duration-300">
+                                        </div>
+                                        {{ u.id }}
+                                    </td>
+                                    <td class="px-6 py-4 font-semibold capitalize">{{ u.nome }}</td>
+                                    <td class="px-6 py-4">{{ u.username_only }}</td>
+                                    <td class="px-6 py-4">{{ u.usuario }}</td>
+
+                                    <!-- Estilização Condicional do Badge de Perfil -->
+                                    <td class="px-6 py-4 text-center">
+                                        <span class="px-3 py-1 rounded-full text-xs font-bold border 
+                                                {% if u.perfil == 'administrador' %}bg-purple-100 text-purple-700
+                                                {% else %}bg-gray-100 text-gray-600{% endif %}">
+                                            {{ u.perfil|title }}
+                                        </span>
+                                    </td>
+
+                                    <!-- Coluna de Botões de Ação (Editar / Excluir) -->
+                                    <!-- As regras 'can_edit' e 'can_delete' são processadas no backend (views.py) -->
+                                    <td class="px-6 py-4 flex justify-center gap-2">
+
+                                        {% if u.can_edit %}
+                                        <!-- Ao clicar, injeta os dados do usuário direto no modal via JS -->
+                                        <button
+                                            onclick="abrirModalEdicao({'id': {{ u.id }}, 'nome': '{{ u.nome|escapejs }}', 'usuario': '{{ u.usuario|escapejs }}', 'perfil': '{{ u.perfil }}', 'p_ferramentas': {{ u.p_ferramentas }}, 'p_formatador_listas': {{ u.p_formatador_listas }}, 'p_formatador_dados': {{ u.p_formatador_dados }}, 'p_analise_ia': {{ u.p_analise_ia }}, 'p_recalculo_bolsas': {{ u.p_recalculo_bolsas }}, 'p_enquadramento_cursos': {{ u.p_enquadramento_cursos }}, 'p_documentacoes': {{ u.p_documentacoes }}, 'p_dash_polichat': {{ u.p_dash_polichat }}, 'p_gestao_polichat': {{ u.p_gestao_polichat }}, 'p_dash_documentos_ia': {{ u.p_dash_documentos_ia }} })"
+                                            class="ga-acao ga-acao--editar w-9 h-9 rounded-xl bg-amber-100 text-amber-600 hover:bg-amber-500 hover:text-white transition-all flex items-center justify-center shadow-sm relative z-10"
+                                            title="Editar Usuário">
+                                            <i class="fa-solid fa-pen text-sm"></i>
+                                        </button>
+                                        {% else %}
+                                        <!-- Botão bloqueado visualmente -->
+                                        <button
+                                            class="ga-acao ga-acao--bloqueado w-9 h-9 rounded-xl bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed flex items-center justify-center shadow-sm relative z-10"
+                                            title="Acesso Restrito">
+                                            <i class="fa-solid fa-lock text-sm"></i>
+                                        </button>
+                                        {% endif %}
+
+                                        {% if u.can_delete %}
+                                        <!-- Ao clicar, abre o modal de exclusão e exige a digitação do login -->
+                                        <button
+                                            onclick="abrirModalExclusao({{ u.id }}, '{{ u.username_only|escapejs }}')"
+                                            class="ga-acao ga-acao--excluir w-9 h-9 rounded-xl bg-red-100 text-red-600 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center shadow-sm relative z-10"
+                                            title="Excluir Usuário">
+                                            <i class="fa-solid fa-trash text-sm"></i>
+                                        </button>
+                                        {% else %}
+                                        <button
+                                            class="ga-acao ga-acao--bloqueado w-9 h-9 rounded-xl bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed flex items-center justify-center shadow-sm relative z-10"
+                                            title="Acesso Restrito">
+                                            <i class="fa-solid fa-lock text-sm"></i>
+                                        </button>
+                                        {% endif %}
+
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                {% else %}
+                                <tr>
+                                    <td colspan="6" class="ga-vazio px-6 py-12 text-center text-gray-500">Nenhum usuário
+                                        cadastrado.</td>
+                                </tr>
+                                {% endif %}
+
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <!-- FIM: Tabela de Usuários -->
+            </div>
+
+            <!-- ==========================================================================
+                 MODAIS (COMPONENTES EXTERNOS)
+                 Para manter o código limpo, o HTML dos modais de Criação/Edição e Exclusão 
+                 foram separados. O Django injeta o conteúdo deles dinamicamente aqui.
+                 Para editar a aparência, acesse a pasta templates/gestao_acessos/modals/
+                 ========================================================================== -->
+            {% include 'gestao_acessos/inicio/gestao_acessos/modals/form_usuario.html' %}
+            {% include 'gestao_acessos/inicio/gestao_acessos/modals/delete_usuario.html' %}
+
+        </main>
+    </div>
+
+    <!-- ==========================================================================
+         INJEÇÃO DE VARIÁVEIS PARA O JAVASCRIPT
+         Passa regras do Backend (Django) para o Frontend (JS) de forma segura.
+         ========================================================================== -->
+    <script>
+        // Define se o usuário atual é o admin@ovg.org.br (que possui poderes supremos de exclusão)
+        const IS_MASTER_ADMIN = {{ is_master_admin|yesno:"true,false" }};
+        // Token necessário para enviar os dados dos formulários do modal com segurança
+        const CSRF_TOKEN = '{{ csrf_token }}';
+    </script>
+
+    <!-- JS Externo: Contém a lógica de busca local, abertura/fechamento dos modais e submissão dos dados -->
+    <!-- Arquivo localizado em: static/js/menu/inicio/gestao_acessos.js -->
+    <script src="{% static 'gestao_acessos/js/gestao_acessos.js' %}?v=2" defer></script>
+</body>
+
+</html>

@@ -1,0 +1,215 @@
+/* ==========================================================================
+   RECÁLCULO DE BOLSAS — ESTILOS DO APP
+   --------------------------------------------------------------------------
+   O bundle `static/css/output.css` é pré-compilado e purgado: utilitário que
+   não esteja lá falha em silêncio. Tudo que este app precisa e o bundle não
+   cobre mora aqui. Como este arquivo NÃO é declarado dentro de `@layer`, ele
+   vence qualquer regra do bundle (que vive em `@layer utilities`), sem
+   depender de especificidade.
+   ========================================================================== */
+
+html { font-size: 90%; }
+body { font-family: 'Poppins', sans-serif; }
+
+/* Barra de rolagem principal */
+.custom-scrollbar::-webkit-scrollbar { width: 8px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(129, 107, 174, 0.4); border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(129, 107, 174, 0.7); }
+
+/* Remove o contorno azul padrão dos navegadores nos campos do modal. */
+textarea:focus { outline: none; }
+
+/* ==========================================================================
+   UTILITÁRIOS QUE O BUNDLE NÃO COBRE
+   --------------------------------------------------------------------------
+   Cada uma destas substitui um utilitário Tailwind ausente de `output.css`
+   (`hover:opacity-90`, `hover:text-gray-800`, `underline`, `border-dashed`). Como o
+   bundle é pré-compilado e purgado, usá-los no HTML falharia em silêncio — o mesmo
+   que acontece hoje nos templates que os declaram. Nomes semânticos, para deixar
+   claro que são CSS do app e não classes do framework.
+   ========================================================================== */
+
+/* Realce padrão dos botões de ação com fundo sólido aplicado via style inline. */
+.btn-hover-suave:hover { opacity: 0.9; }
+
+/* Botão de fechar dos modais: escurece o ícone no hover. */
+.btn-fechar-modal:hover { color: #1f2937; }
+
+/* Área de conteúdo ainda não definida nos modais de configuração: borda tracejada
+   comunica "espaço reservado". `border-dashed` não existe no bundle. */
+.caixa-reservada { border: 1px dashed #e5e7eb; }
+
+/* ==========================================================================
+   PROPORÇÃO DAS FAIXAS DA ÁREA DE TRABALHO
+   --------------------------------------------------------------------------
+   A área de trabalho é uma coluna flex de três faixas: painéis, barra de controle
+   e console. Painéis e console dividem a altura livre em ~1,4 : 1 — a mesma
+   proporção do layout aprovado. O bundle não traz `flex-[2]` nem `basis-0`, então
+   expressar isso por utilitário falharia em silêncio.
+
+   `min-height: 0` é obrigatório: sem ele, um item flex nunca encolhe abaixo do
+   tamanho do próprio conteúdo e a rolagem interna dos filhos não funciona.
+   ========================================================================== */
+.faixa-paineis { flex: 1.5 1 0%; min-height: 0; }
+.faixa-console { flex: 1 1 0%; min-height: 0; }
+
+/* Rola por dentro quando o conteúdo passa da altura da faixa. O `flex: 1` é o que
+   faz a região ocupar toda a altura do bloco: sem ele a região para no tamanho do
+   próprio conteúdo, sobra vazio embaixo e o campo de inscrições não tem para onde
+   crescer — mesmo com `flex-1` declarado nele.
+
+   O par padding/margem negativa não é enfeite: `overflow-y: auto` faz o elemento
+   clipar tudo que passa da sua caixa, inclusive na horizontal. Sem essa folga, a
+   sombra e o contorno de foco do botão Salvar — que fica na última linha, colado
+   nas bordas — são cortados no meio, e o botão parece decepado. O padding cria o
+   espaço interno para a sombra caber antes do corte; a margem negativa de mesmo
+   valor puxa o container de volta, preservando o alinhamento do conteúdo.
+   Os 8px cobrem `shadow-sm`, o `shadow-md` do hover e o contorno de foco. */
+.painel-rolavel {
+    flex: 1 1 0%;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 8px;
+    margin: -8px;
+}
+
+/* O bloco de beneficiários ocupa a altura restante do painel para que o campo de
+   inscrições cresça junto — daí `flex: 1` em vez de altura fixa. O mínimo é o que
+   comporta rótulo, campo e a linha do Salvar sem colapsar. */
+.bloco-beneficiarios { flex: 1 1 auto; min-height: 8.5rem; }
+
+/* O campo cresce com o painel, mas nunca abaixo de ~4 linhas: colar uma lista dentro
+   de uma fresta de uma linha é inutilizável. */
+#txt-beneficiarios { min-height: 5.75rem; }
+
+/* ==========================================================================
+   BOTÕES QUE ABREM MODAL (.btn-abre-painel)
+   --------------------------------------------------------------------------
+   Mesma cor e mesmo estilo do "Configurar Documentos" do Análise IA: roxo sólido
+   `#7e22ce`, texto branco, `rounded-xl` e `shadow-md`.
+
+   O hex é declarado aqui, e não como `bg-purple-700`, porque a paleta do bundle
+   v4 é OKLCH — `bg-purple-700` resolve para `#8200db`, um roxo visivelmente mais
+   saturado. Para a cor bater exatamente com a do Análise IA, tem de ser o hex.
+
+   Hover e disabled também vivem aqui: `hover:opacity-90`, `disabled:opacity-60` e
+   `disabled:cursor-not-allowed` não existem no bundle e falhariam em silêncio.
+   ========================================================================== */
+.btn-abre-painel { background-color: #7e22ce; }
+
+.btn-abre-painel:hover { opacity: 0.9; }
+
+.btn-abre-painel[disabled] {
+    background-color: #e5e7eb;
+    color: #9ca3af;
+    box-shadow: none;
+    opacity: 1;
+    cursor: not-allowed;
+}
+
+/* Mesmo tratamento de foco dos botões de ação: o contorno do navegador ficava
+   preso em volta do botão depois do clique do mouse. Com `:focus-visible` ele só
+   aparece na navegação por teclado, onde de fato serve para orientar. */
+.btn-abre-painel:focus { outline: none; }
+
+.btn-abre-painel:focus-visible {
+    outline: 2px solid #7e22ce;
+    outline-offset: 2px;
+}
+
+/* ==========================================================================
+   BOTÕES DE AÇÃO DENTRO DO CARD (.btn-acao-card) — Salvar e Iniciar
+   --------------------------------------------------------------------------
+   Mesma cor e mesmo acabamento do "Envios & Pendências" do Análise IA quando
+   marcado: rosa `#ec4899` chapado, borda de 2px na mesma cor, `rounded-xl` e
+   `shadow-sm`. O hex vem daqui porque lá ele também é declarado em CSS — a
+   paleta OKLCH do bundle v4 resolveria `bg-pink-500` para outro tom.
+
+   Cor chapada em vez do gradiente roxo anterior resolve de quebra o acabamento
+   que estava estranho: some a sombra roxa de 15px que vazava para fora das
+   bordas. E o foco só é desenhado na navegação por teclado, via `:focus-visible`
+   — o anel de 4px do `focus:ring` ficava preso em volta do botão depois do
+   clique do mouse, virando uma linha clara indesejada.
+   ========================================================================== */
+.btn-acao-card {
+    background-color: #ec4899;
+    border-color: #ec4899;
+}
+
+/* Mesmo realce do original no hover (`hover:shadow-md`). */
+.btn-acao-card:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+}
+
+.btn-acao-card:focus { outline: none; }
+
+.btn-acao-card:focus-visible {
+    outline: 2px solid #ec4899;
+    outline-offset: 2px;
+}
+
+
+/* ==========================================================================
+   PLANO DE FUNDO — MALHA DE GRID
+   Linhas roxas cruzadas e sutis, mesma malha das demais telas de automações.
+   ========================================================================== */
+.grid-bg {
+    background-image:
+        linear-gradient(rgba(147, 51, 234, 0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(147, 51, 234, 0.07) 1px, transparent 1px);
+    background-size: 113px 75px;
+}
+
+/* ==========================================================================
+   NAVEGAÇÃO LATERAL
+   Anima somente opacity/transform para manter 60fps na GPU.
+   ========================================================================== */
+.nav-active {
+    position: relative;
+    background: linear-gradient(to right, #9333ea, #a855f7);
+    box-shadow: 0 10px 20px rgba(147, 51, 234, 0.25);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    isolation: isolate;
+    will-change: transform;
+    color: white !important;
+}
+
+.nav-active::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: 0 15px 30px rgba(147, 51, 234, 0.4), 0 0 15px rgba(168, 85, 247, 0.3);
+    opacity: 0;
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: -1;
+    pointer-events: none;
+}
+
+.nav-active:hover { transform: translateY(-2px); }
+.nav-active:hover::after { opacity: 1; }
+
+.nav-inactive {
+    position: relative;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), color 0.3s ease;
+    isolation: isolate;
+    will-change: transform;
+    color: #4b5563;
+}
+
+.nav-inactive::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background-color: #ffffff;
+    box-shadow: 0 4px 15px rgba(147, 51, 234, 0.08);
+    opacity: 0;
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: -1;
+    pointer-events: none;
+}
+
+.nav-inactive:hover { transform: translateY(-1px); color: #9333ea !important; }
+.nav-inactive:hover::before { opacity: 1; }

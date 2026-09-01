@@ -1,0 +1,605 @@
+/* ==========================================================================
+   CONFIGURAÇÕES GLOBAIS - GESTÃO DE ACESSOS
+   ========================================================================== */
+
+/* Define a tipografia padrão para toda a página (Fonte Poppins importada no HTML) */
+html { font-size: 90%; }
+body { font-family: 'Poppins', sans-serif; }
+
+
+/* ==========================================================================
+   ANIMAÇÕES DO PLANO DE FUNDO (BOLHAS FLUTUANTES)
+   Onde editar no HTML: divs com classes .bg-color-1 a .bg-color-4 no fundo
+   da página principal em 'templates/gestao_acessos/index.html'.
+   ========================================================================== */
+
+/* Efeito Drift: Movimenta as bolhas nos eixos X e Y e altera a escala (tamanho) 
+   suavemente para criar a sensação de flutuação orgânica. */
+
+/* Aplica as animações com longa duração (20s-35s) para que o efeito seja muito sutil e não distraia o usuário */
+
+
+/* ==========================================================================
+   ESTILIZAÇÃO DA BARRA DE ROLAGEM (SCROLLBAR CUSTOMIZADA)
+   Onde aplicar: Adicione a classe .custom-scrollbar nas divs que precisam 
+   de rolagem, como a área principal em 'gestao_acessos/index.html' e também 
+   no modal de cadastro em 'modals/form_usuario.html'.
+   ========================================================================== */
+
+/* Afina a barra de rolagem (design mais moderno) */
+.custom-scrollbar::-webkit-scrollbar { width: 6px; }
+
+/* Deixa o fundo (trilho) transparente para manter a estética Glassmorphism */
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+
+/* Pinta o cursor da barra de rolagem com um tom Roxo translúcido (padrão deste módulo) */
+.custom-scrollbar::-webkit-scrollbar-thumb { 
+    background: rgba(168, 85, 247, 0.4); 
+    border-radius: 10px; 
+}
+
+/* Escurece a cor do cursor quando o mouse passa por cima */
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { 
+    background: rgba(168, 85, 247, 0.8); 
+}
+
+
+/* ==========================================================================
+   AJUSTES DA TABELA DE USUÁRIOS
+   Referência: <table class="w-full text-sm..."> em 'gestao_acessos/index.html'
+   ========================================================================== */
+
+/* Separa as bordas da tabela. Isso é essencial para permitir que as linhas (<tr>) 
+   recebam efeitos de hover e bordas arredondadas (rounded-xl) do Tailwind. */
+table { border-collapse: separate; border-spacing: 0; }
+
+/* Remove o fundo padrão das linhas para garantir que o efeito visual de destaque 
+   (ao passar o mouse ou na busca via JS) funcione perfeitamente. */
+tbody tr { background-color: transparent; }
+
+/* ======================================================================================
+   PLANO DE FUNDO (BOLHAS COLORIDAS BLUR ESTÁTICAS)
+   As bolhas coloridas de fundo agora são estáticas para garantir 100% de performance 
+   e resposta instantânea aos cliques no navegador, mantendo o visual rico e vibrante.
+   =================================================================================== */
+
+/* ==========================================================================
+   PLANO DE FUNDO - MALHA DE GRID (.grid-bg)
+   Cria um efeito sutil de linhas de grade (grid) roxas cruzadas no plano de fundo,
+   proporcionando profundidade visual e um aspecto técnico/moderno à interface.
+   ========================================================================== */
+.grid-bg {
+    background-image: 
+        linear-gradient(rgba(147, 51, 234, 0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(147, 51, 234, 0.07) 1px, transparent 1px);
+    background-size: 113px 75px;
+}
+
+
+
+.neon-btn::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: 0 15px 35px rgba(124, 58, 237, 0.35), 0 0 20px rgba(217, 70, 239, 0.25);
+    opacity: 0;
+    transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: -1;
+    pointer-events: none;
+}
+
+.neon-btn:hover {
+    transform: translateY(-2px);
+}
+
+.neon-btn:hover::after {
+    opacity: 1;
+}
+
+.neon-btn:active {
+    transform: translateY(0);
+}
+
+
+
+
+
+.neon-item:hover::before,
+
+
+
+/* =========================================
+   EFEITOS DE NAVEGAÇÃO OTIMIZADOS (OVG)
+   Alta performance: Anima apenas opacity e transform (GPU 60fps)
+========================================= */
+
+.nav-active {
+    position: relative;
+    background: linear-gradient(to right, #9333ea, #a855f7); /* OVG purple-600 to purple-500 */
+    box-shadow: 0 10px 20px rgba(147, 51, 234, 0.25);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    isolation: isolate;
+    will-change: transform;
+    color: white !important;
+}
+
+.nav-active::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: 0 15px 30px rgba(147, 51, 234, 0.4), 0 0 15px rgba(168, 85, 247, 0.3);
+    opacity: 0;
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: -1;
+    pointer-events: none;
+}
+
+.nav-active:hover {
+    transform: translateY(-2px);
+}
+
+.nav-active:hover::after {
+    opacity: 1;
+}
+
+.nav-inactive {
+    position: relative;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), color 0.3s ease;
+    isolation: isolate;
+    will-change: transform;
+    color: #4b5563; /* text-gray-600 */
+}
+
+.nav-inactive::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background-color: #ffffff;
+    box-shadow: 0 4px 15px rgba(147, 51, 234, 0.08);
+    opacity: 0;
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: -1;
+    pointer-events: none;
+}
+
+.nav-inactive:hover {
+    transform: translateY(-1px);
+    color: #9333ea !important; /* text-purple-600 */
+}
+
+.nav-inactive:hover::before {
+    opacity: 1;
+}
+
+
+
+/* ==========================================================================
+   ==========================================================================
+   MODO ELEITORAL — GESTÃO DE ACESSOS
+   ==========================================================================
+   ==========================================================================
+   A casca desta tela (halos, painel, barra lateral, cabeçalho, botão de sair)
+   é a mesma dos menus e já vem pronta de `static/css/tema-menu.css`, carregado
+   pelo template. Aqui ficam apenas os elementos exclusivos: a barra de busca,
+   a tabela de usuários e os dois modais.
+
+   Doutrina, igual ao resto do portal: toda regra pende de
+   `html[data-tema="eleitoral"]`, as cores saem dos tokens `--tema-*`, e o CSS
+   é manual porque `static/css/output.css` é um bundle Tailwind purgado.
+   ========================================================================== */
+
+
+/* --------------------------------------------------------------------------
+   CABEÇALHO: ÍCONE DECORATIVO E BOTÃO VOLTAR
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] .tela-header-icone {
+    background-image: linear-gradient(to bottom right, rgba(111, 211, 191, 0.22), rgba(111, 211, 191, 0.10));
+    color: var(--tema-primaria-suave);
+}
+
+html[data-tema="eleitoral"] .tela-voltar {
+    background-color: rgba(255, 255, 255, 0.06);
+    border-color: var(--tema-borda-forte);
+    color: var(--tema-texto-medio);
+}
+
+html[data-tema="eleitoral"] .tela-voltar:hover {
+    background-color: rgba(111, 211, 191, 0.16);
+    border-color: var(--tema-primaria-borda);
+    color: var(--tema-primaria-suave);
+}
+
+
+/* --------------------------------------------------------------------------
+   BARRA DE FERRAMENTAS (BUSCA + NOVO USUÁRIO)
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] .ga-barra,
+html[data-tema="eleitoral"] .ga-painel {
+    background-color: rgba(66, 76, 91, 0.55);
+    border-color: var(--tema-borda);
+}
+
+html[data-tema="eleitoral"] .ga-busca {
+    background-color: var(--tema-superficie-3);
+    border-color: var(--tema-borda);
+    color: var(--tema-texto-forte);
+}
+
+html[data-tema="eleitoral"] .ga-busca::placeholder {
+    color: var(--tema-texto-fraco);
+}
+
+html[data-tema="eleitoral"] .ga-busca:focus {
+    border-color: var(--tema-primaria);
+    box-shadow: 0 0 0 2px rgba(111, 211, 191, 0.35);
+}
+
+html[data-tema="eleitoral"] .ga-busca-icone {
+    color: var(--tema-texto-fraco);
+}
+
+/* O degradê rosa→roxo é a combinação mais explicitamente institucional da
+   tela. Vira teal→azul índigo, mantendo a ideia de gradiente de duas matizes. */
+html[data-tema="eleitoral"] .ga-btn-novo {
+    background-image: linear-gradient(to right, var(--tema-acento-esmeralda), var(--tema-acento-ciano));
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.40);
+}
+
+
+/* --------------------------------------------------------------------------
+   TABELA DE USUÁRIOS
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] .ga-tabela {
+    color: var(--tema-texto-medio);
+}
+
+html[data-tema="eleitoral"] .ga-thead {
+    background-color: rgba(56, 65, 79, 0.75);
+    border-bottom-color: var(--tema-borda);
+    color: var(--tema-primaria-suave);
+}
+
+/* `divide-y divide-purple-100/50` pinta a borda entre as linhas via
+   `border-top-color` em cada filho a partir do segundo — daí o seletor. */
+html[data-tema="eleitoral"] .ga-tbody > :not([hidden]) ~ :not([hidden]) {
+    border-top-color: var(--tema-borda);
+}
+
+html[data-tema="eleitoral"] .ga-linha:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Destaque aplicado pelo `gestao_acessos.js` na linha que casa com a busca.
+   O script escreve a classe direto no elemento, então ela vira o gancho. */
+html[data-tema="eleitoral"] .ga-linha.bg-purple-50\/70 {
+    background-color: rgba(111, 211, 191, 0.16);
+}
+
+html[data-tema="eleitoral"] .ga-marcador {
+    background-color: var(--tema-primaria);
+}
+
+html[data-tema="eleitoral"] .ga-vazio {
+    color: var(--tema-texto-fraco);
+}
+
+/* Selos de perfil. As três variantes são distinguidas pela própria utilitária
+   de fundo que o template escreve, evitando mexer no `{% if %}` do Django. */
+html[data-tema="eleitoral"] .ga-tabela .bg-purple-100 {
+    background-color: rgba(111, 211, 191, 0.18);
+    border-color: rgba(111, 211, 191, 0.34);
+    color: #96E5D4;
+}
+
+html[data-tema="eleitoral"] .ga-tabela .text-purple-700 {
+    color: #96E5D4;
+}
+
+html[data-tema="eleitoral"] .ga-tabela .bg-blue-100 {
+    background-color: rgba(143, 173, 235, 0.16);
+    border-color: rgba(143, 173, 235, 0.32);
+}
+
+html[data-tema="eleitoral"] .ga-tabela .text-blue-700 {
+    color: #8FADEB;
+}
+
+html[data-tema="eleitoral"] .ga-tabela .bg-gray-100 {
+    background-color: rgba(255, 255, 255, 0.07);
+    border-color: var(--tema-borda);
+}
+
+html[data-tema="eleitoral"] .ga-tabela .text-gray-600 {
+    color: var(--tema-texto-medio);
+}
+
+/* Botões de ação. Âmbar (editar) e vermelho (excluir) são preservados: são
+   sinalização de intenção, não identidade visual — trocá-los por verde
+   apagaria a diferença entre uma edição e uma exclusão. */
+html[data-tema="eleitoral"] .ga-acao--editar {
+    background-color: rgba(239, 177, 105, 0.16);
+    color: #EFB169;
+}
+
+html[data-tema="eleitoral"] .ga-acao--editar:hover {
+    background-color: #D97706;
+    color: #FFFFFF;
+}
+
+html[data-tema="eleitoral"] .ga-acao--excluir {
+    background-color: rgba(242, 147, 125, 0.16);
+    color: #F2937D;
+}
+
+html[data-tema="eleitoral"] .ga-acao--excluir:hover {
+    background-color: #E11D48;
+    color: #FFFFFF;
+}
+
+html[data-tema="eleitoral"] .ga-acao--bloqueado {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-color: var(--tema-borda);
+    color: var(--tema-texto-fraco);
+}
+
+
+/* ==========================================================================
+   MODAIS (NOVO/EDITAR USUÁRIO E EXCLUSÃO)
+   --------------------------------------------------------------------------
+   ESTRATÉGIA DIFERENTE DO RESTO DO ARQUIVO — e o motivo importa.
+
+   Os dois modais são densos: dezenas de superfícies brancas e cinzas montadas
+   só com utilitárias do Tailwind, sem nenhuma classe semântica. Marcar cada
+   uma no template daria uma lista enorme e frágil, que quebraria a cada ajuste
+   de layout.
+
+   Aqui as utilitárias são remapeadas DENTRO DO ESCOPO de cada modal. O `id` no
+   seletor cumpre dois papéis: dá especificidade de sobra sobre as utilitárias
+   e, principalmente, impede que o remapeamento vaze para o resto da página —
+   `.bg-white` continua branco em qualquer outro lugar.
+
+   Como os modais são superfícies isoladas sobre um overlay escurecido, tratar
+   suas cores em bloco é seguro: não há hierarquia sutil a preservar ali dentro.
+   ========================================================================== */
+
+/* Superfícies: o corpo do modal e as faixas internas de cabeçalho/rodapé. */
+html[data-tema="eleitoral"] #modalConteudo,
+html[data-tema="eleitoral"] #modalDeleteConteudo {
+    background-color: var(--tema-superficie);
+    border-color: var(--tema-borda);
+    box-shadow: 0 30px 70px rgba(0, 0, 0, 0.65);
+}
+
+html[data-tema="eleitoral"] #modalConteudo .bg-white,
+html[data-tema="eleitoral"] #modalConteudo .bg-white\/95,
+html[data-tema="eleitoral"] #modalDeleteConteudo .bg-white {
+    background-color: var(--tema-superficie-2);
+}
+
+html[data-tema="eleitoral"] #modalConteudo .bg-gray-50,
+html[data-tema="eleitoral"] #modalConteudo .bg-gray-50\/50,
+html[data-tema="eleitoral"] #modalDeleteConteudo .bg-gray-50,
+html[data-tema="eleitoral"] #modalDeleteConteudo .bg-gray-50\/50 {
+    background-color: rgba(255, 255, 255, 0.04);
+}
+
+html[data-tema="eleitoral"] #modalConteudo .bg-gray-100 {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Bordas: todas as variações claras viram o mesmo fio de baixa opacidade. */
+html[data-tema="eleitoral"] #modalConteudo .border-gray-100,
+html[data-tema="eleitoral"] #modalConteudo .border-gray-200,
+html[data-tema="eleitoral"] #modalConteudo .border-purple-100,
+html[data-tema="eleitoral"] #modalConteudo .border-purple-200,
+html[data-tema="eleitoral"] #modalConteudo .border-white,
+html[data-tema="eleitoral"] #modalDeleteConteudo .border-gray-100,
+html[data-tema="eleitoral"] #modalDeleteConteudo .border-gray-200 {
+    border-color: var(--tema-borda);
+}
+
+/* Texto. */
+html[data-tema="eleitoral"] #modalConteudo .text-gray-800,
+html[data-tema="eleitoral"] #modalConteudo .text-gray-900,
+html[data-tema="eleitoral"] #modalDeleteConteudo .text-gray-800,
+html[data-tema="eleitoral"] #modalDeleteConteudo .text-gray-900 {
+    color: var(--tema-texto-forte);
+}
+
+html[data-tema="eleitoral"] #modalConteudo .text-gray-700,
+html[data-tema="eleitoral"] #modalConteudo .text-gray-600,
+html[data-tema="eleitoral"] #modalConteudo .text-gray-500,
+html[data-tema="eleitoral"] #modalDeleteConteudo .text-gray-700,
+html[data-tema="eleitoral"] #modalDeleteConteudo .text-gray-500 {
+    color: var(--tema-texto-medio);
+}
+
+html[data-tema="eleitoral"] #modalConteudo .text-gray-400,
+html[data-tema="eleitoral"] #modalDeleteConteudo .text-gray-400 {
+    color: var(--tema-texto-fraco);
+}
+
+/* Roxo institucional dos ícones e realces do formulário de permissões. */
+html[data-tema="eleitoral"] #modalConteudo .text-purple-500,
+html[data-tema="eleitoral"] #modalConteudo .text-purple-600,
+html[data-tema="eleitoral"] #modalConteudo .text-purple-700 {
+    color: var(--tema-primaria-suave);
+}
+
+html[data-tema="eleitoral"] #modalConteudo .hover\:bg-purple-50:hover {
+    background-color: rgba(111, 211, 191, 0.16);
+}
+
+/* Campos de entrada. */
+html[data-tema="eleitoral"] #modalConteudo input[type="text"],
+html[data-tema="eleitoral"] #modalConteudo input[type="password"],
+html[data-tema="eleitoral"] #modalConteudo input[type="email"],
+html[data-tema="eleitoral"] #modalConteudo select,
+html[data-tema="eleitoral"] #modalDeleteConteudo input[type="text"] {
+    background-color: var(--tema-superficie-3);
+    border-color: var(--tema-borda);
+    color: var(--tema-texto-forte);
+}
+
+html[data-tema="eleitoral"] #modalConteudo input::placeholder,
+html[data-tema="eleitoral"] #modalDeleteConteudo input::placeholder {
+    color: var(--tema-texto-fraco);
+}
+
+/* Blocos de destaque coloridos do formulário de permissões.
+   Rosa e azul marcam papéis distintos (administrador e consulta); o rosa vai
+   para o teal do tema, e o azul permanece — ele continua sendo a única cor
+   fria da tela e não remete à marca da OVG. */
+html[data-tema="eleitoral"] #modalConteudo .bg-pink-50\/50 {
+    background-color: rgba(111, 211, 191, 0.12);
+}
+
+html[data-tema="eleitoral"] #modalConteudo .border-pink-200,
+html[data-tema="eleitoral"] #modalConteudo .border-pink-100 {
+    border-color: var(--tema-primaria-borda);
+}
+
+html[data-tema="eleitoral"] #modalConteudo .text-pink-500 {
+    color: var(--tema-primaria-suave);
+}
+
+html[data-tema="eleitoral"] #modalConteudo .bg-blue-50\/50 {
+    background-color: rgba(143, 173, 235, 0.12);
+}
+
+html[data-tema="eleitoral"] #modalConteudo .border-blue-200 {
+    border-color: rgba(143, 173, 235, 0.30);
+}
+
+html[data-tema="eleitoral"] #modalConteudo .text-blue-500 {
+    color: #7FB3FF;
+}
+
+/* Aviso âmbar de bloqueio de perfil administrador. */
+html[data-tema="eleitoral"] #modalConteudo .bg-amber-50 {
+    background-color: rgba(239, 177, 105, 0.13);
+}
+
+html[data-tema="eleitoral"] #modalConteudo .border-amber-200 {
+    border-color: rgba(239, 177, 105, 0.32);
+}
+
+/* Modal de exclusão: o vermelho é a informação principal da tela e permanece,
+   apenas migrando de fundo sólido claro para véu translúcido. */
+html[data-tema="eleitoral"] #modalDeleteConteudo {
+    border-color: rgba(242, 147, 125, 0.35);
+}
+
+html[data-tema="eleitoral"] #modalDeleteConteudo .bg-red-50 {
+    background-color: rgba(242, 147, 125, 0.12);
+}
+
+html[data-tema="eleitoral"] #modalDeleteConteudo .border-red-100 {
+    border-color: rgba(242, 147, 125, 0.28);
+}
+
+html[data-tema="eleitoral"] #modalDeleteConteudo .bg-red-100 {
+    background-color: rgba(242, 147, 125, 0.18);
+}
+
+html[data-tema="eleitoral"] #modalDeleteConteudo .text-red-800,
+html[data-tema="eleitoral"] #modalDeleteConteudo .text-red-500 {
+    color: #F2937D;
+}
+
+html[data-tema="eleitoral"] #modalDeleteConteudo .hover\:bg-red-50:hover {
+    background-color: rgba(242, 147, 125, 0.16);
+}
+
+/* Botão de cancelar do modal de exclusão (branco sobre superfície clara). */
+html[data-tema="eleitoral"] #modalDeleteConteudo .hover\:bg-gray-50:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+
+/* --------------------------------------------------------------------------
+   TEXTO DINÂMICO DE SENHA GERADA (#info_senha_texto)
+   O `gestao_acessos.js` reescreve o `className` inteiro deste elemento para
+   alternar entre o estado informativo (azul) e o padrão (roxo). Ancorado por
+   ID, que o script preserva, com o estado distinguido pela própria utilitária
+   de cor que ele aplica.
+   -------------------------------------------------------------------------- */
+html[data-tema="eleitoral"] #info_senha_texto.text-purple-600 {
+    color: var(--tema-primaria-suave);
+}
+
+html[data-tema="eleitoral"] #info_senha_texto.text-blue-600 {
+    color: #8FADEB;
+}
+
+
+/* --------------------------------------------------------------------------
+   MODAIS — COBERTURA COMPLEMENTAR
+   --------------------------------------------------------------------------
+   Este bloco nasceu de um bug real: o texto "Nenhum submódulo disponível no
+   momento." ficava ilegível no escuro. A causa era `bg-white/50` — variante
+   com opacidade que o mapeamento acima não pegava, pois só tratava `bg-white`.
+   O painel continuava branco enquanto o texto já havia virado claro, deixando
+   claro sobre claro.
+
+   Em vez de corrigir só aquele elemento, as utilitárias de cor dos dois modais
+   foram auditadas contra o que este arquivo cobre; o que segue são os casos
+   restantes. A lição vale para as próximas telas: `bg-white` e `bg-white/50`
+   são classes DIFERENTES, e mapear uma não cobre a outra.
+   -------------------------------------------------------------------------- */
+
+/* O painel do bug e as demais superfícies brancas com opacidade. */
+html[data-tema="eleitoral"] #modalConteudo .bg-white\/50 {
+    background-color: rgba(255, 255, 255, 0.04);
+}
+
+/* Trilho e pino dos interruptores de permissão. Sem isto o trilho fica cinza
+   claro sólido, brilhando no escuro. */
+html[data-tema="eleitoral"] #modalConteudo .bg-gray-200 {
+    background-color: rgba(255, 255, 255, 0.14);
+}
+
+html[data-tema="eleitoral"] #modalConteudo .border-gray-300 {
+    border-color: var(--tema-borda-forte);
+}
+
+/* Hover dos cards de permissão: `bg-gray-100` sólido acenderia no escuro. */
+html[data-tema="eleitoral"] #modalConteudo .hover\:bg-gray-100:hover {
+    background-color: rgba(255, 255, 255, 0.09);
+}
+
+/* Medalhões redondos de ícone no topo de cada seção. */
+html[data-tema="eleitoral"] #modalConteudo .bg-pink-100,
+html[data-tema="eleitoral"] #modalConteudo .bg-purple-100 {
+    background-color: rgba(111, 211, 191, 0.18);
+}
+
+html[data-tema="eleitoral"] #modalConteudo .text-pink-600,
+html[data-tema="eleitoral"] #modalConteudo .text-purple-600 {
+    color: var(--tema-primaria-suave);
+}
+
+html[data-tema="eleitoral"] #modalConteudo .hover\:border-pink-300:hover {
+    border-color: var(--tema-primaria);
+}
+
+/* Divisória interna translúcida. */
+html[data-tema="eleitoral"] #modalConteudo .border-purple-100\/50 {
+    border-color: var(--tema-borda);
+}
+
+/* Aviso âmbar: o tom escuro do modo claro some contra fundo escuro. */
+html[data-tema="eleitoral"] #modalConteudo .text-amber-600,
+html[data-tema="eleitoral"] #modalConteudo .text-amber-800 {
+    color: #EFB169;
+}
+
+/* Overlay dos dois modais: no escuro, 40% de preto não separa o suficiente o
+   modal do que está atrás. */
+html[data-tema="eleitoral"] #modalNovoUsuario,
+html[data-tema="eleitoral"] #modalExcluirUsuario {
+    background-color: rgba(0, 0, 0, 0.62);
+}

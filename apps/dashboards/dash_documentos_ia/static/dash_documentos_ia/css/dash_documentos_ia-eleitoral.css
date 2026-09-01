@@ -1,0 +1,430 @@
+/* ==========================================================================
+   DOCUMENTOS IA — MODO ELEITORAL (CAMADA ESCURA DA TELA)
+   ==========================================================================
+   Carregado DEPOIS de `dash_documentos_ia.css`, sempre. Este arquivo não
+   redesenha nada: ele só reapresenta, no escuro, o que aquele arquivo já
+   desenhou.
+
+   O QUE JÁ VEM DE GRAÇA, E POR QUÊ
+     As cinco telas deste dashboard são montadas quase inteiras com utilitárias
+     neutras do Tailwind (`bg-white/80`, `border-white/60`, `text-gray-*`).
+     Marcar o `<main>` interno com `area-trabalho` entrega essa parte pronta,
+     pelo `tema-conteudo.css`; marcar a casca com `menu-shell`, `menu-header` e
+     `menu-blob--*` entrega o resto, pelo `tema-menu.css`.
+
+   O QUE SOBRA — e é a razão deste arquivo existir
+     1. A barra de abas do cabeçalho, que traz o roxo da marca em atributo
+        `style` e em utilitária arbitrária (`hover:text-[#6B007B]`).
+     2. Pontos de cor literal no `dash_documentos_ia.css`.
+     3. Os gráficos, que são <canvas> desenhado pelo ECharts: CSS não alcança
+        pixel de canvas, então a troca de tema é ouvida em JavaScript.
+
+   Doutrina, igual ao resto do portal: toda regra pende de
+   `html[data-tema="eleitoral"]`, as cores saem dos tokens `--tema-*`, e o CSS
+   é manual porque `static/css/output.css` é um bundle Tailwind purgado e sem
+   processo de build no repositório.
+   ========================================================================== */
+
+
+/* ==========================================================================
+   1. BARRA DE ABAS DO CABEÇALHO
+   --------------------------------------------------------------------------
+   Quantitativo / Relatório IES / Relatório RIAF. Ela vive no <header>, que é
+   casca e não área de trabalho, então nenhum dos dois remapeamentos a alcança
+   — e a aba da tela atual traz o roxo em atributo `style`, que só perde para
+   `!important`.
+
+   A ABA ATIVA VAI DE AZUL, não do teal da marca. É a mesma regra do item ativo
+   da barra lateral, em `tema-menu.css`, e pelo mesmo motivo: teal é traço,
+   azul é estrutura. Uma aba selecionada é uma área sólida sempre visível, em
+   todas as cinco telas — pintada de teal, ela deixaria de ser acento e viraria
+   o clima da página.
+   ========================================================================== */
+
+html[data-tema="eleitoral"] .docia-abas {
+    background-color: rgba(66, 76, 91, 0.72);
+    border-color: var(--tema-borda);
+}
+
+/* Aba em repouso. O fundo branco vem de utilitária e a divisória entre as abas
+   é `border-r border-gray-200` — as duas precisam cair juntas, senão sobra um
+   fio claro cortando a barra. */
+html[data-tema="eleitoral"] .docia-aba {
+    background-color: transparent;
+    border-color: var(--tema-borda);
+    color: var(--tema-texto-medio);
+}
+
+html[data-tema="eleitoral"] .docia-aba:hover {
+    background-color: rgba(255, 255, 255, 0.07);
+    color: var(--tema-primaria-suave);
+}
+
+html[data-tema="eleitoral"] .docia-aba--ativa {
+    background-color: var(--tema-solido-info) !important;
+    border-color: var(--tema-solido-info);
+    color: #FFFFFF;
+}
+
+html[data-tema="eleitoral"] .docia-aba--ativa:hover {
+    background-color: var(--tema-solido-info) !important;
+    color: #FFFFFF;
+}
+
+
+/* ==========================================================================
+   2. DIVISÓRIA VERTICAL DO CABEÇALHO
+   --------------------------------------------------------------------------
+   Um filete de 1px entre a logo e o título, pintado com `bg-purple-200/50`.
+   Está no <header>, fora da área de trabalho, e é a única sobra roxa da casca.
+   ========================================================================== */
+html[data-tema="eleitoral"] .menu-header-divisor {
+    background-color: var(--tema-borda);
+}
+
+
+/* ==========================================================================
+   3. MODAL DE FILTRO DE INSTITUIÇÕES
+   --------------------------------------------------------------------------
+   O corpo do modal já vem do `tema-conteudo.css` — ele carrega `area-trabalho`
+   na própria div raiz, porque é `position: fixed` e não descende do conteúdo.
+   Sobram três pontos com roxo em atributo `style`.
+   ========================================================================== */
+
+/* Marcador vertical e contador do painel "Selecionadas": são TRAÇO sobre
+   superfície escura, então usam o tom de traço da marca. */
+html[data-tema="eleitoral"] .area-trabalho .docia-marcador {
+    background-color: var(--tema-primaria) !important;
+}
+
+html[data-tema="eleitoral"] .area-trabalho #count-selected-ies {
+    color: var(--tema-primaria-suave) !important;
+}
+
+/* "Limpar Tudo" traz cor, borda E fundo branco no mesmo atributo `style`. */
+html[data-tema="eleitoral"] .area-trabalho .docia-btn-limpar {
+    background-color: rgba(255, 255, 255, 0.06) !important;
+    border-color: var(--tema-primaria-borda) !important;
+    color: var(--tema-primaria-suave) !important;
+}
+
+html[data-tema="eleitoral"] .area-trabalho .docia-btn-limpar:hover {
+    background-color: rgba(111, 211, 191, 0.16) !important;
+}
+
+/* Sobrescritas para o tema eleitoral das novas classes (semântica) */
+html[data-tema="eleitoral"] .docia-icone-bg {
+    background-color: rgba(62, 158, 140, 0.1) !important;
+}
+
+html[data-tema="eleitoral"] .docia-icone-color {
+    color: var(--tema-primaria-suave) !important;
+}
+
+html[data-tema="eleitoral"] .docia-modal-gradiente {
+    background: linear-gradient(135deg, var(--tema-solido-info), #2B4068) !important;
+}
+
+html[data-tema="eleitoral"] .docia-texto-selecionado {
+    color: var(--tema-primaria-suave) !important;
+    font-weight: 700;
+}
+
+html[data-tema="eleitoral"] .docia-bg-selecionado {
+    background-color: rgba(111, 211, 191, 0.05) !important;
+}
+
+/* Force border colors in the semester grid */
+html[data-tema="eleitoral"] #filter-sidebar .grid,
+html[data-tema="eleitoral"] #filter-sidebar .grid > *,
+html[data-tema="eleitoral"] #filter-sidebar .divide-x > * {
+    border-color: var(--tema-borda) !important;
+}
+
+/* Corrigir aba ativa e inputs com hover do Tailwind específicos da Dashboard Documentos IA */
+html[data-tema="eleitoral"] .peer:checked ~ .peer-checked\:bg-\[\#6B007B\] {
+    background-color: var(--tema-solido-info) !important;
+}
+
+html[data-tema="eleitoral"] .peer:checked ~ .peer-checked\:hover\:bg-\[\#540060\]:hover {
+    background-color: #2B4068 !important;
+}
+
+html[data-tema="eleitoral"] .hover\:bg-pink-50\/50:hover {
+    background-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+html[data-tema="eleitoral"] .hover\:bg-pink-50:hover {
+    background-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+html[data-tema="eleitoral"] .hover\:border-pink-300:hover {
+    border-color: var(--tema-primaria-borda) !important;
+}
+
+html[data-tema="eleitoral"] .hover\:text-pink-700:hover, 
+html[data-tema="eleitoral"] .group:hover .group-hover\:text-pink-700 {
+    color: var(--tema-primaria-suave) !important;
+}
+
+/* Painel deslizante de filtros.
+
+   O token era `--tema-superficie-1`, que NÃO EXISTE: a escala declarada em
+   `static/css/tema.css` vai de `--tema-superficie` a `--tema-superficie-3`,
+   sem o sufixo `-1`. E `var()` apontando para uma custom property indefinida
+   não "cai para a regra anterior" — a propriedade fica inválida no momento do
+   cálculo e assume o valor INICIAL, que para `background-color` é
+   `transparent`. Com `!important` por cima, nada mais podia corrigir: o painel
+   abria invisível sobre o dashboard.
+
+   Sólido de propósito, e não translúcido como o `menu-shell`: este painel
+   desliza POR CIMA dos gráficos, e qualquer transparência deixa a rosca do
+   ECharts atravessar os campos de filtro. */
+html[data-tema="eleitoral"] #filter-sidebar {
+    background-color: var(--tema-superficie) !important;
+    border-color: var(--tema-borda) !important;
+    box-shadow: none !important;
+}
+
+html[data-tema="eleitoral"] #toggle-sidebar-btn {
+    background-color: var(--tema-superficie-2) !important;
+    border-color: var(--tema-borda) !important;
+    color: var(--tema-primaria-suave) !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3) !important;
+}
+html[data-tema="eleitoral"] #toggle-sidebar-btn:hover {
+    background-color: var(--tema-superficie-3) !important;
+}
+
+
+
+
+/* Correções para os elementos injetados via JS no cabeçalho */
+html[data-tema="eleitoral"] #btn-atualizar .bg-pink-100 {
+    background-color: rgba(111, 211, 191, 0.16) !important;
+}
+html[data-tema="eleitoral"] #btn-atualizar .text-pink-700,
+html[data-tema="eleitoral"] #btn-atualizar .text-pink-600,
+html[data-tema="eleitoral"] #btn-atualizar .text-pink-500 {
+    color: var(--tema-primaria-suave) !important;
+}
+
+/* --- Rolagem do Detalhamento de Beneficiários -----------------------------
+   No claro a barra é rosa; no eleitoral o rosa é justamente a cor que a
+   paleta abandona. Mesmo tratamento que o polichat dá ao `.scroll-rosinha`:
+   o polegar passa a ser a primária do tema. */
+html[data-tema="eleitoral"] .docia-scroll-rosinha::-webkit-scrollbar-thumb {
+    background: var(--tema-primaria-borda);
+}
+html[data-tema="eleitoral"] .docia-scroll-rosinha::-webkit-scrollbar-thumb:hover {
+    background: var(--tema-primaria);
+}
+html[data-tema="eleitoral"] .docia-scroll-rosinha {
+    scrollbar-color: var(--tema-primaria-borda) transparent;
+}
+
+/* --- Legenda das roscas ---------------------------------------------------
+   Ela é HTML próprio, então nenhuma das camadas neutras (`tema-conteudo.css`)
+   a alcança: as cores estão escritas à mão no CSS claro e precisam ser
+   reapresentadas aqui, uma a uma. */
+html[data-tema="eleitoral"] .docia-legenda { color: var(--tema-texto-medio); }
+html[data-tema="eleitoral"] .docia-legenda__valor { color: var(--tema-texto-forte); }
+html[data-tema="eleitoral"] .docia-legenda__pct { color: var(--tema-texto-fraco); }
+html[data-tema="eleitoral"] .docia-legenda__item:hover {
+    background-color: var(--tema-superficie-3);
+}
+
+/* --- Pílulas dos filtros do Detalhamento ---------------------------------
+   Mesmo caso da legenda: borda escrita à mão no CSS claro, reapresentada aqui. */
+html[data-tema="eleitoral"] .docia-pilula-filtro { border-color: var(--tema-borda); }
+html[data-tema="eleitoral"] .filter-documento:checked + .docia-pilula-filtro,
+html[data-tema="eleitoral"] .filter-status-doc:checked + .docia-pilula-filtro {
+    border-color: var(--tema-primaria);
+}
+
+/* --- Detalhamento expandido e botões da tabela ---------------------------- */
+html[data-tema="eleitoral"] .docia-detalhamento--expandido {
+    background-color: var(--tema-superficie);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+html[data-tema="eleitoral"] .docia-botao-ativo {
+    background-color: var(--tema-primaria) !important;
+    border-color: var(--tema-primaria) !important;
+    color: var(--tema-superficie) !important;
+}
+html[data-tema="eleitoral"] .docia-botao-ativo:hover {
+    background-color: var(--tema-primaria-suave) !important;
+}
+
+/* --- Linha ativa da legenda ----------------------------------------------- */
+html[data-tema="eleitoral"] .docia-legenda__item--ativo {
+    background-color: var(--tema-superficie-3);
+    box-shadow: inset 2px 0 0 0 var(--tema-primaria);
+}
+html[data-tema="eleitoral"] .docia-legenda__item--ativo .docia-legenda__nome {
+    color: var(--tema-primaria);
+}
+
+/* --- Etiquetas de filtro ativo -------------------------------------------- */
+html[data-tema="eleitoral"] .docia-chip {
+    border-color: var(--tema-primaria-borda);
+    background-color: var(--tema-superficie-3);
+    color: var(--tema-primaria-suave);
+}
+html[data-tema="eleitoral"] .docia-chip__x:hover {
+    background-color: var(--tema-primaria-borda);
+}
+html[data-tema="eleitoral"] .docia-chip--acao { background-color: transparent; }
+html[data-tema="eleitoral"] .docia-chip--aviso {
+    border-color: var(--tema-borda);
+    background-color: var(--tema-superficie-2);
+    color: var(--tema-texto-fraco);
+}
+
+/* --- Caixa do botão "Atualizar" -------------------------------------------
+   Ela é irmã do "Voltar" e do alternador de tema no cabeçalho, mas era a única
+   sem gancho de tema: o `bg-white/80` do markup ficava branco no escuro, e o
+   resultado era um retângulo claro no meio de um cabeçalho escuro. Segue o
+   mesmo vocabulário que `tema-menu.css` dá ao `.tela-voltar`. */
+html[data-tema="eleitoral"] .docia-caixa-atualizar {
+    background-color: rgba(255, 255, 255, 0.06) !important;
+    border-color: var(--tema-borda-forte) !important;
+}
+html[data-tema="eleitoral"] .docia-caixa-atualizar #btn-atualizar,
+html[data-tema="eleitoral"] .docia-caixa-atualizar #btn-config-atualizacao,
+html[data-tema="eleitoral"] .docia-caixa-atualizar #btn-abrir-console {
+    color: var(--tema-primaria-suave) !important;
+}
+html[data-tema="eleitoral"] .docia-caixa-atualizar #btn-atualizar:hover,
+html[data-tema="eleitoral"] .docia-caixa-atualizar #btn-config-atualizacao:hover,
+html[data-tema="eleitoral"] .docia-caixa-atualizar #btn-abrir-console:hover {
+    background-color: rgba(111, 211, 191, 0.16) !important;
+}
+/* O separador vertical e o "| Nunca" ao lado do rótulo. */
+html[data-tema="eleitoral"] .docia-caixa-atualizar .bg-pink-100 {
+    background-color: var(--tema-borda) !important;
+}
+html[data-tema="eleitoral"] .docia-caixa-atualizar .text-gray-400 {
+    color: var(--tema-texto-fraco) !important;
+}
+
+/* --- Escopo da atualização -------------------------------------------------
+   O modal é desenhado fora do Tailwind, então nenhuma camada compartilhada o
+   alcança: cada superfície, borda e tinta precisa ser reapresentada aqui. */
+html[data-tema="eleitoral"] .cfgx {
+    background-color: var(--tema-superficie);
+    box-shadow: 0 30px 70px rgba(0, 0, 0, 0.55);
+}
+html[data-tema="eleitoral"] .cfgx__topo {
+    background: linear-gradient(135deg, rgba(111, 211, 191, 0.12), rgba(86, 114, 179, 0.10));
+    border-bottom-color: var(--tema-borda);
+}
+html[data-tema="eleitoral"] .cfgx__icone,
+html[data-tema="eleitoral"] .cfgx__btn--primario {
+    background: linear-gradient(135deg, var(--tema-primaria-forte), var(--tema-acento-esmeralda));
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+}
+html[data-tema="eleitoral"] .cfgx__titulo strong,
+html[data-tema="eleitoral"] .cfgx__secao-texto strong,
+html[data-tema="eleitoral"] .cfgx-doc__texto strong { color: var(--tema-texto-forte); }
+html[data-tema="eleitoral"] .cfgx__titulo span,
+html[data-tema="eleitoral"] .cfgx__secao-texto span,
+html[data-tema="eleitoral"] .cfgx-doc__modo,
+html[data-tema="eleitoral"] .cfgx-doc__contagem,
+html[data-tema="eleitoral"] .cfgx__resumo { color: var(--tema-texto-fraco); }
+html[data-tema="eleitoral"] .cfgx__fechar {
+    background-color: var(--tema-superficie-2);
+    color: var(--tema-texto-fraco);
+}
+html[data-tema="eleitoral"] .cfgx__fechar:hover {
+    background-color: var(--tema-superficie-3);
+    color: var(--tema-primaria);
+}
+html[data-tema="eleitoral"] .cfgx__passo {
+    background-color: var(--tema-primaria-lavada);
+    color: var(--tema-primaria);
+}
+html[data-tema="eleitoral"] .cfgx__mini,
+html[data-tema="eleitoral"] .cfgx-periodo__caixa,
+html[data-tema="eleitoral"] .cfgx-acao,
+html[data-tema="eleitoral"] .cfgx__btn--secundario,
+html[data-tema="eleitoral"] .cfgx-doc__lista textarea {
+    background-color: var(--tema-superficie-2);
+    border-color: var(--tema-borda);
+    color: var(--tema-texto-medio);
+}
+html[data-tema="eleitoral"] .cfgx__mini:hover,
+html[data-tema="eleitoral"] .cfgx-periodo__caixa:hover,
+html[data-tema="eleitoral"] .cfgx-acao:hover {
+    border-color: var(--tema-primaria-borda);
+    color: var(--tema-primaria);
+    background-color: var(--tema-superficie-3);
+}
+html[data-tema="eleitoral"] .cfgx__btn--secundario:hover {
+    background-color: var(--tema-superficie-3);
+    color: var(--tema-texto-forte);
+}
+html[data-tema="eleitoral"] .cfg-periodo:checked + .cfgx-periodo__caixa,
+html[data-tema="eleitoral"] .cfgx-acao.is-ativo,
+html[data-tema="eleitoral"] .cfgx-acao.is-ativo:hover {
+    background-color: var(--tema-primaria-forte);
+    border-color: var(--tema-primaria-forte);
+    color: #FFFFFF;
+    box-shadow: none;
+}
+html[data-tema="eleitoral"] .cfgx__corpo,
+html[data-tema="eleitoral"] .cfgx-doc {
+    background-color: transparent;
+}
+html[data-tema="eleitoral"] .cfgx-doc {
+    background-color: var(--tema-superficie-2);
+    border-color: var(--tema-borda);
+}
+html[data-tema="eleitoral"] .cfgx-doc.tem-ajuste {
+    border-color: var(--tema-primaria-borda);
+    background-color: var(--tema-primaria-lavada);
+}
+html[data-tema="eleitoral"] .cfgx-doc.tem-ajuste .cfgx-doc__modo,
+html[data-tema="eleitoral"] .cfgx__resumo.tem-escopo,
+html[data-tema="eleitoral"] .cfgx__resumo.tem-escopo i { color: var(--tema-primaria); }
+html[data-tema="eleitoral"] .cfgx-doc__icone {
+    background-color: var(--tema-primaria-lavada);
+    color: var(--tema-primaria);
+}
+html[data-tema="eleitoral"] .cfgx-doc__lista textarea { color: var(--tema-texto-forte); }
+html[data-tema="eleitoral"] .cfgx-doc__lista textarea:focus { border-color: var(--tema-primaria); }
+html[data-tema="eleitoral"] .cfgx__rodape {
+    background-color: var(--tema-superficie-2);
+    border-top-color: var(--tema-borda);
+}
+html[data-tema="eleitoral"] .docia-selo-config {
+    background-color: var(--tema-primaria);
+    box-shadow: 0 0 0 2px var(--tema-superficie);
+}
+
+
+/* ==========================================================================
+   7. ESCOPO DA ATUALIZAÇÃO — O QUE FALTAVA NO ESCURO
+   --------------------------------------------------------------------------
+   Duas cores literais do arquivo claro não tinham contraparte aqui, e as duas
+   são cinza-claro sobre branco: no escuro elas continuavam claras sobre fundo
+   escuro, ou seja, mais fortes que o texto ao lado — o placeholder gritava mais
+   que o conteúdo digitado, e o ícone do resumo puxava o olho para o lugar errado.
+
+   O anel de foco também precisa vir de novo: `#6B007B` é o roxo da marca no
+   claro e some contra a superfície escura. Aqui ele sai do token de primária,
+   que já é a versão clareada para fundo escuro.
+   ========================================================================== */
+
+html[data-tema="eleitoral"] .cfgx-doc__lista textarea::placeholder {
+    color: var(--tema-texto-fraco);
+}
+html[data-tema="eleitoral"] .cfgx__resumo i { color: var(--tema-texto-fraco); }
+
+html[data-tema="eleitoral"] .cfgx__fechar:focus-visible,
+html[data-tema="eleitoral"] .cfgx__mini:focus-visible,
+html[data-tema="eleitoral"] .cfgx-acao:focus-visible,
+html[data-tema="eleitoral"] .cfgx__btn:focus-visible,
+html[data-tema="eleitoral"] .cfg-periodo:focus-visible + .cfgx-periodo__caixa {
+    outline-color: var(--tema-primaria);
+}

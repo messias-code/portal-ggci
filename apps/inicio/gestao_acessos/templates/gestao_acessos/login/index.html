@@ -1,0 +1,306 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <!-- 
+        PORTAL GGCI - TELA DE AUTENTICAÇÃO (LOGIN)
+        ======================================================================
+        Este template define a interface de login responsiva e moderna do Portal GGCI.
+        Utiliza a framework utilitária Tailwind CSS via CDN para estilização rápida,
+        Google Fonts para tipografias premium e folha de estilo customizada (login.css)
+        para efeitos visuais complexos (grades, gradients, glassmorphism e keyframe animations).
+        
+        Linguagem: HTML5 com tags de template do Django (DTL).
+        Responsividade: Layout mobile-first, perfeitamente adaptado para tablets (md:) e desktops (lg:).
+        ====================================================================== 
+    -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal GGCI - OVG</title>
+    
+    <!--
+        MOTOR DE TEMAS — precisa vir antes de tudo.
+        Este script é carregado SEM 'defer'/'async' de propósito: executado de
+        forma síncrona aqui no <head>, ele grava o atributo data-tema no <html>
+        antes da primeira pintura da tela, eliminando o flash do tema padrão.
+        A escolha fica no localStorage e, por isso, vale para todo o portal.
+    -->
+    <script src="{% static 'js/tema.js' %}"></script>
+
+    <!-- Tailwind CSS pré-compilado (bundle único, sem CDN) -->
+    <link rel="stylesheet" href="{% static 'css/output.css' %}">
+
+    <!-- Tokens de cor dos temas e componente do seletor (compartilhado por todo o portal) -->
+    <link rel="stylesheet" href="{% static 'css/tema.css' %}">
+
+    <!-- Importação de Fontes Premium do Google Fonts: Inter, Poppins, Manrope e Oswald -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@400;500;600&family=Manrope:wght@500;600;700&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Link para a Folha de Estilo Customizada (Contém animações, sombras dinâmicas e o grid de fundo) -->
+    <link rel="stylesheet" href="{% static 'gestao_acessos/css/login.css' %}">
+    
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@8.0.4/dist/turbo.es.2017-esm.js"></script>
+</head>
+
+<body class="grid-bg fixed inset-0 flex items-center justify-center p-4 antialiased overflow-hidden">
+
+    <!-- 
+        ======================================================================
+        1. ELEMENTOS DECORATIVOS DE BACKGROUND (LIGHT BLOBS / BLUR EFFECTS)
+        ----------------------------------------------------------------------
+        Divs com desfoque gaussiano (blur-[140px]) e alta opacidade que criam o
+        efeito estético de iluminação colorida flutuante nos quatro cantos da tela,
+        trazendo profundidade visual sem prejudicar o desempenho.
+
+        A classe '.login-blob' não pinta nada por si só no modo claro: ela existe
+        como ponto de ancoragem para o modo eleitoral (escuro), que repinta os
+        quatro halos em matizes da família teal — verde-mar, esmeralda, ciano e
+        turquesa — com opacidade reduzida (ver login.css).
+        ======================================================================
+    -->
+    <div class="login-blob login-blob--1 absolute top-[-20%] left-[-15%] w-[70vw] h-[70vh] bg-pink-500/70 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="login-blob login-blob--2 absolute top-[-20%] right-[-15%] w-[70vw] h-[70vh] bg-yellow-400/75 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="login-blob login-blob--3 absolute bottom-[-20%] left-[-15%] w-[70vw] h-[70vh] bg-purple-700/60 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="login-blob login-blob--4 absolute bottom-[-20%] right-[-15%] w-[70vw] h-[70vh] bg-green-600/65 rounded-full blur-[140px] pointer-events-none z-0"></div>
+
+    <!-- 
+        ======================================================================
+        2. CARD PRINCIPAL DE LOGIN (GLASSMORPHISM & GRID SPLIT)
+        ----------------------------------------------------------------------
+        Container principal centralizado. Divide o card em duas metades em
+        telas médias (md:) ou maiores: Painel de Apresentação (Esquerda) e
+        Formulário de Entrada de Dados (Direita).
+        ======================================================================
+    -->
+    <div class="login-card bg-white/95 rounded-3xl card flex flex-col md:flex-row w-full max-w-5xl overflow-hidden border border-white/70 relative z-10 shadow-2xl">
+
+        <!-- 
+            ------------------------------------------------------------------
+            2.1 PAINEL ESQUERDO: MARCA, ILUSTRAÇÃO E MENSAGEM INSTITUCIONAL
+            ------------------------------------------------------------------
+            Fundo em degradê linear suave contendo formas geométricas flutuantes
+            com animações de keyframe (float/slide) controladas pelo login.css.
+        -->
+        <div class="login-painel-marca md:w-1/2 bg-gradient-to-br from-purple-50 via-pink-50 to-violet-50 relative flex items-center justify-center p-12 overflow-hidden min-h-[520px]">
+            <!-- Formas geométricas flutuantes decorativas (Efeito Parallax 2D) -->
+            <div class="shape-1 absolute top-12 left-12 w-64 h-64 bg-purple-300 rounded-full mix-blend-multiply filter blur-2xl opacity-60"></div>
+            <div class="shape-2 absolute bottom-16 right-12 w-72 h-72 bg-pink-200 rounded-full mix-blend-multiply filter blur-2xl opacity-70"></div>
+            <div class="shape-3 absolute top-1/2 left-1/2 w-80 h-80 bg-violet-200 rounded-full mix-blend-multiply filter blur-3xl opacity-45"></div>
+
+            <!-- Conteúdo Centralizado do Painel Esquerdo -->
+            <div class="relative z-10 text-center">
+                <!--
+                    Ilustração temática da equipe trabalhando.
+
+                    Duas versões publicadas, uma por tema — mesmo mecanismo da
+                    logo. A arte original é roxa; a variante eleitoral tem só a
+                    faixa de matiz roxa deslocada para o azul índigo, com pele,
+                    petróleo e brancos preservados. O CSS esconde uma das duas,
+                    então o leitor de tela enxerga apenas uma imagem.
+
+                    Por que não resolver com `filter` no CSS: filtro age sobre a
+                    imagem inteira e não distingue o que deve mudar do que não
+                    deve. A tentativa anterior precisou zerar a cor com
+                    `grayscale` para reconstruí-la, e o resultado era
+                    monocromático — a tela perdia seu único elemento colorido.
+                -->
+                <img src="{% static 'img/icones/job.png' %}"
+                    alt="Equipe trabalhando"
+                    class="login-ilustracao login-ilustracao--claro w-full max-w-md drop-shadow-2xl mx-auto">
+                <img src="{% static 'img/icones/job-eleitoral.png' %}"
+                    alt="Equipe trabalhando"
+                    class="login-ilustracao login-ilustracao--eleitoral w-full max-w-md drop-shadow-2xl mx-auto">
+
+                <!-- Slogan Institucional do Portal -->
+                <p class="login-slogan mt-10 font-display text-2xl md:text-3xl leading-none tracking-tighter text-purple-800">
+                    Conectando pessoas,<br>
+                    <span class="text-purple-700 font-medium">transformando gestão</span>
+                </p>
+            </div>
+        </div>
+
+        <!-- 
+            ------------------------------------------------------------------
+            2.2 PAINEL DIREITO: CAMPOS DE ENTRADA E AUTENTICAÇÃO
+            ------------------------------------------------------------------
+            Espaço limpo focado na conversão e experiência de autenticação do usuário.
+        -->
+        <div class="login-painel-form md:w-1/2 p-12 lg:p-16 flex flex-col justify-center bg-white relative">
+
+            <!--
+                ------------------------------------------------------------------
+                BOTÃO DE ALTERNÂNCIA DE MODO (SOL / LUA)
+                ------------------------------------------------------------------
+                Alterna entre o modo Padrão (identidade colorida da OVG) e o modo
+                Eleitoral (escuro, ancorado no verde institucional).
+
+                Segue a convenção consagrada de dark mode: o ícone exibido é o do
+                modo PARA O QUAL se vai. No claro aparece a lua; no escuro, o sol.
+                Ambos os SVGs ficam sempre no DOM, sobrepostos, e alternam por
+                opacidade/rotação no CSS — é o que permite a transição contínua.
+
+                Não há listener preso a este botão: o clique é capturado por
+                delegação no 'static/js/tema.js' através de 'data-tema-toggle', o
+                que o mantém funcional mesmo após o Turbo substituir o <body>.
+                O aria-label é preenchido pelo JS, pois descreve a ação do clique
+                e muda junto com o modo ativo.
+
+                O posicionamento vem de '.login-tema-toggle' (login.css) e não de
+                classes utilitárias: 'static/css/output.css' é um bundle Tailwind
+                purgado, onde utilitários como 'top-6'/'right-6' não existem.
+            -->
+            <button type="button"
+                class="tema-toggle login-tema-toggle"
+                data-tema-toggle
+                aria-label="Ativar modo eleitoral"
+                aria-pressed="false">
+                <!-- Lua: visível no modo Padrão, anuncia a ida para o escuro -->
+                <svg class="tema-toggle__icone tema-toggle__icone--lua" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"
+                            stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                <!-- Sol: visível no modo Eleitoral, anuncia a volta ao claro -->
+                <svg class="tema-toggle__icone tema-toggle__icone--sol" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.6"/>
+                    <path d="M12 2.4V4.4M12 19.6V21.6M21.6 12H19.6M4.4 12H2.4M18.79 5.21L17.38 6.62M6.62 17.38L5.21 18.79M18.79 18.79L17.38 17.38M6.62 6.62L5.21 5.21"
+                        stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                </svg>
+            </button>
+
+            <div class="w-full max-w-md mx-auto space-y-10">
+                <!-- Bloco de Identidade Visual / Logos -->
+                <div class="text-center">
+                    <!--
+                        Logotipo Institucional da OVG — as duas versões são publicadas
+                        e o CSS de tema decide qual fica visível. O elemento oculto sai
+                        da árvore de acessibilidade, então o leitor de tela anuncia
+                        apenas uma logo.
+                    -->
+                    <img src="{% static 'img/logos/ovg.png' %}" alt="Logo OVG"
+                        class="logo-tema logo-tema--claro h-24 mx-auto mb-6 drop-shadow-md">
+                    <img src="{% static 'img/logos/ovg-eleitoral.png' %}" alt="Logo OVG"
+                        class="logo-tema logo-tema--eleitoral h-24 mx-auto mb-6 drop-shadow-md">
+                    <!-- Título do Sistema -->
+                    <h1 class="login-titulo font-display text-5xl font-bold tracking-tighter text-gray-900">Portal GGCI</h1>
+                    <!-- Subtítulo Identificador da Gerência Responsável -->
+                    <p class="login-subtitulo font-heading text-lg text-gray-600 mt-1">Gerência de Gestão e Controle de Informações</p>
+                </div>
+
+                <!-- Banner Informativo (Instruções de Acesso ao Usuário) -->
+                <div class="login-aviso bg-purple-50/80 border-l-4 border-purple-600 rounded-2xl p-5 text-purple-800 text-[15px] font-inter flex items-start gap-3">
+                    <!-- Ícone SVG de Exclamação/Informação -->
+                    <svg class="w-6 h-6 shrink-0 mt-0.5 opacity-80" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 22C17.5 22 22 17.5 22 12C22 6.5 17.5 2 12 2C6.5 2 2 6.5 2 12C2 17.5 6.5 22 12 22Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 8V13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M11.9945 16H12.0035" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    Caso não possua acesso, contate o administrador do sistema.
+                </div>
+
+                <!-- Formulário de Autenticação principal (Interceptado pelo login.js) -->
+                <form id="formLogin" class="space-y-8 font-inter">
+                    <!-- Token de segurança Django para mitigação de ataques CSRF -->
+                    {% csrf_token %}
+
+                    <div class="space-y-6">
+                        <!-- Campo de Entrada: USUÁRIO -->
+                        <div class="relative group">
+                            <!-- Rótulo do campo com transição dinâmica de foco -->
+                            <label for="usuario" class="login-label block text-sm font-semibold text-gray-700 mb-2 transition-colors group-focus-within:text-purple-600">Usuário</label>
+                            <div class="relative flex items-center">
+                                <!-- Ícone de usuário (Avatar SVG) -->
+                                <svg class="login-icone absolute left-5 w-5 h-5 text-gray-400 group-focus-within:text-purple-500 transition-colors" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 12C14.7614 12 17 9.76142 17 7C17 4.23858 14.7614 2 12 2C9.23858 2 7 4.23858 7 7C7 9.76142 9.23858 12 12 12Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M20.5899 22C20.5899 18.13 16.7399 15 11.9999 15C7.25991 15 3.40991 18.13 3.40991 22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <!-- Input Text: Usuário -->
+                                <input id="usuario" name="usuario" type="text" required class="login-input block w-full rounded-2xl border border-gray-200 bg-gray-50/50 py-4 pl-12 pr-6 text-base text-gray-800 focus:bg-white focus:outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 transition-all" placeholder="Digite seu usuário">
+                            </div>
+                        </div>
+
+                        <!-- Campo de Entrada: SENHA -->
+                        <div class="relative group">
+                            <!-- Rótulo do campo com transição dinâmica de foco -->
+                            <label for="senha" class="login-label block text-sm font-semibold text-gray-700 mb-2 transition-colors group-focus-within:text-purple-600">Senha</label>
+                            <div class="relative flex items-center">
+                                <!-- Ícone de cadeado (Cadeado SVG) -->
+                                <svg class="login-icone absolute left-5 w-5 h-5 text-gray-400 group-focus-within:text-purple-500 transition-colors" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 10V8C6 4.69 7 2 12 2C17 2 18 4.69 18 8V10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22H7C3 22 2 21 2 17V15C2 11 3 10 7 10H17C21 10 22 11 22 15V17C22 21 21 22 17 22Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M11.9945 16H12.0035" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                
+                                <!-- Input Password: Senha -->
+                                <input id="senha" name="senha" type="password" required class="login-input block w-full rounded-2xl border border-gray-200 bg-gray-50/50 py-4 pl-12 pr-14 text-base text-gray-800 focus:bg-white focus:outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 transition-all" placeholder="••••••••">
+                                
+                                <!-- Botão interativo para alternar a exibição em texto limpo / senha oculta -->
+                                <button type="button" id="toggleSenha" class="login-olho absolute right-5 text-gray-400 hover:text-purple-600 transition-colors">
+                                    <!-- Ícone do Olho SVG para Toggle de Senha -->
+                                    <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2.99902 12C2.99902 12 5.99902 5 11.999 5C17.999 5 20.999 12 20.999 12C20.999 12 17.999 19 11.999 19C5.99902 19 2.99902 12 2.99902 12Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M11.999 15C13.6559 15 14.999 13.6559 14.999 12C14.999 10.3442 13.6559 9 11.999 9C10.3422 9 8.99902 10.3442 8.99902 12C8.99902 13.6559 10.3422 15 11.999 15Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Botão de Envio com estilo dinâmico Neon e transições elegantes de hover -->
+                    <button type="submit"
+                    class="neon-btn group relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-2xl px-8 py-4 font-inter text-lg font-semibold tracking-widest text-white">
+
+                        <span class="relative z-10">
+                            ACESSAR O PORTAL
+                        </span>
+
+                        <!-- Seta decorativa de avanço (Desliza suavemente no hover via Tailwind) -->
+                        <svg aria-hidden="true"
+                            class="relative z-10 w-5 h-5 transition-transform duration-300 group-hover:translate-x-1"
+                            viewBox="0 0 24 24"
+                            fill="none">
+                            <path d="M14.43 5.93L20.5 12L14.43 18.07"
+                                stroke="currentColor"
+                                stroke-width="1.5"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"/>
+                            <path d="M3.5 12H20.33"
+                                stroke="currentColor"
+                                stroke-width="1.5"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 
+        ======================================================================
+        3. CAMADA DE INTERATIVIDADE LOCAL (SCRIPTING & SEGURANÇA)
+        ======================================================================
+    -->
+    <script>
+        /**
+         * Token de Segurança CSRF (Cross-Site Request Forgery)
+         * Injetado dinamicamente pelo motor de templates do Django.
+         * É fundamental para autenticar e validar requisições POST seguras
+         * originadas deste formulário, prevenindo ataques de falsificação de requisição.
+         */
+        const CSRF_TOKEN = '{{ csrf_token }}';
+
+        /**
+         * Lógica de Alternância da Visibilidade da Senha (Toggle Password Visibility)
+         * Melhora a experiência do usuário (UX) permitindo que ele visualize ou
+         * oculte a senha digitada no input ao clicar no botão correspondente.
+         */
+        const toggleSenhaBtn = document.getElementById('toggleSenha');
+        const senhaInput = document.getElementById('senha');
+        
+        // Abordagem defensiva: executa o listener somente se ambos os elementos existirem no DOM
+        if (toggleSenhaBtn && senhaInput) {
+            toggleSenhaBtn.addEventListener('click', () => {
+                // Alterna dinamicamente o atributo 'type' do input entre 'password' (oculto) e 'text' (visível)
+                const type = senhaInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                senhaInput.setAttribute('type', type);
+                
+                // Modifica o estado de estilo do botão para fornecer feedback visual ao usuário
+                toggleSenhaBtn.classList.toggle('text-purple-600');
+                toggleSenhaBtn.classList.toggle('text-gray-400');
+            });
+        }
+    </script>
+    
+    <!-- Contêiner para Notificações Dinâmicas (Toasts) -->
+    <div id="toast-container" class="fixed top-5 right-5 z-[70] flex flex-col items-end"></div>
+
+    <!-- Script principal de validação AJAX, autenticação e exibição de Notificações Toasts -->
+    <script src="{% static 'gestao_acessos/js/login.js' %}" defer></script>
+</body>
+</html>

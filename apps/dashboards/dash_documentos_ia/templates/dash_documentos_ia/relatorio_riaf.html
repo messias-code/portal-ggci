@@ -1,0 +1,1307 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentos IA - Dashboards</title>
+    
+    <!--
+        MOTOR DE TEMAS — precisa vir antes de tudo.
+        Carregado SEM 'defer'/'async' de propósito: executado de forma síncrona
+        aqui no <head>, grava o atributo data-tema no <html> antes da primeira
+        pintura, eliminando o flash do tema padrão. Como a preferência vive no
+        localStorage, o modo escolhido em qualquer tela já chega aplicado aqui.
+    -->
+    <script src="{% static 'js/tema.js' %}"></script>
+
+    <link rel="stylesheet" href="{% static 'css/output.css' %}">
+
+    <!-- Tokens de cor dos temas e a troca de logo (compartilhado por todo o portal) -->
+    <link rel="stylesheet" href="{% static 'css/tema.css' %}">
+
+    <!-- Modo escuro da casca (fundo, halos, painel e cabeçalho), compartilhado -->
+    <link rel="stylesheet" href="{% static 'css/tema-menu.css' %}">
+
+    <!-- Remapeia em bloco as utilitárias neutras dentro de .area-trabalho -->
+    <link rel="stylesheet" href="{% static 'css/tema-conteudo.css' %}">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia.css' %}">
+
+    <!-- Camada escura desta tela: o que os arquivos compartilhados não alcançam -->
+    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia-eleitoral.css' %}">
+</head>
+
+<body class="grid-bg bg-[#f8f6fb] text-gray-800 fixed inset-0 p-4 lg:p-6 flex transition-colors duration-500 overflow-hidden">
+
+    <div class="menu-blob menu-blob--1 absolute top-[-20%] left-[-15%] w-[70vw] h-[70vh] bg-pink-500/70 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="menu-blob menu-blob--2 absolute top-[-20%] right-[-15%] w-[70vw] h-[70vh] bg-yellow-400/75 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="menu-blob menu-blob--3 absolute bottom-[-20%] left-[-15%] w-[70vw] h-[70vh] bg-purple-700/60 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="menu-blob menu-blob--4 absolute bottom-[-20%] right-[-15%] w-[70vw] h-[70vh] bg-green-600/65 rounded-full blur-[140px] pointer-events-none z-0"></div>
+
+    <div class="menu-shell w-full h-full bg-white/70 backdrop-blur-2xl border border-white/80 rounded-[2rem] shadow-2xl flex overflow-hidden relative z-10">
+
+        <main id="main-content" class="flex-1 flex flex-col h-full overflow-hidden relative transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]">
+            <header class="menu-divisoria relative h-28 pl-[120px] pr-10 flex justify-between items-center border-b border-purple-100/50 shrink-0 gap-4" style="z-index: 999;">
+                <div class="menu-header absolute inset-0 bg-white/70 backdrop-blur-md z-0"></div>
+                <div class="flex items-center gap-6 min-w-0 flex-1 relative z-10">
+                    <!--
+                        As duas versões da logo são publicadas e o CSS de
+                        tema decide qual fica visível. O elemento oculto sai
+                        da árvore de acessibilidade, então o leitor de tela
+                        anuncia apenas uma.
+                    -->
+                    <img src="{% static 'img/logos/ovg.png' %}" alt="OVG Logo"
+                        class="logo-tema logo-tema--claro h-[4.46rem] drop-shadow-md shrink-0">
+                    <img src="{% static 'img/logos/ovg-eleitoral.png' %}" alt="OVG Logo"
+                        class="logo-tema logo-tema--eleitoral h-[4.46rem] drop-shadow-md shrink-0">
+                    <div class="menu-header-divisor h-12 w-px bg-purple-200/50 shrink-0"></div>
+                    
+                    <div class="flex items-center gap-4 min-w-0 flex-1">
+                        <div class="tela-header-icone w-14 h-14 rounded-2xl bg-gradient-to-br from-pink-100 to-pink-200 text-pink-600 flex items-center justify-center shadow-inner shrink-0 hidden sm:flex">
+                            <i class="fa-solid fa-magnifying-glass-chart text-2xl drop-shadow-sm"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <h2 class="menu-header-titulo text-2xl lg:text-3xl font-extrabold text-gray-800 tracking-tight truncate">Documentos IA</h2>
+                            <p class="menu-header-sub text-sm lg:text-md text-gray-500 font-medium mt-1">Acompanhamento de desempenho da IA, volume de processamento e rastreamento de<br>alucinações.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3 shrink-0 relative z-10">
+                    <!-- Abas de Navegação -->
+                    <div class="shrink-0">
+                        <div class="docia-abas inline-flex h-10 rounded-xl shadow-sm border border-gray-200 overflow-hidden bg-white/90 backdrop-blur-md hide-scrollbar">
+                            <a href="{% url 'dash_documentos_ia' %}" class="docia-aba px-4 h-full flex items-center justify-center text-[12px] font-bold text-gray-600 bg-white hover:text-[#6B007B] hover:bg-pink-50 transition-colors whitespace-nowrap shrink-0 border-r border-gray-200">Quantitativo</a>
+                            <a href="{% url 'dash_documentos_ia_relatorio_ies' %}" class="docia-aba px-4 h-full flex items-center justify-center text-[12px] font-bold text-gray-600 bg-white hover:text-[#6B007B] hover:bg-pink-50 transition-colors whitespace-nowrap shrink-0 border-r border-gray-200">Relatório IES</a>
+                            <a href="{% url 'dash_documentos_ia_relatorio_riaf' %}" class="docia-aba docia-aba--ativa px-4 h-full flex items-center justify-center text-[12px] font-black text-white transition-colors border-r border-[#8A009B] whitespace-nowrap shrink-0" style="background-color: #6B007B;">Relatório RIAF</a>
+                        </div>
+                    </div>
+
+                    <button type="button" id="btn-atualizar" class="tela-voltar h-10 px-5 bg-white/80 hover:bg-pink-50 text-pink-600 font-bold rounded-xl transition-all shadow-sm border border-pink-100 flex items-center gap-2 text-sm">
+                        <span>Atualizar</span> <span class="text-gray-400 font-medium whitespace-nowrap">| <span id="data-atualizacao">{{ data_atualizacao }}</span></span>
+                    </button>
+                    
+                    <button type="button" class="tela-voltar tema-toggle shrink-0 w-10 h-10 flex items-center justify-center bg-white/80 hover:bg-pink-50 text-pink-600 rounded-xl transition-all shadow-sm border border-pink-100" data-tema-toggle aria-label="Alternar tema" aria-pressed="false">
+                        <svg class="tema-toggle__icone tema-toggle__icone--lua w-5 h-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"
+                            stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                        <svg class="tema-toggle__icone tema-toggle__icone--sol w-5 h-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.6"/>
+                            <path d="M12 2.4V4.4M12 19.6V21.6M21.6 12H19.6M4.4 12H2.4M18.79 5.21L17.38 6.62M6.62 17.38L5.21 18.79M18.79 18.79L17.38 17.38M6.62 6.62L5.21 5.21" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+
+                    <a href="{% url 'dashboards' %}" class="tela-voltar h-10 px-5 bg-white/80 hover:bg-pink-50 text-pink-600 font-bold rounded-xl transition-all shadow-sm border border-pink-100 inline-flex items-center justify-center text-sm">
+                        <i class="fa-solid fa-arrow-left mr-2 mt-[1px]"></i>
+                        <span class="leading-none">Voltar</span>
+                    </a>
+                </div>
+            </header>
+
+            <div class="area-trabalho flex-1 p-4 lg:p-6 flex flex-col h-full overflow-hidden">
+                
+                <!-- Conteúdo Vazio -->
+            </div>
+            
+            <!-- Painel de Filtros (Sidebar) -->
+            <aside id="filter-sidebar" class="area-trabalho absolute top-0 left-0 h-full w-[345px] bg-white/80 backdrop-blur-3xl border-r border-white/60 shadow-[10px_0_30px_rgba(0,0,0,0.05)] transform -translate-x-full transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] flex flex-col" style="width: 335px; z-index: 1000;">
+                
+                <!-- Botão Toggle -->
+                <button id="toggle-sidebar-btn" class="absolute top-8 sidebar-btn h-11 bg-white/95 backdrop-blur-xl border border-white/80 border-l-0 shadow-[4px_0_15px_rgba(236,72,153,0.2)] rounded-r-xl flex items-center justify-center text-pink-600 hover:bg-pink-50 transition-all duration-300 group" style="z-index: 1001;">
+                    <div class="icon-wrapper sidebar-icon-wrapper flex items-center justify-center w-4 h-4">
+                        <i class="fa-solid fa-chevron-right text-xs transition-transform duration-500 group-hover:scale-125" id="toggle-sidebar-icon"></i>
+                    </div>
+                    <span class="text-[11px] font-bold uppercase tracking-wider leading-none">Filtros</span>
+                </button>
+
+                <div class="h-28 px-8 border-b border-purple-100/50 flex items-center justify-between shrink-0">
+                    <h3 class="text-xl font-extrabold text-gray-800 tracking-tight flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-100 to-pink-200 text-pink-600 flex items-center justify-center shadow-inner">
+                            <i class="fa-solid fa-filter"></i>
+                        </div>
+                        Filtros
+                    </h3>
+                    <button type="button" id="btn-clear-filters" class="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 hover:text-pink-600 hover:bg-pink-50 px-3 py-2 rounded-xl transition-all" title="Restaurar visualização original">
+                        Restaurar Padrão
+                    </button>
+                </div>
+                <div class="flex-1 p-6 lg:p-8 overflow-y-auto custom-scrollbar-light">
+                    <!-- Filtros -->
+                    <div class="space-y-6">
+                        <div>
+                            <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">DOCUMENTOS ANALISADOS</h4>
+                            
+                            <!-- Filtro de Semestres (1x3) -->
+                            <div class="grid grid-cols-3 bg-white border border-gray-300 rounded-xl overflow-hidden mb-4 shadow-sm divide-x divide-gray-300" style="transform: translateZ(0);">
+                                <label class="cursor-pointer block relative">
+                                    <input type="checkbox" value="2025-1" class="filter-semestre peer sr-only">
+                                    <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                        <span class="text-[9px] sm:text-[10px] font-bold text-center leading-tight uppercase relative z-10">2025-1</span>
+                                    </div>
+                                </label>
+                                <label class="cursor-pointer block relative">
+                                    <input type="checkbox" value="2025-2" class="filter-semestre peer sr-only">
+                                    <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                        <span class="text-[9px] sm:text-[10px] font-bold text-center leading-tight uppercase relative z-10">2025-2</span>
+                                    </div>
+                                </label>
+                                <label class="cursor-pointer block relative">
+                                    <input type="checkbox" value="2026-1" class="filter-semestre peer sr-only">
+                                    <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                        <span class="text-[9px] sm:text-[10px] font-bold text-center leading-tight uppercase relative z-10">2026-1</span>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <!-- Filtro de Status (3x3) -->
+                            <div class="grid grid-cols-3 bg-white border border-gray-300 rounded-xl overflow-hidden shadow-sm" style="transform: translateZ(0);">
+                                <!-- Row 1 -->
+                                <label class="cursor-pointer block relative border-r border-b border-gray-300">
+                                    <input type="checkbox" value="Válido" class="filter-status peer sr-only">
+                                    <div class="flex items-center justify-center w-full h-[3rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                        <span class="text-[9px] sm:text-[10px] font-bold text-center leading-tight uppercase relative z-10">Válido</span>
+                                        <span id="count-valido" class="hidden">0</span>
+                                    </div>
+                                </label>
+                                <label class="cursor-pointer block relative border-r border-b border-gray-300">
+                                    <input type="checkbox" value="Inválido" class="filter-status peer sr-only">
+                                    <div class="flex items-center justify-center w-full h-[3rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                        <span class="text-[9px] sm:text-[10px] font-bold text-center leading-tight uppercase relative z-10">Inválido</span>
+                                        <span id="count-invalido" class="hidden">0</span>
+                                    </div>
+                                </label>
+                                <label class="cursor-pointer block relative border-b border-gray-300">
+                                    <input type="checkbox" value="Ausente" class="filter-status peer sr-only">
+                                    <div class="flex items-center justify-center w-full h-[3rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                        <span class="text-[9px] sm:text-[10px] font-bold text-center leading-tight uppercase relative z-10">Ausente</span>
+                                        <span id="count-ausente" class="hidden">0</span>
+                                    </div>
+                                </label>
+                                
+                                <!-- Row 2 -->
+                                <label class="cursor-pointer block relative border-r border-b border-gray-300">
+                                    <input type="checkbox" value="Não Proc." class="filter-status peer sr-only">
+                                    <div class="flex items-center justify-center w-full h-[3rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                        <span class="text-[9px] sm:text-[10px] font-bold text-center leading-tight uppercase relative z-10">Não Proc.</span>
+                                        <span id="count-nao_proc" class="hidden">0</span>
+                                    </div>
+                                </label>
+                                <label class="cursor-pointer block relative border-r border-b border-gray-300">
+                                    <input type="checkbox" value="Corrompido" class="filter-status peer sr-only">
+                                    <div class="flex items-center justify-center w-full h-[3rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                        <span class="text-[9px] sm:text-[10px] font-bold text-center leading-tight uppercase relative z-10">Corrompido</span>
+                                        <span id="count-corrompido" class="hidden">0</span>
+                                    </div>
+                                </label>
+                                <label class="cursor-pointer block relative border-b border-gray-300">
+                                    <input type="checkbox" value="Falso Válido" class="filter-status peer sr-only">
+                                    <div class="flex items-center justify-center w-full h-[3rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                        <span class="text-[9px] sm:text-[10px] font-bold text-center leading-tight uppercase relative z-10">Falso Válido</span>
+                                        <span id="count-falso_valido" class="hidden">0</span>
+                                    </div>
+                                </label>
+                                
+                                <!-- Row 3 -->
+                                <label class="cursor-pointer block relative border-r border-gray-300">
+                                    <input type="checkbox" value="Falso Inválido" class="filter-status peer sr-only">
+                                    <div class="flex items-center justify-center w-full h-[3rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                        <span class="text-[9px] sm:text-[10px] font-bold text-center leading-tight uppercase relative z-10">Falso Inválido</span>
+                                        <span id="count-falso_invalido" class="hidden">0</span>
+                                    </div>
+</label>
+                                <div class="bg-gray-50 pointer-events-none h-[3rem] border-r border-gray-300"></div>
+                                <div class="bg-gray-50 pointer-events-none h-[3rem]"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- NOVOS FILTROS -->
+                        <div class="mt-6 grid grid-cols-2 gap-4">
+                            <!-- Mudou IES -->
+                            <div>
+                                <h4 class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Mudou IES</h4>
+                                <div class="grid bg-white border border-gray-300 rounded-xl overflow-hidden shadow-sm divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(2, minmax(0, 1fr));">
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="S" class="filter-mudou-ies peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">Sim</span>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="N" class="filter-mudou-ies peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">Não</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                            <!-- Mudou Bolsa -->
+                            <div>
+                                <h4 class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Mudou Bolsa</h4>
+                                <div class="grid bg-white border border-gray-300 rounded-xl overflow-hidden shadow-sm divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(2, minmax(0, 1fr));">
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="S" class="filter-mudou-bolsa peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">Sim</span>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="N" class="filter-mudou-bolsa peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">Não</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 grid grid-cols-2 gap-4">
+                            <!-- Status Vínculo -->
+                            <div>
+                                <h4 class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Vínculo</h4>
+                                <div class="grid bg-white border border-gray-300 rounded-xl overflow-hidden shadow-sm divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(2, minmax(0, 1fr));">
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="ATIVO" class="filter-vinculo peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[9px] font-bold text-center leading-tight uppercase relative z-10">Ativo</span>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="DESLIGADO" class="filter-vinculo peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[9px] font-bold text-center leading-tight uppercase relative z-10">Deslig</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                            <!-- Perfil -->
+                            <div>
+                                <h4 class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Perfil</h4>
+                                <div class="grid bg-white border border-gray-300 rounded-xl overflow-hidden shadow-sm divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(2, minmax(0, 1fr));">
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="Veterano" class="filter-perfil peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[9px] font-bold text-center leading-tight uppercase relative z-10">Vet</span>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="Ingresso" class="filter-perfil peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[9px] font-bold text-center leading-tight uppercase relative z-10">Ingr</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Filter IES -->
+                        <div class="mt-6">
+                            <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">INSTITUIÇÃO DE ENSINO SUPERIOR</h4>
+                            <button type="button" onclick="openModalIES()" class="w-full flex items-center justify-between bg-white border border-gray-200 rounded-xl p-2 hover:bg-gray-50 transition-all shadow-sm group">
+                                <div class="flex items-center gap-3 overflow-hidden min-w-0">
+                                    <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-colors" class="docia-icone-bg">
+                                        <i class="fa-solid fa-building-columns" class="docia-icone-color"></i>
+                                    </div>
+                                    <div class="flex flex-col items-start overflow-hidden min-w-0">
+                                        <span class="text-[10px] text-gray-400 font-semibold uppercase">Filtro de IES</span>
+                                        <span class="text-xs font-bold text-gray-700 uppercase truncate w-full text-left" id="ies-selecionadas-text" title="Todas as Instituições">Todas as Instituições</span>
+                                    </div>
+                                </div>
+                                <i class="fa-solid fa-chevron-right text-gray-400 text-xs shrink-0 ml-2 pr-2"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+            
+            <!-- Modal IES -->
+            <!-- Modal IES -->
+            <div id="modal-ies" class="area-trabalho z-[60] hidden items-center justify-center p-4" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(15, 23, 42, 0.2); backdrop-filter: blur(2px); display: none;">
+                <div class="bg-gray-50 rounded-2xl flex flex-col overflow-hidden animate-fade-in-up shadow-2xl border border-gray-200" style="width: 95%; max-width: 1400px; height: 85vh; max-height: 800px; min-height: 600px;">
+                    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0 bg-white">
+                        <div class="flex items-center gap-4">
+                            <div class="modal-header-icone w-12 h-12 rounded-xl flex items-center justify-center shadow-sm" class="docia-modal-gradiente text-white">
+                                <i class="fa-solid fa-building-columns text-xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold text-gray-800 tracking-tight">Filtro de Instituições</h3>
+                                <p class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mt-0.5">Selecione as Mantenedoras e IES</p>
+                            </div>
+                        </div>
+                        <button onclick="closeModalIES()" class="text-gray-400 hover:text-gray-800 hover:bg-gray-100 w-10 h-10 flex items-center justify-center rounded-xl transition-colors shrink-0">
+                            <i class="fa-solid fa-xmark text-xl"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="flex-1 flex overflow-hidden bg-transparent" style="min-height: 0;">
+                        <!-- Left Pane: Search and List -->
+                        <div class="flex flex-col border-r border-gray-200 bg-gray-50/50" style="width: 55%; min-height: 0;">
+                            <div class="p-5 border-b border-gray-200 shrink-0 bg-white">
+                                <div class="relative group">
+                                    <i class="fa-solid fa-search absolute text-gray-400 group-focus-within:text-pink-600 transition-colors" style="left: 1.25rem; top: 50%; transform: translateY(-50%);"></i>
+                                    <input type="text" id="search-ies" placeholder="Pesquisar por nome da Mantenedora ou Instituição..." class="w-full pr-10 py-3 bg-white border-2 border-gray-100 rounded-xl text-sm text-gray-700 shadow-sm focus:outline-none focus:border-pink-500 transition-colors" style="padding-left: 3rem;">
+                                    <button type="button" id="clear-search-ies" onclick="document.getElementById('search-ies').value = ''; document.getElementById('search-ies').dispatchEvent(new Event('input')); document.getElementById('search-ies').focus();" class="absolute hidden text-gray-400 hover:text-pink-600 focus:outline-none transition-colors" style="right: 1.25rem; top: 50%; transform: translateY(-50%);">
+                                        <i class="fa-solid fa-circle-xmark text-lg"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar-light" id="list-mantenedoras" style="min-height: 0;">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+                        
+                        <!-- Right Pane: Selected -->
+                        <div class="flex flex-col bg-gray-100/50" style="width: 45%; min-height: 0;">
+                            <div class="px-6 py-5 border-b border-gray-200 flex justify-between items-center bg-white shrink-0">
+                                <div class="flex items-center gap-3">
+                                    <div class="docia-marcador w-2 h-6 rounded-full" style="background-color: #6B007B;"></div>
+                                    <h4 class="text-sm font-extrabold text-gray-800 uppercase tracking-wide">Selecionadas (<span id="count-selected-ies" class="docia-icone-color">0</span>)</h4>
+                                </div>
+                                <button onclick="clearSelectedIES()" class="docia-btn-limpar text-xs font-bold px-4 py-2 rounded-xl transition-colors border shadow-sm hover:bg-gray-50" style="color: #6B007B; border-color: rgba(107,0,123,0.2); background-color: white;">Limpar Tudo</button>
+                            </div>
+                            <div class="flex-1 overflow-y-auto p-6 space-y-2 custom-scrollbar-light" id="list-selected-ies" style="min-height: 0;">
+                                <div class="flex flex-col items-center justify-center h-full opacity-40" id="empty-selected-msg">
+                                    <i class="fa-solid fa-inbox text-4xl text-gray-400 mb-3"></i>
+                                    <div class="text-center text-gray-500 text-sm font-medium">Nenhuma instituição selecionada.<br>Use o painel ao lado para adicionar.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 bg-white shrink-0">
+                        <button onclick="closeModalIES()" class="px-6 py-2.5 text-sm font-bold text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl transition-colors shadow-sm">Cancelar</button>
+                        <button onclick="applyIESFilter()" class="modal-confirmar px-8 py-2.5 text-sm font-bold rounded-xl transition-all shadow-md hover:opacity-90 flex items-center gap-2" class="docia-modal-gradiente text-white">
+                            <i class="fa-solid fa-check"></i> Aplicar Filtro
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <script src="{% static 'dash_documentos_ia/js/dash_documentos_ia.js' %}?v=20260806"></script>
+    <script>
+
+            function getDociaColors() {
+                const isEleitoral = document.documentElement.getAttribute('data-tema') === 'eleitoral';
+                if (isEleitoral) {
+                    return ['#A0CE6D', '#FF4500', '#B3B3B3', '#F3B4DC', '#3A5BA8', '#E044A7', '#8A2BE2'];
+                }
+                return ['#A0CE6D', '#FF4500', '#B3B3B3', '#F3B4DC', '#6B007B', '#E044A7', '#8A2BE2'];
+            }
+            
+        document.addEventListener('DOMContentLoaded', () => {
+            const sidebar = document.getElementById('filter-sidebar');
+            const toggleBtn = document.getElementById('toggle-sidebar-btn');
+            const toggleIcon = document.getElementById('toggle-sidebar-icon');
+            const mainContent = document.getElementById('main-content');
+            
+            // Referência global para os gráficos para redimensionamento
+            let charts = [];
+            let totalDocs = 0;
+            
+            if (toggleBtn && sidebar) {
+                toggleBtn.addEventListener('click', () => {
+                    const isClosed = sidebar.classList.contains('-translate-x-full');
+                    if (isClosed) {
+                        sidebar.classList.remove('-translate-x-full');
+                        if (mainContent) {
+                            mainContent.classList.add('pl-[345px]');
+                            mainContent.style.paddingLeft = '335px';
+                        }
+                        toggleIcon.classList.remove('fa-chevron-right');
+                        toggleIcon.classList.add('fa-chevron-left');
+                    } else {
+                        sidebar.classList.add('-translate-x-full');
+                        if (mainContent) {
+                            mainContent.classList.remove('pl-[345px]');
+                            mainContent.style.paddingLeft = '';
+                        }
+                        toggleIcon.classList.remove('fa-chevron-left');
+                        toggleIcon.classList.add('fa-chevron-right');
+                    }
+                    
+                    // Redimensiona os gráficos durante e após a animação de slide do painel
+                    setTimeout(() => { charts.forEach(c => c.resize()); }, 100);
+                    setTimeout(() => { charts.forEach(c => c.resize()); }, 300);
+                    setTimeout(() => { charts.forEach(c => c.resize()); }, 500);
+                });
+            }
+            
+            // --- ECHARTS: Documentos Analisados ---
+            const chartDocDom = document.getElementById('chart-documentos');
+            if (chartDocDom) {
+                const chartDoc = echarts.init(chartDocDom);
+
+                document.addEventListener('ggci:tema', function (e) {
+                    if (typeof chartDoc !== 'undefined' && chartDoc) {
+                        chartDoc.setOption({ color: getDociaColors() });
+                    }
+                });
+            
+                charts.push(chartDoc);
+                
+                const optionDoc = {
+                    tooltip: {
+                        trigger: 'item',
+                        formatter: function(params) {
+                            let pctStr = params.data.customPctStr || "0,00";
+                            return `${params.marker} ${params.name}: ${params.value} (${pctStr}%)`;
+                        },
+                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                        borderColor: '#f4f4f5',
+                        borderWidth: 1,
+                        textStyle: {
+                            color: '#374151',
+                            fontFamily: 'Poppins, sans-serif'
+                        },
+                        padding: [10, 15],
+                        extraCssText: 'box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); border-radius: 0.5rem;'
+                    },
+                    legend: {
+                        bottom: '0%',
+                        left: 'center',
+                        icon: 'circle',
+                        itemWidth: 10,
+                        itemHeight: 10,
+                        textStyle: {
+                            color: '#4b5563',
+                            fontFamily: 'Poppins, sans-serif',
+                            fontSize: 12
+                        }
+                    },
+                    color: getDociaColors(),
+                    series: [
+                        {
+                            name: 'Documentos',
+                            type: 'pie',
+                            radius: ['35%', '60%'],
+                            center: ['50%', '42%'],
+                            avoidLabelOverlap: true,
+                            minAngle: 15,
+                            percentPrecision: 4, // ECharts calcula a soma cravada em 100% com até 4 casas
+                            itemStyle: {
+                                borderRadius: 6,
+                                borderColor: '#fff',
+                                borderWidth: 3
+                            },
+                            label: {
+                                show: true,
+                                formatter: function(params) {
+                                    let pctStr = params.data.customPctStr || "0,00";
+                                    return params.name + '\n' + params.value + ' (' + pctStr + '%)';
+                                },
+                                fontFamily: 'Poppins, sans-serif',
+                                fontWeight: '500',
+                                color: '#374151'
+                            },
+                            labelLine: {
+                                show: true,
+                                smooth: 0.2,
+                                length: 10,
+                                length2: 15
+                            },
+                            data: [
+                                { value: 0, name: 'Válido' },
+                                { value: 0, name: 'Inválido' },
+                                { value: 0, name: 'Ausente' },
+                                { value: 0, name: 'Não Proc.' },
+                                { value: 0, name: 'Corrompido' },
+                                { value: 0, name: 'Falso Válido' },
+                                { value: 0, name: 'Falso Inválido' }
+                            ]
+                        }
+                    ]
+                };
+                
+                chartDoc.setOption(optionDoc);
+                
+                const semesterCheckboxes = document.querySelectorAll('.filter-semestre');
+
+                window.fetchChartData = function() {
+                    const selectedSems = Array.from(semesterCheckboxes)
+                    const sems = Array.from(semesterCheckboxes)
+                        .filter(cb => cb.checked)
+                        .map(cb => cb.value);
+                    
+                    let params = new URLSearchParams();
+                    if (sems.length > 0) {
+                        params.append('semestres', sems.join(','));
+                    }
+                    
+                    if (typeof activeIESFilters !== 'undefined' && activeIESFilters.length > 0) {
+                        params.append('ies', activeIESFilters.join('||'));
+                    }
+                    
+                    let url = '/dashboards/documentos-ia/api/dados/';
+                    if (params.toString()) {
+                        url += '?' + params.toString();
+                    }
+                    
+                    fetch(url)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === 'ok') {
+                                const d = data.dados;
+                                
+                                // A coluna 'Status_IA' já contém todos os documentos.
+                                // Falso Válido e Falso Inválido já estão embutidos em doc_valido e doc_invalido pelo backend.
+                                totalDocs = d.doc_valido + d.doc_invalido + d.doc_ausente + d.doc_nao_proc + d.doc_corrompido;
+                                
+                                // Update KPI cards (Desconsiderando Ausentes para a contagem principal de documentos enviados)
+                                const kpiDocsEnviados = totalDocs - d.doc_ausente;
+                                const kpiDoc = document.getElementById('kpi-documentos');
+                                const kpiBen = document.getElementById('kpi-beneficiarios');
+                                const kpiAtv = document.getElementById('kpi-ativos');
+                                const kpiInat = document.getElementById('kpi-inativos');
+                                
+                                if(kpiDoc) kpiDoc.innerText = kpiDocsEnviados.toLocaleString('pt-BR');
+                                if(kpiBen) kpiBen.innerText = (d.beneficiarios || 0).toLocaleString('pt-BR');
+                                if(kpiAtv) kpiAtv.innerText = (d.ativos || 0).toLocaleString('pt-BR');
+                                if(kpiInat) kpiInat.innerText = (d.inativos || 0).toLocaleString('pt-BR');
+                                
+                                // Update sidebar counters
+                                const updateSidebarStatus = (id, count) => {
+                                    const span = document.getElementById(id);
+                                    if(!span) return;
+                                    span.innerText = count;
+                                    const label = span.closest('label');
+                                    if(!label) return;
+                                    
+                                    const input = label.querySelector('input');
+                                    const div = label.querySelector('div');
+                                    
+                                    input.disabled = false;
+                                    label.style.pointerEvents = 'auto';
+                                    label.style.opacity = '1';
+                                    if(div) {
+                                        div.style.opacity = '1';
+                                        div.style.filter = 'none';
+                                        div.style.backgroundColor = '';
+                                        div.style.color = '';
+                                    }
+                                };
+
+                                updateSidebarStatus('count-valido', d.doc_valido);
+                                updateSidebarStatus('count-invalido', d.doc_invalido);
+                                updateSidebarStatus('count-ausente', d.doc_ausente);
+                                updateSidebarStatus('count-nao_proc', d.doc_nao_proc);
+                                updateSidebarStatus('count-corrompido', d.doc_corrompido);
+                                updateSidebarStatus('count-falso_valido', d.doc_falso_valido);
+                                updateSidebarStatus('count-falso_invalido', d.doc_falso_invalido);
+                                
+                                let rawData = [
+                                    { value: d.doc_valido, name: 'Válido' },
+                                    { value: d.doc_invalido, name: 'Inválido' },
+                                    { value: d.doc_ausente, name: 'Ausente' },
+                                    { value: d.doc_nao_proc, name: 'Não Proc.' },
+                                    { value: d.doc_corrompido, name: 'Corrompido' },
+                                    { value: d.doc_falso_valido, name: 'Falso Válido' },
+                                    { value: d.doc_falso_invalido, name: 'Falso Inválido' }
+                                ];
+                                
+                                let total = rawData.reduce((acc, curr) => acc + curr.value, 0);
+                                let sumPct = 0;
+                                let maxIdx = -1;
+                                let maxVal = -1;
+                                
+                                // 1. Calcula porcentagens dinâmicas
+                                rawData.forEach((item, index) => {
+                                    if (total === 0 || item.value === 0) {
+                                        item.customPctStr = "0,00";
+                                        item.customPctNum = 0;
+                                    } else {
+                                        let pct = (item.value / total) * 100;
+                                        let decimals = 2;
+                                        while (Number(pct.toFixed(decimals)) === 0 && decimals < 5) {
+                                            decimals++;
+                                        }
+                                        item.customPctNum = Number(pct.toFixed(decimals));
+                                        item.customPctStr = item.customPctNum.toFixed(decimals).replace('.', ',');
+                                    }
+                                    sumPct += item.customPctNum;
+                                    
+                                    if (item.value > maxVal) {
+                                        maxVal = item.value;
+                                        maxIdx = index;
+                                    }
+                                });
+                                
+                                // 2. Ajusta a maior fatia para cravar 100% exatos
+                                if (total > 0 && Math.abs(sumPct - 100) > 0.000001) {
+                                    let diff = 100 - sumPct;
+                                    rawData[maxIdx].customPctNum += diff;
+                                    
+                                    // Determina quantas casas decimais a nova fatia maior precisa para exibir o ajuste
+                                    let adjustedPct = rawData[maxIdx].customPctNum;
+                                    // Evitar imprecisão de float (ex: 39.56600000000000)
+                                    adjustedPct = Number(adjustedPct.toFixed(5));
+                                    let decString = adjustedPct.toString().split('.')[1] || "";
+                                    let requiredDecimals = Math.max(2, decString.length);
+                                    rawData[maxIdx].customPctStr = adjustedPct.toFixed(requiredDecimals).replace('.', ',');
+                                }
+    
+                                // Update ECharts data
+                                chartDoc.setOption({
+                                    series: [{
+                                        data: rawData
+                                    }]
+                                });
+                            }
+                        })
+                        .catch(err => console.error('Erro ao buscar dados do dashboard:', err));
+                }
+
+                // Expose to window so we can trigger it externally if needed
+                window.triggerFetchChartData = window.fetchChartData;
+
+                window.fetchTableData = function() {
+                    const selectedSems = Array.from(semesterCheckboxes)
+                        .filter(cb => cb.checked)
+                        .map(cb => cb.value);
+                    
+                    let params = new URLSearchParams();
+                    if (selectedSems.length > 0) {
+                        params.append('semestres', selectedSems.join(','));
+                    }
+                    
+                    if (typeof activeIESFilters !== 'undefined' && activeIESFilters.length > 0) {
+                        params.append('ies', activeIESFilters.join('||'));
+                    }
+                    
+                    let url = '/dashboards/documentos-ia/api/tabela/';
+                    if (params.toString()) {
+                        url += '?' + params.toString();
+                    }
+                    
+                    const tbody = document.getElementById('table-body-beneficiarios');
+                    tbody.innerHTML = `<tr>
+                                    <td colspan="15" class="px-3 py-8 text-center text-gray-400">
+                                        <i class="fa-solid fa-spinner fa-spin text-xl mb-2"></i><br>
+                                        Carregando dados...
+                                    </td>
+                                </tr>`;
+
+                    fetch(url)
+                        .then(response => response.json())
+                        .then(data => {
+                            // CHAVE 1: Abre o IF
+                            if (data.status === 'ok') {
+                                tbody.innerHTML = '';
+                                if (data.data.length === 0) {
+                                    tbody.innerHTML = `<tr><td colspan="15" class="px-3 py-8 text-center text-gray-400">Nenhum dado encontrado</td></tr>`;
+                                    return;
+                                }
+                                
+                                const formatCurrency = (val) => {
+                                    if (val === null || val === undefined) return '-';
+                                    const num = parseFloat(val);
+                                    if (isNaN(num)) return val;
+                                    return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                                };
+
+                                data.data.forEach(row => {
+                                    const tr = document.createElement('tr');
+                                    tr.className = 'hover:bg-pink-50/50 transition-colors group';
+                                    tr.innerHTML = `
+                                        <td class="px-3 py-2 border-b border-gray-100">${row['Beneficiário'] || '-'}</td>
+                                        <td class="px-3 py-2 border-b border-gray-100">${row['Inscrição'] || '-'}</td>
+                                        <td class="px-3 py-2 border-b border-gray-100">${row['tipo_bolsa'] || '-'}</td>
+                                        <td class="px-3 py-2 border-b border-gray-100 truncate max-w-[150px]" title="${row['Faculdade'] || ''}">${row['Faculdade'] || '-'}</td>
+                                        <td class="px-3 py-2 border-b border-gray-100">${row['CPF'] || '-'}</td>
+                                        <td class="px-3 py-2 border-b border-gray-100">${row['CPF IA'] || '-'}</td>
+                                        <td class="px-3 py-2 border-b border-gray-100 text-center">${row['Semestre'] || '-'}</td>
+                                        <td class="px-3 py-2 border-b border-gray-100 text-center">${row['Semestre IA'] || '-'}</td>
+                                        <td class="px-3 py-2 border-b border-gray-100 text-right">${row['Qtde de Pagtos'] || '-'}</td>
+                                        <td class="px-3 py-2 border-b border-gray-100 text-right">${formatCurrency(row['Bolsa Paga Mensal'])}</td>
+                                        <td class="px-3 py-2 border-b border-gray-100 text-right">${formatCurrency(row['Bolsa Paga Semestral'])}</td>
+                                        <td class="px-3 py-2 border-b border-gray-100 text-right">${formatCurrency(row['MSD'])}</td>
+                                        <td class="px-3 py-2 border-b border-gray-100 text-right">${formatCurrency(row['MSD IA'])}</td>
+                                        <td class="px-3 py-2 border-b border-gray-100 text-right">${formatCurrency(row['Dif_Mensal'])}</td>
+                                        <td class="px-3 py-2 border-b border-gray-100 text-right">${formatCurrency(row['Dif_Semestral'])}</td>
+                                    `;
+                                    tbody.appendChild(tr);
+                                }); // <- O forEach termina aqui
+                                
+                            // CHAVE 1: Fecha o IF corretamente
+                            } else {
+                                tbody.innerHTML = `<tr><td colspan="15" class="px-3 py-8 text-center text-red-400">Erro ao carregar dados: Status incorreto</td></tr>`;
+                            }
+                        })
+                        .catch(err => {
+                            console.error('Erro ao buscar dados da tabela:', err);
+                            tbody.innerHTML = `<tr><td colspan="15" class="px-3 py-8 text-center text-red-400">Erro de comunicação com o servidor</td></tr>`;
+                        });
+                };
+                
+                // Initial fetch
+                window.fetchChartData();
+                window.fetchTableData();
+
+                // Listen to semester changes
+                semesterCheckboxes.forEach(cb => {
+                    cb.addEventListener('change', () => {
+                        window.fetchChartData();
+                        window.fetchTableData();
+                    });
+                });
+                
+                // Integração Bi-direcional Filtro Lateral <-> ECharts
+                const statusCheckboxes = document.querySelectorAll('.filter-status');
+                
+                // 1. Checkbox clicado -> Atualiza Gráfico
+                statusCheckboxes.forEach(cb => {
+                    cb.addEventListener('change', (e) => {
+                        const checkedBoxes = Array.from(statusCheckboxes).filter(c => c.checked);
+                        
+                        if (checkedBoxes.length === 0) {
+                            // Se desmarcou todos, exibe o gráfico inteiro
+                            statusCheckboxes.forEach(c => {
+                                chartDoc.dispatchAction({ type: 'legendSelect', name: c.value });
+                            });
+                        } else if (checkedBoxes.length === 1 && e.target.checked) {
+                            // Se marcou o primeiro, esconde todos os outros no gráfico
+                            statusCheckboxes.forEach(c => {
+                                if (c !== e.target) {
+                                    chartDoc.dispatchAction({ type: 'legendUnSelect', name: c.value });
+                                }
+                            });
+                            // Garante que o clicado está exibido
+                            chartDoc.dispatchAction({ type: 'legendSelect', name: e.target.value });
+                        } else {
+                            // Comportamento normal cumulativo
+                            chartDoc.dispatchAction({
+                                type: e.target.checked ? 'legendSelect' : 'legendUnSelect',
+                                name: e.target.value
+                            });
+                        }
+                    });
+                });
+                
+                // 2. Gráfico clicado (legend) -> Atualiza Checkbox
+                chartDoc.on('legendselectchanged', function (params) {
+                    const selectedCount = Object.values(params.selected).filter(v => v).length;
+                    const totalCount = Object.values(params.selected).length;
+                    
+                    if (selectedCount === totalCount || selectedCount === 0) {
+                        // Se o gráfico exibir todos, apagamos todos os botões visuais para "estado inicial"
+                        statusCheckboxes.forEach(cb => cb.checked = false);
+                    } else {
+                        // Sincronização exata
+                        statusCheckboxes.forEach(cb => {
+                            cb.checked = params.selected[cb.value];
+                        });
+                    }
+                });
+                
+                // Botões de Selecionar Todos / Limpar (Gráfico e Sidebar)
+                const btnSelectAll = document.getElementById('btn-chart-select-all');
+                const btnClear = document.getElementById('btn-chart-clear');
+                const btnClearFilters = document.getElementById('btn-clear-filters');
+                const legendNames = ['Válido', 'Inválido', 'Ausente', 'Não Proc.', 'Corrompido', 'Falso Válido', 'Falso Inválido'];
+                
+                const selectAllAction = () => {
+                    chartDoc.dispatchAction({
+                        type: 'legendAllSelect'
+                    });
+                    // Atualiza as checkboxes para refletir o estado do gráfico
+                    statusCheckboxes.forEach(cb => cb.checked = true);
+                };
+
+                if (btnSelectAll) {
+                    btnSelectAll.addEventListener('click', selectAllAction);
+                }
+                
+                const clearAction = () => {
+                    legendNames.forEach(name => {
+                        chartDoc.dispatchAction({
+                            type: 'legendUnSelect',
+                            name: name
+                        });
+                    });
+                    // Atualiza as checkboxes para refletir o estado do gráfico
+                    statusCheckboxes.forEach(cb => cb.checked = false);
+                };
+
+                if (btnClear) {
+                    btnClear.addEventListener('click', clearAction);
+                }
+
+                if (btnClearFilters) {
+                    // Resetar para o padrão (nenhum filtro de semestre/status aplicado)
+                    btnClearFilters.addEventListener('click', () => {
+                        let semesterChanged = false;
+                        semesterCheckboxes.forEach(cb => {
+                            if (cb.checked) semesterChanged = true;
+                            cb.checked = false;
+                        });
+                        
+                        // Força a seleção de TODAS as legendas no ECharts, 
+                        // mesmo daquelas que sumiram temporariamente por terem valor 0
+                        const allSelected = {};
+                        legendNames.forEach(n => allSelected[n] = true);
+                        chartDoc.setOption({ legend: { selected: allSelected } });
+                        
+                        statusCheckboxes.forEach(cb => cb.checked = false);
+                        
+                        if (semesterChanged) {
+                            fetchChartData();
+                            if (typeof window.fetchTableData === 'function') window.fetchTableData();
+                        }
+                    });
+                }
+            }
+            
+            // Redimensionamento Global da Janela
+            window.addEventListener('resize', () => {
+                charts.forEach(c => c.resize());
+            });
+
+            // Lógica do Botão Atualizar e Polling
+            const btnAtualizar = document.getElementById('btn-atualizar');
+            const dataAtualizacao = document.getElementById('data-atualizacao');
+            
+            if (btnAtualizar) {
+                btnAtualizar.addEventListener('click', () => {
+                    btnAtualizar.disabled = true;
+                    btnAtualizar.innerHTML = `<span>Atualizar</span> <span class="text-gray-400 font-medium whitespace-nowrap">| <i class="fa-solid fa-cloud-arrow-down text-pink-500"></i> <span class="text-pink-600">Atualizando...</span> <span class="bg-pink-100 text-pink-700 px-1.5 py-0.5 rounded text-[11px] ml-1">0%</span></span>`;
+                    
+                    fetch("{% url 'dash_documentos_ia_iniciar' %}", {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': '{{ csrf_token }}',
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'ok') {
+                            window.__processo_id_docia = data.processo_id;
+                            monitorarAtualizacao(data.processo_id);
+                        } else {
+                            alert("Erro ao iniciar: " + data.msg);
+                            restaurarBotaoAtualizar();
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        alert("Erro de comunicação com o servidor.");
+                        restaurarBotaoAtualizar();
+                    });
+                });
+            }
+            
+            function monitorarAtualizacao(processoId) {
+                const interval = setInterval(() => {
+                    fetch(`/dashboards/documentos-ia/api/status/${processoId}/`)
+                    .then(res => res.json())
+                    .then(data => {
+                        let pct = data.progresso || 0;
+                        if (data.status === 'PENDENTE') {
+                            btnAtualizar.style.background = `linear-gradient(to right, rgba(236, 72, 153, 0.15) ${pct}%, rgba(255, 255, 255, 0.8) ${pct}%)`;
+                            btnAtualizar.innerHTML = `<span>Atualizar</span> <span class="text-gray-400 font-medium whitespace-nowrap">| <i class="fa-solid fa-cloud-arrow-down text-pink-500"></i> <span class="text-pink-600">Atualizando...</span> <span class="bg-pink-100 text-pink-700 px-1.5 py-0.5 rounded text-[11px] ml-1">${pct}%</span></span>`;
+                        } else if (data.status === 'EXTRAINDO') {
+                            btnAtualizar.style.background = `linear-gradient(to right, rgba(236, 72, 153, 0.15) ${pct}%, rgba(255, 255, 255, 0.8) ${pct}%)`;
+                            btnAtualizar.innerHTML = `<span>Atualizar</span> <span class="text-gray-400 font-medium whitespace-nowrap">| <i class="fa-solid fa-cloud-arrow-down text-pink-500"></i> <span class="text-pink-600">Atualizando...</span> <span class="bg-pink-100 text-pink-700 px-1.5 py-0.5 rounded text-[11px] ml-1">${pct}%</span></span>`;
+                        } else if (data.status === 'TRATANDO') {
+                            btnAtualizar.style.background = `linear-gradient(to right, rgba(236, 72, 153, 0.15) ${pct}%, rgba(255, 255, 255, 0.8) ${pct}%)`;
+                            btnAtualizar.innerHTML = `<span>Atualizar</span> <span class="text-gray-400 font-medium whitespace-nowrap">| <i class="fa-solid fa-cloud-arrow-down text-pink-500"></i> <span class="text-pink-600">Atualizando...</span> <span class="bg-pink-100 text-pink-700 px-1.5 py-0.5 rounded text-[11px] ml-1">${pct}%</span></span>`;
+                        } else if (data.status === 'CONCLUIDO') {
+                            clearInterval(interval);
+                            window.__processo_id_docia = null;
+                            btnAtualizar.style.background = '';
+                            btnAtualizar.innerHTML = `<span>Atualizar</span> <span class="text-gray-400 font-medium whitespace-nowrap">| <i class="fa-solid fa-check text-green-500"></i> <span class="text-green-600">Atualizado!</span></span>`;
+                            setTimeout(() => { window.location.reload(); }, 1500);
+                        } else if (data.status === 'FALHA') {
+                            clearInterval(interval);
+                            alert("Falha na atualização: " + data.log);
+                            restaurarBotaoAtualizar();
+                        }
+                    })
+                    .catch(err => {
+                        console.error("Erro no polling", err);
+                        clearInterval(interval);
+                        restaurarBotaoAtualizar();
+                    });
+                }, 2000);
+            }
+            
+            function restaurarBotaoAtualizar() {
+                btnAtualizar.disabled = false;
+                btnAtualizar.style.background = '';
+                btnAtualizar.innerHTML = `<span>Atualizar</span> <span class="text-gray-400 font-medium whitespace-nowrap">| <span id="data-atualizacao">${dataAtualizacao.innerText}</span></span>`;
+                window.__processo_id_docia = null;
+            }
+            
+            // Avisar ao recarregar a página (F5 ou Fechar aba)
+            window.addEventListener('beforeunload', (e) => {
+                if (window.__processo_id_docia) {
+                    e.preventDefault();
+                    e.returnValue = 'A extração está em andamento. Tem certeza que deseja sair e cancelar o processo?';
+                    return e.returnValue;
+                }
+            });
+            
+            // Abortar de fato caso ele saia da aba
+            window.addEventListener('pagehide', () => {
+                if (window.__processo_id_docia) {
+                    navigator.sendBeacon(`/dashboards/documentos-ia/api/parar/${window.__processo_id_docia}/`);
+                }
+            });
+
+            // Avisar caso use a navegação interna do Turbo
+            document.addEventListener('turbo:before-visit', (e) => {
+                if (window.__processo_id_docia) {
+                    if (!confirm('A extração está em andamento. Tem certeza que deseja sair e cancelar o processo?')) {
+                        e.preventDefault();
+                    } else {
+                        navigator.sendBeacon(`/dashboards/documentos-ia/api/parar/${window.__processo_id_docia}/`);
+                        window.__processo_id_docia = null;
+                    }
+                }
+            });
+        });
+        
+        // IES Modal Logic
+        let mantenedorasData = {};
+        let selectedIES = new Set();
+        let activeIESFilters = [];
+        
+        window.openModalIES = function() {
+            document.getElementById('modal-ies').style.display = 'flex';
+            if (Object.keys(mantenedorasData).length === 0) {
+                document.getElementById('list-mantenedoras').innerHTML = '<div class="text-center text-gray-400 text-sm mt-10"><i class="fa-solid fa-circle-notch fa-spin text-2xl mb-2"></i><br>Carregando instituições...</div>';
+                fetch('/dashboards/documentos-ia/api/ies/')
+                    .then(r => r.json())
+                    .then(data => {
+                        if(data.status === 'ok') {
+                            mantenedorasData = data.mantenedoras;
+                            renderMantenedoras();
+                        }
+                    });
+            } else {
+                renderMantenedoras();
+            }
+        };
+        
+        window.closeModalIES = function() {
+            document.getElementById('modal-ies').style.display = 'none';
+            // reset selections to previously applied if cancelled
+            selectedIES = new Set(activeIESFilters);
+            renderSelectedIES();
+        };
+        
+        window.clearSelectedIES = function() {
+            selectedIES.clear();
+            renderSelectedIES();
+            renderMantenedoras(document.getElementById('search-ies').value);
+        };
+        
+        window.toggleMantenedora = function(mantName) {
+            const iesList = mantenedorasData[mantName];
+            const allSelected = iesList.every(ies => selectedIES.has(ies));
+            if(allSelected) {
+                iesList.forEach(ies => selectedIES.delete(ies));
+            } else {
+                iesList.forEach(ies => selectedIES.add(ies));
+            }
+            renderSelectedIES();
+            renderMantenedoras(document.getElementById('search-ies').value);
+        };
+        
+        window.toggleIES = function(iesName) {
+            if(selectedIES.has(iesName)) {
+                selectedIES.delete(iesName);
+            } else {
+                selectedIES.add(iesName);
+            }
+            renderSelectedIES();
+            renderMantenedoras(document.getElementById('search-ies').value);
+        };
+        
+        window.applyIESFilter = function() {
+            activeIESFilters = Array.from(selectedIES);
+            const textEl = document.getElementById('ies-selecionadas-text');
+            if(activeIESFilters.length === 0) {
+                textEl.innerText = "Todas as Instituições";
+                textEl.title = "Todas as Instituições";
+            } else if(activeIESFilters.length === 1) {
+                textEl.innerText = activeIESFilters[0];
+                textEl.title = activeIESFilters[0];
+            } else {
+                textEl.innerText = `${activeIESFilters.length} Instituições Selecionadas`;
+                textEl.title = `${activeIESFilters.length} Instituições Selecionadas`;
+            }
+            document.getElementById('modal-ies').style.display = 'none';
+            document.getElementById('modal-ies').style.display = 'none';
+            if (typeof window.fetchChartData === 'function') {
+                window.fetchChartData();
+            } else if (typeof window.triggerFetchChartData === 'function') {
+                window.triggerFetchChartData();
+            }
+            if (typeof window.fetchTableData === 'function') {
+                window.fetchTableData();
+            }
+        };
+        
+        function renderMantenedoras(filterText = '') {
+            const container = document.getElementById('list-mantenedoras');
+            container.innerHTML = '';
+            
+            filterText = filterText.toLowerCase();
+            
+            for(const [mant, iesList] of Object.entries(mantenedorasData)) {
+                const filteredIes = iesList.filter(ies => ies.toLowerCase().includes(filterText) || mant.toLowerCase().includes(filterText));
+                if(filteredIes.length === 0) continue;
+                
+                const allSelected = filteredIes.every(ies => selectedIES.has(ies));
+                const someSelected = filteredIes.some(ies => selectedIES.has(ies));
+                
+                const div = document.createElement('div');
+                div.className = 'border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow';
+                
+                const header = document.createElement('div');
+                header.className = 'bg-white px-5 py-3 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition-colors group';
+                
+                const iconClass = allSelected ? 'fa-solid fa-check-square' : someSelected ? 'fa-solid fa-minus-square' : 'fa-regular fa-square';
+                const iconStyle = (allSelected || someSelected) ? 'class="docia-icone-color"' : 'style="color: #D1D5DB;"';
+                
+                header.innerHTML = `
+                    <div class="flex items-center gap-3 w-full" onclick="toggleMantenedora('${mant.replace(/'/g, "\\'")}')">
+                        <i class="${iconClass} text-lg" ${iconStyle}></i>
+                        <span class="text-[13px] font-extrabold text-gray-800 leading-tight group-hover:text-pink-700 transition-colors">${mant}</span>
+                        <span class="ml-auto text-[10px] font-bold text-gray-500 bg-gray-100 border border-gray-200 px-2.5 py-0.5 rounded-md shrink-0">${filteredIes.length}</span>
+                    </div>
+                `;
+                
+                const itemsDiv = document.createElement('div');
+                itemsDiv.className = 'bg-white';
+                
+                filteredIes.forEach(ies => {
+                    const isSelected = selectedIES.has(ies);
+                    const item = document.createElement('div');
+                    item.className = 'px-5 py-2.5 flex items-center gap-3 cursor-pointer hover:bg-gray-50 transition-colors border-t border-gray-100';
+                    item.onclick = () => toggleIES(ies);
+                    
+                    const itemIcon = isSelected ? 'fa-solid fa-check-square' : 'fa-regular fa-square';
+                    const itemColor = isSelected ? 'class="docia-icone-color"' : 'style="color: #D1D5DB;"';
+                    const textColor = isSelected ? 'class="docia-texto-selecionado"' : 'style="color: #4B5563;"';
+                    const bgHighlight = isSelected ? 'class="docia-bg-selecionado"' : '';
+                    
+                    if(isSelected) {
+                        item.style = bgHighlight;
+                    }
+                    
+                    item.innerHTML = `
+                        <i class="${itemIcon} text-base" ${itemColor}></i>
+                        <span class="text-xs leading-tight" ${textColor}>${ies}</span>
+                    `;
+                    itemsDiv.appendChild(item);
+                });
+                
+                div.appendChild(header);
+                div.appendChild(itemsDiv);
+                container.appendChild(div);
+            }
+        }
+        
+        function renderSelectedIES() {
+            const container = document.getElementById('list-selected-ies');
+            const emptyMsg = document.getElementById('empty-selected-msg');
+            document.getElementById('count-selected-ies').innerText = selectedIES.size;
+            
+            Array.from(container.children).forEach(c => {
+                if(c.id !== 'empty-selected-msg') c.remove();
+            });
+            
+            if(selectedIES.size === 0) {
+                if(emptyMsg) emptyMsg.style.display = 'flex';
+            } else {
+                if(emptyMsg) emptyMsg.style.display = 'none';
+                Array.from(selectedIES).sort().forEach(ies => {
+                    const item = document.createElement('div');
+                    item.className = 'p-3.5 bg-white border border-gray-200 rounded-xl flex items-center justify-between hover:border-pink-300 transition-colors mb-2 shadow-sm group';
+                    item.innerHTML = `
+                        <div class="flex items-center gap-3 overflow-hidden pr-2">
+                            <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" class="docia-icone-bg">
+                                <i class="fa-solid fa-building-columns" class="docia-icone-color"></i>
+                            </div>
+                            <span class="text-xs font-bold text-gray-700 truncate group-hover:text-[#6B007B] transition-colors" title="${ies}">${ies}</span>
+                        </div>
+                        <button onclick="toggleIES('${ies.replace(/'/g, "\\'")}')" class="text-gray-300 hover:text-red-500 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 transition-colors shrink-0">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    `;
+                    container.appendChild(item);
+                });
+            }
+        }
+        
+        document.getElementById('search-ies')?.addEventListener('input', (e) => {
+            const val = e.target.value;
+            const clearBtn = document.getElementById('clear-search-ies');
+            if (clearBtn) {
+                if (val.length > 0) {
+                    clearBtn.classList.remove('hidden');
+                } else {
+                    clearBtn.classList.add('hidden');
+                }
+            }
+            renderMantenedoras(val);
+        });
+
+        // ==========================================================================
+        // ARQUITETURA: HIGH-PERFORMANCE DOUBLE SCROLLBAR
+        // ==========================================================================
+        function initDoubleScrollbar() {
+            const topScroll = document.getElementById('top-scrollbar-container');
+            const topContent = document.getElementById('top-scrollbar-content');
+            const mainScroll = document.getElementById('main-scrollbar-container');
+
+            if (!topScroll || !topContent || !mainScroll) return;
+
+            // Idempotência: impede que o Turbo Drive aplique múltiplos ouvintes se a página recarregar via cache
+            if (topScroll.dataset.scrollInitialized === 'true') return;
+            topScroll.dataset.scrollInitialized = 'true';
+
+            // 1. Motor de Cálculo de Largura com proteção de Paint Cycle (rAF duplo)
+            const syncWidths = () => {
+                requestAnimationFrame(() => {
+                    // scrollWidth pega o tamanho real do conteúdo transbordante
+                    const realWidth = mainScroll.scrollWidth;
+                    if (realWidth > 0 && topContent.style.width !== `${realWidth}px`) {
+                        topContent.style.width = `${realWidth}px`;
+                    }
+                });
+            };
+
+            // 2. Observador de Mutações Robusto (Reage ao Fetch do seu JS)
+            const tbody = document.getElementById('table-body-beneficiarios');
+            if (tbody) {
+                const observer = new MutationObserver(() => {
+                    // Aguarda o navegador desenhar (paint) as novas <tr> antes de medir
+                    requestAnimationFrame(() => requestAnimationFrame(syncWidths));
+                });
+                observer.observe(tbody, { childList: true, subtree: true });
+            }
+
+            // 3. Monitoramento de Redimensionamento Global (Responsividade)
+            if (window.ResizeObserver) {
+                const resizeObserver = new ResizeObserver(() => requestAnimationFrame(syncWidths));
+                resizeObserver.observe(mainScroll);
+            } else {
+                window.addEventListener('resize', syncWidths);
+            }
+
+            // 4. Sincronização Matemática de Rolagem (Prevenção de Infinite Loop)
+            let isSyncingTop = false;
+            let isSyncingMain = false;
+
+            // Usamos { passive: true } para não bloquear a thread principal (Melhoria de INP Core Web Vitals)
+            topScroll.addEventListener('scroll', () => {
+                if (!isSyncingTop) {
+                    isSyncingMain = true;
+                    mainScroll.scrollLeft = topScroll.scrollLeft;
+                }
+                isSyncingTop = false;
+            }, { passive: true });
+
+            mainScroll.addEventListener('scroll', () => {
+                if (!isSyncingMain) {
+                    isSyncingTop = true;
+                    topScroll.scrollLeft = mainScroll.scrollLeft;
+                }
+                isSyncingMain = false;
+            }, { passive: true });
+
+            // Inicialização primária
+            setTimeout(syncWidths, 100);
+        }
+
+    // Vincula a inicialização ao ecossistema moderno do projeto (Suporta reload tradicional e Turbo)
+    document.addEventListener('DOMContentLoaded', initDoubleScrollbar);
+    document.addEventListener('turbo:load', initDoubleScrollbar);
+
+        // Fullscreen table logic
+        window.toggleFullscreenTable = function() {
+            const tableContainer = document.getElementById('table-container');
+            const btnFullscreen = document.getElementById('btn-fullscreen-table');
+            if (!tableContainer || !btnFullscreen) return;
+            
+            const isFullscreen = tableContainer.getAttribute('data-fullscreen') === 'true';
+            
+            if (isFullscreen) {
+                // Return to normal
+                tableContainer.setAttribute('data-fullscreen', 'false');
+                tableContainer.classList.add('bg-white/80');
+                tableContainer.classList.remove('bg-gray-50');
+                tableContainer.style.position = 'relative';
+                tableContainer.style.top = 'auto';
+                tableContainer.style.left = 'auto';
+                tableContainer.style.right = 'auto';
+                tableContainer.style.bottom = 'auto';
+                tableContainer.style.height = '';
+                tableContainer.style.zIndex = 'auto';
+                btnFullscreen.innerHTML = '<i class="fa-solid fa-expand"></i>';
+                btnFullscreen.title = 'Tela Cheia';
+            } else {
+                // Go fullscreen
+                tableContainer.setAttribute('data-fullscreen', 'true');
+                tableContainer.classList.remove('bg-white/80');
+                tableContainer.classList.add('bg-gray-50');
+                tableContainer.style.position = 'fixed';
+                tableContainer.style.top = '0';
+                tableContainer.style.left = '0';
+                tableContainer.style.right = '0';
+                tableContainer.style.bottom = '0';
+                tableContainer.style.height = '100vh';
+                tableContainer.style.zIndex = '9999';
+                btnFullscreen.innerHTML = '<i class="fa-solid fa-compress"></i>';
+                btnFullscreen.title = 'Minimizar';
+            }
+        };
+    </script>
+</body>
+</html
+        </main>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const sidebar = document.getElementById('filter-sidebar');
+            const toggleBtn = document.getElementById('toggle-sidebar-btn');
+            const toggleIcon = document.getElementById('toggle-sidebar-icon');
+            const mainContent = document.getElementById('main-content');
+
+            if (toggleBtn && sidebar) {
+                toggleBtn.addEventListener('click', () => {
+                    const isClosed = sidebar.classList.contains('-translate-x-full');
+                    if (isClosed) {
+                        sidebar.classList.remove('-translate-x-full');
+                        if (mainContent) {
+                            mainContent.classList.add('pl-[345px]');
+                            mainContent.style.paddingLeft = '335px';
+                        }
+                        toggleIcon.classList.remove('fa-chevron-right');
+                        toggleIcon.classList.add('fa-chevron-left');
+                    } else {
+                        sidebar.classList.add('-translate-x-full');
+                        if (mainContent) {
+                            mainContent.classList.remove('pl-[345px]');
+                            mainContent.style.paddingLeft = '';
+                        }
+                        toggleIcon.classList.remove('fa-chevron-left');
+                        toggleIcon.classList.add('fa-chevron-right');
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1749 @@
+/* ═══════════════════════════════════════════════════════════
+   Gestão Polichat — style.css v15
+   Paleta OVG: rosa pink (#ec4899) como cor primária
+   Background com blobs coloridos + glassmorphism
+   ═══════════════════════════════════════════════════════════ */
+
+/* ==========================================================================
+   PLANO DE FUNDO - MALHA DE GRID (.grid-bg)
+   ========================================================================== */
+.grid-bg {
+    background-image: 
+        linear-gradient(rgba(147, 51, 234, 0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(147, 51, 234, 0.07) 1px, transparent 1px);
+    background-size: 113px 75px;
+}
+
+:root {
+    /* ── Paleta OVG Pink ─────────────────────────────────── */
+    --pink: #ec4899;
+    --pink-dark: #db2777;
+    --pink-light: #f9a8d4;
+    --pink-glow: rgba(236, 72, 153, .18);
+
+    /* ── Base ─────────────────────────────────────────────── */
+    --c-bg: #f8f6fb;
+    --c-surface: #fff;
+    --c-border: #e8eaf2;
+    --c-text: #1a1d2e;
+    --c-muted: #7c809a;
+
+    /* ── Status ───────────────────────────────────────────── */
+    --c-amber: #f59e0b;
+    --c-amber-bg: #fffbeb;
+    --c-amber-bd: #fde68a;
+    --c-blue: #3b82f6;
+    --c-blue-bg: #eff6ff;
+    --c-blue-bd: #bfdbfe;
+    --c-green: #10b981;
+    --c-green-bg: #ecfdf5;
+    --c-green-bd: #a7f3d0;
+    /* Verde de TEXTO, mais escuro que o de traço: é o tom usado sobre o fundo
+       pastel dos chips e do total "Concluído". Existe como variável porque o
+       polichat.js escreve esse total em atributo `style` — sem ela, o valor
+       ficaria fixo no JS e o modo eleitoral não teria como alcançá-lo. */
+    --c-green-txt: #065f46;
+    --c-rose: #f43f5e;
+    --c-rose-bg: #fff1f2;
+    --c-rose-bd: #fecdd3;
+    --c-purple: #8b5cf6;
+    --c-purple-bg: #f5f3ff;
+    --c-purple-bd: #ddd6fe;
+
+    /* ── Efeitos ──────────────────────────────────────────── */
+    --shadow-sm: 0 8px 30px rgba(0, 0, 0, .04);
+    --shadow-md: 0 12px 40px rgba(0, 0, 0, .08);
+    --shadow-lg: 0 16px 50px rgba(0, 0, 0, .12);
+    --glass: rgba(255, 255, 255, .80);
+    --glass-border: rgba(255, 255, 255, .60);
+    --r: 16px;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0
+}
+
+html,
+body {
+    height: 100%;
+    overflow: hidden
+}
+
+html { font-size: 90%; }
+body {
+    font-family: 'Poppins', 'DM Sans', system-ui, sans-serif;
+    color: var(--c-text);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.mono {
+    font-family: 'JetBrains Mono', monospace
+}
+
+/* ═══════════════════════════════════════════════════════════
+   APP SHELL
+   ═══════════════════════════════════════════════════════════ */
+.app {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   HEADER — glassmorphism
+   ═══════════════════════════════════════════════════════════ */
+.header {
+    background: var(--glass);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-bottom: 1px solid var(--glass-border);
+    padding: 0 28px;
+    z-index: 100;
+    box-shadow: 0 1px 12px rgba(236, 72, 153, .06);
+}
+
+.header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 68px;
+    gap: 20px;
+}
+
+/* Brand */
+.header-brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-shrink: 0
+}
+
+.brand-icon {
+    width: 42px;
+    height: 42px;
+    background: linear-gradient(135deg, #f472b6, var(--pink), var(--pink-dark));
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 18px;
+    box-shadow: 0 4px 16px rgba(236, 72, 153, .30);
+}
+
+.brand-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px
+}
+
+.brand-title {
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: -.4px;
+    color: var(--c-text)
+}
+
+.brand-title span {
+    font-weight: 500;
+    color: var(--pink)
+}
+
+.sync-badge {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    color: var(--c-muted);
+}
+
+.sync-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #10b981;
+    animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1)
+    }
+
+    50% {
+        opacity: .5;
+        transform: scale(.8)
+    }
+}
+
+/* ── Filtros — cards glassmorphism ─────────────────────── */
+.header-filters {
+    display: flex;
+    align-items: stretch;
+    gap: 12px;
+    flex: 1;
+    justify-content: center;
+    max-width: 620px
+}
+
+.filter-card {
+    flex: 1;
+    background: rgba(255, 255, 255, .55);
+    border: 1.5px solid rgba(236, 72, 153, .15);
+    border-radius: 14px;
+    padding: 6px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    transition: border-color .2s, box-shadow .2s, background .2s;
+    min-width: 0;
+}
+
+.filter-card:hover {
+    border-color: rgba(236, 72, 153, .35);
+    background: rgba(255, 255, 255, .75);
+}
+
+.filter-card:focus-within {
+    border-color: var(--pink);
+    box-shadow: 0 0 0 3px var(--pink-glow);
+    background: rgba(255, 255, 255, .85);
+}
+
+.filter-label {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    color: var(--pink);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.filter-label i {
+    font-size: 9px
+}
+
+.filter-field {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    position: relative;
+}
+
+.filter-field select,
+/* Date picker customizado (Flatpickr override) */
+.filter-dates {
+    gap: 8px;
+    position: relative;
+}
+
+.filter-dates input {
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--c-muted);
+    cursor: pointer;
+    width: 125px;
+    text-align: center;
+    padding: 2px 6px;
+}
+
+.date-sep {
+    font-size: 9px;
+    color: var(--pink-light);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+}
+
+/* Quick Dates Buttons */
+.quick-dates {
+    display: flex;
+    gap: 4px;
+}
+
+.qd-btn {
+    background: rgba(236, 72, 153, 0.1);
+    border: none;
+    border-radius: 4px;
+    font-size: 9.5px;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 700;
+    color: var(--pink-dark);
+    padding: 3px 6px;
+    cursor: pointer;
+    transition: all .2s;
+    text-transform: uppercase;
+}
+
+.qd-btn:hover {
+    background: #6B007B !important;
+    color: #fff !important;
+    border-color: #6B007B !important;
+    box-shadow: 0 4px 12px rgba(107, 0, 123, 0.2) !important;
+}
+
+.qd-btn.qd-active {
+    background: #6B007B !important;
+    color: #fff !important;
+    border-color: #6B007B !important;
+    box-shadow: 0 4px 12px rgba(107, 0, 123, 0.3) !important;
+    transform: translateY(-1px);
+}
+
+/* ── Flatpickr OVG Pink Theme ────────────── */
+.flatpickr-calendar {
+    font-family: 'DM Sans', sans-serif !important;
+    border: 1.5px solid rgba(236, 72, 153, .2) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, .12) !important;
+    padding: 0 !important;
+    width: 310px !important;
+}
+
+.flatpickr-calendar.inline {
+    width: 100% !important;
+    box-shadow: none !important;
+    border: none !important;
+    margin-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+.flatpickr-months {
+    height: 32px !important;
+}
+
+.flatpickr-months .flatpickr-month {
+    height: 32px !important;
+}
+
+.flatpickr-current-month {
+    height: 32px !important;
+    padding-top: 4px !important;
+    font-size: 11px !important;
+}
+
+.flatpickr-weekdaycontainer {
+    height: 22px !important;
+}
+
+.flatpickr-weekday {
+    color: var(--pink) !important;
+    font-weight: 800 !important;
+    font-size: 10px !important;
+    line-height: 22px !important;
+}
+
+.flatpickr-days {
+    width: 100% !important;
+}
+
+.dayContainer {
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+}
+
+.flatpickr-day {
+    max-width: 14% !important;
+    height: 26px !important;
+    line-height: 26px !important;
+    font-size: 11px !important;
+    margin-top: 2px !important;
+}
+
+.flatpickr-day.selected,
+.flatpickr-day.startRange,
+.flatpickr-day.endRange,
+.flatpickr-day.selected.inRange,
+.flatpickr-day.startRange.inRange,
+.flatpickr-day.endRange.inRange,
+.flatpickr-day.selected:focus,
+.flatpickr-day.startRange:focus,
+.flatpickr-day.endRange:focus,
+.flatpickr-day.selected:hover,
+.flatpickr-day.startRange:hover,
+.flatpickr-day.endRange:hover,
+.flatpickr-day.selected.prevMonthDay,
+.flatpickr-day.startRange.prevMonthDay,
+.flatpickr-day.endRange.prevMonthDay,
+.flatpickr-day.selected.nextMonthDay,
+.flatpickr-day.startRange.nextMonthDay,
+.flatpickr-day.endRange.nextMonthDay {
+    background: var(--pink) !important;
+    border-color: var(--pink) !important;
+    font-weight: bold;
+}
+
+.flatpickr-day:hover {
+    background: rgba(236, 72, 153, .1) !important;
+    border-color: transparent !important;
+    color: var(--pink-dark) !important;
+}
+
+.flatpickr-months .flatpickr-month {
+    color: var(--pink-dark) !important;
+    fill: var(--pink-dark) !important;
+}
+
+.flatpickr-current-month .flatpickr-monthDropdown-months:hover {
+    background: rgba(236, 72, 153, .1);
+}
+
+.flatpickr-months .flatpickr-prev-month:hover svg,
+.flatpickr-months .flatpickr-next-month:hover svg {
+    fill: var(--pink) !important;
+}
+
+.flatpickr-weekday {
+    color: var(--pink) !important;
+    font-weight: 800 !important;
+    font-size: 11px !important;
+}
+
+/* ── Custom Select — dropdown glassmorphism ────────────── */
+.custom-select {
+    position: relative;
+    width: 100%;
+    min-width: 200px;
+}
+
+.cs-display {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    cursor: pointer;
+    padding: 2px 0;
+    user-select: none;
+}
+
+.cs-text {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--c-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cs-text.placeholder {
+    color: var(--c-muted)
+}
+
+.cs-arrow {
+    font-size: 9px;
+    color: var(--pink-light);
+    flex-shrink: 0;
+    transition: transform .25s;
+}
+
+.custom-select.open .cs-arrow {
+    transform: rotate(180deg)
+}
+
+.cs-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 10px);
+    left: -14px;
+    right: -14px;
+    background: rgba(255, 255, 255, .92);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1.5px solid rgba(236, 72, 153, .2);
+    border-radius: 16px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, .12), 0 0 0 1px rgba(255, 255, 255, .5) inset;
+    z-index: 999;
+    overflow: hidden;
+    animation: dropIn .2s ease;
+}
+
+.custom-select.open .cs-dropdown {
+    display: block
+}
+
+@keyframes dropIn {
+    from {
+        opacity: 0;
+        transform: translateY(-6px)
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0)
+    }
+}
+
+.cs-search-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(236, 72, 153, .1);
+}
+
+.cs-search-wrap i {
+    font-size: 11px;
+    color: var(--pink-light);
+    flex-shrink: 0
+}
+
+.cs-search {
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--c-text);
+    width: 100%;
+}
+
+.cs-search::placeholder {
+    color: #c0c4d4
+}
+
+.cs-options {
+    max-height: 240px;
+    overflow-y: auto;
+    padding: 6px;
+}
+
+.cs-options::-webkit-scrollbar {
+    width: 4px
+}
+
+.cs-options::-webkit-scrollbar-thumb {
+    background: var(--pink-light);
+    border-radius: 4px
+}
+
+.cs-option {
+    padding: 9px 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--c-text);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all .12s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cs-option:hover {
+    background: rgba(236, 72, 153, .08);
+    color: var(--pink-dark);
+}
+
+.cs-option.active {
+    background: linear-gradient(135deg, rgba(244, 114, 182, .15), rgba(236, 72, 153, .12));
+    color: var(--pink-dark);
+    font-weight: 700;
+}
+
+.cs-option.active::before {
+    content: '\f00c';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    font-size: 9px;
+    color: var(--pink);
+}
+
+.cs-option.hidden {
+    display: none
+}
+
+.cs-empty {
+    padding: 16px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--c-muted);
+    font-weight: 500;
+}
+
+/* ── Botões (alinhados) ───────────────────────────────── */
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.btn-sync {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: linear-gradient(135deg, #f472b6, var(--pink), var(--pink-dark));
+    border: none;
+    border-radius: 12px;
+    padding: 10px 18px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+    cursor: pointer;
+    transition: all .25s;
+    white-space: nowrap;
+    box-shadow: 0 4px 16px rgba(236, 72, 153, .25);
+}
+
+.btn-sync:hover:not(:disabled) {
+    box-shadow: 0 6px 24px rgba(236, 72, 153, .40);
+    transform: translateY(-1px);
+}
+
+.btn-sync:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(236, 72, 153, .25)
+}
+
+.btn-sync:disabled {
+    opacity: .5;
+    cursor: not-allowed
+}
+
+.btn-sync.spinning i {
+    animation: spin 1s linear infinite
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg)
+    }
+}
+
+.btn-back {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: rgba(255, 255, 255, .6);
+    backdrop-filter: blur(8px);
+    border: 1.5px solid var(--c-border);
+    border-radius: 12px;
+    padding: 10px 18px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--c-muted);
+    cursor: pointer;
+    text-decoration: none;
+    transition: all .2s;
+    white-space: nowrap;
+}
+
+.btn-back:hover {
+    border-color: var(--pink);
+    color: var(--pink);
+    background: rgba(255, 255, 255, .85);
+    box-shadow: 0 2px 12px rgba(236, 72, 153, .1);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MAIN — conteúdo com glass
+   ═══════════════════════════════════════════════════════════ */
+.main {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 16px 22px;
+    gap: 12px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   KPI STRIP
+   ═══════════════════════════════════════════════════════════ */
+.kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    flex-shrink: 0
+}
+
+.kpi-card {
+    background: var(--glass);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--r);
+    padding: 14px 16px;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all .25s;
+    cursor: pointer;
+}
+
+.kpi-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, .85);
+}
+
+.kpi-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.kpi-icon.amber {
+    background: var(--c-amber-bg);
+    color: var(--c-amber);
+    border: 1px solid var(--c-amber-bd)
+}
+
+.kpi-icon.blue {
+    background: var(--c-blue-bg);
+    color: var(--c-blue);
+    border: 1px solid var(--c-blue-bd)
+}
+
+.kpi-icon.green {
+    background: var(--c-green-bg);
+    color: var(--c-green);
+    border: 1px solid var(--c-green-bd)
+}
+
+.kpi-icon.rose {
+    background: var(--c-rose-bg);
+    color: var(--c-rose);
+    border: 1px solid var(--c-rose-bd)
+}
+
+.kpi-icon.purple {
+    background: var(--c-purple-bg);
+    color: var(--c-purple);
+    border: 1px solid var(--c-purple-bd)
+}
+
+.kpi-body {
+    flex: 1;
+    min-width: 0
+}
+
+.kpi-label {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    color: var(--c-muted);
+    white-space: nowrap;
+}
+
+.kpi-value {
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    line-height: 1.1;
+    margin-top: 2px
+}
+
+.kpi-value.amber {
+    color: var(--c-amber)
+}
+
+.kpi-value.blue {
+    color: var(--c-blue)
+}
+
+.kpi-value.green {
+    color: var(--c-green)
+}
+
+.kpi-value.rose {
+    color: var(--c-rose)
+}
+
+.kpi-value.purple {
+    color: var(--c-purple)
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MASTER PANEL — glassmorphism
+   ═══════════════════════════════════════════════════════════ */
+.master-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--glass);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--r);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    min-height: 0;
+}
+
+.master-tabs {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    border-bottom: 1px solid var(--c-border);
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, .5);
+    overflow-x: auto;
+}
+
+.mtab {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 11px 16px;
+    background: none;
+    border: none;
+    border-bottom: 2.5px solid transparent;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--c-muted);
+    cursor: pointer;
+    transition: all .18s;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.mtab i {
+    font-size: 11px
+}
+
+.mtab:hover {
+    color: var(--c-text);
+    background: rgba(255, 255, 255, .6)
+}
+
+.mtab.active {
+    color: var(--c-text);
+    background: rgba(255, 255, 255, .8);
+    border-bottom-color: var(--pink);
+    font-weight: 700;
+}
+
+.mtab-count {
+    font-size: 9px;
+    font-weight: 800;
+    padding: 1px 6px;
+    border-radius: 20px;
+    min-width: 18px;
+    text-align: center;
+}
+
+.amber-c {
+    background: var(--c-amber-bg);
+    color: #b45309;
+    border: 1px solid var(--c-amber-bd)
+}
+
+.blue-c {
+    background: var(--c-blue-bg);
+    color: #1d4ed8;
+    border: 1px solid var(--c-blue-bd)
+}
+
+.green-c {
+    background: var(--c-green-bg);
+    color: #065f46;
+    border: 1px solid var(--c-green-bd)
+}
+
+.rose-c {
+    background: var(--c-rose-bg);
+    color: #be123c;
+    border: 1px solid var(--c-rose-bd)
+}
+
+.purple-c {
+    background: var(--c-purple-bg);
+    color: #7e22ce;
+    border: 1px solid var(--c-purple-bd)
+}
+
+.mtab-search {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    margin-right: 12px;
+    background: rgba(255, 255, 255, .7);
+    border: 1px solid var(--c-border);
+    border-radius: 8px;
+    padding: 5px 10px;
+    flex-shrink: 0;
+    transition: border-color .2s;
+}
+
+.mtab-search:focus-within {
+    border-color: var(--pink)
+}
+
+.mtab-search i {
+    font-size: 10px;
+    color: var(--c-muted)
+}
+
+.mtab-search input {
+    border: none;
+    outline: none;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--c-text);
+    width: 190px;
+    background: transparent;
+}
+
+.mtab-search input::placeholder {
+    color: #c0c4d4
+}
+
+.search-clear {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: none;
+    padding: 2px;
+    cursor: pointer;
+    color: var(--c-muted);
+    font-size: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    transition: color .15s, background-color .15s;
+}
+
+.search-clear:hover {
+    color: var(--pink);
+    background: rgba(240, 36, 140, .1);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PANES & CARDS (inalterados)
+   ═══════════════════════════════════════════════════════════ */
+.tab-pane {
+    display: none;
+    flex: 1;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0
+}
+
+.tab-pane.active {
+    display: flex
+}
+
+.card-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 0
+}
+
+.card-list::-webkit-scrollbar {
+    width: 5px
+}
+
+.card-list::-webkit-scrollbar-thumb {
+    background: #e2e5ef;
+    border-radius: 4px
+}
+
+.item-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-bottom: 1px solid #f2f3f8;
+    transition: background .12s;
+    animation: fadeIn .2s ease;
+}
+
+.item-card:hover {
+    background: rgba(252, 231, 243, .15)
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(2px)
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0)
+    }
+}
+
+.ic-identity {
+    min-width: 200px;
+    max-width: 240px;
+    flex-shrink: 0
+}
+
+.ic-name {
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis
+}
+
+.ic-phone {
+    font-size: 9px;
+    color: var(--c-muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+    margin-top: 1px
+}
+
+.ic-status {
+    flex-shrink: 0
+}
+
+.ic-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    flex-wrap: wrap;
+    min-width: 0
+}
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 9px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 6px;
+    white-space: nowrap;
+}
+
+.chip i {
+    font-size: 9px
+}
+
+.chip.amber {
+    background: var(--c-amber-bg);
+    color: #b45309;
+    border: 1px solid var(--c-amber-bd)
+}
+
+.chip.blue {
+    background: var(--c-blue-bg);
+    color: #1d4ed8;
+    border: 1px solid var(--c-blue-bd)
+}
+
+.chip.green {
+    background: var(--c-green-bg);
+    color: #065f46;
+    border: 1px solid var(--c-green-bd)
+}
+
+.chip.rose {
+    background: var(--c-rose-bg);
+    color: #be123c;
+    border: 1px solid var(--c-rose-bd)
+}
+
+.chip.purple {
+    background: var(--c-purple-bg);
+    color: #7e22ce;
+    border: 1px solid var(--c-purple-bd)
+}
+
+.chip.neutral {
+    background: #f5f6fa;
+    color: var(--c-muted);
+    border: 1px solid var(--c-border)
+}
+
+.chip.redir {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a
+}
+
+.chip .mono {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px
+}
+
+.ic-time {
+    flex-shrink: 0;
+    text-align: right;
+    margin-left: auto
+}
+
+.ic-time-label {
+    font-size: 8px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: var(--c-muted)
+}
+
+.ic-time-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+    display: inline-block;
+    margin-top: 1px;
+}
+
+/* Status pills */
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .4px;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 20px;
+}
+
+.status-pill::before {
+    content: '';
+    width: 5px;
+    height: 5px;
+    border-radius: 50%
+}
+
+.status-pill.aguardando {
+    background: var(--c-amber-bg);
+    color: #b45309;
+    border: 1px solid var(--c-amber-bd)
+}
+
+.status-pill.aguardando::before {
+    background: var(--c-amber);
+    animation: blink 1.2s ease-in-out infinite
+}
+
+.animate-cta .icon-wrapper {
+    animation: pulseLateral 1.5s ease-in-out infinite;
+}
+
+.sidebar-btn {
+    right: -94px;
+    width: 94px;
+}
+.sidebar-btn:hover {
+    right: -100px;
+    width: 100px;
+}
+.sidebar-icon-wrapper {
+    margin-right: 10px;
+}
+
+.status-pill.atendimento {
+    background: var(--c-blue-bg);
+    color: #1d4ed8;
+    border: 1px solid var(--c-blue-bd)
+}
+
+.status-pill.atendimento::before {
+    background: var(--c-blue)
+}
+
+.status-pill.fechado {
+    background: var(--c-green-bg);
+    color: #065f46;
+    border: 1px solid var(--c-green-bd)
+}
+
+.status-pill.fechado::before {
+    background: var(--c-green)
+}
+
+.status-pill.fechado-outro {
+    background: var(--c-rose-bg);
+    color: #be123c;
+    border: 1px solid var(--c-rose-bd)
+}
+
+.status-pill.fechado-outro::before {
+    background: var(--c-rose)
+}
+
+.status-pill.retorno {
+    background: var(--c-purple-bg);
+    color: #7e22ce;
+    border: 1px solid var(--c-purple-bd)
+}
+
+.status-pill.retorno::before {
+    background: var(--c-purple);
+    animation: blink 1.4s ease-in-out infinite
+}
+
+@keyframes blink {
+
+    0%,
+    100% {
+        opacity: 1
+    }
+
+    50% {
+        opacity: .3
+    }
+}
+
+/* Sidebar de Filtros — durante o slide (transform), o backdrop-blur é o item mais
+   caro do frame: o navegador precisa re-amostrar o blur do conteúdo por baixo a
+   cada frame do movimento.
+
+   A versão anterior desligava o blur e o substituía por um fundo sólido. Isso
+   barateava o frame, mas trocava a APARÊNCIA no meio do caminho: a barra abria
+   numa cor e assentava em outra, o que se via como um piscar de escuro para
+   claro no tema eleitoral. E não havia cor sólida capaz de acertar sempre — a
+   cor de repouso é composta do que estiver atrás naquele instante, então ela
+   muda conforme a tela tenha tabela, gráfico ou o card de boas-vindas.
+
+   Agora reduzimos o RAIO em vez de desligar o efeito. O custo do blur cresce
+   com o raio, então 12px já devolve a maior parte do orçamento de frame,
+   enquanto a cor segue sendo amostrada do conteúdo real — não há troca de
+   aparência para o olho perceber, com qualquer conteúdo. O raio cheio volta ao
+   repousar. */
+#filter-sidebar {
+    will-change: transform;
+}
+
+#filter-sidebar.is-animating {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+/* O que realmente trava a abertura não é a barra, é o container ao lado.
+   `transition-all` no #main-content faz o navegador vigiar TODAS as
+   propriedades animáveis, e o JS anima `padding-left` de 0 a 335px — uma
+   propriedade de LAYOUT. Cada frame reflui a árvore inteira do painel: tabela
+   com min-width de 1500px, KPIs e gráficos. Restringir a transição à única
+   propriedade que de fato muda tira do caminho o trabalho de observar as
+   outras, sem alterar o movimento em si.
+
+   Vence a utilitária do template por especificidade de ID, então o markup
+   permanece intocado. */
+#main-content {
+    transition-property: padding-left;
+}
+
+/* Enquanto a barra desliza, promove o container a camada própria e avisa o
+   navegador de qual propriedade vai mudar. A classe é posta e retirada pelo
+   mesmo par de eventos que já controla a barra, então isto não dura mais que a
+   animação — `will-change` permanente custa memória à toa. */
+#main-content.is-animating {
+    will-change: padding-left;
+}
+
+/* Número flutuante de alerta (ex.: 6³) nas colunas Em Atendimento/Aguardando
+   da tabela de Desempenho por Agente — sinaliza chats acima de 30min.
+   Clicável: leva à Mesa de Trabalho já filtrada por agente + críticos. */
+.critico-flutuante {
+    color: #dc2626;
+    font-weight: 900;
+    font-size: .65em;
+    vertical-align: super;
+    margin-left: 1px;
+    animation: blink 1s ease-in-out infinite;
+    cursor: pointer;
+    padding: 0 2px;
+    border-radius: 4px;
+}
+
+.critico-flutuante:hover {
+    background: rgba(220, 38, 38, .12);
+    text-decoration: underline;
+}
+
+/* Cronômetro que não desloca o layout.
+   Duas causas de movimento, duas defesas:
+   1) o texto mudava de comprimento a cada 9→10 e 59→0 segundos. Resolvido no JS
+      com data-pad="1", que zera minutos e segundos à esquerda ("4h 04m 09s"),
+      deixando o comprimento constante dentro de cada hora;
+   2) os dígitos da Poppins têm larguras diferentes e ela NÃO traz a feature
+      `tnum` — medido no navegador, "4h 04m 00s" e "4h 05m 11s" davam 76px e 67px
+      com tabular-nums aplicado. Por isso o cronômetro usa JetBrains Mono, que já
+      é carregada nesta página e é a fonte da classe .mono usada nos horários.
+      Monoespaçada, a largura fica cravada independente dos dígitos.
+   Sem min-width de propósito: com a largura já constante, reservar espaço só
+   criaria um vão entre o ícone e o número. */
+.live-timer-estavel {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   EMPTY STATE
+   ═══════════════════════════════════════════════════════════ */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 50px;
+    text-align: center;
+    gap: 8px;
+}
+
+.empty-state .empty-icon {
+    font-size: 28px;
+    opacity: .3
+}
+
+.empty-state p {
+    font-size: 12px;
+    color: var(--c-muted);
+    font-weight: 500
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PAGINATION
+   ═══════════════════════════════════════════════════════════ */
+.list-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 18px;
+    border-top: 1px solid var(--c-border);
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, .5);
+}
+
+.list-info {
+    font-size: 11px;
+    color: var(--c-muted);
+    font-weight: 600
+}
+
+.pag {
+    display: flex;
+    align-items: center;
+    gap: 4px
+}
+
+.pg-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 30px;
+    height: 30px;
+    padding: 0 6px;
+    border-radius: 8px;
+    border: 1px solid var(--c-border);
+    background: var(--c-surface);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--c-text);
+    cursor: pointer;
+    transition: all .15s;
+}
+
+.pg-btn:hover:not(:disabled):not(.active) {
+    background: var(--c-bg);
+    border-color: #c4c8d8
+}
+
+.pg-btn.active {
+    background: linear-gradient(135deg, #f472b6, var(--pink));
+    color: #fff;
+    border-color: transparent;
+    box-shadow: 0 2px 10px rgba(236, 72, 153, .30);
+}
+
+.pg-btn:disabled {
+    opacity: .35;
+    cursor: not-allowed
+}
+
+.pg-dots {
+    font-size: 12px;
+    color: var(--c-muted);
+    padding: 0 2px
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PROMPT INICIAL
+   ═══════════════════════════════════════════════════════════ */
+#prompt-inicial {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+}
+
+.prompt-box {
+    background: var(--glass);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    border-radius: 24px;
+    padding: 50px 60px;
+    text-align: center;
+    box-shadow: 0 25px 50px -12px rgba(236, 72, 153, 0.25);
+    max-width: 480px;
+    position: relative;
+    overflow: hidden;
+}
+
+.prompt-box::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at center, rgba(236, 72, 153, 0.05) 0%, transparent 50%);
+    pointer-events: none;
+}
+
+.prompt-icon-wrapper {
+    width: 72px;
+    height: 72px;
+    background: linear-gradient(135deg, #f472b6, var(--pink), var(--pink-dark));
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 32px;
+    margin: 0 auto 24px auto;
+    box-shadow: 0 10px 25px rgba(236, 72, 153, 0.3);
+    border: 2px solid rgba(255, 255, 255, 0.5);
+}
+
+.prompt-box h3 {
+    font-size: 22px;
+    font-weight: 800;
+    margin-bottom: 12px;
+    color: var(--c-text);
+    letter-spacing: -0.5px;
+}
+
+.prompt-box p {
+    font-size: 13.5px;
+    color: var(--c-muted);
+    line-height: 1.6;
+    margin-bottom: 24px;
+}
+
+.prompt-box p strong {
+    color: var(--pink-dark);
+    font-weight: 700;
+}
+
+.prompt-box .arrow-up {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--pink);
+    background: rgba(236, 72, 153, 0.1);
+    padding: 10px 20px;
+    border-radius: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.btn-voltar {
+    padding: 0.625rem 1.25rem;
+    background-color: rgba(255, 255, 255, 0.8);
+    color: #db2777;
+    font-weight: 700;
+    border-radius: 0.75rem;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    border: 1px solid #fce7f3;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1;
+    text-decoration: none;
+}
+
+.btn-voltar i {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    margin-top: 1px; /* Tweak to center fontawesome icon visually */
+}
+
+.btn-voltar:hover {
+    background-color: #fdf2f8;
+}
+
+/* Custom Scrollbar Light */
+.custom-scrollbar-light::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+.custom-scrollbar-light::-webkit-scrollbar-track {
+    background: transparent;
+}
+.custom-scrollbar-light::-webkit-scrollbar-thumb {
+    background: rgba(236, 72, 153, 0.2);
+    border-radius: 10px;
+}
+.custom-scrollbar-light::-webkit-scrollbar-thumb:hover {
+    background: rgba(236, 72, 153, 0.35);
+}
+
+/* "Atendimentos +30m": reserva o espaço da barra de rolagem mesmo quando ela
+   não está visível. Sem isso, o cálculo que ajusta a altura dos cartões para
+   caberem 3 na tela muda a largura útil da lista ao aparecer/sumir a barra, o
+   conteúdo requebra e a altura medida oscila entre um frame e outro. */
+#list-criticos-gestor {
+    scrollbar-gutter: stable;
+}
+
+/* Modo compacto do cartão de crítico: só entra quando nem com o padding no
+   mínimo os 3 cartões cabem na área visível (ver ajustarAlturaCriticos).
+   Encolhe o que é decoração — avatar e respiro entre as linhas da direita —
+   sem mexer no tamanho do texto, que é o que o gestor lê de longe.
+   Especificidade de duas classes: vence as utilitárias do Tailwind
+   independentemente da ordem em que o CDN injeta o CSS. */
+.critico-compacto .critico-avatar {
+    width: 2.25rem;
+    height: 2.25rem;
+    font-size: 0.7rem;
+}
+
+.critico-compacto .critico-meta {
+    gap: 0.125rem;
+}
+
+@media (min-width: 1280px) {
+    .xl\:grid-cols-16 {
+        grid-template-columns: repeat(16, minmax(0, 1fr));
+    }
+    .xl\:col-span-9 {
+        grid-column: span 9 / span 9;
+    }
+    .xl\:col-span-7 {
+        grid-column: span 7 / span 7;
+    }
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+/* ==========================================================================
+   CONSOLE DE ATUALIZAÇÃO — utilitárias que faltavam nesta tela
+   ==========================================================================
+
+   POR QUE ESTE BLOCO EXISTE
+   O modal do console foi trazido do `dash_documentos_ia`, que roda sobre o
+   bundle geral (`static/css/output.css`). Esta tela NÃO usa esse bundle: ela
+   tem o seu próprio Tailwind compilado (`polichat-tailwind.css`), gerado a
+   partir do que o `cdn.tailwindcss.com` produzia para o markup que existia
+   NAQUELE momento. Utilitária que entrou no HTML depois daquela compilação
+   simplesmente não tem regra — e falha em silêncio.
+
+   Era exatamente isso que quebrava o console: os três círculos do "mac" ficavam
+   com 0×0 (sem `w-3.5`/`h-3.5`) e sem cor (sem `bg-[#ff5f56]` e companhia); a
+   barra de progresso animava a largura mas era transparente (sem
+   `bg-gradient-to-r`/`from-pink-400`/`to-purple-500`); e a barra de rolagem
+   rosa nunca existiu aqui, porque no documentos_ia ela vem de um <style> solto
+   dentro do template.
+
+   As declarações abaixo são as do Tailwind v3 — a mesma versão que gerou o
+   `polichat-tailwind.css` —, copiadas com os valores já resolvidos. Nenhuma
+   delas é usada em outro ponto desta tela (auditado classe a classe), então
+   este arquivo não muda um pixel fora do modal do console.
+
+   Nota sobre as cores da marca: o Polichat redefine pink-500 (#f0248c) e
+   purple-700 (#9424f0), mas NÃO redefine pink-400, purple-500 nem purple-800.
+   Os valores abaixo são os padrões do Tailwind, que é o que o documentos_ia
+   também enxerga — é isso que faz os dois consoles ficarem idênticos.
+   ========================================================================== */
+
+/* --- Dimensões e espaçamento (escala 3.5 = 0.875rem, 2.5 = 0.625rem) ------ */
+.w-3\.5 { width: 0.875rem; }
+.h-3\.5 { height: 0.875rem; }
+.py-2\.5 { padding-top: 0.625rem; padding-bottom: 0.625rem; }
+.space-x-2\.5 > :not([hidden]) ~ :not([hidden]) {
+    --tw-space-x-reverse: 0;
+    margin-right: calc(0.625rem * var(--tw-space-x-reverse));
+    margin-left: calc(0.625rem * calc(1 - var(--tw-space-x-reverse)));
+}
+.rounded-\[1\.5rem\] { border-radius: 1.5rem; }
+
+/* --- Tipografia do corpo do log ------------------------------------------- */
+.text-\[13px\] { font-size: 13px; }
+.leading-relaxed { line-height: 1.625; }
+.whitespace-pre-wrap { white-space: pre-wrap; }
+.break-words { overflow-wrap: break-word; }
+.text-purple-800 { --tw-text-opacity: 1; color: rgb(107 33 168 / var(--tw-text-opacity, 1)); }
+
+/* --- Os três botões da barra de título (semáforo do terminal do macOS) ---- */
+.bg-\[\#ff5f56\] { --tw-bg-opacity: 1; background-color: rgb(255 95 86 / var(--tw-bg-opacity, 1)); }
+.bg-\[\#ffbd2e\] { --tw-bg-opacity: 1; background-color: rgb(255 189 46 / var(--tw-bg-opacity, 1)); }
+.bg-\[\#27c93f\] { --tw-bg-opacity: 1; background-color: rgb(39 201 63 / var(--tw-bg-opacity, 1)); }
+
+/* --- Preenchimento da barra de progresso ---------------------------------- */
+.bg-gradient-to-r { background-image: linear-gradient(to right, var(--tw-gradient-stops)); }
+.from-pink-400 {
+    --tw-gradient-from: #f472b6 var(--tw-gradient-from-position);
+    --tw-gradient-to: rgb(244 114 182 / 0) var(--tw-gradient-to-position);
+    --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+.to-purple-500 { --tw-gradient-to: #a855f7 var(--tw-gradient-to-position); }
+.ease-out { transition-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+
+/* --- Sombra da janela ------------------------------------------------------ */
+.shadow-\[0_20px_60px_-15px_rgba\(236\,72\,153\,0\.2\)\] {
+    --tw-shadow: 0 20px 60px -15px rgba(236, 72, 153, 0.2);
+    --tw-shadow-colored: 0 20px 60px -15px var(--tw-shadow-color);
+    box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+}
+
+/* --- Barra de rolagem rosa do corpo do log --------------------------------
+   Valores idênticos aos do <style> embutido no template do documentos_ia.
+   Só WebKit/Blink, como lá: o Firefox cai na barra padrão nas duas telas, e
+   é isso que mantém os dois consoles realmente iguais. */
+.scroll-rosinha::-webkit-scrollbar { width: 6px; height: 6px; }
+.scroll-rosinha::-webkit-scrollbar-track { background: transparent; }
+.scroll-rosinha::-webkit-scrollbar-thumb { background: rgba(236, 72, 153, 0.3); border-radius: 10px; }
+.scroll-rosinha::-webkit-scrollbar-thumb:hover { background: rgba(236, 72, 153, 0.6); }
+
+/* --------------------------------------------------------------------------
+   CONSOLE — utilitárias da formatação do log
+
+   O corpo do log deixou de ser um paredão de texto e passou a usar a mesma
+   gramática do documentos_ia: marcos viram linha de comando, fechamentos de
+   etapa viram selo colorido e o miúdo vira linha tabular recuada. Essas peças
+   trouxeram uma segunda leva de utilitárias que o Tailwind desta tela nunca
+   compilou, pelo mesmo motivo do bloco anterior.
+
+   Também auditadas classe a classe: nenhuma delas aparece fora do modal do
+   console, nem no template nem no JS. `bounce` é o único @keyframes novo e não
+   colide com nenhum dos já declarados nesta tela (pulse, spin, blink, fadeIn,
+   dropIn, pulse-dot).
+   -------------------------------------------------------------------------- */
+
+/* --- Espaçamento e alinhamento das peças do log --------------------------- */
+.mt-4 { margin-top: 1rem; }
+/* Recuo das linhas do pipeline: ml-4 é o passo de primeiro nível e ml-8 o
+   sub-passo ("▶ Clicando em..."). São as duas classes mais repetidas do log —
+   sem elas TODA linha tabular colava na margem e a hierarquia sumia. */
+.ml-4 { margin-left: 1rem; }
+.ml-8 { margin-left: 2rem; }
+.my-0\.5 { margin-top: 0.125rem; margin-bottom: 0.125rem; }
+.mb-1\.5 { margin-bottom: 0.375rem; }
+.ml-1 { margin-left: 0.25rem; }
+.mx-1 { margin-left: 0.25rem; margin-right: 0.25rem; }
+.mx-2 { margin-left: 0.5rem; margin-right: 0.5rem; }
+.my-2 { margin-top: 0.5rem; margin-bottom: 0.5rem; }
+.h-px { height: 1px; }
+.align-middle { vertical-align: middle; }
+.italic { font-style: italic; }
+.break-all { word-break: break-all; }
+.text-\[14px\] { font-size: 14px; }
+
+/* --- Selos de etapa: bordas ----------------------------------------------- */
+.border-emerald-200 { --tw-border-opacity: 1; border-color: rgb(167 243 208 / var(--tw-border-opacity, 1)); }
+.border-blue-200    { --tw-border-opacity: 1; border-color: rgb(191 219 254 / var(--tw-border-opacity, 1)); }
+.border-purple-200  { --tw-border-opacity: 1; border-color: rgb(233 213 255 / var(--tw-border-opacity, 1)); }
+.border-red-200     { --tw-border-opacity: 1; border-color: rgb(254 202 202 / var(--tw-border-opacity, 1)); }
+
+/* --- Selos de etapa: separadores e texto ---------------------------------- */
+.text-emerald-300 { --tw-text-opacity: 1; color: rgb(110 231 183 / var(--tw-text-opacity, 1)); }
+.text-blue-300    { --tw-text-opacity: 1; color: rgb(147 197 253 / var(--tw-text-opacity, 1)); }
+.text-purple-200  { --tw-text-opacity: 1; color: rgb(233 213 255 / var(--tw-text-opacity, 1)); }
+.text-purple-300  { --tw-text-opacity: 1; color: rgb(216 180 254 / var(--tw-text-opacity, 1)); }
+.text-purple-900  { --tw-text-opacity: 1; color: rgb(88 28 135 / var(--tw-text-opacity, 1)); }
+.text-red-300     { --tw-text-opacity: 1; color: rgb(252 165 165 / var(--tw-text-opacity, 1)); }
+.text-green-500   { --tw-text-opacity: 1; color: rgb(34 197 94 / var(--tw-text-opacity, 1)); }
+
+/* --- Cursor em repouso do console ----------------------------------------- */
+.animate-bounce { animation: bounce 1s infinite; }
+@keyframes bounce {
+    0%, 100% { transform: translateY(-25%); animation-timing-function: cubic-bezier(0.8, 0, 1, 1); }
+    50%      { transform: none;             animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+}
+
+/* --- Cursor piscante que fecha a última linha enquanto o ciclo roda --------
+   Cópia literal da regra do `dash_documentos_ia.css`, inclusive o nome da
+   classe: é o mesmo componente, e manter o nome deixa explícito que os dois
+   consoles são a mesma peça. Antes isso vinha como `style=` inline no JS, com
+   o keyframes `blink` local — funcionava, mas divergia em duração e técnica
+   (opacity x visibility) do original. */
+.docia-cursor-terminal {
+    display: inline-block;
+    width: 0.5rem;
+    height: 1rem;
+    margin-left: 0.25rem;
+    vertical-align: middle;
+    background-color: #ec4899;
+    animation: docia-piscar 1s steps(2, start) infinite;
+}
+@keyframes docia-piscar { to { visibility: hidden; } }
+
+/* --------------------------------------------------------------------------
+   CONSOLE — superfícies, como variáveis
+
+   Os valores abaixo são exatamente os que estavam escritos à mão no atributo
+   `style` de cada elemento do modal: nada muda no tema claro, é a mesma cor
+   pelo mesmo caminho. O que muda é quem pode reapontá-la.
+
+   POR QUE VARIÁVEL, E NÃO OVERRIDE COM !important
+     Cor em atributo `style` só perde para `!important`, e o modo eleitoral
+     precisaria de um `!important` por superfície — o arquivo do tema já explica
+     que isso é aceitável, mas só onde não há alternativa. Aqui há: o inline
+     passa a apontar para a variável, e o tema apenas redefine a variável sob
+     `html[data-tema="eleitoral"]`. Sem !important, sem duplicar seletor, e a
+     ordem de carregamento deixa de importar.
+
+   As bolinhas do semáforo (#ff5f56 / #ffbd2e / #27c93f) NÃO entram aqui de
+   propósito: elas são a convenção da janela de terminal do macOS e valem igual
+   nos dois modos — num terminal escuro de verdade elas continuam vermelha,
+   amarela e verde.
+   -------------------------------------------------------------------------- */
+:root {
+    --poli-console-veu: rgba(15, 23, 42, 0.4);
+    --poli-console-superficie: #fbf9fe;
+    --poli-console-cromo: #f4f0fa;
+    --poli-console-borda: rgba(233, 213, 255, 0.6);
+    --poli-console-fundo-log: linear-gradient(to bottom right, #fbf9fe, #fff5fa);
+    --poli-console-trilho: #ede8f5;
+    --poli-console-trilho-borda: rgba(233, 213, 255, 0.5);
+}
