@@ -132,3 +132,8 @@ scratch/
 .claude/skills/
 .playwright/
 skills-lock.json
+
+# Backup de usuarios: contem nome, login, hash de senha e session_key de pessoas
+# reais. O repositorio e publico, entao o arquivo real fica so no servidor; o
+# .example.json versionado serve de ponto de partida para um clone novo.
+gestao_acessos_iniciais.json

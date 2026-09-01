@@ -385,6 +385,7 @@ try:
 
     new_env += '# --- 6. SERVIDOR E AUTOMACOES ---\\n'
     new_env += f\\\"PWD_SERVER='{data.get('PWD_SERVER', get_val('PWD_SERVER', ''))}'\\n\\\"
+    new_env += f\\\"SSH_KEY_PASSPHRASE='{data.get('SSH_KEY_PASSPHRASE', get_val('SSH_KEY_PASSPHRASE', ''))}'\\n\\\"
 
     with open('.env', 'w') as f: f.write(new_env)
 except Exception as e:
@@ -442,9 +443,18 @@ function setup_full() {
     print_phase "📂 FASE 1.5: ESTRUTURAÇÃO DE AMBIENTES E SAMBA"
     run_with_stream "
         git config pull.rebase false 2>/dev/null || true
-        # Usa o diretório atual como base, já que portal-ggci pode estar sem o .git
+        # TOPOLOGIA (rode esta opção de dentro do clone base, ~/portal-ggci):
+        #   ~/portal-ggci       clone base + orquestrador — o deploy (opção 5) roda AQUI
+        #   ~/portal-ggci-dev   worktree da branch dev — é onde se desenvolve
+        #   ~/portal-ggci-prod  cópia rsync SEM .git — é o que o gunicorn serve
+        #
+        # PROD é cópia, não worktree, de propósito: sem .git ninguém commita de
+        # produção por acidente e um checkout errado não derruba o serviço. O
+        # sync_production (opção 5) reforça isso com --exclude '.git'. Antes aqui
+        # havia um `git worktree add` que, quando funcionava, produzia um prod
+        # rastreado que o rsync seguinte sobrescrevia — deixando o worktree sujo.
         if [ ! -d '/home/labs/portal-ggci-prod' ]; then
-            git worktree add /home/labs/portal-ggci-prod main 2>/dev/null || rsync -a --exclude 'venv' --exclude '.git' ./ /home/labs/portal-ggci-prod/
+            rsync -a --exclude 'venv' --exclude '.git' ./ /home/labs/portal-ggci-prod/
             cp .env /home/labs/portal-ggci-prod/.env
         fi
         # Remove atalho antigo se existir e cria um venv real
@@ -454,9 +464,15 @@ function setup_full() {
             /home/labs/portal-ggci-prod/venv/bin/pip install -r /home/labs/portal-ggci-prod/requirements.txt
         fi
 
+        # DEV é worktree de verdade: é onde se commita, então precisa do git.
+        # Se o worktree add falhar (base sem .git), o rsync mantém o ambiente
+        # utilizável, mas sem versionamento — o aviso abaixo torna isso visível
+        # em vez de deixar a pessoa descobrir na hora do primeiro commit.
         if [ ! -d '/home/labs/portal-ggci-dev' ]; then
             git branch dev origin/dev 2>/dev/null || true
-            git worktree add /home/labs/portal-ggci-dev dev 2>/dev/null || rsync -a --exclude 'venv' --exclude '.git' ./ /home/labs/portal-ggci-dev/
+            git worktree add /home/labs/portal-ggci-dev dev 2>/dev/null \
+              || { rsync -a --exclude 'venv' --exclude '.git' ./ /home/labs/portal-ggci-dev/; \
+                   echo '[AVISO] portal-ggci-dev criado SEM git: a base nao e um clone. Commits nao funcionarao ali.'; }
             cp .env /home/labs/portal-ggci-dev/.env
         fi
         # Remove atalho antigo se existir e cria um venv real
@@ -514,8 +530,16 @@ function setup_full() {
     print_phase "🧬 FASE 3: MIGRAÇÕES E DADOS INICIAIS"
     run_with_stream "python3 manage.py makemigrations gestao_acessos --noinput && python3 manage.py makemigrations --noinput && python3 manage.py migrate --noinput" "Aplicando Migrações estruturais do Django"
     
+    # O snapshot real de usuários não é versionado (contém hash de senha e
+    # session_key de pessoas reais, e o repositório é público). Num clone novo ele
+    # não existe, então caímos no template — que cria só o 'admin' e exige definir
+    # a senha logo em seguida. Sem este fallback, um servidor recém-instalado
+    # subiria sem nenhum usuário e ninguém conseguiria entrar.
     if [ -s gestao_acessos_iniciais.json ]; then
         run_with_stream "python3 manage.py loaddata gestao_acessos_iniciais.json" "Restaurando Snapshot de Usuários"
+    elif [ -s gestao_acessos_iniciais.example.json ]; then
+        run_with_stream "python3 manage.py loaddata gestao_acessos_iniciais.example.json" "Criando usuário admin inicial (template)"
+        log_msg "warn" "Instalação nova: defina a senha do admin com 'python3 manage.py changepassword admin'."
     fi
 
     print_phase "🛡️ FASE 4: AGENDAMENTO E AUTO-RECUPERAÇÃO"
@@ -937,7 +961,12 @@ local PROD_DIR="/home/labs/portal-ggci-prod"
     log_msg "info" "Isso derrubará o servidor temporariamente para uma atualização limpa."
     check_sudo
     
-    local pass=$(grep -E '^PWD_SERVER=' .env | cut -d '=' -f2 | tr -d "'\"")
+    # Passphrase da CHAVE SSH — coisa distinta da senha do servidor. Até 01/09/2026
+    # este trecho lia PWD_SERVER, assumindo que fossem iguais; quando a passphrase
+    # da chave foi rotacionada, o push automático passaria a falhar em silêncio.
+    # O fallback para PWD_SERVER mantém instalações antigas funcionando.
+    local pass=$(grep -E '^SSH_KEY_PASSPHRASE=' .env | cut -d '=' -f2- | tr -d "'\"")
+    [ -z "$pass" ] && pass=$(grep -E '^PWD_SERVER=' .env | cut -d '=' -f2- | tr -d "'\"")
     if [ -n "$pass" ]; then
         echo -e "#!/bin/bash
 echo \"$pass\"" > /tmp/askpass_portal.sh
@@ -968,19 +997,14 @@ echo \"$pass\"" > /tmp/askpass_portal.sh
     cd "$PROD_DIR"
     run_with_stream "python3 manage.py dumpdata gestao_acessos.Usuario --indent 4 | python3 -c 'import sys, json; d=json.load(sys.stdin); [item.get(\"fields\", {}).pop(\"last_login\", None) for item in d]; print(json.dumps(d, indent=4))' > .tmp_backup.json && mv .tmp_backup.json gestao_acessos_iniciais.json || { rm -f .tmp_backup.json; false; }" "Gerando snapshot de segurança do banco PROD"
 
-    log_msg "info" "Sincronizando usuários de Produção para a branch DEV..."
+    # Espelha o snapshot de usuários de PROD para DEV por CÓPIA, sem passar pelo Git.
+    # Antes daqui saía um commit + push automático — era ele que publicava nome,
+    # login, hash de senha e session_key de pessoas reais num repositório público.
+    log_msg "info" "Sincronizando usuários de Produção para o ambiente DEV..."
     local DEV_DIR="/home/labs/portal-ggci-dev"
-    if [ -d "$DEV_DIR" ]; then
+    if [ -d "$DEV_DIR" ] && [ -s "$PROD_DIR/gestao_acessos_iniciais.json" ]; then
         cp -f "$PROD_DIR/gestao_acessos_iniciais.json" "$DEV_DIR/"
-        cd "$DEV_DIR"
-        git add gestao_acessos_iniciais.json >/dev/null 2>&1
-        if ! git diff --cached --quiet; then
-            git commit -m "chore(sync): update gestao_acessos_iniciais from prod" >/dev/null 2>&1
-            setsid git push origin dev >/dev/null 2>&1
-            log_msg "ok" "Arquivo gestao_acessos_iniciais.json commitado na branch DEV com sucesso."
-        else
-            log_msg "info" "Nenhuma alteração nos usuários em relação à branch DEV."
-        fi
+        log_msg "ok" "Snapshot de usuários espelhado em DEV (local, não versionado)."
     fi
 
     log_msg "info" "Navegando para a pasta do Repositório Principal (MAIN)..."
@@ -1064,7 +1088,12 @@ function user_backup() {
     
     log_msg "info" "Sincronizando backup com o Github..."
     
-    local pass=$(grep -E '^PWD_SERVER=' .env | cut -d '=' -f2 | tr -d "'\"")
+    # Passphrase da CHAVE SSH — coisa distinta da senha do servidor. Até 01/09/2026
+    # este trecho lia PWD_SERVER, assumindo que fossem iguais; quando a passphrase
+    # da chave foi rotacionada, o push automático passaria a falhar em silêncio.
+    # O fallback para PWD_SERVER mantém instalações antigas funcionando.
+    local pass=$(grep -E '^SSH_KEY_PASSPHRASE=' .env | cut -d '=' -f2- | tr -d "'\"")
+    [ -z "$pass" ] && pass=$(grep -E '^PWD_SERVER=' .env | cut -d '=' -f2- | tr -d "'\"")
     if [ -n "$pass" ]; then
         echo -e "#!/bin/bash\necho \"$pass\"" > /tmp/askpass_portal.sh
         chmod +x /tmp/askpass_portal.sh
@@ -1073,34 +1102,26 @@ function user_backup() {
         export SSH_ASKPASS_REQUIRE=force
     fi
 
-    git add gestao_acessos_iniciais.json >/dev/null 2>&1
-    if ! git diff --cached --quiet; then
-        git commit -m "chore(backup): atualizacao diaria de usuarios" >/dev/null 2>&1
-        local current_branch=$(git rev-parse --abbrev-ref HEAD)
-        setsid git push origin "$current_branch" >/dev/null 2>&1
-        log_msg "ok" "Backup commitado na branch '$current_branch' com sucesso!"
-        
-        # Se rodou na Produção (main), espelha imediatamente no DEV para manter os devs atualizados
+    # O backup NÃO vai para o Git. O arquivo carrega nome, login, hash de senha e
+    # session_key de pessoas reais, e este repositório é público — publicá-lo
+    # entrega 23 hashes para ataque de dicionário offline, sem limite de tentativas.
+    # O arquivo fica no servidor e é espelhado entre os ambientes por cópia.
+    # Quem clonar do zero parte do gestao_acessos_iniciais.example.json.
+    if [ -s gestao_acessos_iniciais.json ]; then
+        log_msg "ok" "Backup de usuários atualizado localmente (não versionado)."
+
+        # Espelha para os outros ambientes por cópia, mantendo todos com a mesma base.
+        local current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
         if [ "$current_branch" == "main" ]; then
-            local DEV_DIR="/home/labs/portal-ggci-dev"
-            if [ -d "$DEV_DIR" ]; then
-                cp -f gestao_acessos_iniciais.json "$DEV_DIR/"
-                (
-                    cd "$DEV_DIR"
-                    git add gestao_acessos_iniciais.json >/dev/null 2>&1
-                    if ! git diff --cached --quiet; then
-                        git commit -m "chore(backup): espelhamento diario de usuarios (PROD -> DEV)" >/dev/null 2>&1
-                        export SSH_ASKPASS=/tmp/askpass_portal.sh
-                        export DISPLAY=:0
-                        export SSH_ASKPASS_REQUIRE=force
-                        setsid git push origin dev >/dev/null 2>&1
-                        log_msg "ok" "Backup espelhado automaticamente na branch 'dev'!"
-                    fi
-                )
-            fi
+            for destino in /home/labs/portal-ggci-dev /home/labs/portal-ggci-prod; do
+                if [ -d "$destino" ]; then
+                    cp -f gestao_acessos_iniciais.json "$destino/"
+                    log_msg "ok" "Backup espelhado em ${destino##*/}."
+                fi
+            done
         fi
     else
-        log_msg "info" "Nenhuma alteração nos usuários desde o último backup."
+        log_msg "warn" "Backup não gerado ou vazio — nada a espelhar."
     fi
     rm -f /tmp/askpass_portal.sh
     wait_key

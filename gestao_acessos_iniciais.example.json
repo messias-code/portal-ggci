@@ -1,0 +1,26 @@
+[
+    {
+        "model": "gestao_acessos.usuario",
+        "pk": 1,
+        "fields": {
+            "usuario": "admin",
+            "nome": "Administrador",
+            "password": "PREENCHA_RODANDO_manage.py_changepassword_admin",
+            "session_key": null,
+            "perfil": "ADMIN",
+            "is_active": true,
+            "is_staff": true,
+            "is_superuser": true,
+            "p_analise_ia": true,
+            "p_dash_documentos_ia": true,
+            "p_dash_polichat": true,
+            "p_documentacoes": true,
+            "p_enquadramento_cursos": true,
+            "p_ferramentas": true,
+            "p_formatador_dados": true,
+            "p_formatador_listas": true,
+            "p_gestao_polichat": true,
+            "p_recalculo_bolsas": true
+        }
+    }
+]

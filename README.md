@@ -66,6 +66,40 @@ portal-ggci/
 └── manage.py                # Ponto de entrada do Django
 ```
 
+## 🗂️ Os três diretórios (leia antes de clonar)
+
+O projeto **não roda de uma pasta só**. O `portal.sh` monta três, cada uma com um
+papel distinto. Clonar e rodar `manage.py` direto não reproduz o ambiente.
+
+| Diretório | O que é | Papel |
+|---|---|---|
+| `~/portal-ggci` | Clone base (tem `.git`) | **Orquestrador.** É daqui que se roda o deploy (opção 5). Não é servido a ninguém. |
+| `~/portal-ggci-dev` | Worktree da branch `dev` | **Onde se desenvolve e se commita.** Servido pelo `runserver` na 8080. |
+| `~/portal-ggci-prod` | Cópia `rsync`, **sem `.git`** | **O que o gunicorn serve** na 8001. Nunca se edita nem se commita aqui. |
+
+`portal-ggci-prod` não ter `.git` é deliberado: sem repositório ninguém commita de
+produção por acidente, e um `checkout` errado não derruba o serviço. O preço é não
+existir `git log` em produção — para saber o que está no ar, olhe o commit do
+`~/portal-ggci`, que foi a origem do último `rsync`.
+
+### Instalação num servidor novo
+
+```bash
+git clone git@github.com:messias-code/portal-ggci.git ~/portal-ggci
+cd ~/portal-ggci
+./portal.sh        # opção 1 (setup completo) — cria dev, prod e os venvs
+```
+
+### Ciclo de trabalho
+
+```
+1. Desenvolver e commitar em  ~/portal-ggci-dev   (branch dev)
+2. Levar para a main          (merge/push)
+3. cd ~/portal-ggci && ./portal.sh → opção 5      (rsync main → prod + restart)
+```
+
+O passo 3 roda **do orquestrador**, nunca de dentro do `portal-ggci-prod`.
+
 ## ▶️ Execução do Servidor
 
 Após o setup, utilize o Gunicorn para rodar o portal:
