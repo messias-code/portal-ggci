@@ -45,9 +45,22 @@ case "$ferramenta" in
     ;;
   Bash)
     # Só barra quando o .env é ALVO de leitura; não atrapalha grep no .gitignore
-    if printf '%s' "$comando" | grep -qE '(cat|less|more|head|tail|bat|nl|od|xxd|strings|source|\.)[[:space:]]+[^|;&]*\.env([[:space:]]|$)'; then
-      printf '%s' "$comando" | grep -qE '\.env\.example' || bloquear "comando que lê o .env: $comando"
-    fi
+    # nem append (`>> .env`), que é escrita e não vaza nada.
+    #
+    # A checagem é LINHA A LINHA de propósito. A classe [^|;&] casa quebra de
+    # linha, então num comando de várias linhas o regex emendava um `tail` de uma
+    # linha com um `.env` de outra e bloqueava escrita legítima. Avaliar cada
+    # linha isolada mantém o alcance no comando que realmente lê o arquivo.
+    while IFS= read -r linha; do
+      printf '%s' "$linha" | grep -qE '\.env\.example' && continue
+      # O comando de leitura precisa estar em POSIÇÃO DE COMANDO: início da linha
+      # ou logo após |, ; ou &. Sem essa âncora, a alternativa `\.` (que existe
+      # para pegar o builtin `.` do source) casava qualquer ponto literal — um
+      # simples "--- 7. CHAVE ---" dentro de uma string bloqueava a escrita.
+      if printf '%s' "$linha" | grep -qE '(^|[|;&][[:space:]]*)(cat|less|more|head|tail|bat|nl|od|xxd|strings|source|\.)[[:space:]]+[^|;&]*\.env([[:space:]]|$)'; then
+        bloquear "comando que lê o .env: $linha"
+      fi
+    done <<< "$comando"
     ;;
 esac
 
