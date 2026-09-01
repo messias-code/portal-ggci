@@ -564,7 +564,13 @@ function setup_full() {
     # de dentro do DEV_DIR justamente para que o Django leia o .env de lá.
     local DEV_DIR="/home/labs/portal-ggci-dev"
     if [ -d "$DEV_DIR/venv" ]; then
+        # A semente real (gestao_acessos_iniciais.json) não é versionada, então
+        # numa instalação nova ela chega por cópia manual — e a pessoa a coloca no
+        # ORQUESTRADOR, que é de onde a opção 1 roda, não dentro do DEV_DIR. Sem
+        # copiar de lá, o DEV caía no template e nascia com um único usuário
+        # 'admin' enquanto a produção tinha os 22. Procuramos nos dois lugares.
         local semente="gestao_acessos_iniciais.json"
+        [ -s "$DEV_DIR/$semente" ] || cp -f "$semente" "$DEV_DIR/" 2>/dev/null || true
         [ -s "$DEV_DIR/$semente" ] || semente="gestao_acessos_iniciais.example.json"
         run_with_stream "cd '$DEV_DIR' && . venv/bin/activate && python3 manage.py makemigrations --noinput && python3 manage.py migrate --noinput && { [ -s '$semente' ] && python3 manage.py loaddata '$semente' || true; }" "Preparando o banco do ambiente DEV"
     fi
