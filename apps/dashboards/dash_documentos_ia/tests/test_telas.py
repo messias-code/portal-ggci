@@ -262,6 +262,36 @@ class TestIntegridadeDoTemplate(BaseTelas):
         # E o caminho que substitui os dois continua publicado na página.
         self.assertIn('legenda-doc-0', self.html)
 
+    def test_a_barra_de_abas_publica_as_duas_telas_vivas(self):
+        """
+        A barra de abas é repetida à mão em CINCO templates — as três telas linkadas e
+        as duas órfãs (`historico`, `riaf`), que só se alcança digitando a URL. Uma
+        cópia esquecida continuaria oferecendo o Relatório RIAF, que saiu da navegação.
+
+        A última aba não pode levar `border-r`: a divisória existe para separá-la de
+        quem vinha depois, e sozinha vira um fio cortando a barra por dentro do canto
+        arredondado.
+        """
+        import os
+        import re
+
+        from django.conf import settings
+
+        pasta = os.path.join(
+            settings.BASE_DIR, "apps", "dashboards", "dash_documentos_ia",
+            "templates", "dash_documentos_ia")
+        for nome in ["index.html", "relatorio_ies.html", "relatorio_riaf.html",
+                     "historico.html", "riaf.html"]:
+            with self.subTest(template=nome):
+                with open(os.path.join(pasta, nome), encoding="utf-8") as arquivo:
+                    html = arquivo.read()
+                abas = re.findall(r'<a href="\{% url \'([^\']+)\' %\}"'
+                                  r' class="docia-aba [^"]*"[^>]*>', html)
+                self.assertEqual(abas, ["dash_documentos_ia",
+                                        "dash_documentos_ia_relatorio_ies"])
+                ultima = html.split('class="docia-aba ')[-1].split(">", 1)[0]
+                self.assertNotIn("border-r", ultima)
+
     def test_cada_filtro_aparece_uma_unica_vez_na_barra(self):
         """
         Vínculo, Perfil, Mudou IES e Mudou Bolsa estiveram DUPLICADOS: dois blocos
