@@ -360,7 +360,7 @@ try:
     elif cwd.endswith('-dev'):
         db_name = 'portal_ggci_dev'
 
-    new_env += f"DB_NAME='{get_val('DB_NAME', db_name)}'\\n"
+    new_env += f\\\"DB_NAME='{get_val('DB_NAME', db_name)}'\\n\\\"
     new_env += 'DB_USER=\\'portal_user\\'\\n'
     new_env += f\\\"DB_PASSWORD='{get_val('DB_PASSWORD', 'ovg@2026')}'\\n\\\"
     new_env += 'DB_HOST=\\'127.0.0.1\\'\\n'
@@ -451,7 +451,7 @@ function setup_full() {
         # PROD é cópia, não worktree, de propósito: sem .git ninguém commita de
         # produção por acidente e um checkout errado não derruba o serviço. O
         # sync_production (opção 5) reforça isso com --exclude '.git'. Antes aqui
-        # havia um `git worktree add` que, quando funcionava, produzia um prod
+        # havia um 'git worktree add' que, quando funcionava, produzia um prod
         # rastreado que o rsync seguinte sobrescrevia — deixando o worktree sujo.
         if [ ! -d '/home/labs/portal-ggci-prod' ]; then
             rsync -a --exclude 'venv' --exclude '.git' ./ /home/labs/portal-ggci-prod/
