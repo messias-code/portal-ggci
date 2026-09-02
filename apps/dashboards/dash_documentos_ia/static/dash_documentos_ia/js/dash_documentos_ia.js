@@ -1661,27 +1661,21 @@ document.addEventListener('turbo:load', () => {
                 { chave: 'beneficiarios', rotulo: 'Beneficiários', numero: true },
 
                 { chave: 'Processados',    rotulo: FATIAS[0], numero: true,
-                  medida: '% do esperado',
                   pct: (l) => fatia(l.Processados, esperadosDe(l)) },
 
                 { chave: 'NaoProcessados', rotulo: FATIAS[1], numero: true,
-                  medida: '% já processado',
                   pct: (l) => progresso(l.NaoProcessados, enviadosDe(l)) },
 
                 { chave: 'NaoEnviados',    rotulo: FATIAS[2], numero: true,
-                  medida: '% enviado',
                   pct: (l) => progresso(l.NaoEnviados, esperadosDe(l)) },
 
                 { chave: 'InadProc',       rotulo: FATIAS[3], numero: true,
-                  medida: '% do total', inverso: true,
                   pct: (l) => fatia(l.InadProc, l.total) },
 
                 { chave: 'InadNaoProc',    rotulo: FATIAS[4], numero: true,
-                  medida: '% do total', inverso: true,
                   pct: (l) => fatia(l.InadNaoProc, l.total) },
 
                 { chave: 'Inadimplentes',  rotulo: FATIAS[5], numero: true,
-                  medida: '% do total', inverso: true,
                   pct: (l) => fatia(l.Inadimplentes, l.total) },
             ];
 
@@ -1791,17 +1785,24 @@ document.addEventListener('turbo:load', () => {
                     const valor = totais[chave] || 0;
                     const percentual = soma > 0 ? (valor / soma) * 100 : 0;
                     const ativo = window.__ordemIES.chave === chave;
-                    return `<button type="button" class="docia-ies-chip${ativo ? ' docia-ies-chip--ativo' : ''}"
+                    
+                    const estiloAtivo = ativo 
+                        ? 'border-[#6B007B] shadow-[0_6px_22px_rgba(107,0,123,0.18)]' 
+                        : 'border-white/60 shadow-[0_4px_20px_rgb(0,0,0,0.08)]';
+                    
+                    const corTextoAtivo = ativo ? 'text-[#6B007B]' : 'text-gray-400';
+                    
+                    return `<button type="button" class="flex-1 min-w-[9rem] bg-gradient-to-br from-white/90 to-gray-50/50 backdrop-blur-md border rounded-3xl py-2.5 px-4 flex flex-col justify-center text-left cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-lg group ${estiloAtivo}"
                                     data-chave="${chave}"
                                     title="Ordenar as instituições por ${escaparHtml(nome)}">
-                        <span class="docia-ies-chip__topo">
-                            <span class="docia-ies-chip__ponto" style="background:${cores[indice]};"></span>
-                            <span class="docia-ies-chip__nome">${escaparHtml(nome)}</span>
-                        </span>
-                        <span class="docia-ies-chip__baixo">
-                            <span class="docia-ies-chip__valor">${formatarNumero(valor)}</span>
-                            <span class="docia-ies-chip__pct">${formatarPercentual(percentual)}</span>
-                        </span>
+                        <div class="flex items-center gap-1.5 mb-0.5" style="min-width: 0;">
+                            <span class="w-2 h-2 rounded-full shrink-0" style="background:${cores[indice]};"></span>
+                            <span class="text-[9px] xl:text-[10px] font-bold ${corTextoAtivo} uppercase tracking-wider" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escaparHtml(nome)}</span>
+                        </div>
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-xl font-black text-gray-800 transition-colors">${formatarNumero(valor)}</span>
+                            <span class="text-xs font-bold text-gray-400">${formatarPercentual(percentual)}</span>
+                        </div>
                     </button>`;
                 }).join('');
             };
@@ -2502,6 +2503,9 @@ document.addEventListener('turbo:load', () => {
              */
             function formatarLog(bruto) {
                 let log = escapar(bruto || '');
+
+                // Remove as linhas de marcador de progresso do console, como pedido.
+                log = log.replace(/^.*\[EXTRACAO_PROGRESSO\].*$\n?/gm, '');
 
                 // O carimbo de data que o LogCapture põe em cada linha só polui a
                 // leitura aqui — o horário de cada etapa já aparece no resumo do cron.
