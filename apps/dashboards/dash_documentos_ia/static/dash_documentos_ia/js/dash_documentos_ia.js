@@ -1798,26 +1798,18 @@ document.addEventListener('turbo:load', () => {
                     const chave = CHAVES_DAS_FATIAS[indice];
                     const valor = totais[chave] || 0;
                     const percentual = soma > 0 ? (valor / soma) * 100 : 0;
-                    const ativo = window.__ordemIES.chave === chave;
                     
-                    const estiloAtivo = ativo 
-                        ? 'border-[#6B007B] shadow-[0_6px_22px_rgba(107,0,123,0.18)]' 
-                        : 'border-white/60 shadow-[0_4px_20px_rgb(0,0,0,0.08)]';
-                    
-                    const corTextoAtivo = ativo ? 'text-[#6B007B]' : 'text-gray-400';
-                    
-                    return `<button type="button" class="flex-1 min-w-[9rem] bg-gradient-to-br from-white/90 to-gray-50/50 backdrop-blur-md border rounded-3xl py-2.5 px-4 flex flex-col justify-center text-left cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-lg group ${estiloAtivo}"
-                                    data-chave="${chave}"
-                                    title="Ordenar as instituições por ${escaparHtml(nome)}">
+                    return `<div class="flex-1 min-w-[9rem] bg-gradient-to-br from-white/90 to-gray-50/50 backdrop-blur-md border border-white/60 shadow-[0_4px_20px_rgb(0,0,0,0.08)] rounded-3xl py-2.5 px-4 flex flex-col justify-center text-left cursor-default group"
+                                    title="${escaparHtml(nome)}">
                         <div class="flex items-center gap-1.5 mb-0.5" style="min-width: 0;">
-                            <span class="w-2 h-2 rounded-full shrink-0" style="background:${cores[indice]};"></span>
-                            <span class="text-[9px] xl:text-[10px] font-bold ${corTextoAtivo} uppercase tracking-wider" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escaparHtml(nome)}</span>
+                            <span class="w-2 h-2 rounded-full shrink-0 transition-transform duration-300 group-hover:scale-125" style="background:${cores[indice]};"></span>
+                            <span class="text-[9px] xl:text-[10px] font-bold text-gray-400 uppercase tracking-wider" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escaparHtml(nome)}</span>
                         </div>
                         <div class="flex items-baseline gap-2">
                             <span class="text-xl font-black text-gray-800 transition-colors">${formatarNumero(valor)}</span>
                             <span class="text-xs font-bold text-gray-400">${formatarPercentual(percentual)}</span>
                         </div>
-                    </button>`;
+                    </div>`;
                 }).join('');
             };
 
