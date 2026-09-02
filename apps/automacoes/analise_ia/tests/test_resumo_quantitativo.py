@@ -9,13 +9,31 @@ de 6 minutos — o laço rodava por grupo várias operações que não dependiam
 isso do laço só é aceitável se cada número da aba continuar exatamente o mesmo, porque
 esses números são conferidos contra as abas de pendências.
 
-O oráculo abaixo é a implementação ORIGINAL, copiada como estava. Não "melhore" nada nela.
+O oráculo abaixo é uma segunda implementação, escrita de forma direta e legível. Ele NÃO
+existe para congelar comportamento: existe para que a versão rápida seja conferida contra
+uma versão simples, escrita de outro jeito. Não "otimize" nada nele.
 
 O caso mais delicado é `test_empate_de_data_escolhe_a_mesma_linha`: o `sort_values` do
-pandas não é estável, então a ordenação precisou continuar sendo feita sobre o mesmo
-DataFrame, do mesmo jeito. Se alguém trocar por uma ordenação equivalente "mais rápida",
-datas empatadas passam a desempatar de outro jeito, o `drop_duplicates(keep='first')`
-mantém outra linha e o Status_Vínculo do aluno muda — silenciosamente.
+pandas não é estável, então a ordenação precisa ser feita do mesmo jeito nos dois lados.
+Se alguém trocar por uma ordenação equivalente "mais rápida", datas empatadas passam a
+desempatar de outro jeito, o `drop_duplicates(keep='first')` mantém outra linha e o
+Status_Vínculo do aluno muda — silenciosamente.
+
+O ORÁCULO MUDOU EM 02/09/2026, junto com a função. Duas regras de negócio entraram nos
+dois lados ao mesmo tempo:
+
+  1. Inadimplente não é beneficiário. `Total Beneficiários` contava também quem só existe
+     por cobrança injetada do relatório do site, e por isso ficava acima do que qualquer
+     documento conseguia somar — 247 contra 202 numa IES real, sem lugar onde a diferença
+     pudesse ser lida.
+  2. Entre a linha real e a cobrança injetada do mesmo (CPF, documento), a real ganha o
+     desempate. Antes decidia só a data, e quando a injeção era mais recente o documento
+     real sumia de `Env.` e de `Pend.` ao mesmo tempo.
+
+Atualizar o oráculo aqui é o certo, e não trapaça: ele é a SEGUNDA opinião sobre a mesma
+regra, não um registro do passado. Congelá-lo com a regra antiga transformaria o teste em
+guardião de um defeito. O que ele continua garantindo é o que sempre garantiu — que a
+versão rápida e a versão simples chegam ao mesmo número, empate de data incluído.
 """
 import numpy as np
 import pandas as pd
@@ -42,18 +60,25 @@ def gerar_resumo_original(df_target, tipos_documentos):
             continue
 
         group_benef = group_raw.copy()
+        # A linha limpa ganha o desempate — ver o cabeçalho do arquivo.
+        group_benef['_inad'] = (group_benef['Status_IA'].astype(str)
+                                .str.strip().str.lower() == 'inadimplente')
         if 'data_coleta' in group_benef.columns:
             group_benef['temp_data'] = pd.to_datetime(group_benef['data_coleta'],
                                                       format='%d/%m/%Y', errors='coerce')
-            group_benef.sort_values(by=['temp_data'], ascending=False, inplace=True,
-                                    na_position='last')
+            group_benef.sort_values(by=['_inad', 'temp_data'], ascending=[True, False],
+                                    inplace=True, na_position='last')
             group_benef.drop(columns=['temp_data'], inplace=True)
+        else:
+            group_benef.sort_values(by=['_inad'], ascending=True, inplace=True)
 
         group_benef.drop_duplicates(subset=['CPF', 'Documento Tipo'], keep='first', inplace=True)
-        cpfs_validos = group_benef['CPF'].dropna().unique()
+        # Inadimplente não é beneficiário.
+        cpfs_validos = group_benef.loc[~group_benef['_inad'], 'CPF'].dropna().unique()
         if len(cpfs_validos) == 0:
             continue
         tot_benef = len(cpfs_validos)
+        group_benef = group_benef[group_benef['CPF'].isin(cpfs_validos)]
 
         status_por_cpf = group_benef.groupby('CPF', sort=False)['Status_Vínculo'].first()
         ativos = (status_por_cpf == 'ATIVO').sum()
