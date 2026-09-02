@@ -1892,18 +1892,23 @@ document.addEventListener('turbo:load', () => {
                             `COLUNAS_IES`. `null` significa base zero: não há progresso a
                             medir sobre nada, e a célula sai só com o número.  */
                         const valorPct = coluna.pct ? coluna.pct(linha) : null;
-                        /*  O VERMELHO SÓ ACENDE COM VALOR. Zero inadimplente não é
-                            alerta — é a meta atingida, e é o caso da MAIORIA das
-                            células dessas três colunas. Pintado, o vermelho aparecia
-                            centenas de vezes dizendo "atenção" sobre "não há nada
-                            aqui", e o alarme deixava de significar coisa alguma
-                            justamente onde há inadimplência de verdade.  */
-                        const alerta = coluna.inverso && valor ? ' docia-ies-pct--inverso' : '';
+                        
+                        let classeCor = ' text-gray-700 group-hover:text-gray-900';
+                        let estiloHtml = '';
+                        
+                        if (valorPct !== null) {
+                            /*  Calcula a cor de Hue 0 (vermelho) a 120 (verde).
+                                - Colunas normais: 100% progresso = 120 (verde), 0% = 0 (vermelho).
+                                - Inversas (inadimplentes): 100% = 0 (vermelho), 0% = 120 (verde).  */
+                            const hue = Math.max(0, Math.min(120, coluna.inverso ? 120 - (valorPct * 1.2) : valorPct * 1.2));
+                            estiloHtml = ` style="color: hsl(${hue}, 80%, 42%); font-weight: 700;"`;
+                            classeCor = '';
+                        }
+
                         const pct = valorPct === null ? '' :
-                            `<span class="docia-ies-pct${alerta}">(${
-                                formatarPercentual(valorPct)})</span>`;
-                        return `<td class="docia-ies-num px-4 py-2.5 border-b border-gray-100 text-[13px] text-gray-700 group-hover:text-gray-900 transition-colors"><span class="docia-ies-valor${zero}">${
-                                    formatarNumero(valor)}</span>${pct}</td>`;
+                            `<span class="docia-ies-pct opacity-80">(${formatarPercentual(valorPct)})</span>`;
+                        return `<td class="docia-ies-num px-4 py-2.5 border-b border-gray-100 text-[13px] text-right transition-colors${classeCor}"${estiloHtml}>` +
+                               `<span class="docia-ies-valor${zero}">${formatarNumero(valor)}</span>${pct}</td>`;
                     }).join('')
                     + '</tr>').join('');
             };
