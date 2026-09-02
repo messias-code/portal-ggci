@@ -1772,9 +1772,17 @@ document.addEventListener('turbo:load', () => {
              */
             const pintarChipsIES = () => {
                 if (!elIES.chips) return;
-                const cores = PALETA[temaAtual()];
                 const totais = dadosIES.totais || {};
                 const soma = CHAVES_DAS_FATIAS.reduce((acc, chave) => acc + (totais[chave] || 0), 0);
+
+                const ICONES_IES = [
+                    'fa-check-double text-gray-800', 
+                    'fa-gears text-gray-800',
+                    'fa-cloud-arrow-up text-gray-800', 
+                    'fa-file-invoice text-gray-800',
+                    'fa-file-invoice-dollar text-gray-800', 
+                    'fa-triangle-exclamation text-gray-800'
+                ];
 
                 elIES.chips.innerHTML = FATIAS.map((nome, indice) => {
                     const chave = CHAVES_DAS_FATIAS[indice];
@@ -1790,7 +1798,7 @@ document.addEventListener('turbo:load', () => {
                             </h4>
                         </div>
                         <div class="w-10 h-10 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform duration-300 shrink-0">
-                            <span class="w-4 h-4 rounded-full" style="background:${cores[indice]};"></span>
+                            <i class="fa-solid ${ICONES_IES[indice]} text-base"></i>
                         </div>
                     </div>`;
                 }).join('');
