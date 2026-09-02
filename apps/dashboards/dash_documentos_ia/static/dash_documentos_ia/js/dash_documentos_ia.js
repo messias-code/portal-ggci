@@ -1712,13 +1712,13 @@ document.addEventListener('turbo:load', () => {
                 { chave: 'NaoEnviados',    rotulo: FATIAS[2], numero: true,
                   pct: (l) => progresso(l.NaoEnviados, esperadosDe(l)) },
 
-                { chave: 'InadProc',       rotulo: FATIAS[3], numero: true,
+                { chave: 'InadProc',       rotulo: FATIAS[3], numero: true, inverso: true,
                   pct: (l) => fatia(l.InadProc, l.total) },
 
-                { chave: 'InadNaoProc',    rotulo: FATIAS[4], numero: true,
+                { chave: 'InadNaoProc',    rotulo: FATIAS[4], numero: true, inverso: true,
                   pct: (l) => fatia(l.InadNaoProc, l.total) },
 
-                { chave: 'Inadimplentes',  rotulo: FATIAS[5], numero: true,
+                { chave: 'Inadimplentes',  rotulo: FATIAS[5], numero: true, inverso: true,
                   pct: (l) => fatia(l.Inadimplentes, l.total) },
             ];
 
@@ -1881,13 +1881,11 @@ document.addEventListener('turbo:load', () => {
                             return `<td class="px-4 py-2.5 border-b border-gray-100 text-[13px] font-medium text-gray-700 group-hover:text-gray-900 transition-colors"
                                         ><div class="docia-ies-nome" title="${escaparHtml(valor)}">${escaparHtml(valor)}</div></td>`;
                         }
-                        /*  O ZERO APAGA SÓ O NÚMERO, e não a célula inteira.
-
-                            Antes a classe ia no `<td>` e levava o percentual junto. Com
-                            a semântica nova isso apagava justamente a informação boa:
-                            zero pendências vale 100% enviado, que é o melhor resultado
-                            possível daquela coluna e o que menos deveria sumir.  */
-                        const zero = !valor ? ' docia-ies-zero' : '';
+                        /*  O ZERO APAGA SÓ O NÚMERO, e não a célula inteira. Nas colunas
+                            normais ele fica cinza pra não gritar "vermelho". Mas nos
+                            Inadimplentes (inverso), o zero é a meta, então ele tem
+                            que reluzir verde-vivo.  */
+                        const zero = (!valor && !coluna.inverso) ? ' docia-ies-zero' : '';
                         /*  O PERCENTUAL É O DA COLUNA, cada uma com sua base — ver
                             `COLUNAS_IES`. `null` significa base zero: não há progresso a
                             medir sobre nada, e a célula sai só com o número.  */
