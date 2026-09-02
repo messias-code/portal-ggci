@@ -1602,6 +1602,35 @@ document.addEventListener('turbo:load', () => {
                 });
             }
 
+            const btnExpandirIES = document.getElementById('btn-expandir-ies');
+            const cardIES = document.getElementById('card-ies');
+            if (btnExpandirIES && cardIES) {
+                const ancoraIES = document.createComment('card-ies');
+                const alternarExpansaoIES = (expandir) => {
+                    if (expandir) {
+                        cardIES.replaceWith(ancoraIES);
+                        document.body.appendChild(cardIES);
+                    } else if (ancoraIES.parentNode) {
+                        ancoraIES.replaceWith(cardIES);
+                    }
+                    cardIES.classList.toggle('docia-detalhamento--expandido', expandir);
+                    btnExpandirIES.classList.toggle('docia-botao-ativo', expandir);
+                    btnExpandirIES.setAttribute('aria-pressed', expandir ? 'true' : 'false');
+                    btnExpandirIES.title = expandir ? 'Voltar ao tamanho normal' : 'Expandir a tabela de instituições';
+                    const icone = document.getElementById('icone-expandir-ies');
+                    if (icone) icone.className = 'fa-solid text-xs ' + (expandir ? 'fa-compress' : 'fa-expand');
+                };
+
+                btnExpandirIES.addEventListener('click', () => alternarExpansaoIES(
+                    !cardIES.classList.contains('docia-detalhamento--expandido')));
+
+                document.addEventListener('keydown', (evento) => {
+                    if (evento.key === 'Escape' && cardIES.classList.contains('docia-detalhamento--expandido')) {
+                        alternarExpansaoIES(false);
+                    }
+                });
+            }
+
             /* ==================================================================
                VISÃO POR IES
                ==================================================================
@@ -2124,12 +2153,11 @@ document.addEventListener('turbo:load', () => {
                     marcarBotaoDeLimpar();
                     window.__recortesDocIA.length = 0;
                     repintarLegendas();
-                    /*  O modo é o primeiro controle da barra, e "restaurar" só é
-                        verdade se ele voltar junto: com a vista de IES no ar, limpar
-                        semestres e IES não mudaria nada do que está na tela. É ele
-                        também quem recarrega — vindo do modo IES, as roscas voltam de um
-                        container sem altura e precisam do `forcarResize` que ele faz.  */
-                    aplicarModo(MODO_PADRAO, true);
+                    /*  O usuário pediu expressamente para que "Restaurar Padrão" não troque a aba.
+                        Se ele estiver na vista IES, a chamada `aplicarModo(modoAtual)` se encarregará
+                        de forçar os defaults obrigatórios daquela vista (2025-1 e CONTRATO).  */
+                    const modoAtual = modoSelecionado();
+                    aplicarModo(modoAtual, true);
                 });
             }
 
