@@ -1452,9 +1452,9 @@ document.addEventListener('turbo:load', () => {
             window.recarregarDocumentosIA = recarregar;
 
             // --- Semestres: cada clique refaz a consulta ------------------------
-            // Somam: "2025-2 E 2026-1" é uma pergunta que se faz. (No modo IES, se excluem).
-            const exclusividadeModoIES = (caixa, todasCaixas) => {
-                if (modoSelecionado() === 'ies') {
+            // Agora é excludente em TODOS os modos. Um semestre apenas pode ser visualizado.
+            const exclusividadeFiltroUnico = (caixa, todasCaixas, forcarSempre) => {
+                if (forcarSempre || modoSelecionado() === 'ies') {
                     if (caixa.checked) {
                         todasCaixas.forEach((outra) => { if (outra !== caixa) outra.checked = false; });
                     } else if (marcados(todasCaixas).length === 0) {
@@ -1466,7 +1466,7 @@ document.addEventListener('turbo:load', () => {
             };
 
             checkboxesSemestre.forEach((caixa) => caixa.addEventListener('change', () => {
-                if (exclusividadeModoIES(caixa, checkboxesSemestre)) recarregar();
+                if (exclusividadeFiltroUnico(caixa, checkboxesSemestre, true)) recarregar();
             }));
 
             /*  OS PARES SE EXCLUEM.
@@ -2035,7 +2035,7 @@ document.addEventListener('turbo:load', () => {
             // --- Documento: cada clique refaz a consulta da vista ----------------
             // Somam, como os semestres: "contrato E histórico" é pergunta que se faz.
             checkboxesDocumento.forEach((caixa) => caixa.addEventListener('change', () => {
-                if (exclusividadeModoIES(caixa, checkboxesDocumento)) recarregar();
+                if (exclusividadeFiltroUnico(caixa, checkboxesDocumento, false)) recarregar();
             }));
 
 
@@ -2074,11 +2074,12 @@ document.addEventListener('turbo:load', () => {
             const aplicarModo = (modo, buscarDados) => {
                 const emIES = modo === 'ies';
                 
+                const mSemestres = marcados(checkboxesSemestre);
+                if (mSemestres.length !== 1) {
+                    checkboxesSemestre.forEach((caixa) => caixa.checked = (caixa.value === (mSemestres[0] || '2025-1')));
+                }
+
                 if (emIES) {
-                    const mSemestres = marcados(checkboxesSemestre);
-                    if (mSemestres.length !== 1) {
-                        checkboxesSemestre.forEach((caixa) => caixa.checked = (caixa.value === (mSemestres[0] || '2025-1')));
-                    }
                     const mDocumentos = marcados(checkboxesDocumento);
                     if (mDocumentos.length !== 1) {
                         checkboxesDocumento.forEach((caixa) => caixa.checked = (caixa.value === (mDocumentos[0] || 'CONTRATO')));
