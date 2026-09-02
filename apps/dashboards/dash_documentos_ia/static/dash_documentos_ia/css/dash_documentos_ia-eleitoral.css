@@ -439,3 +439,82 @@ html[data-tema="eleitoral"] .docia-filtro-contador {
     background-color: var(--tema-primaria-lavada) !important;
     color: var(--tema-primaria) !important;
 }
+
+
+/* ==========================================================================
+   VISÃO POR IES E O FILTRO DE DOCUMENTO
+   --------------------------------------------------------------------------
+   A tabela e o card não entram aqui: são utilitárias neutras (`bg-white/80`,
+   `text-gray-*`, `border-gray-100`) dentro de `area-trabalho`, e o
+   `tema-conteudo.css` já as remapeia. O que sobra é o mesmo de sempre — as
+   peças escritas com cor literal no `dash_documentos_ia.css`.
+   ========================================================================== */
+
+/* Grade do filtro de documento. O branco das células e o cinza que faz de
+   gridline precisam cair juntos: um sem o outro deixa a grade ou clara demais
+   ou sem divisória nenhuma. */
+html[data-tema="eleitoral"] .docia-grade-doc {
+    background-color: var(--tema-borda);
+    border-color: var(--tema-borda);
+}
+
+html[data-tema="eleitoral"] .docia-grade-doc__caixa {
+    background-color: var(--tema-superficie);
+    color: var(--tema-texto-medio);
+}
+
+html[data-tema="eleitoral"] .docia-grade-doc__caixa:hover {
+    background-color: rgba(255, 255, 255, 0.07);
+    color: var(--tema-texto-forte);
+}
+
+html[data-tema="eleitoral"] .filter-documento-ies:checked + .docia-grade-doc__caixa,
+html[data-tema="eleitoral"] .filter-documento-ies:checked + .docia-grade-doc__caixa:hover {
+    background-color: var(--tema-primaria);
+    color: var(--tema-superficie);
+}
+
+html[data-tema="eleitoral"] .filter-documento-ies:focus-visible + .docia-grade-doc__caixa {
+    outline-color: var(--tema-primaria);
+}
+
+/* Os seis chips. O fundo branco translúcido e a borda clara vêm daqui e não de
+   utilitária — o chip é um card de CSS próprio, fora do alcance do
+   remapeamento de `area-trabalho`. */
+html[data-tema="eleitoral"] .docia-ies-chip {
+    background-color: var(--tema-superficie);
+    border-color: var(--tema-borda);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+/* O hover deixou de mexer na sombra junto com o fim do efeito de subir; no escuro
+   ele precisa ser o clareamento do fundo, não o roxo lavado do tema claro. */
+html[data-tema="eleitoral"] .docia-ies-chip:hover {
+    background-color: rgba(255, 255, 255, 0.07);
+    border-color: var(--tema-primaria-suave);
+}
+
+html[data-tema="eleitoral"] .docia-ies-chip--ativo {
+    border-color: var(--tema-primaria);
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.4);
+}
+
+html[data-tema="eleitoral"] .docia-ies-chip__nome { color: var(--tema-texto-fraco); }
+html[data-tema="eleitoral"] .docia-ies-chip--ativo .docia-ies-chip__nome { color: var(--tema-primaria); }
+html[data-tema="eleitoral"] .docia-ies-chip__valor { color: var(--tema-texto-forte); }
+html[data-tema="eleitoral"] .docia-ies-chip__pct { color: var(--tema-texto-fraco); }
+
+/* Cabeçalho ordenável e o zero apagado da tabela. */
+html[data-tema="eleitoral"] .docia-ies-th:hover,
+html[data-tema="eleitoral"] .docia-ies-th--ativo { color: var(--tema-primaria); }
+html[data-tema="eleitoral"] .docia-ies-valor.docia-ies-zero { color: var(--tema-texto-fraco); opacity: 0.55; }
+
+/* Percentual dentro da célula da tabela de IES: cor de marca fixa no arquivo
+   claro, então precisa vir para cá como as demais peças escritas à mão. */
+html[data-tema="eleitoral"] .docia-ies-pct { color: var(--tema-texto-fraco); }
+
+/* Cabeçalho de duas linhas e o percentual invertido das colunas de inadimplência:
+   cor literal no arquivo claro, então vêm para cá como as demais peças à mão. */
+html[data-tema="eleitoral"] .docia-ies-th__medida { color: var(--tema-texto-fraco); }
+html[data-tema="eleitoral"] .docia-ies-th__medida--inverso,
+html[data-tema="eleitoral"] .docia-ies-pct--inverso { color: #E88B92; }

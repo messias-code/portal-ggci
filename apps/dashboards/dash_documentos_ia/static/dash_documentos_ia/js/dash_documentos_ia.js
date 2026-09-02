@@ -1414,6 +1414,12 @@ document.addEventListener('turbo:load', () => {
                     // escopo do modal, que pode não ter sido inicializado ainda.
                     ['contador-ies', typeof activeIESFilters !== 'undefined'
                                         ? activeIESFilters.length : 0],
+                    /*  O de documento só conta no modo IES, que é o único onde ele
+                        recorta alguma coisa. Marcado e invisível, ele inflaria o total
+                        do cabeçalho com um filtro que não está agindo — que é
+                        exatamente o oposto do que o contador existe para evitar.  */
+                    ['contador-documentos', modoSelecionado() === 'ies'
+                                        ? marcados(checkboxesDocumento).length : 0],
                 ];
                 let total = 0;
                 porSecao.forEach(([id, quantidade]) => {
@@ -1423,8 +1429,23 @@ document.addEventListener('turbo:load', () => {
                 pintarContador('contador-filtros', total);
             };
 
+            /*  UMA CONSULTA POR MODO, e não as duas sempre.
+
+                As duas vistas respondem a mesma pergunta com sujeitos diferentes, e
+                nenhuma das duas lê os dados da outra. Disparar `api/dados/` e
+                `api/tabela/` com a vista de IES no ar seria ler 184 mil linhas para
+                pintar uma tela que não está visível — e o inverso, `api/resumo-ies/`
+                no modo beneficiários, o mesmo desperdício ao contrário.
+
+                `modoSelecionado` é declarado abaixo, no bloco do modo. Vale porque isto
+                é uma função: o corpo só roda quando alguém chama, e a primeira chamada
+                é o `recarregar()` do fim da inicialização.  */
             const recarregar = () => {
                 atualizarContadores();
+                if (modoSelecionado() === 'ies') {
+                    window.fetchDadosIES();
+                    return;
+                }
                 window.fetchChartData();
                 window.fetchTableData();
             };
@@ -1568,6 +1589,485 @@ document.addEventListener('turbo:load', () => {
             }
 
             /* ==================================================================
+               VISÃO POR IES
+               ==================================================================
+               A mesma pergunta do Detalhamento com outro sujeito: lá cada linha é um
+               documento de uma PESSOA, aqui cada linha é uma INSTITUIÇÃO. As colunas
+               são os seis baldes de `_balde_do_documento` — os mesmos seis da legenda
+               das roscas, contados pela mesma regra no servidor. Se fossem contados de
+               outro jeito, a coluna "Pendentes" daqui não bateria com a fatia
+               "Pendentes" de lá, e não haveria como saber qual das duas está certa.
+
+               TUDO DE UMA VEZ, e a tela ordena sozinha: a resposta são ~110 linhas
+               (uma por IES), não 184 mil. Ordenar por coluna, buscar por nome e trocar
+               a ordem pelo chip são gestos que se fazem em sequência, comparando — um
+               round-trip por clique transformaria a comparação em espera.
+               ================================================================== */
+
+            /*  As chaves dos seis baldes no JSON, na MESMA ordem de `FATIAS`.
+                É o que faz o chip, a coluna e a cor se alinharem sem uma segunda
+                tabela de tradução: `FATIAS[i]`, `PALETA[tema][i]` e `CHAVES_DAS_FATIAS[i]`
+                descrevem a mesma fatia.  */
+            const CHAVES_DAS_FATIAS = ['Processados', 'NaoProcessados', 'NaoEnviados',
+                                       'InadProc', 'InadNaoProc', 'Inadimplentes'];
+
+            /*  As colunas da tabela por IES. `numero: false` é só a primeira — ela
+                alinha à esquerda, não leva `tabular-nums` e ordena alfabeticamente.
+
+                NÃO TEM COLUNA DE TOTAL DE DOCUMENTOS. Ela seria a soma das seis
+                seguintes, na mesma linha e à vista: uma coluna que não acrescenta
+                fato nenhum e ainda rouba largura das seis que acrescentam. A resposta
+                continua trazendo o total — é ele que prova que os seis baldes cobrem
+                todas as linhas do recorte —, mas isso é conferência, não leitura de
+                tela.  */
+            /*  AS DUAS BASES DA LINHA.
+
+                `Inadimplentes` (o sexto balde) NÃO é documento nosso: é cobrança
+                injetada do relatório do site, de semestre em que o aluno não teve
+                lançamento nenhum. Ele fica FORA do que a IES deve — senão uma
+                instituição com muita cobrança indevida pareceria estar devendo mais
+                documento do que realmente deve, e o denominador puniria justamente
+                quem foi cobrado errado.  */
+            const esperadosDe = (linha) => (linha.total || 0) - (linha.Inadimplentes || 0);
+            const enviadosDe = (linha) => esperadosDe(linha) - (linha.NaoEnviados || 0);
+
+            /*  O PERCENTUAL DIZ QUANTO JÁ ESTÁ RESOLVIDO — quanto MAIOR, MELHOR.
+
+                A primeira versão mostrava a fatia crua de cada balde, e nas colunas de
+                problema isso lia ao contrário: "0 pendentes (0,0%)" parecia zero por
+                cento de alguma coisa boa, quando é o contrário — quem tem zero pendência
+                ENVIOU TUDO, e o número que descreve isso é 100%.
+
+                Então as colunas de problema mostram o COMPLEMENTO, que é a medida de
+                progresso: `Pendentes` mostra o % enviado, `Não Processados` mostra o %
+                já processado. Zero na coluna vira 100% na leitura.
+
+                OS TRÊS DE INADIMPLÊNCIA SÃO A EXCEÇÃO, e continuam mostrando a fatia:
+                ali maior é PIOR. Não é um passo do caminho que se completa — é um erro
+                em curso, e a meta é levá-lo a zero. Um complemento ali ("97% não
+                inadimplente") esconderia justamente o que a coluna existe para denunciar.
+
+                CADA % TEM DENOMINADOR PRÓPRIO, e é por isso que o cabeçalho nomeia a
+                medida embaixo do nome da coluna. Sem esse rótulo, "36 (97,2%)" na coluna
+                de pendências lê como "97,2% estão pendentes" — o oposto do que diz.
+
+                Devolve `null` quando a base é zero: não há progresso a medir sobre nada,
+                e mostrar "0,0%" ou "100,0%" ali seria inventar um fato.  */
+            const fatia = (valor, base) => (base > 0 ? ((valor || 0) / base) * 100 : null);
+            const progresso = (falta, base) => (base > 0 ? (1 - (falta || 0) / base) * 100 : null);
+
+            const COLUNAS_IES = [
+                { chave: 'ies',           rotulo: 'Instituição',   numero: false },
+                { chave: 'beneficiarios', rotulo: 'Beneficiários', numero: true },
+
+                { chave: 'Processados',    rotulo: FATIAS[0], numero: true,
+                  medida: '% do esperado',
+                  pct: (l) => fatia(l.Processados, esperadosDe(l)) },
+
+                { chave: 'NaoProcessados', rotulo: FATIAS[1], numero: true,
+                  medida: '% já processado',
+                  pct: (l) => progresso(l.NaoProcessados, enviadosDe(l)) },
+
+                { chave: 'NaoEnviados',    rotulo: FATIAS[2], numero: true,
+                  medida: '% enviado',
+                  pct: (l) => progresso(l.NaoEnviados, esperadosDe(l)) },
+
+                { chave: 'InadProc',       rotulo: FATIAS[3], numero: true,
+                  medida: '% do total', inverso: true,
+                  pct: (l) => fatia(l.InadProc, l.total) },
+
+                { chave: 'InadNaoProc',    rotulo: FATIAS[4], numero: true,
+                  medida: '% do total', inverso: true,
+                  pct: (l) => fatia(l.InadNaoProc, l.total) },
+
+                { chave: 'Inadimplentes',  rotulo: FATIAS[5], numero: true,
+                  medida: '% do total', inverso: true,
+                  pct: (l) => fatia(l.Inadimplentes, l.total) },
+            ];
+
+            const elIES = {
+                chips: document.getElementById('ies-chips'),
+                cabecalho: document.getElementById('ies-cabecalho'),
+                corpo: document.getElementById('ies-corpo'),
+                contagem: document.getElementById('ies-contagem'),
+                busca: document.getElementById('ies-busca'),
+                limparBusca: document.getElementById('ies-limpar-busca'),
+                filtros: document.getElementById('ies-filtros'),
+            };
+
+            const checkboxesDocumento = document.querySelectorAll('.filter-documento-ies');
+            /*  Vive em `window` pelo mesmo motivo dos gráficos e dos recortes:
+                `initDashDocumentosIA` roda no DOMContentLoaded E no turbo:load, e a
+                ordem escolhida não pode se perder na segunda passada.  */
+            /*  ORDEM INICIAL: ALFABÉTICA.
+
+                Ordenar por um número já responde uma pergunta, e a tela não sabe qual é
+                a de quem abriu. Alfabética não responde nenhuma — e é justamente por
+                isso que serve de partida: ela é a única ordem em que PROCURAR uma
+                instituição específica funciona. Quem quer o ranking pede o ranking, na
+                seção "Ordenar por" da barra ou no cabeçalho da coluna.  */
+            const ORDEM_PADRAO_IES = { chave: 'ies', desc: false };
+            window.__ordemIES = window.__ordemIES || Object.assign({}, ORDEM_PADRAO_IES);
+
+            let dadosIES = { linhas: [], totais: {} };
+
+            /*  Tira acento para a busca local casar "GOIÁS" com "goias".
+
+                Repete o `normalizar` do modal de IES de propósito: aquele vive noutro
+                closure (o script do modal, fora de `initDashDocumentosIA`) e não se
+                alcança daqui. São três linhas; expô-lo em `window` só para
+                compartilhá-las custaria mais do que repeti-las.  */
+            const semAcento = (texto) => String(texto)
+                .toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+            /** Só os parâmetros que esta vista conhece: período, IES e documento. */
+            const parametrosDaVistaIES = () => {
+                const parametros = new URLSearchParams();
+
+                const semestres = marcados(checkboxesSemestre);
+                if (semestres.length > 0) parametros.append('semestres', semestres.join(','));
+
+                // Separador '||' e não ',': nome de faculdade tem vírgula.
+                if (typeof activeIESFilters !== 'undefined' && activeIESFilters.length > 0) {
+                    parametros.append('ies', activeIESFilters.join('||'));
+                }
+
+                const documentos = marcados(checkboxesDocumento);
+                if (documentos.length > 0) parametros.append('documentos', documentos.join('||'));
+
+                /*  A BUSCA NÃO VAI AO SERVIDOR nesta vista, diferente do Detalhamento.
+                    Lá ela procura inscrição e CPF em 184 mil linhas, e filtrar o que já
+                    desceu seria procurar em 0,27% da base. Aqui a resposta inteira são
+                    ~110 nomes de instituição, todos já na página.  */
+                return parametros;
+            };
+
+            /** As linhas que a tabela deve mostrar: a resposta, filtrada pela busca local. */
+            const linhasVisiveisIES = () => {
+                const termo = semAcento((elIES.busca && elIES.busca.value || '').trim());
+                const linhas = termo
+                    ? dadosIES.linhas.filter((linha) => semAcento(linha.ies).includes(termo))
+                    : dadosIES.linhas.slice();
+
+                const { chave, desc } = window.__ordemIES;
+
+                /*  `(x - y) * sinal`, e NÃO `(y - x) * sinal`.
+
+                    `sinal` é -1 quando a ordem é decrescente, e é ele quem inverte.
+                    Escrever `y - x` já é decrescente, e o `sinal` então o desfazia: a
+                    tabela abria com a menor IES no topo e o chip "Pendentes" ordenava do
+                    zero para cima — o oposto da pergunta que os dois existem para
+                    responder.  */
+                const sinal = desc ? -1 : 1;
+                linhas.sort((a, b) => {
+                    const x = a[chave], y = b[chave];
+                    if (typeof x === 'string' || typeof y === 'string') {
+                        return sinal * String(x).localeCompare(String(y), 'pt-BR');
+                    }
+                    // Empate no número volta ao nome: sem isto, duas IES com os mesmos
+                    // valores trocam de lugar entre uma pintura e outra.
+                    return (x - y) * sinal || a.ies.localeCompare(b.ies, 'pt-BR');
+                });
+                return linhas;
+            };
+
+            /**
+             * O QUE FAZ: pinta os seis chips do topo — o total de cada balde no recorte
+             *   inteiro, com a proporção ao lado.
+             * POR QUÊ CLICAR ORDENA, e não filtra: recortar a tabela por "só os
+             *   pendentes" a deixaria com as mesmas ~110 linhas, porque toda IES tem
+             *   pendência de alguma coisa. O gesto prometeria um recorte e não entregaria
+             *   nenhum. A pergunta que se faz olhando o chip é "quem são os piores
+             *   nisto?", e quem responde isso é a ordem.
+             */
+            const pintarChipsIES = () => {
+                if (!elIES.chips) return;
+                const cores = PALETA[temaAtual()];
+                const totais = dadosIES.totais || {};
+                const soma = CHAVES_DAS_FATIAS.reduce((acc, chave) => acc + (totais[chave] || 0), 0);
+
+                elIES.chips.innerHTML = FATIAS.map((nome, indice) => {
+                    const chave = CHAVES_DAS_FATIAS[indice];
+                    const valor = totais[chave] || 0;
+                    const percentual = soma > 0 ? (valor / soma) * 100 : 0;
+                    const ativo = window.__ordemIES.chave === chave;
+                    return `<button type="button" class="docia-ies-chip${ativo ? ' docia-ies-chip--ativo' : ''}"
+                                    data-chave="${chave}"
+                                    title="Ordenar as instituições por ${escaparHtml(nome)}">
+                        <span class="docia-ies-chip__topo">
+                            <span class="docia-ies-chip__ponto" style="background:${cores[indice]};"></span>
+                            <span class="docia-ies-chip__nome">${escaparHtml(nome)}</span>
+                        </span>
+                        <span class="docia-ies-chip__baixo">
+                            <span class="docia-ies-chip__valor">${formatarNumero(valor)}</span>
+                            <span class="docia-ies-chip__pct">${formatarPercentual(percentual)}</span>
+                        </span>
+                    </button>`;
+                }).join('');
+            };
+
+            /**
+             * O QUE FAZ: escreve o selo ao lado do título — quantas instituições estão
+             *   na tabela, e de quantas, quando a busca local recortou.
+             */
+            const marcarContagemIES = (texto, carregando) => {
+                if (!elIES.contagem) return;
+                elIES.contagem.innerHTML = texto;
+                elIES.contagem.classList.remove('hidden');
+                elIES.contagem.classList.toggle('docia-contagem--carregando', !!carregando);
+            };
+
+            /**
+             * O QUE FAZ: a faixa de etiquetas sobre a tabela — o mesmo recurso do
+             *   Detalhamento, e pelo mesmo motivo: a barra vive fechada, e um recorte
+             *   esquecido nela lê como "esta IES não tem documento nenhum".
+             */
+            const pintarFiltrosAtivosIES = () => {
+                if (!elIES.filtros) return;
+                const etiquetas = [];
+                marcados(checkboxesSemestre).forEach((v) => etiquetas.push(chip('Período', v, 'semestre:' + v)));
+                marcados(checkboxesDocumento).forEach((v) => etiquetas.push(chip('Documento', v, 'documento:' + v)));
+                if (typeof activeIESFilters !== 'undefined' && activeIESFilters.length > 0) {
+                    etiquetas.push(chip('IES', activeIESFilters.length + ' selecionada'
+                                        + (activeIESFilters.length > 1 ? 's' : ''), 'ies:*'));
+                }
+                const termo = (elIES.busca && elIES.busca.value || '').trim();
+                if (termo) etiquetas.push(chip('Nome contém', termo, 'busca-ies:*'));
+
+                elIES.filtros.innerHTML = etiquetas.join('');
+                elIES.filtros.classList.toggle('hidden', etiquetas.length === 0);
+                elIES.filtros.classList.toggle('flex', etiquetas.length > 0);
+            };
+
+            const pintarTabelaIES = () => {
+                if (!elIES.corpo || !elIES.cabecalho) return;
+                const linhas = linhasVisiveisIES();
+                const { chave: ordenada, desc } = window.__ordemIES;
+
+                elIES.cabecalho.innerHTML = COLUNAS_IES.map((coluna) => {
+                    const ativo = coluna.chave === ordenada;
+                    const seta = desc ? 'fa-arrow-down-long' : 'fa-arrow-up-long';
+                    /*  A SEGUNDA LINHA DO CABEÇALHO NOMEIA O DENOMINADOR.
+
+                        Cada coluna mede uma coisa diferente, e sem este rótulo o número
+                        entre parênteses fica sem base: "36 (97,2%)" sob "PENDENTES" lê
+                        como "97,2% estão pendentes", que é o oposto do que ele diz — ali
+                        97,2% é o quanto JÁ FOI ENVIADO.
+
+                        `inverso` marca as três colunas em que maior é PIOR. Elas são as
+                        únicas que mostram fatia em vez de progresso, e a marca as
+                        diferencia sem precisar de mais uma linha de texto.  */
+                    const medida = coluna.medida
+                        ? `<span class="docia-ies-th__medida${coluna.inverso ? ' docia-ies-th__medida--inverso' : ''}">${
+                              escaparHtml(coluna.medida)}</span>`
+                        : '';
+                    return `<th class="docia-ies-th px-4 py-3 text-[11px] font-extrabold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50/50${
+                                ativo ? ' docia-ies-th--ativo' : ''}${coluna.numero ? ' docia-ies-num' : ''}"
+                                data-chave="${coluna.chave}"
+                                title="Ordenar por ${escaparHtml(coluna.rotulo)}"><span
+                                class="docia-ies-th__nome">${escaparHtml(coluna.rotulo)}<i
+                                class="fa-solid ${seta} docia-ies-th__seta"></i></span>${medida}</th>`;
+                }).join('');
+
+                if (linhas.length === 0) {
+                    const buscando = (elIES.busca && elIES.busca.value || '').trim();
+                    elIES.corpo.innerHTML =
+                        `<tr><td colspan="${COLUNAS_IES.length}" class="px-4 py-8 text-center text-gray-400">`
+                        + (buscando ? 'Nenhuma instituição com esse nome.'
+                                    : 'Nenhuma instituição no recorte atual.')
+                        + '</td></tr>';
+                    return;
+                }
+
+                elIES.corpo.innerHTML = linhas.map((linha) =>
+                    '<tr class="hover:bg-pink-50/60 transition-colors group cursor-default">'
+                    + COLUNAS_IES.map((coluna) => {
+                        const valor = linha[coluna.chave];
+                        if (!coluna.numero) {
+                            return `<td class="px-4 py-2.5 border-b border-gray-100 text-[13px] font-medium text-gray-700 group-hover:text-gray-900 transition-colors"
+                                        ><div class="docia-ies-nome" title="${escaparHtml(valor)}">${escaparHtml(valor)}</div></td>`;
+                        }
+                        /*  O ZERO APAGA SÓ O NÚMERO, e não a célula inteira.
+
+                            Antes a classe ia no `<td>` e levava o percentual junto. Com
+                            a semântica nova isso apagava justamente a informação boa:
+                            zero pendências vale 100% enviado, que é o melhor resultado
+                            possível daquela coluna e o que menos deveria sumir.  */
+                        const zero = !valor ? ' docia-ies-zero' : '';
+                        /*  O PERCENTUAL É O DA COLUNA, cada uma com sua base — ver
+                            `COLUNAS_IES`. `null` significa base zero: não há progresso a
+                            medir sobre nada, e a célula sai só com o número.  */
+                        const valorPct = coluna.pct ? coluna.pct(linha) : null;
+                        /*  O VERMELHO SÓ ACENDE COM VALOR. Zero inadimplente não é
+                            alerta — é a meta atingida, e é o caso da MAIORIA das
+                            células dessas três colunas. Pintado, o vermelho aparecia
+                            centenas de vezes dizendo "atenção" sobre "não há nada
+                            aqui", e o alarme deixava de significar coisa alguma
+                            justamente onde há inadimplência de verdade.  */
+                        const alerta = coluna.inverso && valor ? ' docia-ies-pct--inverso' : '';
+                        const pct = valorPct === null ? '' :
+                            `<span class="docia-ies-pct${alerta}">(${
+                                formatarPercentual(valorPct)})</span>`;
+                        return `<td class="docia-ies-num px-4 py-2.5 border-b border-gray-100 text-[13px] text-gray-700 group-hover:text-gray-900 transition-colors"><span class="docia-ies-valor${zero}">${
+                                    formatarNumero(valor)}</span>${pct}</td>`;
+                    }).join('')
+                    + '</tr>').join('');
+            };
+
+            const pintarVistaIES = () => {
+                pintarChipsIES();
+                pintarTabelaIES();
+                pintarFiltrosAtivosIES();
+
+                const total = dadosIES.linhas.length;
+                const exibidas = linhasVisiveisIES().length;
+                const plural = (n) => n === 1 ? 'instituição' : 'instituições';
+                marcarContagemIES(exibidas === total
+                    ? `${formatarNumero(total)} ${plural(total)}`
+                    : `${formatarNumero(exibidas)} de ${formatarNumero(total)} ${plural(total)}`,
+                    false);
+            };
+
+            window.fetchDadosIES = function () {
+                if (!elIES.corpo) return;
+                marcarContagemIES('contando...', true);
+
+                const consulta = parametrosDaVistaIES().toString();
+                fetch('/dashboards/documentos-ia/api/resumo-ies/' + (consulta ? '?' + consulta : ''))
+                    .then((resposta) => resposta.json())
+                    .then((corpo) => {
+                        if (corpo.status !== 'ok') {
+                            marcarContagemIES('falhou', false);
+                            return;
+                        }
+                        dadosIES = { linhas: corpo.linhas || [], totais: corpo.totais || {} };
+                        pintarVistaIES();
+                    })
+                    .catch((erro) => {
+                        console.error('[Documentos IA] Falha ao buscar o resumo por IES:', erro);
+                        marcarContagemIES('falhou', false);
+                    });
+            };
+
+            /*  ORDENAR — pelo cabeçalho ou pelo chip, com um comportamento só.
+
+                Clicar na coluna que JÁ ordena inverte o sentido; clicar noutra passa a
+                ordenar por ela. O sentido inicial de uma coluna nova é o que responde a
+                pergunta que se faz dela: do maior para o menor num número ("quem tem
+                mais pendência?"), de A a Z num nome.
+
+                Delegado no `document` e registrado UMA VEZ: o cabeçalho e os chips são
+                reescritos inteiros a cada pintura, então um ouvinte por botão morreria no
+                primeiro `innerHTML`.  */
+            const ordenarIESPor = (chave, vindoDoChip) => {
+                const coluna = COLUNAS_IES.find((c) => c.chave === chave);
+                if (!coluna) return;
+                if (window.__ordemIES.chave === chave && !vindoDoChip) {
+                    window.__ordemIES.desc = !window.__ordemIES.desc;
+                } else {
+                    window.__ordemIES = { chave: chave, desc: coluna.numero };
+                }
+                pintarVistaIES();
+            };
+
+            if (!window.__ordemLigadaDocIA) {
+                window.__ordemLigadaDocIA = true;
+                document.addEventListener('click', (evento) => {
+                    const chipIES = evento.target.closest('.docia-ies-chip');
+                    if (chipIES) { ordenarIESPor(chipIES.dataset.chave, true); return; }
+                    const cabecalho = evento.target.closest('.docia-ies-th');
+                    if (cabecalho) ordenarIESPor(cabecalho.dataset.chave, false);
+                });
+            }
+
+            /*  EXPORTAR A TABELA POR IES.
+
+                Mesmo gesto do botão do card de beneficiários, e de propósito: navegação
+                direta em vez de `fetch` + blob, porque o download é uma resposta com
+                `Content-Disposition` e deixar o navegador cuidar dele evita segurar o
+                arquivo na memória da aba só para entregá-lo ao disco em seguida.
+
+                LEVA `parametrosDaVistaIES`, os mesmos filtros da tela — período,
+                instituição e documento. Se montasse a própria query, o arquivo deixaria
+                de ser o que está na tela no dia em que um filtro novo entrasse só num
+                dos dois. A BUSCA POR NOME não vai junto: ela é local, um recorte de
+                leitura sobre linhas que já desceram, e o arquivo é o recorte inteiro.  */
+            const btnExportarIES = document.getElementById('btn-exportar-ies');
+            if (btnExportarIES) {
+                btnExportarIES.addEventListener('click', () => {
+                    if (btnExportarIES.disabled) return;
+                    const original = btnExportarIES.innerHTML;
+                    btnExportarIES.disabled = true;
+                    btnExportarIES.innerHTML =
+                        '<i class="fa-solid fa-download fa-fade text-xs"></i>'
+                        + '<span class="text-[10px] font-bold uppercase tracking-wider leading-none">Baixando</span>';
+
+                    const consulta = parametrosDaVistaIES().toString();
+                    window.location.href = '/dashboards/documentos-ia/api/exportar-ies/'
+                        + (consulta ? '?' + consulta : '');
+
+                    // Não existe evento de "download começou" para navegação direta. O
+                    // botão volta sozinho — são ~110 linhas, o arquivo sai instantâneo.
+                    setTimeout(() => {
+                        btnExportarIES.disabled = false;
+                        btnExportarIES.innerHTML = original;
+                    }, 1500);
+                });
+            }
+
+            // --- Busca local: nenhuma consulta, só repintar ---------------------
+            if (elIES.busca) {
+                const marcarLimparIES = () => {
+                    if (elIES.limparBusca) {
+                        elIES.limparBusca.classList.toggle('hidden', !elIES.busca.value.trim());
+                    }
+                };
+                elIES.busca.addEventListener('input', () => {
+                    marcarLimparIES();
+                    pintarVistaIES();
+                });
+                if (elIES.limparBusca) {
+                    elIES.limparBusca.addEventListener('click', () => {
+                        elIES.busca.value = '';
+                        marcarLimparIES();
+                        pintarVistaIES();
+                        elIES.busca.focus();
+                    });
+                }
+            }
+
+            // --- O X das etiquetas desfaz o filtro que a etiqueta nomeia ---------
+            if (elIES.filtros) {
+                elIES.filtros.addEventListener('click', (evento) => {
+                    const botao = evento.target.closest('.docia-chip__x');
+                    if (!botao) return;
+                    const [tipo, valor] = String(botao.dataset.acao || '').split(':');
+
+                    if (tipo === 'semestre' || tipo === 'documento') {
+                        const caixas = tipo === 'semestre' ? checkboxesSemestre : checkboxesDocumento;
+                        caixas.forEach((caixa) => { if (caixa.value === valor) caixa.checked = false; });
+                    } else if (tipo === 'ies') {
+                        if (typeof window.resetFiltroIES === 'function') window.resetFiltroIES();
+                    } else if (tipo === 'busca-ies') {
+                        elIES.busca.value = '';
+                        if (elIES.limparBusca) elIES.limparBusca.classList.add('hidden');
+                        // A busca é local: repintar basta, e é o único caminho que não
+                        // precisa voltar ao servidor.
+                        pintarVistaIES();
+                        return;
+                    } else {
+                        return;
+                    }
+                    recarregar();
+                });
+            }
+
+            // --- Documento: cada clique refaz a consulta da vista ----------------
+            // Somam, como os semestres: "contrato E histórico" é pergunta que se faz.
+            checkboxesDocumento.forEach((caixa) => caixa.addEventListener('change', recarregar));
+
+
+            /* ==================================================================
                MODO DE VISUALIZAÇÃO — BENEFICIÁRIOS OU IES
                ==================================================================
                Não é um filtro: é a troca do sujeito da pergunta. No modo Beneficiários
@@ -1590,6 +2090,7 @@ document.addEventListener('turbo:load', () => {
             const vistaBeneficiarios = document.getElementById('vista-beneficiarios');
             const vistaIES = document.getElementById('vista-ies');
             const filtrosBeneficiarios = document.getElementById('filtros-beneficiarios');
+            const filtroDocumentos = document.getElementById('filtro-documentos');
 
             const modoSelecionado = () => {
                 const marcado = Array.from(radiosModo).find((radio) => radio.checked);
@@ -1604,7 +2105,25 @@ document.addEventListener('turbo:load', () => {
                 if (vistaBeneficiarios) vistaBeneficiarios.style.display = emIES ? 'none' : 'flex';
                 if (vistaIES) vistaIES.style.display = emIES ? 'flex' : 'none';
                 if (filtrosBeneficiarios) filtrosBeneficiarios.style.display = emIES ? 'none' : '';
-                if (emIES || !buscarDados) return;
+                /*  Documento é o espelho de `filtros-beneficiarios`: só recorta a vista
+                    de IES, e no modo beneficiários os cinco documentos são a tela
+                    inteira — um card cada. Ele some junto para não aceitar cliques que
+                    não mudariam nada.  */
+                if (filtroDocumentos) filtroDocumentos.style.display = emIES ? '' : 'none';
+                if (!buscarDados) {
+                    // Na carga é o `recarregar()` do fim da inicialização que busca; aqui
+                    // só o contador precisa acompanhar, porque o de documento entra e sai
+                    // do total conforme o modo.
+                    atualizarContadores();
+                    return;
+                }
+                if (emIES) {
+                    /*  Sempre relê, mesmo já tendo lido antes: o botão "Atualizar" pode
+                        ter rodado o motor enquanto a outra vista estava no ar, e a tela
+                        ficaria mostrando o recorte da execução anterior sem dizer isso.  */
+                    recarregar();
+                    return;
+                }
                 /*  De volta aos beneficiários: os dados podem ter envelhecido enquanto a
                     outra vista estava no ar, e as roscas passaram esse tempo dentro de um
                     container sem altura — o ApexCharts recebe a altura como número e não
@@ -1630,6 +2149,14 @@ document.addEventListener('turbo:load', () => {
                     checkboxesMudouBolsa.forEach((caixa) => (caixa.checked = false));
                     checkboxesVinculo.forEach((caixa) => (caixa.checked = false));
                     checkboxesPerfil.forEach((caixa) => (caixa.checked = false));
+                    /*  O padrão do filtro de documento NÃO é vazio: é CONTRATO, que é
+                        como a tela nasce. Desmarcar tudo aqui deixaria "Restaurar
+                        Padrão" num estado que o carregamento da página nunca produz.  */
+                    checkboxesDocumento.forEach((caixa) =>
+                        (caixa.checked = caixa.value === 'CONTRATO'));
+                    if (elIES.busca) elIES.busca.value = '';
+                    if (elIES.limparBusca) elIES.limparBusca.classList.add('hidden');
+                    window.__ordemIES = Object.assign({}, ORDEM_PADRAO_IES);
                     if (typeof window.resetFiltroIES === 'function') window.resetFiltroIES();
                     if (elTabela.busca) elTabela.busca.value = '';
                     marcarBotaoDeLimpar();
@@ -1657,6 +2184,9 @@ document.addEventListener('turbo:load', () => {
                             if (graficos[alvo.id]) graficos[alvo.id].updateOptions(opcoesQuantitativo(alvo), false, false);
                         });
                         pintarResumo();
+                        // Os seis chips da vista de IES pegam a cor da mesma `PALETA`, e
+                        // ela também é lida como string no momento do render.
+                        pintarChipsIES();
                     }, 60);
                 });
             }
@@ -2201,16 +2731,42 @@ document.addEventListener('turbo:load', () => {
                             + '<span class="console-spinner"></span>';
                     }
 
-                    fetch(window.DASH_DOC_IA_INICIAR_URL, {
+                    /*  `forcar` só chega aqui vindo do botão "Abortar e iniciar" do
+                        aviso de motor ocupado. Ele NÃO pula a trava do servidor: manda
+                        a view parar o outro motor antes de começar este.  */
+                    const pedirInicio = (forcar) => fetch(window.DASH_DOC_IA_INICIAR_URL, {
                         method: 'POST',
                         headers: { 'X-CSRFToken': window.CSRF_TOKEN, 'Content-Type': 'application/json' },
                         // O escopo aplicado no modal viaja com o pedido. Sem configuração,
                         // vai `{}` — e `{}` significa atualização completa no back-end,
                         // que é como esta rotina sempre funcionou.
-                        body: JSON.stringify(window.__configDocIA || {}),
+                        body: JSON.stringify(Object.assign({}, window.__configDocIA || {},
+                                                           forcar ? { forcar: true } : {})),
                     })
-                    .then((r) => r.json())
+                    /*  409 É O ANÁLISE IA RODANDO, e não um erro. Os dois dirigem o mesmo
+                        ScriptCase com o mesmo usuário: começar agora derrubaria a sessão
+                        dele no meio da extração. O aviso mostra a barra DELE e devolve a
+                        escolha — esperar ou abortar. Se o componente compartilhado não
+                        tiver carregado, o fluxo segue para o `catch` e a pessoa ao menos
+                        vê a mensagem, em vez de a tela travar em silêncio.  */
+                    .then((r) => {
+                        if (r.status === 409 && window.MotorOcupado) {
+                            return window.MotorOcupado.seOcupado(r, (comForca) => {
+                                window.__iniciandoDocIA = true;
+                                pedirInicio(comForca);
+                            }).then((tratado) => {
+                                if (tratado) {
+                                    window.__iniciandoDocIA = false;
+                                    restaurarBotaoAtualizar();
+                                    return null;
+                                }
+                                return r.json();
+                            });
+                        }
+                        return r.json();
+                    })
                     .then((data) => {
+                        if (data === null) return;   // o aviso assumiu o comando
                         if (data.status !== 'ok') throw new Error(data.msg || 'resposta inesperada do servidor');
                         /* O back-end responde `ok` também quando ADOTA uma execução que já
                            estava no ar — e nesse caso o escopo configurado aqui é jogado
@@ -2233,6 +2789,10 @@ document.addEventListener('turbo:load', () => {
                         if (consoleStatus) consoleStatus.innerText = 'Falha';
                         restaurarBotaoAtualizar();
                     });
+
+                    // O clique começa SEM forçar. Forçar só vem do botão "Abortar e
+                    // iniciar" do aviso, e ele chama `pedirInicio(true)` de volta.
+                    pedirInicio(false);
                 });
             }
 

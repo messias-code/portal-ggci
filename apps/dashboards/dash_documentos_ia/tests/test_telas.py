@@ -256,8 +256,17 @@ class TestIntegridadeDoTemplate(BaseTelas):
         Ficou o gesto sobre o gráfico. As pílulas saíram da tela; os parâmetros
         `documentos` e `status_doc` da API continuam válidos e cobertos pelos testes de
         `api_tabela` logo abaixo — quem some é o controle, não a capacidade.
+
+        `filter-documento-ies` NÃO CONTA e é por isso que a asserção é exata. Ele é o
+        filtro de documento da VISÃO POR IES, que é outro controle noutra vista: lá os
+        cinco documentos caem todos na mesma linha da instituição, e sem escolher um a
+        célula vira a soma de cinco perguntas diferentes. Uma asserção por substring
+        proibiria os dois de uma vez, e o motivo de proibir o primeiro não alcança o
+        segundo.
         """
-        self.assertNotIn('filter-documento', self.html)
+        import re
+
+        self.assertEqual(re.findall(r'filter-documento(?!-ies)', self.html), [])
         self.assertNotIn('filter-status-doc', self.html)
         # E o caminho que substitui os dois continua publicado na página.
         self.assertIn('legenda-doc-0', self.html)
@@ -1099,7 +1108,7 @@ class TestApiDaTela(BaseTelas):
             self.skipTest("sem Parquet nesta máquina")
 
         nome = resposta["Content-Disposition"]
-        self.assertIn("Detalhamento de Beneficiarios", nome)
+        self.assertIn("Envios e Pendencias por Beneficiario", nome)
         self.assertTrue(nome.endswith('.xlsx"'), nome)
 
         arquivo = zipfile.ZipFile(_io.BytesIO(resposta.content))
