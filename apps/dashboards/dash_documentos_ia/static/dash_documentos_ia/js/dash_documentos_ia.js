@@ -1799,15 +1799,16 @@ document.addEventListener('turbo:load', () => {
                     const valor = totais[chave] || 0;
                     const percentual = soma > 0 ? (valor / soma) * 100 : 0;
                     
-                    return `<div class="flex-1 min-w-[9rem] bg-gradient-to-br from-white/90 to-gray-50/50 backdrop-blur-md border border-white/60 shadow-[0_4px_20px_rgb(0,0,0,0.08)] rounded-3xl py-2.5 px-4 flex flex-col justify-center text-left cursor-default group"
-                                    title="${escaparHtml(nome)}">
-                        <div class="flex items-center gap-1.5 mb-0.5" style="min-width: 0;">
-                            <span class="w-2 h-2 rounded-full shrink-0 transition-transform duration-300 group-hover:scale-125" style="background:${cores[indice]};"></span>
-                            <span class="text-[9px] xl:text-[10px] font-bold text-gray-400 uppercase tracking-wider" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escaparHtml(nome)}</span>
+                    return `<div class="flex-1 min-w-[9rem] bg-gradient-to-br from-white/90 to-gray-50/50 backdrop-blur-md border border-white/60 shadow-[0_4px_20px_rgb(0,0,0,0.08)] rounded-3xl py-2.5 px-4 flex items-center justify-between group cursor-default" title="${escaparHtml(nome)}">
+                        <div class="pr-2" style="min-width: 0;">
+                            <p class="text-[9px] xl:text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escaparHtml(nome)}</p>
+                            <h4 class="text-xl font-black text-gray-800 transition-colors" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                ${formatarNumero(valor)}
+                                <span class="text-xs font-bold text-gray-400 ml-1">${formatarPercentual(percentual)}</span>
+                            </h4>
                         </div>
-                        <div class="flex items-baseline gap-2">
-                            <span class="text-xl font-black text-gray-800 transition-colors">${formatarNumero(valor)}</span>
-                            <span class="text-xs font-bold text-gray-400">${formatarPercentual(percentual)}</span>
+                        <div class="w-10 h-10 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform duration-300 shrink-0">
+                            <span class="w-4 h-4 rounded-full" style="background:${cores[indice]};"></span>
                         </div>
                     </div>`;
                 }).join('');
