@@ -1804,30 +1804,18 @@ document.addEventListener('turbo:load', () => {
                 const totais = dadosIES.totais || {};
                 const soma = CHAVES_DAS_FATIAS.reduce((acc, chave) => acc + (totais[chave] || 0), 0);
 
-                const ICONES_IES = [
-                    'fa-check-double text-gray-800', 
-                    'fa-gears text-gray-800',
-                    'fa-cloud-arrow-up text-gray-800', 
-                    'fa-file-invoice text-gray-800',
-                    'fa-file-invoice-dollar text-gray-800', 
-                    'fa-triangle-exclamation text-gray-800'
-                ];
-
                 elIES.chips.innerHTML = FATIAS.map((nome, indice) => {
                     const chave = CHAVES_DAS_FATIAS[indice];
                     const valor = totais[chave] || 0;
                     const percentual = soma > 0 ? (valor / soma) * 100 : 0;
                     
-                    return `<div class="flex-1 min-w-[9rem] bg-gradient-to-br from-white/90 to-gray-50/50 backdrop-blur-md border border-white/60 shadow-[0_4px_20px_rgb(0,0,0,0.08)] rounded-3xl py-2.5 px-4 flex items-center justify-between group cursor-default" title="${escaparHtml(nome)}">
-                        <div class="pr-2" style="min-width: 0;">
+                    return `<div class="flex-1 min-w-[9rem] bg-gradient-to-br from-white/90 to-gray-50/50 backdrop-blur-md border border-white/60 shadow-[0_4px_20px_rgb(0,0,0,0.08)] rounded-3xl py-2.5 px-4 flex items-center justify-between cursor-default" title="${escaparHtml(nome)}">
+                        <div class="flex flex-col pr-2" style="min-width: 0;">
                             <p class="text-[9px] xl:text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escaparHtml(nome)}</p>
-                            <h4 class="text-xl font-black text-gray-800 transition-colors" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                ${formatarNumero(valor)}
-                                <span class="text-xs font-bold text-gray-400 ml-1">${formatarPercentual(percentual)}</span>
-                            </h4>
+                            <h4 class="text-xl font-black text-gray-800" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${formatarNumero(valor)}</h4>
                         </div>
-                        <div class="w-10 h-10 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform duration-300 shrink-0">
-                            <i class="fa-solid ${ICONES_IES[indice]} text-base"></i>
+                        <div class="shrink-0 flex items-center justify-end">
+                            <span class="text-[11px] font-extrabold px-2.5 py-1 rounded-xl bg-gray-100/80 text-gray-500 border border-gray-200/60 shadow-sm">${formatarPercentual(percentual)}</span>
                         </div>
                     </div>`;
                 }).join('');
