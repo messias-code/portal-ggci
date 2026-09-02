@@ -1757,25 +1757,7 @@ document.addEventListener('turbo:load', () => {
                     ? dadosIES.linhas.filter((linha) => semAcento(linha.ies).includes(termo))
                     : dadosIES.linhas.slice();
 
-                const { chave, desc } = window.__ordemIES;
-
-                /*  `(x - y) * sinal`, e NÃO `(y - x) * sinal`.
-
-                    `sinal` é -1 quando a ordem é decrescente, e é ele quem inverte.
-                    Escrever `y - x` já é decrescente, e o `sinal` então o desfazia: a
-                    tabela abria com a menor IES no topo e o chip "Pendentes" ordenava do
-                    zero para cima — o oposto da pergunta que os dois existem para
-                    responder.  */
-                const sinal = desc ? -1 : 1;
-                linhas.sort((a, b) => {
-                    const x = a[chave], y = b[chave];
-                    if (typeof x === 'string' || typeof y === 'string') {
-                        return sinal * String(x).localeCompare(String(y), 'pt-BR');
-                    }
-                    // Empate no número volta ao nome: sem isto, duas IES com os mesmos
-                    // valores trocam de lugar entre uma pintura e outra.
-                    return (x - y) * sinal || a.ies.localeCompare(b.ies, 'pt-BR');
-                });
+                linhas.sort((a, b) => String(a.ies).localeCompare(String(b.ies), 'pt-BR'));
                 return linhas;
             };
 
@@ -1850,31 +1832,10 @@ document.addEventListener('turbo:load', () => {
             const pintarTabelaIES = () => {
                 if (!elIES.corpo || !elIES.cabecalho) return;
                 const linhas = linhasVisiveisIES();
-                const { chave: ordenada, desc } = window.__ordemIES;
-
                 elIES.cabecalho.innerHTML = COLUNAS_IES.map((coluna) => {
-                    const ativo = coluna.chave === ordenada;
-                    const seta = desc ? 'fa-arrow-down-long' : 'fa-arrow-up-long';
-                    /*  A SEGUNDA LINHA DO CABEÇALHO NOMEIA O DENOMINADOR.
-
-                        Cada coluna mede uma coisa diferente, e sem este rótulo o número
-                        entre parênteses fica sem base: "36 (97,2%)" sob "PENDENTES" lê
-                        como "97,2% estão pendentes", que é o oposto do que ele diz — ali
-                        97,2% é o quanto JÁ FOI ENVIADO.
-
-                        `inverso` marca as três colunas em que maior é PIOR. Elas são as
-                        únicas que mostram fatia em vez de progresso, e a marca as
-                        diferencia sem precisar de mais uma linha de texto.  */
-                    const medida = coluna.medida
-                        ? `<span class="docia-ies-th__medida${coluna.inverso ? ' docia-ies-th__medida--inverso' : ''}">${
-                              escaparHtml(coluna.medida)}</span>`
-                        : '';
-                    return `<th class="docia-ies-th px-4 py-3 text-[11px] font-extrabold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50/50${
-                                ativo ? ' docia-ies-th--ativo' : ''}${coluna.numero ? ' docia-ies-num' : ''}"
-                                data-chave="${coluna.chave}"
-                                title="Ordenar por ${escaparHtml(coluna.rotulo)}"><span
-                                class="docia-ies-th__nome">${escaparHtml(coluna.rotulo)}<i
-                                class="fa-solid ${seta} docia-ies-th__seta"></i></span>${medida}</th>`;
+                    return `<th class="px-4 py-3 text-[11px] font-extrabold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50/50${coluna.numero ? ' docia-ies-num' : ''}">
+                                <span class="docia-ies-th__nome">${escaparHtml(coluna.rotulo)}</span>
+                            </th>`;
                 }).join('');
 
                 if (linhas.length === 0) {
@@ -1957,36 +1918,7 @@ document.addEventListener('turbo:load', () => {
                     });
             };
 
-            /*  ORDENAR — pelo cabeçalho ou pelo chip, com um comportamento só.
 
-                Clicar na coluna que JÁ ordena inverte o sentido; clicar noutra passa a
-                ordenar por ela. O sentido inicial de uma coluna nova é o que responde a
-                pergunta que se faz dela: do maior para o menor num número ("quem tem
-                mais pendência?"), de A a Z num nome.
-
-                Delegado no `document` e registrado UMA VEZ: o cabeçalho e os chips são
-                reescritos inteiros a cada pintura, então um ouvinte por botão morreria no
-                primeiro `innerHTML`.  */
-            const ordenarIESPor = (chave, vindoDoChip) => {
-                const coluna = COLUNAS_IES.find((c) => c.chave === chave);
-                if (!coluna) return;
-                if (window.__ordemIES.chave === chave && !vindoDoChip) {
-                    window.__ordemIES.desc = !window.__ordemIES.desc;
-                } else {
-                    window.__ordemIES = { chave: chave, desc: coluna.numero };
-                }
-                pintarVistaIES();
-            };
-
-            if (!window.__ordemLigadaDocIA) {
-                window.__ordemLigadaDocIA = true;
-                document.addEventListener('click', (evento) => {
-                    const chipIES = evento.target.closest('.docia-ies-chip');
-                    if (chipIES) { ordenarIESPor(chipIES.dataset.chave, true); return; }
-                    const cabecalho = evento.target.closest('.docia-ies-th');
-                    if (cabecalho) ordenarIESPor(cabecalho.dataset.chave, false);
-                });
-            }
 
             /*  EXPORTAR A TABELA POR IES.
 
