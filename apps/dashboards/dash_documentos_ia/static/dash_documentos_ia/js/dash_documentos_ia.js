@@ -793,10 +793,13 @@ document.addEventListener('turbo:load', () => {
 
                 grafico.selecionadoNoRecorte = haRecorte ? selecionado : null;
                 const inflado = cru.map((v) => (v > 0 && v < minVisual) ? minVisual : v);
-                grafico.updateSeries(inflado);
+                const assinaturaSeries = inflado.join(',');
+                if (grafico.__assinaturaSeries !== assinaturaSeries) {
+                    grafico.__assinaturaSeries = assinaturaSeries;
+                    grafico.updateSeries(inflado);
+                }
 
                 /*  O afastamento é feito no SVG, à mão. `toggleDataPointSelection` do
-                    ApexCharts não tem efeito em rosca (testado: `selectedDataPoints` fica
                     vazio e nada se move), e `expandOnClick` só responde ao clique do
                     usuário — aqui quem escolhe é a legenda.
 
