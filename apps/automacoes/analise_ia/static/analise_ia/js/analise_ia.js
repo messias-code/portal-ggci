@@ -203,13 +203,31 @@ function initAnaliseIA() {
             console.warn("Filtros HTML não encontrados, enviando vazio.");
         }
 
-        fetch('/automacoes/analise-ia/api/iniciar-processamento/', {
+        /*  `forcar` só chega aqui vindo do botão "Abortar e iniciar" do aviso de motor
+            ocupado. Ele NÃO pula a trava do servidor: manda a view parar o Documentos IA
+            antes de começar este.  */
+        const pedirInicio = (forcar) => fetch('/automacoes/analise-ia/api/iniciar-processamento/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payloadConfig)
+            body: JSON.stringify(Object.assign({}, payloadConfig, forcar ? { forcar: true } : {}))
         })
-            .then(response => response.json())
+            /*  409 É O DOCUMENTOS IA RODANDO, e não um erro. Os dois dirigem o mesmo
+                ScriptCase com o mesmo usuário: começar agora derrubaria a sessão dele no
+                meio da extração. O aviso mostra a barra DELE e devolve a escolha — esperar
+                ou abortar. Sem o componente compartilhado carregado, o fluxo segue para o
+                tratamento normal e a mensagem do servidor aparece no log.  */
+            .then(response => {
+                if (response.status === 409 && window.MotorOcupado) {
+                    return window.MotorOcupado.seOcupado(response, (comForca) => pedirInicio(comForca))
+                        .then(tratado => {
+                            if (tratado) { resetarBotoesFalha(); return null; }
+                            return response.json();
+                        });
+                }
+                return response.json();
+            })
             .then(data => {
+                if (data === null) return;   // o aviso assumiu o comando
                 if (data.status === 'ok') {
                     window.__processo_id = data.processo_id;
                     btnStop.classList.remove('opacity-90', 'cursor-not-allowed');
@@ -225,6 +243,9 @@ function initAnaliseIA() {
                 adicionarLog(`<div class="text-red-500">Erro de conexão: ${err}</div>`);
                 resetarBotoesFalha();
             });
+
+        // O clique começa SEM forçar. Forçar só vem do botão "Abortar e iniciar".
+        pedirInicio(false);
     });
 
     btnStop.addEventListener('click', () => {

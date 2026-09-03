@@ -11,6 +11,7 @@ aqui existem apenas quatro views: a tela, e o trio iniciar/status/parar que o bo
 ainda importava constantes do analise_ia, quebrando a independência do app.
 """
 
+import json
 import os
 import subprocess
 import sys
@@ -40,6 +41,36 @@ PASTA_PROCESSAMENTO = os.path.join(
 )
 
 
+def _abas_da_execucao(pasta_relatorio):
+    """Quais das cinco abas de documento existem nesta pasta de execução."""
+    return [aba for aba in ABAS_DOCUMENTOS
+            if os.path.exists(os.path.join(pasta_relatorio, f'{aba}.parquet'))]
+
+
+def _execucao_concluida_mais_recente():
+    """
+    O ID da última execução que o banco registra como CONCLUÍDA, ou `None`.
+
+    DEVOLVE `None` TAMBÉM QUANDO O BANCO NÃO RESPONDE, e isso é o ponto: a tela lê
+    Parquet do disco e não depende do banco para nada mais. Com o MySQL fora do ar ela
+    tem de continuar mostrando o último relatório bom, e não uma página de erro — foi
+    exatamente essa a situação de 02/09/2026, quando o banco caiu e a atualização não
+    podia ser refeita.
+
+    A leitura é fora de `atomic`, então a exceção não deixa a conexão em estado sujo
+    para o resto do request.
+    """
+    try:
+        return (ProcessamentoDocIA.objects
+                .filter(status='CONCLUIDO')
+                .order_by('-data_fim', '-id')
+                .values_list('id', flat=True)
+                .first())
+    except Exception as erro:  # banco fora do ar, tabela ausente, etc.
+        print(f'[dash_documentos_ia] Banco indisponível ao escolher a execução: {erro}')
+        return None
+
+
 def pasta_parquet_atual():
     """
     O QUE FAZ: descobre de qual pasta a tela deve ler as abas em Parquet.
@@ -52,9 +83,30 @@ def pasta_parquet_atual():
     mostrando dados de 18/08 com uma execução de 20/08 pronta no disco, sem erro
     em lugar nenhum: só números velhos.
 
-    COMO FUNCIONA: vale a pasta de execução MAIS RECENTE que tenha Parquet dentro;
-    não havendo nenhuma, cai na pasta fixa. Assim a tela acompanha o motor no
-    destino novo sem deixar de funcionar em quem ainda só tem o antigo.
+    A ESCOLHA É POR EXECUÇÃO CONCLUÍDA, E NÃO PELA PASTA MAIS NOVA.
+
+    A versão anterior pegava `max(mtime)` entre as pastas que tivessem QUALQUER
+    Parquet dentro. Isso confunde "a mais recente" com "a que deu certo", e as duas
+    divergem justamente quando importa. Em 02/09/2026 o cron das 02:37 rodou com o
+    banco caindo: a `proc_3` saiu com planilhas de 13 KB no lugar de 1,4 MB, morreu
+    antes de consolidar e não chegou a escrever `relatorio_geral`. Ela só não
+    sequestrou a tela porque não chegou a criar a pasta — se tivesse escrito UMA aba
+    que fosse, o dashboard inteiro teria trocado os 251.875 documentos da `proc_2`
+    pelo pedaço de uma execução abortada, e continuaria dizendo que aquilo era o
+    total. Números fictícios com cara de números reais.
+
+    A REGRA, em duas camadas:
+
+      1. O BANCO decide, quando responde: vale a pasta da última execução com status
+         `CONCLUIDO`, e só se ela estiver completa. É o motor dizendo que terminou.
+
+      2. O DISCO decide, quando o banco não responde: vale a pasta MAIS COMPLETA —
+         a que tem as cinco abas —, e a mais recente entre as empatadas. Completude
+         vem antes de recência de propósito: uma execução inteira de ontem descreve a
+         realidade melhor do que um caco de hoje.
+
+    Pasta sem aba nenhuma não entra na disputa em caso algum, e não havendo nenhuma
+    candidata cai na pasta fixa, que é o formato antigo.
     """
     candidatas = []
     if os.path.isdir(PASTA_PROCESSAMENTO):
@@ -64,10 +116,31 @@ def pasta_parquet_atual():
                 continue
             # Pasta sem Parquet é execução que morreu no meio: ler dela deixaria a
             # tela vazia mesmo havendo uma execução boa mais antiga ao lado.
-            if any(a.endswith('.parquet') for a in os.listdir(caminho)):
-                candidatas.append((os.path.getmtime(caminho), caminho))
+            abas = _abas_da_execucao(caminho)
+            if not abas:
+                continue
+            candidatas.append((len(abas), os.path.getmtime(caminho), caminho, nome))
 
-    return max(candidatas)[1] if candidatas else PASTA_PARQUET
+    if not candidatas:
+        return PASTA_PARQUET
+
+    completa = len(ABAS_DOCUMENTOS)
+
+    concluida = _execucao_concluida_mais_recente()
+    if concluida is not None:
+        # O nome da pasta é `proc_<id>` — é assim que o motor a cria.
+        alvo = f'proc_{concluida}'
+        for quantas, _, caminho, nome in candidatas:
+            if nome == alvo and quantas == completa:
+                return caminho
+
+    # `max` sobre a tupla compara completude primeiro e mtime depois: é a ordem da
+    # regra, escrita uma vez só.
+    quantas, _, caminho, nome = max(candidatas)
+    if quantas < completa:
+        print(f'[dash_documentos_ia] Nenhuma execução completa em disco; '
+              f'lendo {nome} com {quantas} de {completa} abas.')
+    return caminho
 
 # Status que significam "ainda rodando".
 STATUS_ATIVOS = ["PENDENTE", "EXTRAINDO", "TRATANDO"]
@@ -140,6 +213,58 @@ def _configuracao_do_pedido(request):
     return {chave: recebido[chave] for chave in conhecidas if chave in recebido}
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# TRAVA ENTRE OS DOIS MOTORES
+# ══════════════════════════════════════════════════════════════════════════════
+# Os dois apps dirigem o MESMO ScriptCase com o MESMO usuário, e rodar os dois ao mesmo
+# tempo faz o segundo login derrubar a sessão do primeiro — ver `portal_ggci/execucoes.py`.
+#
+# A RECUSA É AQUI, NO SERVIDOR, e não só no modal. O modal é a conversa; esta função é a
+# trava. Sem ela, duas abas abertas (ou o cron caindo em cima de um clique) colidem do
+# mesmo jeito, e quem abriu a segunda aba não veria aviso nenhum.
+#
+# `forcar` é o "abortar o outro e iniciar" da tela. Ele não ignora a trava: MANDA PARAR o
+# outro motor primeiro, e só então segue. Por isso chega no corpo do POST e não na URL —
+# é uma ação, não um filtro.
+
+
+def _bloqueio_do_outro_motor(request, eu):
+    """
+    Devolve a resposta 409 quando o outro motor está rodando, ou `None` para seguir.
+
+    Com `forcar` no corpo, aborta o outro em vez de recusar. O abort usa a view de parada
+    daquele app, alcançada pela URL que o registro já devolve — este app segue sem
+    conhecer o roteamento do outro.
+    """
+    from portal_ggci.execucoes import motor_em_andamento
+
+    outro = motor_em_andamento(exceto=eu)
+    if outro is None:
+        return None
+
+    forcar = False
+    if request.body:
+        try:
+            forcar = bool(json.loads(request.body).get('forcar'))
+        except (ValueError, AttributeError):
+            forcar = False
+
+    if not forcar:
+        # 409 CONFLITO, e não 400: o pedido está correto, o momento é que não está. É o
+        # código que o front usa para abrir o modal em vez de mostrar erro.
+        return JsonResponse({'status': 'ocupado', 'em_andamento': outro,
+                             'msg': "O %s está atualizando agora." % outro['rotulo']},
+                            status=409)
+
+    # "Abortar e iniciar": para o outro pela própria view dele.
+    from django.test import Client as _ClienteInterno
+
+    interno = _ClienteInterno()
+    interno.force_login(request.user)
+    interno.post(outro['url_parar'])
+    return None
+
+
 @csrf_exempt
 @login_required(login_url='/')
 def iniciar_atualizacao_docia(request):
@@ -157,6 +282,10 @@ def iniciar_atualizacao_docia(request):
     """
     if request.method != 'POST':
         return JsonResponse({'status': 'erro', 'msg': 'Método inválido.'}, status=400)
+
+    bloqueio = _bloqueio_do_outro_motor(request, eu='documentos_ia')
+    if bloqueio is not None:
+        return bloqueio
 
     ativos = ProcessamentoDocIA.objects.filter(status__in=STATUS_ATIVOS)
 
@@ -475,13 +604,35 @@ def _lista_do_parametro(request, nome, separador=','):
     return [item.strip() for item in bruto.split(separador) if item.strip()]
 
 
+# Os quatro recortes de PESSOA da barra lateral: o parâmetro da query string, a coluna
+# do Parquet e se o valor precisa subir para maiúsculas antes de comparar.
+#
+# `status_vinculo` já chega normalizado de `_carregar_abas` ('ATIVO'/'DESLIGADO') e a tela
+# manda nessa mesma caixa. `perfil` ('Veterano'/'Ingresso') e os dois `mudou_*` ('S'/'N')
+# ficam como estão no arquivo, e por isso a comparação sobe os dois lados: a tela manda o
+# valor exato hoje, mas o motor já mudou a caixa dessas colunas antes.
+FILTROS_DE_PESSOA = (
+    ('vinculo', 'status_vinculo'),
+    ('perfil', 'perfil'),
+    ('mudou_ies', 'mudou_ies'),
+    ('mudou_bolsa', 'mudou_bolsa'),
+)
+
+
 def _aplicar_filtros(df, request):
     """
     O QUE FAZ: aplica os filtros da barra lateral e da legenda.
-    COMO FUNCIONA: três recortes independentes, todos opcionais —
-        `semestres` (checkboxes), `ies` (modal, separado por `||` porque nome de
-        faculdade tem vírgula) e `status` (legenda das roscas). Ausência de
-        parâmetro significa "tudo", que é o estado inicial da tela.
+    COMO FUNCIONA: recortes independentes, todos opcionais — `semestres`
+        (checkboxes), `ies` (modal, separado por `||` porque nome de faculdade tem
+        vírgula), `status` (legenda das roscas) e os quatro de PESSOA
+        (`FILTROS_DE_PESSOA`). Ausência de parâmetro significa "tudo", que é o
+        estado inicial da tela.
+
+    OS QUATRO DE PESSOA SÃO NOVOS AQUI, e antes não existiam em lugar nenhum: a barra
+    lateral desenhava as caixas, contava o selo da seção e até imprimia a etiqueta
+    "Vínculo: ATIVO" sobre a tabela, mas o valor nunca entrava na query string e o
+    servidor nunca ouviu falar dele. O filtro rodava inteiro na aparência — que é o pior
+    jeito de errar, porque o número não muda e ninguém desconfia do controle.
     """
     semestres = _lista_do_parametro(request, 'semestres')
     if semestres:
@@ -501,6 +652,13 @@ def _aplicar_filtros(df, request):
         for rotulo in rotulos:
             alvo |= STATUS_POR_ROTULO.get(rotulo, {rotulo.upper()})
         df = df[df['status_ia'].isin(alvo)]
+
+    for parametro, coluna in FILTROS_DE_PESSOA:
+        escolhidos = _lista_do_parametro(request, parametro)
+        if not escolhidos or coluna not in df.columns:
+            continue
+        alvo = {valor.upper() for valor in escolhidos}
+        df = df[df[coluna].astype('string').str.upper().isin(alvo)]
 
     return df
 
@@ -952,6 +1110,26 @@ def _status_do_documento(df):
     return _balde_do_documento(df).map(STATUS_DOC_POR_BALDE)
 
 
+def _aplicar_filtro_de_documentos(df, request):
+    """
+    O QUE FAZ: recorta pelos tipos de documento pedidos em `documentos` (rótulos do
+    front-end, separados por `||`).
+
+    POR QUÊ É UMA FUNÇÃO, e não três linhas repetidas: o Detalhamento e a visão por IES
+    fazem o MESMO recorte, e é o mesmo parâmetro chegando da mesma barra lateral. Escrito
+    duas vezes, bastaria uma delas ganhar um rótulo novo para as duas telas discordarem
+    sobre quais documentos estão sendo contados.
+
+    RÓTULO DESCONHECIDO NÃO É IGNORADO: ele some da lista e o recorte fica vazio, que é o
+    que a query string pediu. Ignorá-lo devolveria a base inteira para quem pediu um
+    documento que não existe — o oposto do que se pediu.
+    """
+    documentos = _lista_do_parametro(request, 'documentos', separador='||')
+    if not documentos:
+        return df
+    return df[df['documento'].isin([d for d in documentos if d in ABA_POR_ROTULO])]
+
+
 def _aplicar_recorte_da_tabela(df, request):
     """
     O QUE FAZ: aplica os filtros que valem SÓ para o Detalhamento — tipo de documento
@@ -967,10 +1145,7 @@ def _aplicar_recorte_da_tabela(df, request):
     desse universo. As roscas continuam sendo o panorama de onde se tira a pergunta,
     e a tabela é a resposta nominal.
     """
-    documentos = _lista_do_parametro(request, 'documentos', separador='||')
-    if documentos:
-        alvo = [d for d in documentos if d in ABA_POR_ROTULO]
-        df = df[df['documento'].isin(alvo)]
+    df = _aplicar_filtro_de_documentos(df, request)
 
     situacoes = set(_lista_do_parametro(request, 'status_doc')) & set(BALDES)
     # Os três marcados equivalem a nenhum: o recorte é o conjunto inteiro.
@@ -1106,7 +1281,7 @@ def _montar_linhas(df):
 @login_required(login_url='/')
 def api_tabela(request):
     """
-    O QUE FAZ: serve o "Detalhamento de Beneficiários" — os CINCO documentos numa
+    O QUE FAZ: serve o "Envios & Pendências por Beneficiários" — os CINCO documentos numa
         tabela só, com as 31 colunas de `COLUNAS_TABELA`.
 
     COMO SE LÊ: cada linha é um documento ESPERADO de um aluno num semestre. A linha
@@ -1261,8 +1436,262 @@ def api_exportar(request):
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     # Nome em português e com a data como se escreve aqui. O anterior
     # (`detalhamento-beneficiarios-2026-08-24-1107`) era um identificador de máquina:
-    # quem recebe o arquivo por e-mail precisa saber o que é sem abrir.
+    # quem recebe o arquivo por e-mail precisa saber o que é sem abrir. Acompanha o
+    # título do card na tela — o arquivo e a tabela de onde ele saiu têm o mesmo nome.
     resposta['Content-Disposition'] = (
-        'attachment; filename="Detalhamento de Beneficiarios - %s.xlsx"'
+        'attachment; filename="Envios e Pendencias por Beneficiario - %s.xlsx"'
+        % localtime().strftime('%d-%m-%Y as %Hh%M'))
+    return resposta
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# VISÃO POR IES
+# ══════════════════════════════════════════════════════════════════════════════
+# A mesma pergunta do Detalhamento, com outro sujeito: em vez de "esta pessoa está
+# enviando o que deve?", "esta instituição está?". Por isso os números são OS MESMOS
+# SEIS BALDES de `_balde_do_documento` — se aqui fossem contados de outro jeito, a
+# soma da coluna não bateria com a rosca da vista ao lado e não haveria como saber
+# qual das duas está certa.
+#
+# O QUE MUDA É O EIXO DA CONTAGEM, e uma coisa a mais: o TIPO DE DOCUMENTO vira
+# filtro. Na vista de beneficiários os cinco documentos aparecem lado a lado, um
+# card cada; aqui eles cairiam todos dentro da mesma linha, e "PUC tem 3.117
+# pendentes" sem dizer de quê não responde nada — é a soma de cinco perguntas
+# diferentes. O filtro é o que devolve o sentido: um documento marcado, e a coluna
+# passa a ser "pendências de contrato da PUC".
+
+# Como cada balde viaja no JSON. Os nomes são os mesmos de `_resumo_por_documento`
+# de propósito: as duas vistas leem a mesma estrutura, e o JS pinta as seis fatias
+# com um só conjunto de chaves.
+# Os três baldes da inadimplência, juntos. Eles saem da contagem de BENEFICIÁRIOS —
+# ver `_resumo_por_ies`.
+BALDES_INADIMPLENTES = (BALDE_INAD_PROC, BALDE_INAD_NAO_PROC, BALDE_INAD)
+
+CHAVE_DO_BALDE = {
+    BALDE_PROCESSADOS: 'Processados',
+    BALDE_NAO_PROCESSADOS: 'NaoProcessados',
+    BALDE_PENDENTES: 'NaoEnviados',
+    BALDE_INAD_PROC: 'InadProc',
+    BALDE_INAD_NAO_PROC: 'InadNaoProc',
+    BALDE_INAD: 'Inadimplentes',
+}
+
+
+def _resumo_por_ies(df):
+    """
+    O QUE FAZ: uma linha por instituição, com os seis baldes, o total de documentos e
+        quantos beneficiários distintos ela tem no recorte.
+
+    COMO CONTA OS BENEFICIÁRIOS: **CPF distinto, e inadimplente não conta.**
+
+    CPF, e não inscrição, porque a mesma pessoa tem mais de uma: quem troca de parcial
+    para integral migra de inscrição, e quem tem contrato, RIAF e histórico é UMA pessoa,
+    não três. Medido em 2025-1: 625 CPFs com mais de uma inscrição na mesma IES (até 3),
+    o que por inscrição inflaria a coluna em 626 pessoas.
+
+    INADIMPLENTE FORA, e a regra é "não tem NENHUMA linha fora da inadimplência". Ela
+    recorta as LINHAS inadimplentes e conta o CPF que sobra — o que remove quem só
+    aparece por inadimplência e mantém quem tem também documento normal. Em 2025-1 são
+    7.541 CPFs removidos, e 7.488 deles aparecem SÓ pelo balde `Inadimplentes`, que nem
+    é documento nosso: é cobrança injetada do relatório do site, de semestre em que o
+    aluno não teve lançamento nenhum. Contá-los era dizer que a OVG atende quem ela não
+    custeou.
+
+    POR QUE O MISTO CONTINUA CONTANDO: os 769 CPFs que têm linha inadimplente E linha
+    normal são, em regra, a inscrição estornada convivendo com a que de fato recebeu —
+    ver `test_inadimplente_por_estorno.py`. A pessoa é beneficiária pela segunda; apagá-la
+    pela primeira seria descontar duas vezes o mesmo estorno.
+
+    DIVERGE DA ABA `Envios & Pendências` DO EXCEL, e é deliberado. O `Total Beneficiários`
+    de lá conta todo CPF, inadimplente incluído — as duas contagens batiam em 108/108 IES
+    antes desta regra. Quem quiser o número do Excel soma esta coluna com os três baldes
+    de inadimplência.
+
+    POR QUÊ `crosstab` E NÃO cinco `groupby` somados: os seis baldes saem de uma
+    passada só sobre as 250 mil linhas. Baldes que não aparecerem no recorte são
+    repostos em zero logo abaixo — a coluna precisa existir mesmo vazia, senão a tabela
+    da tela nasceria com um número de colunas diferente a cada filtro.
+
+    `total` NÃO É COLUNA DA TELA — seria a soma das seis ao lado, na mesma linha e à
+    vista. Ele viaja porque é o que prova que os seis baldes cobrem todas as linhas do
+    recorte (a soma dos totais tem de dar o tamanho do DataFrame): conferência, não
+    leitura.
+
+    ORDEM: a IES com mais documentos primeiro. É a ordem em que se procura o problema,
+    e a tela pode reordenar por qualquer coluna sem voltar ao servidor — são ~110
+    linhas, não vale um round-trip.
+    """
+    import pandas as pd
+
+    if len(df) == 0:
+        return []
+
+    balde = _balde_do_documento(df)
+    tabela = pd.crosstab(df['faculdade'], balde)
+    for nome in BALDES:
+        if nome not in tabela.columns:
+            tabela[nome] = 0
+
+    # As linhas que representam alguém sendo ATENDIDO. O CPF que não sobrevive a este
+    # recorte só existe no conjunto por inadimplência, e não é beneficiário.
+    atendidos = df[~balde.isin(BALDES_INADIMPLENTES)]
+    pessoas = atendidos.groupby('faculdade', observed=True)['cpf'].nunique()
+    totais = tabela.sum(axis=1)
+
+    linhas = []
+    for ies in tabela.index:
+        linha = {
+            'ies': str(ies),
+            'beneficiarios': int(pessoas.get(ies, 0)),
+            'total': int(totais[ies]),
+        }
+        for balde, chave in CHAVE_DO_BALDE.items():
+            linha[chave] = int(tabela.at[ies, balde])
+        linhas.append(linha)
+
+    linhas.sort(key=lambda linha: (-linha['total'], linha['ies']))
+    return linhas
+
+
+@login_required(login_url='/')
+def api_resumo_ies(request):
+    """
+    O QUE FAZ: serve a vista por IES — a tabela de instituições e os seis chips do topo.
+
+    PARÂMETROS: `semestres` e `ies`, os mesmos da barra lateral, mais `documentos`, que
+    nesta vista é filtro de primeira classe (ver o bloco acima). `busca` e `status` não
+    chegam aqui: a busca é por inscrição/CPF, que não são o sujeito desta tela, e a
+    legenda das roscas só existe na outra vista.
+
+    OS TOTAIS VÊM DA SOMA DAS LINHAS, e não de uma segunda contagem sobre o DataFrame:
+    o chip do topo e a coluna embaixo dele têm de ser o mesmo número. Contados duas
+    vezes, bastaria um filtro entrar num caminho e não no outro para a tela passar a
+    somar diferente de si mesma — sem erro em lugar nenhum.
+    """
+    if not _tem_permissao(request.user):
+        return JsonResponse({'status': 'erro', 'mensagem': 'Sem permissão.', 'linhas': []},
+                            status=403)
+
+    df = _aplicar_filtros(_carregar_abas(), request)
+    df = _aplicar_filtro_de_documentos(df, request)
+
+    linhas = _resumo_por_ies(df)
+
+    chaves = ['beneficiarios', 'total'] + list(CHAVE_DO_BALDE.values())
+    totais = {chave: sum(linha[chave] for linha in linhas) for chave in chaves}
+    # Beneficiários é o único que NÃO se soma: a mesma pessoa aparece em duas IES
+    # quando muda de instituição no meio do período, e somar as colunas a contaria
+    # duas vezes (149 pessoas em 2025-1). O total sai do recorte inteiro, pela MESMA
+    # regra da coluna — CPF distinto entre as linhas de quem está sendo atendido.
+    if len(df):
+        atendidos = df[~_balde_do_documento(df).isin(BALDES_INADIMPLENTES)]
+        totais['beneficiarios'] = int(atendidos['cpf'].nunique())
+    else:
+        totais['beneficiarios'] = 0
+    totais['ies'] = len(linhas)
+
+    return JsonResponse({'status': 'ok', 'linhas': linhas, 'totais': totais})
+
+
+# Como cada coluna da tabela por IES aparece no Excel, na ordem da tela. Os rótulos
+# são os da tela, e não as chaves do JSON: quem abre a planilha não tem o dashboard
+# ao lado para traduzir `NaoEnviados`.
+#
+# AS DUAS BASES VÃO JUNTO (`Esperados` e `Enviados`) — elas não são colunas da tela,
+# onde os percentuais já saem calculados ao lado de cada número. No arquivo, sem elas,
+# as fórmulas de quem for conferir teriam de reconstruir a regra de cabeça: `Esperados`
+# tira a cobrança sem lastro do que a IES realmente deve, e é justamente o passo que
+# não se adivinha olhando as outras colunas.
+COLUNAS_EXPORTACAO_IES = [
+    ('ies', 'Instituição'),
+    ('beneficiarios', 'Beneficiários'),
+    ('Processados', 'Processados'),
+    ('NaoProcessados', 'Não Processados'),
+    ('NaoEnviados', 'Pendentes'),
+    ('InadProc', 'Inadimplentes Proc.'),
+    ('InadNaoProc', 'Inadimplentes Não Proc.'),
+    ('Inadimplentes', 'Inadimplentes'),
+    ('total', 'Total de Documentos'),
+    ('esperados', 'Esperados'),
+    ('enviados', 'Enviados'),
+]
+
+
+@login_required(login_url='/')
+def api_exportar_ies(request):
+    """
+    O QUE FAZ: devolve a visão por IES como .xlsx, com o MESMO recorte da tela.
+
+    POR QUÊ EXISTE: a tabela da tela é a resposta para olhar; a planilha é a resposta
+    para levar. São ~110 linhas, então aqui não há teto a resolver como no Detalhamento
+    — o que se leva é a possibilidade de cruzar com outra base, mandar por e-mail e
+    guardar o recorte de um período que a próxima execução do motor vai sobrescrever.
+
+    COMO FUNCIONA: repete exatamente a cadeia de `api_resumo_ies`. Se as duas
+    divergissem, o arquivo baixado não seria o que a pessoa estava vendo.
+
+    ORDENAÇÃO: alfabética, e não a da tela. A ordem da tabela é um gesto de leitura
+    (clicar num cabeçalho); no arquivo, o Excel tem o próprio filtro e reordena em um
+    clique. Alfabética é a única ordem em que PROCURAR uma instituição funciona.
+    """
+    if not _tem_permissao(request.user):
+        return JsonResponse({'status': 'erro', 'mensagem': 'Sem permissão.'}, status=403)
+
+    import io as _io
+
+    import xlsxwriter
+
+    df = _aplicar_filtros(_carregar_abas(), request)
+    df = _aplicar_filtro_de_documentos(df, request)
+    linhas = sorted(_resumo_por_ies(df), key=lambda linha: linha['ies'])
+
+    for linha in linhas:
+        # As duas bases dos percentuais da tela, calculadas aqui pela mesma regra:
+        # a cobrança sem lastro (`Inadimplentes`) não é documento que a IES deva.
+        linha['esperados'] = linha['total'] - linha['Inadimplentes']
+        linha['enviados'] = linha['esperados'] - linha['NaoEnviados']
+
+    buffer = _io.BytesIO()
+    livro = xlsxwriter.Workbook(buffer, {'in_memory': True})
+    aba = livro.add_worksheet('Envios e Pendências')
+
+    cabecalho = livro.add_format({
+        'bold': True, 'font_color': '#FFFFFF', 'bg_color': '#6B007B',
+        'align': 'left', 'valign': 'vcenter', 'border': 1, 'border_color': '#6B007B',
+    })
+    corpo = livro.add_format({'bg_color': '#E4DFEC', 'border': 1, 'border_color': '#FFFFFF'})
+    numero = livro.add_format({'bg_color': '#E4DFEC', 'border': 1,
+                               'border_color': '#FFFFFF', 'num_format': '#,##0'})
+
+    chaves = [chave for chave, _ in COLUNAS_EXPORTACAO_IES]
+    rotulos = [rotulo for _, rotulo in COLUNAS_EXPORTACAO_IES]
+
+    for indice, rotulo in enumerate(rotulos):
+        # O nome da IES é longo (o catálogo corta em ~76 caracteres); as demais são
+        # números e cabem no rótulo. Sem isto a primeira coluna abre com 8 caracteres.
+        aba.set_column(indice, indice, 60 if indice == 0 else max(len(rotulo) + 2, 12))
+
+    aba.freeze_panes(1, 1)
+
+    for numero_linha, linha in enumerate(linhas, start=1):
+        for coluna, chave in enumerate(chaves):
+            valor = linha[chave]
+            aba.write(numero_linha, coluna, valor, corpo if coluna == 0 else numero)
+
+    aba.add_table(0, 0, max(len(linhas), 1), len(rotulos) - 1, {
+        'name': 'EnviosPendenciasIES',
+        'style': None,
+        'banded_rows': False,
+        'autofilter': True,
+        'columns': [{'header': rotulo, 'header_format': cabecalho} for rotulo in rotulos],
+    })
+
+    livro.close()
+
+    resposta = HttpResponse(
+        buffer.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    resposta['Content-Disposition'] = (
+        'attachment; filename="Envios e Pendencias por Instituicao - %s.xlsx"'
         % localtime().strftime('%d-%m-%Y as %Hh%M'))
     return resposta

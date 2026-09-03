@@ -226,7 +226,8 @@ class TestIntegridadeDoTemplate(BaseTelas):
                          "tabela-busca", "btn-exportar", "btn-expandir", "icone-expandir",
                          "btn-limpar-busca", "tabela-filtros",
                          "btn-clear-filters", "toggle-sidebar-btn", "filter-sidebar",
-                         "modal-ies", "modal-console"]:
+                         "modal-ies", "modal-console",
+                         "vista-beneficiarios", "vista-ies", "filtros-beneficiarios"]:
             with self.subTest(elemento=elemento):
                 self.assertIn('id="%s"' % elemento, self.html)
 
@@ -255,11 +256,114 @@ class TestIntegridadeDoTemplate(BaseTelas):
         Ficou o gesto sobre o gráfico. As pílulas saíram da tela; os parâmetros
         `documentos` e `status_doc` da API continuam válidos e cobertos pelos testes de
         `api_tabela` logo abaixo — quem some é o controle, não a capacidade.
+
+        `filter-documento-ies` NÃO CONTA e é por isso que a asserção é exata. Ele é o
+        filtro de documento da VISÃO POR IES, que é outro controle noutra vista: lá os
+        cinco documentos caem todos na mesma linha da instituição, e sem escolher um a
+        célula vira a soma de cinco perguntas diferentes. Uma asserção por substring
+        proibiria os dois de uma vez, e o motivo de proibir o primeiro não alcança o
+        segundo.
         """
-        self.assertNotIn('filter-documento', self.html)
+        import re
+
+        self.assertEqual(re.findall(r'filter-documento(?!-ies)', self.html), [])
         self.assertNotIn('filter-status-doc', self.html)
         # E o caminho que substitui os dois continua publicado na página.
         self.assertIn('legenda-doc-0', self.html)
+
+    def test_a_barra_de_abas_publica_as_duas_telas_vivas(self):
+        """
+        A barra de abas é repetida à mão em CINCO templates — as três telas linkadas e
+        as duas órfãs (`historico`, `riaf`), que só se alcança digitando a URL. Uma
+        cópia esquecida continuaria oferecendo o Relatório RIAF, que saiu da navegação.
+
+        A última aba não pode levar `border-r`: a divisória existe para separá-la de
+        quem vinha depois, e sozinha vira um fio cortando a barra por dentro do canto
+        arredondado.
+        """
+        import os
+        import re
+
+        from django.conf import settings
+
+        pasta = os.path.join(
+            settings.BASE_DIR, "apps", "dashboards", "dash_documentos_ia",
+            "templates", "dash_documentos_ia")
+        for nome in ["index.html", "relatorio_ies.html", "relatorio_riaf.html",
+                     "historico.html", "riaf.html"]:
+            with self.subTest(template=nome):
+                with open(os.path.join(pasta, nome), encoding="utf-8") as arquivo:
+                    html = arquivo.read()
+                abas = re.findall(r'<a href="\{% url \'([^\']+)\' %\}"'
+                                  r' class="docia-aba [^"]*"[^>]*>', html)
+                self.assertEqual(abas, ["dash_documentos_ia",
+                                        "dash_documentos_ia_relatorio_ies"])
+                ultima = html.split('class="docia-aba ')[-1].split(">", 1)[0]
+                self.assertNotIn("border-r", ultima)
+
+    def test_cada_filtro_aparece_uma_unica_vez_na_barra(self):
+        """
+        Vínculo, Perfil, Mudou IES e Mudou Bolsa estiveram DUPLICADOS: dois blocos
+        idênticos, um abaixo do outro. As cópias não se falavam — `querySelectorAll`
+        recolhia as quatro caixas de cada par, e dava para ver "Sim" aceso numa cópia e
+        apagado na outra, com o recorte saindo da que ninguém estava olhando.
+        """
+        import re
+
+        for classe, opcoes in [("filter-vinculo", 2), ("filter-perfil", 2),
+                               ("filter-mudou-ies", 2), ("filter-mudou-bolsa", 2),
+                               ("filter-semestre", 4), ("filter-modo", 2)]:
+            with self.subTest(filtro=classe):
+                self.assertEqual(len(re.findall(r'class="%s peer' % classe, self.html)),
+                                 opcoes)
+
+    def test_os_pares_que_se_excluem_estao_marcados_para_o_javascript(self):
+        """
+        `exclusivo()` é ligado pela classe do grupo. Sem ela o par volta a aceitar
+        "Ativo E Desligado", que é o mesmo recorte de nenhum dos dois marcado — o
+        controle promete uma decisão e aceita uma contradição.
+
+        Os semestres NÃO entram: ali marcar dois soma, e é pergunta legítima.
+        """
+        self.assertEqual(self.html.count("docia-grupo-exclusivo"), 4)
+        semestres = self.html.split('class="filter-semestre', 1)[0]
+        self.assertNotIn("docia-grupo-exclusivo", semestres.rsplit("<section", 1)[-1])
+
+    def test_nenhum_elemento_tem_dois_atributos_class(self):
+        """
+        O quadrado do ícone de IES tinha `class` duas vezes na mesma tag. O parser fica
+        com a primeira e descarta a segunda sem avisar: `docia-icone-bg` e
+        `docia-icone-color` nunca chegavam, e o ícone ficava sem fundo e sem cor.
+        """
+        import re
+
+        repetidos = re.findall(r'<[a-z]+\b[^>]*\sclass="[^"]*"[^>]*\sclass="', self.html)
+        self.assertEqual(repetidos, [])
+
+    def test_o_modo_de_visualizacao_comeca_em_beneficiarios(self):
+        """
+        Os dois modos se excluem e um deles está sempre valendo — daí o rádio. Se o
+        `checked` sair do lugar errado, a tela abre com os dois apagados e a barra some
+        sem que ninguém tenha pedido; se sair de vez, o navegador marca o primeiro e o
+        acerto vira coincidência.
+        """
+        import re
+
+        modos = re.findall(r'<input type="radio" name="modo-visualizacao"'
+                           r' value="([^"]+)" class="filter-modo peer sr-only"( checked)?>',
+                           self.html)
+        self.assertEqual([valor for valor, _ in modos], ["beneficiarios", "ies"])
+        self.assertEqual([valor for valor, marcado in modos if marcado], ["beneficiarios"])
+
+    def test_a_vista_de_ies_nasce_recolhida(self):
+        """
+        `display` inline nas duas vistas, e não a classe `hidden`: as duas são `flex`, e
+        `hidden` perde para `flex` conforme a ordem do bundle purgado. Sem isto a tela
+        abriria com as duas vistas empilhadas.
+        """
+        self.assertIn('id="vista-ies"', self.html)
+        vista = self.html.split('id="vista-ies"', 1)[1].split('>', 1)[0]
+        self.assertIn('display: none', vista)
 
 
 class TestConsoleNaTela(BaseTelas):
@@ -1004,7 +1108,7 @@ class TestApiDaTela(BaseTelas):
             self.skipTest("sem Parquet nesta máquina")
 
         nome = resposta["Content-Disposition"]
-        self.assertIn("Detalhamento de Beneficiarios", nome)
+        self.assertIn("Envios e Pendencias por Beneficiario", nome)
         self.assertTrue(nome.endswith('.xlsx"'), nome)
 
         arquivo = zipfile.ZipFile(_io.BytesIO(resposta.content))

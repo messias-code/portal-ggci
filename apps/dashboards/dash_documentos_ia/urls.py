@@ -2,8 +2,9 @@
 === ARQUIVO: apps/dashboards/dash_documentos_ia/urls.py ===
 Propósito: Roteamento do Dashboard Documentos IA.
 
-Dois grupos de API: as três que servem a tela (KPIs, tabela e lista de IES, todas lendo
-as abas em `dados/parquet/`) e o trio do botão "Atualizar" — iniciar, acompanhar e abortar.
+Dois grupos de API: as que servem a tela (KPIs, tabela, lista de IES para o modal e o
+resumo por instituição da vista IES, todas lendo as abas em `dados/parquet/`) e o trio do
+botão "Atualizar" — iniciar, acompanhar e abortar.
 """
 from django.urls import path
 
@@ -21,7 +22,9 @@ urlpatterns = [
     path('api/dados/', views.api_dados, name='dash_documentos_ia_dados'),
     path('api/tabela/', views.api_tabela, name='dash_documentos_ia_tabela'),
     path('api/ies/', views.api_ies, name='dash_documentos_ia_ies'),
+    path('api/resumo-ies/', views.api_resumo_ies, name='dash_documentos_ia_resumo_ies'),
     path('api/exportar/', views.api_exportar, name='dash_documentos_ia_exportar'),
+    path('api/exportar-ies/', views.api_exportar_ies, name='dash_documentos_ia_exportar_ies'),
 
     # API do botão "Atualizar"
     path('api/iniciar/', views.iniciar_atualizacao_docia, name='dash_documentos_ia_iniciar'),

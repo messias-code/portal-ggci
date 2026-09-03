@@ -1,0 +1,254 @@
+/* ==========================================================================
+   MOTOR OCUPADO — A TELA QUE IMPEDE AS DUAS ATUALIZAÇÕES DE BRIGAREM
+   ==========================================================================
+   Componente compartilhado, no nível do projeto, como o `console.css`: o mesmo
+   aviso serve o Análise IA e o Documentos IA. Duplicar por app faria a mesma
+   conversa existir em duas versões que envelhecem separadas.
+
+   O QUE ELE RESOLVE
+     Os dois motores dirigem o MESMO ScriptCase com o MESMO usuário. Rodando
+     juntos, o segundo login derruba a sessão do primeiro e o relatório sai
+     incompleto sem ninguém perceber — ver `portal_ggci/execucoes.py`.
+
+   AS CORES SAEM DOS TOKENS `--tema-*`, então o modal acompanha o tema eleitoral
+   sozinho, sem um arquivo escuro paralelo. Onde não há token para o que se quer
+   dizer (o vermelho do "abortar"), a cor é literal e vem com o par escuro logo
+   abaixo — o bundle do Tailwind é purgado e não gera utilitária nova.
+   ========================================================================== */
+
+.mocupado {
+    position: fixed;
+    inset: 0;
+    z-index: 1300;                     /* acima do console (1200) */
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background-color: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(4px);
+}
+
+.mocupado.is-aberto { display: flex; }
+
+.mocupado__caixa {
+    width: 100%;
+    max-width: 34rem;
+    border-radius: 1.5rem;
+    background-color: #FFFFFF;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
+    overflow: hidden;
+}
+
+.mocupado__topo {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.9rem;
+    padding: 1.4rem 1.5rem 1rem;
+}
+
+.mocupado__icone {
+    width: 2.75rem;
+    height: 2.75rem;
+    flex: 0 0 auto;
+    border-radius: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    background-color: rgba(107, 0, 123, 0.1);
+    color: #6B007B;
+}
+
+.mocupado__titulo {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #1F2937;
+    line-height: 1.3;
+}
+
+.mocupado__linha {
+    margin: 0.3rem 0 0;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    color: #6B7280;
+}
+
+.mocupado__linha strong { color: #1F2937; font-weight: 700; }
+
+.mocupado__corpo { padding: 0 1.5rem 1.2rem; }
+
+/* --- A barra espelhada -------------------------------------------------------
+   Ela mostra o progresso do OUTRO motor, buscado da rota de status dele. Não é
+   enfeite: sem ver quanto falta, "aguardar" é uma aposta às cegas, e a escolha
+   entre esperar e abortar depende exatamente desse número. */
+.mocupado__medidor {
+    margin-top: 0.9rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(0, 0, 0, 0.07);
+    background-color: #F9FAFB;
+    padding: 0.85rem 1rem;
+}
+
+.mocupado__medidor-topo {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.mocupado__etapa {
+    font-size: 0.6875rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #6B007B;
+}
+
+.mocupado__pct {
+    font-size: 0.9rem;
+    font-weight: 900;
+    color: #1F2937;
+    font-variant-numeric: tabular-nums;
+}
+
+.mocupado__trilho {
+    height: 0.5rem;
+    border-radius: 9999px;
+    background-color: rgba(0, 0, 0, 0.07);
+    overflow: hidden;
+}
+
+.mocupado__barra {
+    height: 100%;
+    width: 0%;
+    border-radius: 9999px;
+    background: linear-gradient(to right, #EB8DC8, #6B007B);
+    transition: width 0.4s ease-out;
+}
+
+/*  Quando o outro motor termina, o modal NÃO fecha sozinho e NÃO inicia sozinho.
+    Ele troca de estado e espera o clique. Iniciar por conta própria surpreenderia
+    quem escolheu "aguardar" e saiu para o café — a extração leva minutos e mexe
+    no SIBU; começar sem alguém olhando é o oposto do que este aviso existe para
+    evitar. */
+.mocupado__liberado {
+    display: none;
+    margin-top: 0.9rem;
+    border-radius: 1rem;
+    padding: 0.8rem 1rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    background-color: rgba(16, 185, 129, 0.1);
+    color: #047857;
+}
+
+.mocupado.is-liberado .mocupado__liberado { display: block; }
+.mocupado.is-liberado .mocupado__medidor { opacity: 0.5; }
+
+.mocupado__rodape {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    padding: 1rem 1.5rem 1.3rem;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    background-color: #FAFAFB;
+}
+
+.mocupado__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.2rem;
+    border-radius: 0.85rem;
+    border: 1px solid transparent;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s, opacity 0.2s;
+}
+
+.mocupado__btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.mocupado__btn--neutro {
+    background-color: #FFFFFF;
+    border-color: rgba(0, 0, 0, 0.12);
+    color: #4B5563;
+}
+.mocupado__btn--neutro:hover:not(:disabled) { background-color: #F3F4F6; color: #1F2937; }
+
+.mocupado__btn--principal {
+    background: linear-gradient(135deg, #6B007B, #9B00B3);
+    color: #FFFFFF;
+}
+.mocupado__btn--principal:hover:not(:disabled) { opacity: 0.92; }
+
+/*  ABORTAR É A AÇÃO DESTRUTIVA, e o vermelho é o que diz isso. Ela derruba uma
+    extração em andamento — o trabalho já feito por ela se perde, e o relatório
+    daquele motor fica com o que sobrou. Por isso ela nunca é o botão em
+    destaque: o realce fica em "aguardar", que é o caminho sem estrago. */
+.mocupado__btn--perigo {
+    background-color: #FFFFFF;
+    border-color: rgba(214, 40, 40, 0.35);
+    color: #C22B2B;
+}
+.mocupado__btn--perigo:hover:not(:disabled) { background-color: rgba(214, 40, 40, 0.07); }
+
+.mocupado__btn:focus-visible { outline: 2px solid #6B007B; outline-offset: 2px; }
+
+
+/* ==========================================================================
+   TEMA ELEITORAL
+   ========================================================================== */
+
+html[data-tema="eleitoral"] .mocupado__caixa {
+    background-color: var(--tema-superficie);
+    border-color: var(--tema-borda);
+}
+html[data-tema="eleitoral"] .mocupado__titulo,
+html[data-tema="eleitoral"] .mocupado__linha strong,
+html[data-tema="eleitoral"] .mocupado__pct { color: var(--tema-texto-forte); }
+html[data-tema="eleitoral"] .mocupado__linha { color: var(--tema-texto-medio); }
+html[data-tema="eleitoral"] .mocupado__icone {
+    background-color: var(--tema-primaria-lavada);
+    color: var(--tema-primaria);
+}
+html[data-tema="eleitoral"] .mocupado__etapa { color: var(--tema-primaria); }
+html[data-tema="eleitoral"] .mocupado__medidor,
+html[data-tema="eleitoral"] .mocupado__rodape {
+    background-color: rgba(255, 255, 255, 0.04);
+    border-color: var(--tema-borda);
+}
+html[data-tema="eleitoral"] .mocupado__trilho { background-color: rgba(255, 255, 255, 0.12); }
+html[data-tema="eleitoral"] .mocupado__barra {
+    background: linear-gradient(to right, var(--tema-primaria-suave), var(--tema-primaria));
+}
+html[data-tema="eleitoral"] .mocupado__btn--neutro {
+    background-color: transparent;
+    border-color: var(--tema-borda);
+    color: var(--tema-texto-medio);
+}
+html[data-tema="eleitoral"] .mocupado__btn--neutro:hover:not(:disabled) {
+    background-color: rgba(255, 255, 255, 0.07);
+    color: var(--tema-texto-forte);
+}
+html[data-tema="eleitoral"] .mocupado__btn--principal {
+    background: var(--tema-primaria);
+    color: var(--tema-superficie);
+}
+html[data-tema="eleitoral"] .mocupado__btn--perigo {
+    background-color: transparent;
+    border-color: rgba(232, 139, 146, 0.4);
+    color: #E88B92;
+}
+html[data-tema="eleitoral"] .mocupado__btn--perigo:hover:not(:disabled) {
+    background-color: rgba(232, 139, 146, 0.12);
+}
+html[data-tema="eleitoral"] .mocupado__liberado {
+    background-color: rgba(16, 185, 129, 0.14);
+    color: #6EE7B7;
+}

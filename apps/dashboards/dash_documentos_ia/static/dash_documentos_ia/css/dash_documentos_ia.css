@@ -858,3 +858,443 @@ body { font-family: 'Poppins', sans-serif; }
     .cfgx__resumo { flex: 1 1 100%; }
     .cfgx__btn { flex: 1 1 auto; justify-content: center; }
 }
+
+/* ==========================================================================
+   BARRA DE FILTROS — SEÇÕES, RÓTULOS E CONTADORES
+   ==========================================================================
+   A barra era uma pilha de oito controles sem hierarquia: dois tamanhos de
+   título (`text-xs` e `text-[10px]`), três espaçamentos diferentes e nenhuma
+   pista de a que pergunta cada controle respondia.
+
+   CSS próprio, e não mais utilitárias: o bundle do Tailwind deste projeto é
+   purgado e não há build no repositório — classe utilitária nova não é gerada
+   e falha em silêncio. Escrito sobre os tokens de tema (`--tema-*`, em
+   `static/css/tema.css`), o que faz o eleitoral vir junto sem uma segunda
+   folha para manter em dia.
+
+   Os CONTROLES em si continuam sendo a grade segmentada com `peer-checked`
+   que a tela já usava, com as mesmas classes: é essa a marcação que o tema
+   eleitoral corrige nominalmente em `dash_documentos_ia-eleitoral.css`, e
+   trocá-la por outra coisa deixaria o modo escuro para trás.
+   ========================================================================== */
+
+.docia-filtro-secao > * + * { margin-top: 0.625rem; }
+
+.docia-filtro-cabecalho {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    /* Faz o título parar de flutuar sobre o controle: a linha fica ancorada
+       na régua e o par (título + grade) lê como um bloco só. */
+    padding-bottom: 0.375rem;
+    border-bottom: 1px solid var(--tema-borda);
+}
+
+.docia-filtro-titulo {
+    margin: 0;
+    font-size: 0.6875rem;
+    font-weight: 800;
+    line-height: 1;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--tema-texto-medio);
+}
+
+/*  Rótulo à ESQUERDA do controle, e não acima dele.
+
+    Acima, cada par gastava duas linhas e a coluna virava uma escada de oito
+    degraus. Ao lado, o par ocupa uma linha só e os controles ficam alinhados
+    numa régua vertical — o olho compara "Ativo/Desligado" com "Veterano/
+    Ingresso" sem reencontrar a margem a cada linha.
+
+    A coluna do rótulo é fixa em 5.25rem: é o que "Mudou de bolsa" precisa
+    para caber em duas linhas curtas sem espremer o controle, que fica com
+    ~11rem — largura suficiente para "Desligado" por extenso.  */
+.docia-filtro-linha {
+    display: grid;
+    grid-template-columns: 5.25rem minmax(0, 1fr);
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.docia-filtro-rotulo {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--tema-texto-medio);
+}
+
+/*  O contador só aparece quando há o que contar — o JS cuida do `display`.
+    Zero escrito num selo é ruído: ele ocupa o mesmo espaço e a mesma cor de
+    um filtro aceso para dizer que não há nenhum.  */
+.docia-filtro-contador {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 0.375rem;
+    border-radius: 999px;
+    font-size: 0.625rem;
+    font-weight: 800;
+    line-height: 1;
+    background-color: rgba(107, 0, 123, 0.1);
+    color: #6B007B;
+}
+
+/*  No cabeçalho o selo convive com "Filtros" em 1.25rem, e o mesmo tamanho de
+    lá parece um erro de alinhamento ao lado de um título tão maior.  */
+.docia-filtro-contador--total {
+    min-width: 1.375rem;
+    height: 1.375rem;
+    font-size: 0.6875rem;
+}
+
+
+/* ==========================================================================
+   GRADE DO FILTRO DE DOCUMENTO
+   --------------------------------------------------------------------------
+   As demais grades da barra (período, vínculo, perfil) usam a receita do
+   Tailwind: `divide-x divide-gray-300` numa borda arredondada. Ela desenha
+   divisória VERTICAL entre irmãos, o que só funciona quando todos cabem numa
+   linha só — e ali cabem, porque são duas ou quatro opções curtas.
+
+   Aqui são CINCO nomes longos, que quebram em duas linhas. Com `divide-x` o
+   primeiro item da segunda linha herda uma borda esquerda solta, e a divisória
+   horizontal entre as linhas não existe. A solução é não desenhar borda
+   nenhuma: o fundo cinza aparece pelo `gap` de 1px e vira a grade inteira,
+   em qualquer número de linhas.
+   ========================================================================== */
+
+.docia-grade-doc {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1px;
+    background-color: #D1D5DB;
+    border: 1px solid #D1D5DB;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    /* Mesma razão do `translateZ(0)` das outras grades: sem camada própria, o
+       arredondamento some sob o `backdrop-blur` da barra em alguns navegadores. */
+    transform: translateZ(0);
+}
+
+/* A quinta opção sozinha na última linha: sem isto ela ocupa meia largura e
+   sobra um buraco cinza do lado, que lê como opção faltando. */
+.docia-grade-doc__opcao:last-child { grid-column: 1 / -1; }
+
+
+.docia-grade-doc__opcao { cursor: pointer; display: block; position: relative; }
+
+.docia-grade-doc__caixa {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 2.5rem;
+    padding: 0 0.5rem;
+    background-color: #FFFFFF;
+    color: #111827;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.docia-grade-doc__caixa:hover { background-color: #F9FAFB; }
+
+.docia-grade-doc__texto {
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    line-height: 1.1;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.filter-documento-ies:checked + .docia-grade-doc__caixa {
+    background-color: #6B007B;
+    color: #FFFFFF;
+}
+
+.filter-documento-ies:checked + .docia-grade-doc__caixa:hover { background-color: #540060; }
+
+.filter-documento-ies:focus-visible + .docia-grade-doc__caixa {
+    outline: 2px solid #6B007B;
+    outline-offset: -2px;
+}
+
+
+/* ==========================================================================
+   VISÃO POR IES — OS SEIS CHIPS
+   --------------------------------------------------------------------------
+   Fazem, para o recorte inteiro, o que a legenda das roscas faz para um
+   documento: nome, número e proporção das seis fatias. Não são a legenda
+   reaproveitada porque o problema de espaço é o oposto — lá cinco caixas
+   dividem a largura da tela e o texto tem de encolher; aqui a faixa é a
+   largura inteira, e o número é que precisa crescer para ser lido de relance.
+
+   `auto-fit` com piso de 9rem: em telas largas os seis ficam numa linha; em
+   telas estreitas eles quebram em duas ou três em vez de espremer o número
+   até ele virar reticências.
+   ========================================================================== */
+
+.docia-ies-chips {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    gap: 0.625rem;
+}
+
+.docia-ies-chip {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.6rem 0.85rem;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: 1rem;
+    background-color: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 4px 20px rgb(0 0 0 / 0.08);
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
+    min-width: 0;
+}
+
+/*  O CHIP NÃO SOBE NO HOVER. Ele subia dois pixels e ganhava sombra, como os cards
+    de KPI da outra vista — e os dois efeitos saíram pelo mesmo motivo: movimento
+    numa faixa que se lê de relance atrapalha a leitura de relance.
+
+    A DIFERENÇA É QUE O CHIP CLICA (ele ordena a tabela), então o hover não pode
+    sumir — sem retorno nenhum, não há como saber que ele responde. Fica a mudança
+    de fundo, que avisa sem deslocar nada na tela.  */
+.docia-ies-chip:hover {
+    background-color: rgba(107, 0, 123, 0.05);
+    border-color: rgba(107, 0, 123, 0.28);
+}
+
+/* O chip pelo qual a tabela está ordenada. A cor de marca no contorno e o
+   `--ativo` no rótulo dizem qual coluna manda na ordem que se está lendo —
+   sem isto, reordenar por um chip e depois olhar a tabela não deixa pista
+   nenhuma de por que ela está naquela ordem. */
+.docia-ies-chip--ativo {
+    border-color: #6B007B;
+    box-shadow: 0 6px 22px rgb(107 0 123 / 0.18);
+}
+
+.docia-ies-chip__topo { display: flex; align-items: center; gap: 0.4rem; min-width: 0; }
+
+.docia-ies-chip__ponto {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 9999px;
+    flex: 0 0 auto;
+}
+
+.docia-ies-chip__nome {
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #9CA3AF;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.docia-ies-chip--ativo .docia-ies-chip__nome { color: #6B007B; }
+
+.docia-ies-chip__baixo { display: flex; align-items: baseline; gap: 0.4rem; }
+
+.docia-ies-chip__valor {
+    font-size: 1.05rem;
+    font-weight: 900;
+    color: #1F2937;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+}
+
+.docia-ies-chip__pct {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: #9CA3AF;
+    font-variant-numeric: tabular-nums;
+}
+
+
+/* ==========================================================================
+   VISÃO POR IES — A TABELA
+   --------------------------------------------------------------------------
+   O corpo usa as mesmas utilitárias do Detalhamento (`px-4 py-2.5 border-b
+   border-gray-100`), que o remapeamento de `area-trabalho` já resolve nos dois
+   temas. O que precisa de CSS próprio são três coisas que utilitária não faz:
+   a primeira coluna presa na rolagem horizontal, o alinhamento tabular dos
+   números e a seta de ordenação.
+   ========================================================================== */
+
+/* Nome de IES é longo — o catálogo os corta em ~76 caracteres de propósito, e
+   ainda assim eles esticariam a coluna até empurrar os seis números para fora
+   da tela. Largura fixa com reticências, e o nome inteiro no `title`. */
+.docia-ies-nome {
+    /* Como a tela possui espaço (e pode ser expandida), removemos o corte forçado. */
+    word-break: break-word;
+}
+
+/* Números em coluna se leem comparando dígito com dígito: sem `tabular-nums` a
+   fonte do sistema dá larguras diferentes por algarismo e a coluna serrilha. */
+.docia-ies-num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.docia-ies-th {
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    vertical-align: bottom;
+}
+
+/*  DUAS LINHAS NO CABEÇALHO: o nome da coluna e a MEDIDA do percentual que as
+    células dela mostram. O rótulo da medida não é enfeite — cada coluna tem
+    denominador próprio, e sem ele "36 (97,2%)" sob "PENDENTES" lê como "97,2%
+    estão pendentes", que é o oposto: 97,2% é o quanto já foi enviado.  */
+.docia-ies-th__nome { display: block; }
+
+.docia-ies-th__medida {
+    display: block;
+    margin-top: 0.15rem;
+    font-size: 0.5625rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: none;
+    color: #A9B0BA;
+}
+
+/*  As três colunas de inadimplência são as únicas em que MAIOR É PIOR: elas
+    mostram a fatia, e não o progresso. O vermelho da paleta (o mesmo da sexta
+    fatia das roscas) marca essa inversão sem precisar de outra linha de texto —
+    é a única coisa na tabela que aponta um erro em curso, e não um passo do
+    caminho.  */
+.docia-ies-th__medida--inverso { color: #C77A80; }
+
+.docia-ies-th:hover { color: #6B007B; }
+
+/* A seta só aparece na coluna que está ordenando. Uma seta apagada em cada
+   cabeçalho anunciaria seis ordens ativas ao mesmo tempo. */
+.docia-ies-th__seta { margin-left: 0.3rem; opacity: 0; font-size: 0.625rem; }
+.docia-ies-th--ativo { color: #6B007B; }
+.docia-ies-th--ativo .docia-ies-th__seta { opacity: 1; }
+
+/*  Zero não é "um número pequeno", é "não há". Em cheio ele compete com os valores
+    que importam; apagado, a coluna passa a mostrar só onde há massa.
+
+    `.docia-ies-valor.docia-ies-zero` e não `.docia-ies-zero` sozinho: as duas classes
+    caem no MESMO elemento, e `.docia-ies-valor` é declarada depois neste arquivo — com
+    especificidade igual ela vencia, e o `color: inherit` dela devolvia o zero à cor
+    cheia. O efeito era uma coluna inteira de zeros disputando atenção com os números
+    que importam. Duas classes no seletor resolvem sem depender da ordem do arquivo.
+
+    APAGA SÓ O NÚMERO. O percentual ao lado fica: numa coluna de progresso o zero vale
+    100% ("nada pendente" = "tudo enviado"), que é o melhor resultado possível dali e o
+    que menos deveria sumir.  */
+.docia-ies-valor.docia-ies-zero { color: #D1D5DB; }
+
+
+/* ==========================================================================
+   VISÃO POR IES — O PERCENTUAL DENTRO DA CÉLULA
+   --------------------------------------------------------------------------
+   Os seis chips do topo dão a proporção do recorte INTEIRO; isto dá a de cada
+   instituição, ao lado do número que a origina. Em coluna própria seriam seis
+   colunas a mais para repetir a mesma informação deslocada do seu número.
+
+   O NÚMERO CONTINUA SENDO O DADO. O percentual é a leitura dele, então entra
+   menor, mais claro e depois — nesta ordem de leitura, quem varre a coluna
+   comparando valores não tropeça no percentual, e quem quer a proporção a
+   encontra sem sair da célula.
+
+   `tabular-nums` nos dois e largura mínima no percentual: sem isso "8,9%" e
+   "36,1%" desalinham o número à esquerda linha a linha, e a coluna serrilha
+   exatamente no eixo em que ela se lê.
+   ========================================================================== */
+
+/*  O NÚMERO É O DADO, e ele tem de continuar parecendo o dado.
+
+    Na primeira versão os dois entraram com peso parecido e a coluna passou a ler
+    como uma coluna de percentuais com um número ao lado — o oposto do pedido, que
+    era acrescentar a proporção SEM tirar a quantidade. O que separa os dois agora:
+    a quantidade é 13px, seminegrito e na cor do texto da tabela; o percentual é
+    10px, mais claro e entre parênteses.
+
+    OS PARÊNTESES fazem o trabalho que tamanho e cor sozinhos não faziam: eles
+    marcam o percentual como comentário do número, e não como um segundo número.  */
+.docia-ies-valor {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: inherit;
+    font-variant-numeric: tabular-nums;
+}
+
+/*  QUALQUER NÚMERO MAIOR QUE ZERO É UMA PORTA — ver `abrirBeneficiariosDaCelula`
+    no JS. A célula responde "quanto"; clicar nela abre "quem", já recortado.
+
+    O BOTÃO NÃO SE ANUNCIA EM REPOUSO. São sete colunas numéricas por linha e ~110
+    linhas: sublinhar setecentos números de uma vez transformaria a tabela num
+    campo de links e tiraria dela a única coisa que ela faz bem, que é deixar
+    comparar coluna com coluna de relance. A pista aparece no hover, onde a
+    intenção de clicar já está.
+
+    `color` E `font` HERDADOS, e não declarados: a cor de calor da célula e o
+    negrito vivem no `<td>`, em estilo inline calculado linha a linha. Botão não
+    herda nenhum dos dois sozinho — sem isto, todo número clicável sairia preto e
+    leve no meio de uma coluna colorida, e o mapa de calor morreria justamente nas
+    células que têm valor.
+
+    O contorno do foco sai do token de tema, e por isso o eleitoral vem junto sem
+    uma segunda folha (ver o cabeçalho deste arquivo).  */
+.docia-ies-link {
+    display: inline-block;
+    vertical-align: baseline;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: inherit;
+    cursor: pointer;
+}
+
+.docia-ies-link:hover .docia-ies-valor {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.docia-ies-link:focus-visible {
+    outline: 2px solid var(--tema-primaria, #6B007B);
+    outline-offset: 2px;
+    border-radius: 0.25rem;
+}
+
+.docia-ies-pct {
+    display: inline-block;
+    min-width: 3.4rem;
+    margin-left: 0.4rem;
+    font-size: 0.625rem;
+    font-weight: 500;
+    color: #B6BCC6;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+/*  O APAGADO É DO NÚMERO, e não da célula.
+
+    A classe morava no `<td>` e levava o percentual junto. Com a semântica nova
+    isso apagava justamente a informação boa: zero pendências vale 100% enviado, o
+    melhor resultado possível daquela coluna — e era o que mais sumia.  */
+
+/*  O percentual das três colunas de inadimplência não é progresso, é a fatia: ali
+    maior é pior. Mesmo vermelho do rótulo no cabeçalho, pelo mesmo motivo.
+
+    SÓ QUANDO HÁ VALOR — ver `pintarTabelaIES`. A esmagadora maioria dessas células é
+    zero, e zero inadimplente é a meta atingida, não alerta. Pintadas, elas enchiam a
+    tabela de vermelho dizendo "atenção" sobre "não há nada aqui", e o alarme parava de
+    significar alguma coisa onde há inadimplência de verdade.  */
+.docia-ies-pct--inverso { color: #C77A80; }

@@ -416,6 +416,12 @@ except Exception as e:
 function setup_full() {
     print_ovg_logo
     check_sudo
+
+    # ONDE O CLONE BASE ESTÁ, capturado antes de tudo. Vários `run_with_stream`
+    # desta função fazem `cd` lá dentro, e `run_with_stream` usa `eval` — o
+    # diretório VAZA para os passos seguintes. Guardar aqui é o que permite os
+    # passos posteriores voltarem ao lugar certo sem depender do `pwd` do momento.
+    local BASE_DIR="$(pwd)"
     
     print_phase "🚀 FASE 0: PREPARAÇÃO DO TERRENO"
 
@@ -572,7 +578,54 @@ function setup_full() {
         local semente="gestao_acessos_iniciais.json"
         [ -s "$DEV_DIR/$semente" ] || cp -f "$semente" "$DEV_DIR/" 2>/dev/null || true
         [ -s "$DEV_DIR/$semente" ] || semente="gestao_acessos_iniciais.example.json"
-        run_with_stream "cd '$DEV_DIR' && . venv/bin/activate && python3 manage.py makemigrations --noinput && python3 manage.py migrate --noinput && { [ -s '$semente' ] && python3 manage.py loaddata '$semente' || true; }" "Preparando o banco do ambiente DEV"
+        # SUBSHELL `( ... )`: `run_with_stream` executa por `eval`, no shell atual.
+        # Sem os parênteses este `cd` (e o `activate` junto) VAZAM para o resto da
+        # função — e a FASE 4 seguia rodando de dentro do DEV. O efeito concreto
+        # era o `install_watchdog`, que monta o caminho com `${PWD}/scripts`:
+        # ele instalava em /usr/local/bin o watchdog do worktree de DEV, com o que
+        # estivesse sem commit lá, em vez do que está no clone base.
+        run_with_stream "( cd '$DEV_DIR' && . venv/bin/activate && python3 manage.py makemigrations --noinput && python3 manage.py migrate --noinput && { [ -s '$semente' ] && python3 manage.py loaddata '$semente' || true; } )" "Preparando o banco do ambiente DEV"
+    fi
+
+    print_phase "🎨 FASE 3.5: ARQUIVOS ESTÁTICOS DOS TRÊS AMBIENTES"
+
+    # POR QUE ISTO PRECISA ESTAR AQUI.
+    #
+    # `settings.py` usa `CompressedManifestStaticFilesStorage` — o `{% static %}`
+    # não monta o caminho sozinho, ele CONSULTA `staticfiles/staticfiles.json`.
+    # Esse manifesto é gerado pelo `collectstatic` e a pasta é gitignored
+    # (`.gitignore:22`), então ela não vem no clone nem no `git worktree add`:
+    # cada ambiente precisa gerar o seu.
+    #
+    # Até 02/09/2026 a opção 1 não gerava nenhum. O efeito não aparecia ao abrir a
+    # tela — com `DEBUG=True` o Django devolve o caminho cru e nem toca no
+    # manifesto —, e é justamente por isso que passou tanto tempo despercebido.
+    # Onde ele aparecia era em `manage.py test`, que força `DEBUG=False`: TODA
+    # tela renderizada estourava `ValueError: Missing staticfiles manifest entry`.
+    # Um worktree de DEV recém-criado pela opção 1 nascia com a suíte de testes
+    # quebrada por 9 erros que não tinham nada a ver com o código.
+    #
+    # OS TRÊS, e não só produção: o DEV é onde se roda teste (é ele quem mais
+    # precisa), o BASE é de onde a opção 5 faz o rsync, e o PROD é quem serve o
+    # Nginx de verdade. A opção 3 já gera o de quem ela levanta, mas ela roda
+    # DEPOIS — e o dano acontece antes.
+    #
+    # SUBSHELL `( ... )` em cada um: `run_with_stream` executa por `eval`, no shell
+    # atual, então um `cd` solto aqui contaminaria as fases seguintes.
+    run_with_stream "
+        ( cd '$BASE_DIR' && . venv/bin/activate && python3 manage.py collectstatic --noinput )
+    " "Compilando estáticos do ambiente BASE"
+
+    if [ -d "$DEV_DIR/venv" ]; then
+        run_with_stream "
+            ( cd '$DEV_DIR' && . venv/bin/activate && python3 manage.py collectstatic --noinput )
+        " "Compilando estáticos do ambiente DEV"
+    fi
+
+    if [ -d '/home/labs/portal-ggci-prod/venv' ]; then
+        run_with_stream "
+            ( cd '/home/labs/portal-ggci-prod' && . venv/bin/activate && python3 manage.py collectstatic --noinput )
+        " "Compilando estáticos do ambiente PRODUÇÃO"
     fi
 
     print_phase "🛡️ FASE 4: AGENDAMENTO E AUTO-RECUPERAÇÃO"
@@ -959,6 +1012,20 @@ EOF
     # Gera E aplica as migrações antes de servir. Antes só gerava, em silêncio:
     # o banco de DEV ficava defasado do model e a falha só aparecia na tela.
     sync_migrations
+
+    # ESTÁTICOS DO DEV — e não é para o runserver, que não precisa deles.
+    #
+    # Com `DEBUG=True` o `{% static %}` devolve o caminho cru e nunca abre o
+    # manifesto: a tela abriria igual sem isto. Quem precisa é `manage.py test`,
+    # que força `DEBUG=False` e aí passa a consultar `staticfiles/staticfiles.json`
+    # de verdade — e DEV é justamente o ambiente onde se roda teste.
+    #
+    # A opção 1 gera o manifesto na instalação; este passo é o que impede que ele
+    # ENVELHEÇA. Todo arquivo novo em `static/` nasce fora dele, e a primeira
+    # renderização sob teste estoura `Missing staticfiles manifest entry` —
+    # apontando para o arquivo novo, que é sintoma, não causa. Regenerar ao subir
+    # o DEV custa ~3s e fecha o buraco no ponto em que ele se abre.
+    run_with_stream "python3 manage.py collectstatic --noinput" "Atualizando estáticos do DEV (necessários para 'manage.py test')"
 
     # Roda o servidor do Django no modo DEV
     python3 manage.py runserver 0.0.0.0:8080 &

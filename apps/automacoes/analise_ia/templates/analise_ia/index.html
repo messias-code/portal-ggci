@@ -29,6 +29,8 @@
     <link rel="stylesheet" href="{% static 'css/output.css' %}">
     <!-- Console de processamento: utilitárias que o bundle purgou + os dois temas. -->
     <link rel="stylesheet" href="{% static 'css/console.css' %}?v=1">
+    <!-- Aviso de motor ocupado: impede as duas atualizações de brigarem pelo SIBU. -->
+    <link rel="stylesheet" href="{% static 'css/motor-ocupado.css' %}?v=1">
 
     <!-- Tokens de cor dos temas e o botão sol/lua (compartilhado por todo o portal) -->
     <link rel="stylesheet" href="{% static 'css/tema.css' %}">
@@ -1566,6 +1568,7 @@ function openModalConfigContratos() {
         }
     </script>
     <!-- Scripts: Separação de Responsabilidades (UI, Eventos, Automação) -->
+    <script src="{% static 'js/motor-ocupado.js' %}?v=1"></script>
     <script src="{% static 'analise_ia/js/analise_ia.js' %}?v=24"></script>
     <div id="toast-container" class="fixed top-5 right-5 z-[70] flex flex-col items-end"></div>
 

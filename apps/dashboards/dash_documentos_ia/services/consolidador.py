@@ -202,6 +202,67 @@ def get_configs(processo_id=None):
         }
     ]
 
+def normalizar_colunas_mistas(df):
+    """
+    O QUE FAZ: acerta o tipo das colunas que ficaram MISTAS depois do `concat`, para que
+    o Parquet consiga ser escrito.
+
+    O DEFEITO QUE ELA RESOLVE (02/09/2026):
+
+        pyarrow.lib.ArrowInvalid: ("Could not convert '3700925' with type str: tried to
+        convert to double", 'Conversion failed for column Matricula with type object')
+
+    `read_excel` infere o tipo POR ARQUIVO. Numa planilha em que toda matrícula é
+    numérica ele devolve `float64`; noutra em que uma linha tem letra, devolve `object`
+    com strings. O `concat` junta as duas numa coluna `object` com float E str dentro, e
+    o pyarrow decide o tipo pelas primeiras linhas: vê números, escolhe `double`, e
+    estoura na primeira string. A consolidação inteira morre no `to_parquet`.
+
+    NÃO É SÓ `Matricula`. Ela foi a que apareceu porque não está declarada em
+    `cols_num`, `cols_txt` nem `cols_moeda` — as três listas que já normalizam o que o
+    pipeline conhece. Qualquer coluna fora dessas listas corre o mesmo risco, e a
+    próxima vai aparecer do mesmo jeito: em produção, no fim da extração.
+
+    POR QUE TEXTO, E NÃO NÚMERO: matrícula, inscrição e CPF são IDENTIFICADORES. Forçar
+    número perderia o zero à esquerda e recusaria a matrícula com letra, que é o caso que
+    criou a mistura. Texto aceita as duas formas.
+
+    `3700925.0` VIRA `'3700925'`, e este é o ponto que faz a correção valer: um `str()`
+    cru deixaria a mesma matrícula gravada como `'3700925.0'` num arquivo e `'3700925'`
+    noutro, e o cruzamento entre eles falharia em silêncio — troca um estouro visível por
+    um erro mudo, que é pior.
+
+    SÓ MEXE NO QUE ESTÁ MISTO. Coluna `object` que já é toda string passa intacta, e
+    coluna tipada (`Int64`, `float64`, data) nem é olhada — converter o DataFrame inteiro
+    para texto destruiria os tipos que o resto do pipeline depende.
+    """
+    import pandas as pd
+
+    def texto(valor):
+        if valor is None or (isinstance(valor, float) and pd.isna(valor)):
+            return None
+        if pd.api.types.is_number(valor) and not isinstance(valor, bool):
+            # `2.0` e `2` são a mesma matrícula; `2.5` não é matrícula nenhuma, mas se
+            # aparecer é melhor preservá-la como veio do que arredondar em silêncio.
+            if float(valor).is_integer():
+                return str(int(valor))
+            return str(valor)
+        return str(valor).strip()
+
+    for coluna in df.columns:
+        if df[coluna].dtype != object:
+            continue
+        amostra = df[coluna].dropna()
+        if amostra.empty:
+            continue
+        # `map(type)` e não `infer_dtype`: o que quebra o pyarrow é a mistura de tipos
+        # PYTHON dentro da coluna, e é exatamente isso que se mede aqui.
+        if amostra.map(type).nunique() > 1:
+            df[coluna] = df[coluna].map(texto)
+
+    return df
+
+
 def consolidar(processo_id=None):
     """
     O QUE FAZ: Percorre as pastas configuradas, une as planilhas parciais, limpa os dados e exporta um Excel unificado.
@@ -328,6 +389,9 @@ def consolidar(processo_id=None):
                 df_final = df_final[colunas_ordenadas + colunas_extras]
 
             caminho_final = os.path.join(pasta_dest, cf['saida'])
+            # Sem isto a consolidação morre no Parquet quando uma coluna não
+            # declarada volta com tipos diferentes de cada planilha.
+            df_final = normalizar_colunas_mistas(df_final)
             df_final.to_parquet(caminho_final, engine='pyarrow', index=False)
             t_total = time.time() - t_inicio
             print(f"[CONSOLIDAR | PLANILHA      | {tipo_fmt}] {cf['saida']} salvo em {t_total:.2f}s")

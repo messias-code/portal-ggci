@@ -2441,6 +2441,26 @@ def gerar_resumo_quantitativo(df_target, tipos_documentos):
 
     STATUS_PROCESSADOS = {'inválido', 'válido', 'falso inválido', 'falso válido',
                           'invalido', 'valido', 'falso invalido', 'falso valido'}
+
+    #  INADIMPLENTE NÃO É BENEFICIÁRIO, e é daqui que sai a correção de 02/09/2026.
+    #
+    #  O relatório dizia "Total Beneficiários: 206" e, na mesma linha, "Env. RIAF 140 +
+    #  Pend. RIAF 62 = 202". Os dois números descreviam a mesma IES no mesmo semestre e
+    #  não fechavam, e a diferença não estava em documento faltando: estava em quem
+    #  entrava na conta. `Inadimplente` é cobrança injetada do relatório do site, de
+    #  semestre em que o aluno não teve lançamento nenhum — ele não é bolsista daquele
+    #  semestre, não deve documento e não pode contar como beneficiário.
+    #
+    #  Medido em ANHANGUERA ANÁPOLIS 2026-1: dos 247 CPFs do grupo, 45 só existiam por
+    #  inadimplência — 41 deles marcados como `Ingresso`, que é o que essa injeção produz
+    #  por não haver semestre anterior. Tirando-os, CONTRATO, RIAF e HISTÓRICO passam a
+    #  dizer 202 os três, e o total também. Regra do negócio: contrato, histórico e RIAF
+    #  são devidos por TODO beneficiário; só benefício e financiamento são condicionais.
+    #
+    #  A MESMA CORREÇÃO ESTÁ EM `dash_documentos_ia/services/ggci.py`. Os dois apps têm
+    #  cópias independentes deste arquivo de propósito, e a conta precisa ser a mesma nos
+    #  dois — é o mesmo relatório, com o mesmo nome, para as mesmas pessoas.
+    s_inadimplente = s_status_low == 'inadimplente'
     cache_ies, cache_mantenedora = {}, {}
 
     resumo_data = []
@@ -2456,19 +2476,40 @@ def gerar_resumo_quantitativo(df_target, tipos_documentos):
             continue
 
         # 2. DataFrame DEDUPLICADO para os alunos (Beneficiários, Ativos, etc e Pendências Finais)
-        if tem_data:
-            group_benef = group_raw.sort_values(by=['temp_data'], ascending=False, na_position='last')
-        else:
-            group_benef = group_raw
+        #  A LINHA LIMPA GANHA O DESEMPATE, e é a primeira chave da ordenação.
+        #
+        #  O `drop_duplicates` guarda UMA linha por (CPF, documento), e antes quem
+        #  decidia era só a data. Quando o mesmo CPF tinha a linha real e a cobrança
+        #  injetada do site para o mesmo documento, e a injeção era a mais recente, era
+        #  ela que ficava — e o documento real desaparecia de `Env.` e de `Pend.` ao
+        #  mesmo tempo, porque `inadimplente` não cai em nenhuma das duas contagens.
+        #  Eram 2 CPFs em CONTRATO e 2 em HISTÓRICO só em ANHANGUERA ANÁPOLIS 2026-1.
+        #
+        #  A ordenação continua não sendo estável, e por isso a data segue como segunda
+        #  chave: entre duas linhas do mesmo tipo (as duas limpas ou as duas
+        #  inadimplentes) o desempate é o de sempre, e nenhum número muda por causa disto.
+        chaves = ['_inad'] + (['temp_data'] if tem_data else [])
+        ordem = [True] + ([False] if tem_data else [])
+        group_benef = group_raw.assign(_inad=s_inadimplente.loc[group_raw.index])
+        group_benef = group_benef.sort_values(by=chaves, ascending=ordem, na_position='last')
 
         group_benef = group_benef.drop_duplicates(subset=['CPF', 'Documento Tipo'], keep='first')
 
-        cpfs_validos = group_benef['CPF'].dropna().unique()
+        #  BENEFICIÁRIO É QUEM TEM AO MENOS UMA LINHA FORA DA INADIMPLÊNCIA. Quem só
+        #  aparece por cobrança injetada não é bolsista do semestre — ver o bloco de
+        #  `s_inadimplente`. Sem este recorte, `Total Beneficiários` ficava acima do que
+        #  qualquer documento conseguia somar, e a diferença não tinha onde ser lida.
+        cpfs_validos = group_benef.loc[~group_benef['_inad'], 'CPF'].dropna().unique()
 
         if len(cpfs_validos) == 0:
             continue
 
         tot_benef = len(cpfs_validos)
+
+        #  E o resto do grupo passa a olhar só esses CPFs, para que Ativos + Desligados
+        #  feche com o total e para que as bases de benefício e financiamento não voltem
+        #  a contar quem acabou de sair da conta.
+        group_benef = group_benef[group_benef['CPF'].isin(cpfs_validos)]
 
         # Como o dataframe já está ordenado pela data mais recente (decrescente), pegamos o primeiro status de cada CPF
         status_por_cpf = group_benef.groupby('CPF', sort=False)['Status_Vínculo'].first()

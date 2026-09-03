@@ -100,6 +100,33 @@ cd ~/portal-ggci
 
 O passo 3 roda **do orquestrador**, nunca de dentro do `portal-ggci-prod`.
 
+### Rodando os testes
+
+```bash
+cd ~/portal-ggci-dev
+python3 manage.py test apps.dashboards.dash_documentos_ia.tests
+```
+
+Use sempre o **caminho pontilhado**. `manage.py test` sem argumento encontra 0 testes,
+e passar o caminho de diretório estoura `ImportError` — os apps têm `tests.py` e
+`tests/` convivendo, e o autodiscovery do unittest não resolve os dois.
+
+**Se toda tela renderizada falhar com `ValueError: Missing staticfiles manifest entry`,
+o problema não é o seu código.** O `settings.py` usa
+`CompressedManifestStaticFilesStorage`, então `{% static %}` consulta
+`staticfiles/staticfiles.json` em vez de montar o caminho sozinho. Esse arquivo é
+gerado pelo `collectstatic` e a pasta é gitignored — ela não vem no clone nem no
+`git worktree add`. Abrir a tela no navegador não denuncia nada, porque com
+`DEBUG=True` o Django devolve o caminho cru; já `manage.py test` força `DEBUG=False`
+e passa a consultar o manifesto de verdade.
+
+```bash
+python3 manage.py collectstatic --noinput
+```
+
+A opção 1 gera o manifesto nos três diretórios e a opção 4 o atualiza ao subir o DEV,
+então isso só deve acontecer em ambiente montado à mão.
+
 ## ▶️ Execução do Servidor
 
 Após o setup, utilize o Gunicorn para rodar o portal:

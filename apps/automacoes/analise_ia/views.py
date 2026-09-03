@@ -18,6 +18,58 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import ProcessamentoAnaliseIA
 from portal_ggci.processos import popen_com_limite
 
+# ══════════════════════════════════════════════════════════════════════════════
+# TRAVA ENTRE OS DOIS MOTORES
+# ══════════════════════════════════════════════════════════════════════════════
+# Os dois apps dirigem o MESMO ScriptCase com o MESMO usuário, e rodar os dois ao mesmo
+# tempo faz o segundo login derrubar a sessão do primeiro — ver `portal_ggci/execucoes.py`.
+#
+# A RECUSA É AQUI, NO SERVIDOR, e não só no modal. O modal é a conversa; esta função é a
+# trava. Sem ela, duas abas abertas (ou o cron caindo em cima de um clique) colidem do
+# mesmo jeito, e quem abriu a segunda aba não veria aviso nenhum.
+#
+# `forcar` é o "abortar o outro e iniciar" da tela. Ele não ignora a trava: MANDA PARAR o
+# outro motor primeiro, e só então segue. Por isso chega no corpo do POST e não na URL —
+# é uma ação, não um filtro.
+
+
+def _bloqueio_do_outro_motor(request, eu):
+    """
+    Devolve a resposta 409 quando o outro motor está rodando, ou `None` para seguir.
+
+    Com `forcar` no corpo, aborta o outro em vez de recusar. O abort usa a view de parada
+    daquele app, alcançada pela URL que o registro já devolve — este app segue sem
+    conhecer o roteamento do outro.
+    """
+    from portal_ggci.execucoes import motor_em_andamento
+
+    outro = motor_em_andamento(exceto=eu)
+    if outro is None:
+        return None
+
+    forcar = False
+    if request.body:
+        try:
+            forcar = bool(json.loads(request.body).get('forcar'))
+        except (ValueError, AttributeError):
+            forcar = False
+
+    if not forcar:
+        # 409 CONFLITO, e não 400: o pedido está correto, o momento é que não está. É o
+        # código que o front usa para abrir o modal em vez de mostrar erro.
+        return JsonResponse({'status': 'ocupado', 'em_andamento': outro,
+                             'msg': "O %s está atualizando agora." % outro['rotulo']},
+                            status=409)
+
+    # "Abortar e iniciar": para o outro pela própria view dele.
+    from django.test import Client as _ClienteInterno
+
+    interno = _ClienteInterno()
+    interno.force_login(request.user)
+    interno.post(outro['url_parar'])
+    return None
+
+
 @csrf_exempt
 def iniciar_processamento_ia(request):
     """
@@ -33,6 +85,10 @@ def iniciar_processamento_ia(request):
     EFEITOS COLATERAIS: Cria arquivos no disco, inicia novo processo no SO, insere linha no BD.
     """
     if request.method == 'POST':
+        bloqueio = _bloqueio_do_outro_motor(request, eu='analise_ia')
+        if bloqueio is not None:
+            return bloqueio
+
         # 1. Leitura e Configuração de Payload
         payload = {}
         if request.body:
