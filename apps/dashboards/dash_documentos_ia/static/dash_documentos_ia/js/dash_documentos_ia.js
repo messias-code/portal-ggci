@@ -565,9 +565,6 @@ document.addEventListener('turbo:load', () => {
              *   resolve na origem: se ele nunca sai do card, nunca há o que recortar.
              * DE QUEBRA, ele deixa de invadir o card vizinho — que era a outra queixa.
              */
-                prender('left', ['Width', 'Width']);
-                prender('top', ['Height', 'Height']);
-            };
 
             const esconderBaloes = (excecao) => {
                 document.querySelectorAll('.apexcharts-tooltip').forEach((balao) => {
