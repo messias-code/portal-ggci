@@ -604,13 +604,35 @@ def _lista_do_parametro(request, nome, separador=','):
     return [item.strip() for item in bruto.split(separador) if item.strip()]
 
 
+# Os quatro recortes de PESSOA da barra lateral: o parâmetro da query string, a coluna
+# do Parquet e se o valor precisa subir para maiúsculas antes de comparar.
+#
+# `status_vinculo` já chega normalizado de `_carregar_abas` ('ATIVO'/'DESLIGADO') e a tela
+# manda nessa mesma caixa. `perfil` ('Veterano'/'Ingresso') e os dois `mudou_*` ('S'/'N')
+# ficam como estão no arquivo, e por isso a comparação sobe os dois lados: a tela manda o
+# valor exato hoje, mas o motor já mudou a caixa dessas colunas antes.
+FILTROS_DE_PESSOA = (
+    ('vinculo', 'status_vinculo'),
+    ('perfil', 'perfil'),
+    ('mudou_ies', 'mudou_ies'),
+    ('mudou_bolsa', 'mudou_bolsa'),
+)
+
+
 def _aplicar_filtros(df, request):
     """
     O QUE FAZ: aplica os filtros da barra lateral e da legenda.
-    COMO FUNCIONA: três recortes independentes, todos opcionais —
-        `semestres` (checkboxes), `ies` (modal, separado por `||` porque nome de
-        faculdade tem vírgula) e `status` (legenda das roscas). Ausência de
-        parâmetro significa "tudo", que é o estado inicial da tela.
+    COMO FUNCIONA: recortes independentes, todos opcionais — `semestres`
+        (checkboxes), `ies` (modal, separado por `||` porque nome de faculdade tem
+        vírgula), `status` (legenda das roscas) e os quatro de PESSOA
+        (`FILTROS_DE_PESSOA`). Ausência de parâmetro significa "tudo", que é o
+        estado inicial da tela.
+
+    OS QUATRO DE PESSOA SÃO NOVOS AQUI, e antes não existiam em lugar nenhum: a barra
+    lateral desenhava as caixas, contava o selo da seção e até imprimia a etiqueta
+    "Vínculo: ATIVO" sobre a tabela, mas o valor nunca entrava na query string e o
+    servidor nunca ouviu falar dele. O filtro rodava inteiro na aparência — que é o pior
+    jeito de errar, porque o número não muda e ninguém desconfia do controle.
     """
     semestres = _lista_do_parametro(request, 'semestres')
     if semestres:
@@ -630,6 +652,13 @@ def _aplicar_filtros(df, request):
         for rotulo in rotulos:
             alvo |= STATUS_POR_ROTULO.get(rotulo, {rotulo.upper()})
         df = df[df['status_ia'].isin(alvo)]
+
+    for parametro, coluna in FILTROS_DE_PESSOA:
+        escolhidos = _lista_do_parametro(request, parametro)
+        if not escolhidos or coluna not in df.columns:
+            continue
+        alvo = {valor.upper() for valor in escolhidos}
+        df = df[df[coluna].astype('string').str.upper().isin(alvo)]
 
     return df
 
