@@ -783,7 +783,11 @@ document.addEventListener('turbo:load', () => {
                     grafico.updateOptions({
                         colors: novasCores,
                         plotOptions: { pie: {
-                            donut: { labels: { total: { label: novoRotulo } } } } },
+                            donut: { labels: { 
+                                name: { color: token('--tema-texto-medio', '#4B5563') },
+                                value: { color: token('--tema-texto-forte', '#111827') },
+                                total: { label: novoRotulo, color: token('--tema-texto-medio', '#4B5563') } 
+                            } } } }
                     }, false, false);
                 }
 
@@ -2823,13 +2827,6 @@ document.addEventListener('turbo:load', () => {
                 window.__temaLigadoDocIA = true;
                 document.addEventListener('ggci:tema', () => {
                     setTimeout(() => {
-                        caixasDeGrafico().forEach((alvo) => {
-                            if (graficos[alvo.id]) {
-                                const opt = opcoesQuantitativo(alvo);
-                                delete opt.series;
-                                graficos[alvo.id].updateOptions(opt, false, false);
-                            }
-                        });
                         pintarResumo();
                         // Os seis chips da vista de IES pegam a cor da mesma `PALETA`, e
                         // ela também é lida como string no momento do render.
