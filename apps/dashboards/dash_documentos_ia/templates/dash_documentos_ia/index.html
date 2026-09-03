@@ -257,6 +257,26 @@
                             <div class="flex items-center gap-2">
 
                                 <span id="tabela-contagem" class="hidden inline-block text-[12px] font-medium px-3 py-1 rounded-md border border-gray-200 bg-white text-gray-500 shadow-sm normal-case tracking-normal align-middle"></span>
+                                
+
+                                <!--
+                                    EXPORTAR e EXPANDIR.
+                                    A exportação existe porque a tela tem teto e o arquivo não:
+                                    em HTML a base inteira são 5,9 milhões de células, no .xlsx
+                                    é uma planilha comum. Ela leva os MESMOS filtros da tela.
+                                -->
+                                <button type="button" id="btn-exportar"
+                                        class="h-8 px-3 shrink-0 flex items-center justify-center gap-2 bg-white border border-gray-200 rounded-lg text-pink-600 hover:bg-pink-50 transition-colors shadow-sm"
+                                        title="Baixar o detalhamento filtrado em Excel">
+                                    <i class="fa-solid fa-file-excel text-xs"></i>
+                                    <span class="text-[10px] font-bold uppercase tracking-wider leading-none">Excel</span>
+                                </button>
+                                <button type="button" id="btn-expandir"
+                                        class="h-8 w-8 shrink-0 flex items-center justify-center bg-white border border-gray-200 rounded-lg text-pink-600 hover:bg-pink-50 transition-colors shadow-sm"
+                                        title="Expandir o detalhamento" aria-pressed="false">
+                                    <i class="fa-solid fa-expand text-xs" id="icone-expandir"></i>
+                                </button>
+
                                 <div class="relative">
                                     <i class="fa-solid fa-magnifying-glass absolute text-gray-400 text-xs" style="left: 10px; top: 50%; transform: translateY(-50%);"></i>
                                     <!--
@@ -279,24 +299,6 @@
                                         <i class="fa-solid fa-circle-xmark text-xs"></i>
                                     </button>
                                 </div>
-
-                                <!--
-                                    EXPORTAR e EXPANDIR.
-                                    A exportação existe porque a tela tem teto e o arquivo não:
-                                    em HTML a base inteira são 5,9 milhões de células, no .xlsx
-                                    é uma planilha comum. Ela leva os MESMOS filtros da tela.
-                                -->
-                                <button type="button" id="btn-exportar"
-                                        class="h-8 px-3 shrink-0 flex items-center justify-center gap-2 bg-white border border-gray-200 rounded-lg text-pink-600 hover:bg-pink-50 transition-colors shadow-sm"
-                                        title="Baixar o detalhamento filtrado em Excel">
-                                    <i class="fa-solid fa-file-excel text-xs"></i>
-                                    <span class="text-[10px] font-bold uppercase tracking-wider leading-none">Excel</span>
-                                </button>
-                                <button type="button" id="btn-expandir"
-                                        class="h-8 w-8 shrink-0 flex items-center justify-center bg-white border border-gray-200 rounded-lg text-pink-600 hover:bg-pink-50 transition-colors shadow-sm"
-                                        title="Expandir o detalhamento" aria-pressed="false">
-                                    <i class="fa-solid fa-expand text-xs" id="icone-expandir"></i>
-                                </button>
                             </div>
                           </div>
 
@@ -501,7 +503,7 @@
                             </div>
                         </section>
                         <!--
-                            PERÍODO E INSTITUIÇÃO VALEM NOS DOIS MODOS.
+                            PERÍODO E INSTITUIÇÃO APARECEM NOS DOIS MODOS — COM ESTADO SEPARADO.
 
                             Eles não recortam beneficiário nem IES: recortam o UNIVERSO. "2025-1" é a
                             mesma pergunta feita ao aluno e à faculdade, e sem ela a vista por IES
@@ -510,6 +512,10 @@
 
                             Por isso ficam FORA de `#filtros-beneficiarios`, e não dentro dele como
                             estavam: aquele bloco inteiro some quando o modo é IES.
+
+                            APARECER NOS DOIS não é valer nos dois ao mesmo tempo: cada modo guarda o
+                            seu recorte e o reencontra ao voltar (ver `estadoPorModo` no JS). O
+                            controle é o mesmo; a resposta, não.
                         -->
                         <section class="docia-filtro-secao">
                             <div class="docia-filtro-cabecalho">
@@ -550,18 +556,21 @@
                         </section>
 
                         <!--
-                            DOCUMENTO — filtro de primeira classe, e SÓ na vista por IES.
+                            DOCUMENTO — o mesmo controle, com dois efeitos.
 
-                            Na vista de beneficiários os cinco documentos aparecem lado a lado, um card
-                            cada, e a comparação entre eles É a tela. Numa linha por instituição eles
-                            caem todos na mesma célula: "esta IES tem 3.117 pendentes" sem dizer de quê
-                            é a soma de cinco perguntas diferentes, e não responde nenhuma delas.
+                            NA VISTA POR IES é filtro de primeira classe: cada linha é uma instituição
+                            e os cinco documentos cairiam todos na mesma célula. "Esta IES tem 3.117
+                            pendentes" sem dizer de quê é a soma de cinco perguntas diferentes, e não
+                            responde nenhuma delas. Por isso CONTRATO JÁ VEM MARCADO ali, e desmarcar
+                            o último não é permitido: é o documento de maior cobertura (todos os
+                            semestres, 84 mil linhas) e é por ele que se começa a olhar uma IES.
 
-                            CONTRATO JÁ VEM MARCADO. Marcar nenhum continua valendo "todos", mas
-                            "todos" aqui é a soma de cinco perguntas diferentes na mesma
-                            célula — o estado que menos responde. O contrato é o documento
-                            de maior cobertura (todos os semestres, 84 mil linhas) e é por
-                            ele que se começa a olhar uma instituição.
+                            NA VISTA DE BENEFICIÁRIOS é atalho de fatia. Os cinco documentos estão
+                            lado a lado, um card cada, e a comparação entre eles É a tela — esconder
+                            quatro deles tirava justamente isso. Marcar "Contratos" acende as seis
+                            fatias do card do contrato e apaga as dos outros quatro, que continuam no
+                            ar dizendo de si mesmos que ficaram de fora. Marcar nenhum é a legenda
+                            inteira acesa. Ver `aplicarDocumentosNasFatias` no JS.
 
                             Grade própria (`docia-grade-doc`) e não a mesma do período: são cinco
                             opções de nome longo, que quebram em duas colunas. A grade do período usa
@@ -576,7 +585,7 @@
                             </div>
                             <div class="docia-grade-doc">
                                 <label class="docia-grade-doc__opcao">
-                                    <input type="checkbox" value="CONTRATO" class="filter-documento-ies peer sr-only" checked>
+                                    <input type="checkbox" value="CONTRATO" class="filter-documento-ies peer sr-only">
                                     <div class="docia-grade-doc__caixa">
                                         <span class="docia-grade-doc__texto">Contratos</span>
                                     </div>
