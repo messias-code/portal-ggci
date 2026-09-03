@@ -2569,10 +2569,6 @@ body :is(button, a[href], label:has(input), summary) *,
 
 /*  Revelam algo ao passar o mouse e nada ao clicar: a fatia da rosca (o balão),
     o rótulo de coluna cortado (o nome inteiro) e a flag (o valor cru da view).  */
-.chart-doc .apexcharts-pie-area,
-#tabela-detalhamento thead th[title],
-#tabela-ies thead th[title],
-.docia-flag[title] { cursor: help; }
 
 /*  Campo de texto fica com o cursor de texto: ali a forma diz onde o caractere
     vai ser inserido.  */
@@ -2624,4 +2620,13 @@ body :is(button, a[href]):disabled { cursor: not-allowed; }
 
 @media (prefers-reduced-motion: reduce) {
     #card-ies { animation: none; }
+}
+
+/* Permite que o balão vaze para fora do gráfico sobrepondo os cards vizinhos */
+.chart-doc .apexcharts-canvas,
+.chart-doc .apexcharts-svg {
+    overflow: visible !important;
+}
+.chart-doc .apexcharts-tooltip {
+    pointer-events: none !important;
 }

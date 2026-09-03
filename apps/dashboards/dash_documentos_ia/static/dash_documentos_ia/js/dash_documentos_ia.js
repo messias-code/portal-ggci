@@ -361,28 +361,6 @@ document.addEventListener('turbo:load', () => {
                         selection: { filter: { type: 'none' } }
                     },
                     tooltip: {
-                        /*  BALÃO ANCORADO, e não colado no cursor.
-
-                            Prendê-lo à caixa depois que o Apex o posicionava resolvia o
-                            corte mas criava outro defeito: o Apex reposiciona a cada
-                            `mousemove` e a correção só chega no quadro seguinte, então o
-                            balão TREMIA entre a posição errada e a certa enquanto o mouse
-                            andava sobre a fatia. Corrigir depois é sempre uma corrida.
-
-                            `fixed` resolve na origem: o Apex passa a desenhar o balão
-                            sempre no mesmo canto da caixa do gráfico, e a posição deixa de
-                            depender de onde o cursor está. Ele não tem como sair do card,
-                            então não há o que recortar nem o que perseguir.
-
-                            NÃO SE PERDE NADA seguindo o cursor: são seis fatias de um anel,
-                            e o balão diz de qual delas está falando — o nome da fatia está
-                            escrito dentro dele. Num gráfico de dispersão a proximidade do
-                            cursor seria a única forma de saber a que ponto o balão se
-                            refere; aqui, não.
-
-                            `topLeft` porque o miolo da rosca — o número grande — fica no
-                            centro, e é a última coisa que se pode tapar.  */
-                        fixed: { enabled: true, position: 'topLeft', offsetX: 6, offsetY: 4 },
                         // Montado à mão: em rosca o Apex chama `y.formatter` SEM o objeto
                         // `w`, e é dele que sai o total para calcular o percentual.
                         // O percentual importa mais aqui do que no rótulo de dentro: a
@@ -587,22 +565,6 @@ document.addEventListener('turbo:load', () => {
              *   resolve na origem: se ele nunca sai do card, nunca há o que recortar.
              * DE QUEBRA, ele deixa de invadir o card vizinho — que era a outra queixa.
              */
-            const prenderBalao = (canvas) => {
-                if (!canvas) return;
-                const balao = canvas.querySelector('.apexcharts-tooltip.apexcharts-active');
-                if (!balao) return;
-
-                const prender = (eixo, medida) => {
-                    const atual = parseFloat(balao.style[eixo]);
-                    if (!isFinite(atual)) return;
-                    const teto = Math.max(MARGEM_DO_BALAO,
-                                          canvas['client' + medida[0]] - balao['offset' + medida[1]]
-                                          - MARGEM_DO_BALAO);
-                    const preso = Math.min(Math.max(atual, MARGEM_DO_BALAO), teto);
-                    // Só escreve se moveu de verdade: isto roda a cada frame com o mouse
-                    // sobre a rosca, e reescrever `style` à toa força layout à toa.
-                    if (Math.abs(preso - atual) > 0.5) balao.style[eixo] = preso + 'px';
-                };
                 prender('left', ['Width', 'Width']);
                 prender('top', ['Height', 'Height']);
             };
@@ -637,7 +599,6 @@ document.addEventListener('turbo:load', () => {
                         // Depois de esconder os outros, acerta a posição do que ficou.
                         // No mesmo frame, e depois do handler do Apex: ele já escreveu o
                         // `left` que queria, e o que fazemos é corrigi-lo.
-                        prenderBalao(sobre);
                     });
                 };
                 document.addEventListener('pointermove', vigiar, { passive: true });
