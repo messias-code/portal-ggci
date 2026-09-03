@@ -1134,10 +1134,8 @@ body { font-family: 'Poppins', sans-serif; }
    ainda assim eles esticariam a coluna até empurrar os seis números para fora
    da tela. Largura fixa com reticências, e o nome inteiro no `title`. */
 .docia-ies-nome {
-    max-width: 22rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    /* Como a tela possui espaço (e pode ser expandida), removemos o corte forçado. */
+    word-break: break-word;
 }
 
 /* Números em coluna se leem comparando dígito com dígito: sem `tabular-nums` a
@@ -1232,6 +1230,47 @@ body { font-family: 'Poppins', sans-serif; }
     font-weight: 600;
     color: inherit;
     font-variant-numeric: tabular-nums;
+}
+
+/*  QUALQUER NÚMERO MAIOR QUE ZERO É UMA PORTA — ver `abrirBeneficiariosDaCelula`
+    no JS. A célula responde "quanto"; clicar nela abre "quem", já recortado.
+
+    O BOTÃO NÃO SE ANUNCIA EM REPOUSO. São sete colunas numéricas por linha e ~110
+    linhas: sublinhar setecentos números de uma vez transformaria a tabela num
+    campo de links e tiraria dela a única coisa que ela faz bem, que é deixar
+    comparar coluna com coluna de relance. A pista aparece no hover, onde a
+    intenção de clicar já está.
+
+    `color` E `font` HERDADOS, e não declarados: a cor de calor da célula e o
+    negrito vivem no `<td>`, em estilo inline calculado linha a linha. Botão não
+    herda nenhum dos dois sozinho — sem isto, todo número clicável sairia preto e
+    leve no meio de uma coluna colorida, e o mapa de calor morreria justamente nas
+    células que têm valor.
+
+    O contorno do foco sai do token de tema, e por isso o eleitoral vem junto sem
+    uma segunda folha (ver o cabeçalho deste arquivo).  */
+.docia-ies-link {
+    display: inline-block;
+    vertical-align: baseline;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: inherit;
+    cursor: pointer;
+}
+
+.docia-ies-link:hover .docia-ies-valor {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.docia-ies-link:focus-visible {
+    outline: 2px solid var(--tema-primaria, #6B007B);
+    outline-offset: 2px;
+    border-radius: 0.25rem;
 }
 
 .docia-ies-pct {
