@@ -2829,12 +2829,8 @@ document.addEventListener('turbo:load', () => {
             if (!window.__temaLigadoDocIA) {
                 window.__temaLigadoDocIA = true;
                 document.addEventListener('ggci:tema', () => {
-                    setTimeout(() => {
-                        pintarResumo();
-                        // Os seis chips da vista de IES pegam a cor da mesma `PALETA`, e
-                        // ela também é lida como string no momento do render.
-                        pintarChipsIES();
-                    }, 60);
+                    pintarResumo();
+                    pintarChipsIES();
                 });
             }
 
