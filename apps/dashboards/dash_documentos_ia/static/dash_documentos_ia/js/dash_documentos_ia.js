@@ -2824,7 +2824,11 @@ document.addEventListener('turbo:load', () => {
                 document.addEventListener('ggci:tema', () => {
                     setTimeout(() => {
                         caixasDeGrafico().forEach((alvo) => {
-                            if (graficos[alvo.id]) graficos[alvo.id].updateOptions(opcoesQuantitativo(alvo), false, false);
+                            if (graficos[alvo.id]) {
+                                const opt = opcoesQuantitativo(alvo);
+                                delete opt.series;
+                                graficos[alvo.id].updateOptions(opt, false, false);
+                            }
                         });
                         pintarResumo();
                         // Os seis chips da vista de IES pegam a cor da mesma `PALETA`, e
