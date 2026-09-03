@@ -1622,12 +1622,12 @@ html[data-tela-cheia="1"] .docia-legenda__pct { width: 44px; }
    brigaria com `prenderBalao`.
    ========================================================================== */
 .chart-doc .apexcharts-tooltip {
-    background: transparent;
-    border: 0;
-    box-shadow: none;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
     /* O nosso balão tem 12px de raio; o `overflow` do Apex cortava os cantos. */
-    overflow: visible;
-    border-radius: 0;
+    overflow: visible !important;
+    border-radius: 0 !important;
 }
 
 
