@@ -809,6 +809,13 @@ document.addEventListener('turbo:load', () => {
                 const estado = window.__ultimoEstadoDocIA;
                 if (!estado) return;
 
+                // Força a limpeza de tooltips do ApexCharts que podem ficar "presos"
+                // na tela durante o redesenho causado por interações (filtros, legendas).
+                document.querySelectorAll('.apexcharts-tooltip').forEach(t => {
+                    t.classList.remove('apexcharts-active');
+                    t.style.opacity = '0';
+                });
+
                 definirKpi('kpi-beneficiarios', estado.beneficiarios);
                 definirKpi('kpi-ativos', estado.ativos);
                 definirKpi('kpi-inativos', estado.inativos);
@@ -831,6 +838,17 @@ document.addEventListener('turbo:load', () => {
                 // ele observa a caixa do GRÁFICO, que o Apex mantém travada.
                 ajustarAlturas();
             };
+
+            /* ==================================================================
+               MANUTENÇÃO DA SESSÃO (HEARTBEAT)
+               ==================================================================
+               Dashboards costumam ficar abertos em monitores sem interação. Como a
+               sessão global do portal expira em 20 minutos, fazemos um ping silencioso
+               para manter a sessão viva enquanto a tela estiver aberta.
+               ================================================================== */
+            setInterval(() => {
+                fetch(window.location.href, { method: 'HEAD' }).catch(() => {});
+            }, 14 * 60 * 1000);
 
             /* ==================================================================
                FILTROS E BUSCA DE DADOS
