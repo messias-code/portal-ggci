@@ -125,7 +125,7 @@
                         </div>
                         Filtros
                     </h3>
-                    <button type="button" id="btn-clear-filters" class="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 hover:text-pink-600 hover:bg-pink-50 px-3 py-2 rounded-xl transition-all" title="Restaurar visualização original">
+                    <button type="button" id="btn-clear-filters" class="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 hover:text-pink-600 hover:bg-pink-50 px-3 py-2 rounded-xl transition-all">
                         Restaurar Padrão
                     </button>
                 </div>
@@ -307,7 +307,7 @@
                                     </div>
                                     <div class="flex flex-col items-start overflow-hidden min-w-0">
                                         <span class="text-[10px] text-gray-400 font-semibold uppercase">Filtro de IES</span>
-                                        <span class="text-xs font-bold text-gray-700 uppercase truncate w-full text-left" id="ies-selecionadas-text" title="Todas as Instituições">Todas as Instituições</span>
+                                        <span class="text-xs font-bold text-gray-700 uppercase truncate w-full text-left" id="ies-selecionadas-text">Todas as Instituições</span>
                                     </div>
                                 </div>
                                 <i class="fa-solid fa-chevron-right text-gray-400 text-xs shrink-0 ml-2 pr-2"></i>
@@ -712,7 +712,7 @@
                                         <td class="px-3 py-2 border-b border-gray-100">${row['Beneficiário'] || '-'}</td>
                                         <td class="px-3 py-2 border-b border-gray-100">${row['Inscrição'] || '-'}</td>
                                         <td class="px-3 py-2 border-b border-gray-100">${row['tipo_bolsa'] || '-'}</td>
-                                        <td class="px-3 py-2 border-b border-gray-100 truncate max-w-[150px]" title="${row['Faculdade'] || ''}">${row['Faculdade'] || '-'}</td>
+                                        <td class="px-3 py-2 border-b border-gray-100 truncate max-w-[150px]">${row['Faculdade'] || '-'}</td>
                                         <td class="px-3 py-2 border-b border-gray-100">${row['CPF'] || '-'}</td>
                                         <td class="px-3 py-2 border-b border-gray-100">${row['CPF IA'] || '-'}</td>
                                         <td class="px-3 py-2 border-b border-gray-100 text-center">${row['Semestre'] || '-'}</td>
@@ -1131,7 +1131,7 @@
                             <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" class="docia-icone-bg">
                                 <i class="fa-solid fa-building-columns" class="docia-icone-color"></i>
                             </div>
-                            <span class="text-xs font-bold text-gray-700 truncate group-hover:text-[#6B007B] transition-colors" title="${ies}">${ies}</span>
+                            <span class="text-xs font-bold text-gray-700 truncate group-hover:text-[#6B007B] transition-colors">${ies}</span>
                         </div>
                         <button onclick="toggleIES('${ies.replace(/'/g, "\\'")}')" class="text-gray-300 hover:text-red-500 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 transition-colors shrink-0">
                             <i class="fa-solid fa-xmark"></i>

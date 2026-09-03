@@ -92,14 +92,14 @@
                             <span>Atualizar</span> <span class="text-gray-400 font-medium whitespace-nowrap">| <span id="data-atualizacao">{{ data_atualizacao }}</span></span>
                         </button>
                         <div class="h-6 w-px bg-pink-100 shrink-0"></div>
-                        <button type="button" id="btn-config-atualizacao" class="h-full px-3 text-pink-500 hover:text-pink-700 hover:bg-pink-50 transition-colors shrink-0 flex items-center justify-center relative" title="Configurar o escopo da atualização">
+                        <button type="button" id="btn-config-atualizacao" class="h-full px-3 text-pink-500 hover:text-pink-700 hover:bg-pink-50 transition-colors shrink-0 flex items-center justify-center relative">
                             <i class="fa-solid fa-sliders"></i>
                             <!-- Aceso quando há configuração aplicada: sem isto, um recorte
                                  esquecido faria a próxima atualização parecer completa. -->
                             <span id="selo-config" class="docia-selo-config hidden"></span>
                         </button>
                         <div class="h-6 w-px bg-pink-100 shrink-0"></div>
-                        <button type="button" id="btn-abrir-console" class="h-full px-3 text-pink-500 hover:text-pink-700 hover:bg-pink-50 transition-colors shrink-0 flex items-center justify-center" title="Ver logs">
+                        <button type="button" id="btn-abrir-console" class="h-full px-3 text-pink-500 hover:text-pink-700 hover:bg-pink-50 transition-colors shrink-0 flex items-center justify-center">
                             <i class="fa-solid fa-terminal"></i>
                         </button>
                     </div>
@@ -145,39 +145,39 @@
                         justamente a leitura de relance.
                     -->
                     <div class="flex w-full gap-3 lg:gap-4 mb-4 shrink-0">
-                        <div class="flex-1 bg-gradient-to-br from-white/90 to-pink-50/30 backdrop-blur-md border border-white/60 shadow-[0_4px_20px_rgb(0,0,0,0.08)] rounded-3xl py-2.5 px-4 flex items-center justify-between group cursor-default">
+                        <div class="flex-1 bg-gradient-to-br from-white/90 to-pink-50/30 backdrop-blur-md border border-white/60 rounded-3xl py-2.5 px-4 flex items-center justify-between group cursor-default docia-kpi-card">
                             <div class="pr-2" style="min-width: 0;">
-                                <p class="text-[9px] xl:text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="QTDE DE BENEFICIÁRIOS ÚNICOS">QTDE DE BENEFICIÁRIOS ÚNICOS</p>
-                                <h4 class="text-xl font-black text-gray-800 transition-colors" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="kpi-beneficiarios">0</h4>
+                                <p class="text-[9px] xl:text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">QTDE DE BENEFICIÁRIOS ÚNICOS</p>
+                                <h4 class="docia-kpi-valor font-black text-gray-800 transition-colors" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="kpi-beneficiarios">0</h4>
                             </div>
-                            <div class="w-10 h-10 rounded-2xl bg-gray-50 border border-gray-100 text-gray-800 flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform duration-300 shrink-0">
+                            <div class="docia-kpi-icone docia-kpi-icone--marca w-10 h-10 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shrink-0">
                                 <i class="fa-solid fa-users text-base"></i>
                             </div>
                         </div>
-                        <div class="flex-1 bg-gradient-to-br from-white/90 to-gray-50/50 backdrop-blur-md border border-white/60 shadow-[0_4px_20px_rgb(0,0,0,0.08)] rounded-3xl py-2.5 px-4 flex items-center justify-between group cursor-default">
+                        <div class="flex-1 bg-gradient-to-br from-white/90 to-gray-50/50 backdrop-blur-md border border-white/60 rounded-3xl py-2.5 px-4 flex items-center justify-between group cursor-default docia-kpi-card">
                             <div class="pr-2" style="min-width: 0;">
-                                <p class="text-[9px] xl:text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="QTDE DE ATIVOS ÚNICOS">QTDE DE ATIVOS ÚNICOS</p>
-                                <h4 class="text-xl font-black text-gray-800 transition-colors" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="kpi-ativos">0</h4>
+                                <p class="text-[9px] xl:text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">QTDE DE ATIVOS ÚNICOS</p>
+                                <h4 class="docia-kpi-valor font-black text-gray-800 transition-colors" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="kpi-ativos">0</h4>
                             </div>
-                            <div class="w-10 h-10 rounded-2xl bg-gray-50 border border-gray-100 text-gray-800 flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform duration-300 shrink-0">
+                            <div class="docia-kpi-icone docia-kpi-icone--ok w-10 h-10 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shrink-0">
                                 <i class="fa-solid fa-user-check text-base"></i>
                             </div>
                         </div>
-                        <div class="flex-1 bg-gradient-to-br from-white/90 to-gray-50/50 backdrop-blur-md border border-white/60 shadow-[0_4px_20px_rgb(0,0,0,0.08)] rounded-3xl py-2.5 px-4 flex items-center justify-between group cursor-default">
+                        <div class="flex-1 bg-gradient-to-br from-white/90 to-gray-50/50 backdrop-blur-md border border-white/60 rounded-3xl py-2.5 px-4 flex items-center justify-between group cursor-default docia-kpi-card">
                             <div class="pr-2" style="min-width: 0;">
-                                <p class="text-[9px] xl:text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="QTDE DE INATIVOS ÚNICOS">QTDE DE INATIVOS ÚNICOS</p>
-                                <h4 class="text-xl font-black text-gray-800 transition-colors" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="kpi-inativos">0</h4>
+                                <p class="text-[9px] xl:text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">QTDE DE INATIVOS ÚNICOS</p>
+                                <h4 class="docia-kpi-valor font-black text-gray-800 transition-colors" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="kpi-inativos">0</h4>
                             </div>
-                            <div class="w-10 h-10 rounded-2xl bg-gray-50 border border-gray-100 text-gray-800 flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform duration-300 shrink-0">
+                            <div class="docia-kpi-icone docia-kpi-icone--inativo w-10 h-10 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shrink-0">
                                 <i class="fa-solid fa-user-xmark text-base"></i>
                             </div>
                         </div>
-                        <div class="flex-1 bg-gradient-to-br from-white/90 to-gray-50/50 backdrop-blur-md border border-white/60 shadow-[0_4px_20px_rgb(0,0,0,0.08)] rounded-3xl py-2.5 px-4 flex items-center justify-between group cursor-default">
+                        <div class="flex-1 bg-gradient-to-br from-white/90 to-gray-50/50 backdrop-blur-md border border-white/60 rounded-3xl py-2.5 px-4 flex items-center justify-between group cursor-default docia-kpi-card">
                             <div class="pr-2" style="min-width: 0;">
-                                <p class="text-[9px] xl:text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="QTDE TOTAL DE DOCUMENTOS">QTDE TOTAL DE DOCUMENTOS</p>
-                                <h4 class="text-xl font-black text-gray-800 transition-colors" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="kpi-documentos">0</h4>
+                                <p class="text-[9px] xl:text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">QTDE TOTAL DE DOCUMENTOS</p>
+                                <h4 class="docia-kpi-valor font-black text-gray-800 transition-colors" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="kpi-documentos">0</h4>
                             </div>
-                            <div class="w-10 h-10 rounded-2xl bg-gray-50 border border-gray-100 text-gray-800 flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform duration-300 shrink-0">
+                            <div class="docia-kpi-icone docia-kpi-icone--doc w-10 h-10 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shrink-0">
                                 <i class="fa-solid fa-file-lines text-base"></i>
                             </div>
                         </div>
@@ -197,36 +197,36 @@
                         documentos é fixo (`ABAS_DOCUMENTOS` no back-end): markup montado em
                         runtime só se justifica quando a lista vem do servidor.
                     -->
-                    <div class="flex flex-row w-full gap-3 mb-4" style="flex: 1.3 1 0; min-height: 0; min-width: 0;">
-                        <div class="bg-gradient-to-b from-white to-gray-50/40 backdrop-blur-md border border-white/60 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-3xl py-4 px-2 flex flex-col transition-shadow hover:shadow-[0_8px_32px_rgb(0,0,0,0.12)]"
+                    <div class="docia-faixa-graficos flex flex-row w-full gap-3 mb-4">
+                        <div class="docia-card-doc bg-gradient-to-b from-white to-gray-50/40 backdrop-blur-md border border-white/60 rounded-3xl py-4 px-2 flex flex-col"
                              style="flex: 1 1 0; min-width: 0; min-height: 0;">
                             <h3 class="text-sm font-extrabold text-gray-700 m-0 text-center mb-1 shrink-0" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">CONTRATOS</h3>
                             <div class="chart-doc w-full" id="chart-doc-0" data-doc="CONTRATO" style="flex: 1 1 0; min-height: 0;"></div>
                             <div class="docia-legenda shrink-0" id="legenda-doc-0" data-doc="CONTRATO"></div>
                         </div>
 
-                        <div class="bg-gradient-to-b from-white to-gray-50/40 backdrop-blur-md border border-white/60 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-3xl py-4 px-2 flex flex-col transition-shadow hover:shadow-[0_8px_32px_rgb(0,0,0,0.12)]"
+                        <div class="docia-card-doc bg-gradient-to-b from-white to-gray-50/40 backdrop-blur-md border border-white/60 rounded-3xl py-4 px-2 flex flex-col"
                              style="flex: 1 1 0; min-width: 0; min-height: 0;">
                             <h3 class="text-sm font-extrabold text-gray-700 m-0 text-center mb-1 shrink-0" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">RIAF'S</h3>
                             <div class="chart-doc w-full" id="chart-doc-1" data-doc="RIAF" style="flex: 1 1 0; min-height: 0;"></div>
                             <div class="docia-legenda shrink-0" id="legenda-doc-1" data-doc="RIAF"></div>
                         </div>
 
-                        <div class="bg-gradient-to-b from-white to-gray-50/40 backdrop-blur-md border border-white/60 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-3xl py-4 px-2 flex flex-col transition-shadow hover:shadow-[0_8px_32px_rgb(0,0,0,0.12)]"
+                        <div class="docia-card-doc bg-gradient-to-b from-white to-gray-50/40 backdrop-blur-md border border-white/60 rounded-3xl py-4 px-2 flex flex-col"
                              style="flex: 1 1 0; min-width: 0; min-height: 0;">
                             <h3 class="text-sm font-extrabold text-gray-700 m-0 text-center mb-1 shrink-0" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">HISTÓRICOS</h3>
                             <div class="chart-doc w-full" id="chart-doc-2" data-doc="HISTÓRICO" style="flex: 1 1 0; min-height: 0;"></div>
                             <div class="docia-legenda shrink-0" id="legenda-doc-2" data-doc="HISTÓRICO"></div>
                         </div>
 
-                        <div class="bg-gradient-to-b from-white to-gray-50/40 backdrop-blur-md border border-white/60 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-3xl py-4 px-2 flex flex-col transition-shadow hover:shadow-[0_8px_32px_rgb(0,0,0,0.12)]"
+                        <div class="docia-card-doc bg-gradient-to-b from-white to-gray-50/40 backdrop-blur-md border border-white/60 rounded-3xl py-4 px-2 flex flex-col"
                              style="flex: 1 1 0; min-width: 0; min-height: 0;">
                             <h3 class="text-sm font-extrabold text-gray-700 m-0 text-center mb-1 shrink-0" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">BENEFÍCIOS</h3>
                             <div class="chart-doc w-full" id="chart-doc-3" data-doc="BENEFÍCIOS" style="flex: 1 1 0; min-height: 0;"></div>
                             <div class="docia-legenda shrink-0" id="legenda-doc-3" data-doc="BENEFÍCIOS"></div>
                         </div>
 
-                        <div class="bg-gradient-to-b from-white to-gray-50/40 backdrop-blur-md border border-white/60 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-3xl py-4 px-2 flex flex-col transition-shadow hover:shadow-[0_8px_32px_rgb(0,0,0,0.12)]"
+                        <div class="docia-card-doc bg-gradient-to-b from-white to-gray-50/40 backdrop-blur-md border border-white/60 rounded-3xl py-4 px-2 flex flex-col"
                              style="flex: 1 1 0; min-width: 0; min-height: 0;">
                             <h3 class="text-sm font-extrabold text-gray-700 m-0 text-center mb-1 shrink-0" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">FINANCIAMENTOS</h3>
                             <div class="chart-doc w-full" id="chart-doc-4" data-doc="FINANCIAMENTO" style="flex: 1 1 0; min-height: 0;"></div>
@@ -256,7 +256,7 @@
                             </h3>
                             <div class="flex items-center gap-2">
 
-                                <span id="tabela-contagem" class="hidden inline-block text-[12px] font-medium px-3 py-1 rounded-md border border-gray-200 bg-white text-gray-500 shadow-sm normal-case tracking-normal align-middle"></span>
+                                <span id="tabela-contagem" class="docia-contagem hidden"></span>
                                 
 
                                 <!--
@@ -267,13 +267,13 @@
                                 -->
                                 <button type="button" id="btn-exportar"
                                         class="h-8 px-3 shrink-0 flex items-center justify-center gap-2 bg-white border border-gray-200 rounded-lg text-pink-600 hover:bg-pink-50 transition-colors shadow-sm"
-                                        title="Baixar o detalhamento filtrado em Excel">
+                                       >
                                     <i class="fa-solid fa-file-excel text-xs"></i>
                                     <span class="text-[10px] font-bold uppercase tracking-wider leading-none">Excel</span>
                                 </button>
                                 <button type="button" id="btn-expandir"
                                         class="h-8 w-8 shrink-0 flex items-center justify-center bg-white border border-gray-200 rounded-lg text-pink-600 hover:bg-pink-50 transition-colors shadow-sm"
-                                        title="Expandir o detalhamento" aria-pressed="false">
+                                        aria-pressed="false">
                                     <i class="fa-solid fa-expand text-xs" id="icone-expandir"></i>
                                 </button>
 
@@ -287,7 +287,7 @@
                                         em nenhuma das 184 mil linhas.
                                     -->
                                     <input type="text" id="tabela-busca" placeholder="Inscrição, CPF ou nome — separe por ;"
-                                           title="Vários de uma vez: 2090214;2103058;Maria Silva"
+                                          
                                            class="text-xs bg-white border border-gray-200 rounded-lg py-1.5 text-gray-700 focus:outline-none focus:border-pink-400 transition-colors"
                                            style="padding-left: 28px; padding-right: 26px; width: 268px;">
                                     <!-- Só aparece quando há texto; quem digitou precisa
@@ -295,7 +295,7 @@
                                     <button type="button" id="btn-limpar-busca"
                                             class="hidden absolute text-gray-400 hover:text-pink-600 transition-colors"
                                             style="right: 8px; top: 50%; transform: translateY(-50%);"
-                                            aria-label="Limpar a busca" title="Limpar a busca">
+                                            aria-label="Limpar a busca">
                                         <i class="fa-solid fa-circle-xmark text-xs"></i>
                                     </button>
                                 </div>
@@ -390,13 +390,13 @@
                     -->
                     <button type="button" id="btn-exportar-ies"
                             class="h-8 px-3 shrink-0 flex items-center justify-center gap-2 bg-white border border-gray-200 rounded-lg text-pink-600 hover:bg-pink-50 transition-colors shadow-sm"
-                            title="Baixar a tabela por instituição em Excel">
+                           >
                         <i class="fa-solid fa-file-excel text-xs"></i>
                         <span class="text-[10px] font-bold uppercase tracking-wider leading-none">Excel</span>
                     </button>
                     <button type="button" id="btn-expandir-ies"
                             class="h-8 w-8 shrink-0 flex items-center justify-center bg-white border border-gray-200 rounded-lg text-pink-600 hover:bg-pink-50 transition-colors shadow-sm"
-                            title="Expandir a tabela de instituições" aria-pressed="false">
+                            aria-pressed="false">
                         <i class="fa-solid fa-expand text-xs" id="icone-expandir-ies"></i>
                     </button>
                                     <!--
@@ -415,7 +415,7 @@
                                         <button type="button" id="ies-limpar-busca"
                                                 class="hidden absolute text-gray-400 hover:text-pink-600 transition-colors"
                                                 style="right: 8px; top: 50%; transform: translateY(-50%);"
-                                                aria-label="Limpar a busca" title="Limpar a busca">
+                                                aria-label="Limpar a busca">
                                             <i class="fa-solid fa-circle-xmark text-xs"></i>
                                         </button>
                                     </div>
@@ -464,11 +464,11 @@
                         -->
                         <span class="docia-filtro-contador docia-filtro-contador--total" id="contador-filtros" style="display: none;">0</span>
                     </h3>
-                    <button type="button" id="btn-clear-filters" class="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 hover:text-pink-600 hover:bg-pink-50 px-3 py-2 rounded-xl transition-all" title="Restaurar visualização original">
+                    <button type="button" id="btn-clear-filters" class="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 hover:text-pink-600 hover:bg-pink-50 px-3 py-2 rounded-xl transition-all">
                         Restaurar Padrão
                     </button>
                 </div>
-                <div class="flex-1 p-6 lg:p-8 overflow-y-auto custom-scrollbar-light">
+                <div class="flex-1 p-6 lg:p-8 overflow-y-auto overflow-x-hidden custom-scrollbar-light">
                     <!-- Filtros -->
                     <div class="space-y-6">
                         <!--
@@ -487,7 +487,7 @@
                             <div class="docia-filtro-cabecalho">
                                 <h4 class="docia-filtro-titulo">Modo de visualização</h4>
                             </div>
-                            <div class="grid bg-white border border-gray-300 rounded-xl overflow-hidden shadow-sm divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(2, minmax(0, 1fr));">
+                            <div class="docia-grade-seg grid bg-white border border-gray-300 rounded-xl overflow-hidden divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(2, minmax(0, 1fr));">
                                 <label class="cursor-pointer block relative">
                                     <input type="radio" name="modo-visualizacao" value="beneficiarios" class="filter-modo peer sr-only" checked>
                                     <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
@@ -527,7 +527,7 @@
                                 pergunta soma ("2025-2 e 2026-1"), diferente dos
                                 pares abaixo, onde as opções se excluem.
                             -->
-                            <div class="grid bg-white border border-gray-300 rounded-xl overflow-hidden shadow-sm divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(4, minmax(0, 1fr));">
+                            <div class="docia-grade-seg grid bg-white border border-gray-300 rounded-xl overflow-hidden divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(4, minmax(0, 1fr));">
                                 <label class="cursor-pointer block relative">
                                     <input type="checkbox" value="2025-1" class="filter-semestre peer sr-only">
                                     <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
@@ -627,7 +627,20 @@
                             fechada: sem o contador, um recorte esquecido aqui dentro só se descobre
                             estranhando o número lá fora.
                         -->
-                        <div id="filtros-beneficiarios" class="space-y-6">
+                        <!--
+                            COLAPSO, e não `display: none`.
+
+                            Trocar o modo para IES escondia este bloco inteiro num quadro:
+                            duas seções de rótulos e controles sumiam de uma vez e o que
+                            estava embaixo saltava para cima. O invólucro em duas camadas é
+                            o que permite animar a altura sem saber qual ela é —
+                            `grid-template-rows: 1fr -> 0fr` no de fora, `overflow: hidden`
+                            no de dentro (ver `.docia-colapso` no CSS). Quem liga e desliga
+                            é `data-fechado`, escrito pelo JS no lugar do `style.display`.
+                        -->
+                        <div id="filtros-beneficiarios" class="docia-colapso">
+                          <div class="docia-colapso__interno">
+                           <div class="space-y-6">
                             <section class="docia-filtro-secao">
                                 <div class="docia-filtro-cabecalho">
                                     <h4 class="docia-filtro-titulo">Situação do aluno</h4>
@@ -635,7 +648,7 @@
                                 </div>
                                 <div class="docia-filtro-linha">
                                     <span class="docia-filtro-rotulo">Vínculo</span>
-                                    <div class="docia-grupo-exclusivo grid bg-white border border-gray-300 rounded-xl overflow-hidden shadow-sm divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(2, minmax(0, 1fr));">
+                                    <div class="docia-grupo-exclusivo docia-grade-seg grid bg-white border border-gray-300 rounded-xl overflow-hidden divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(2, minmax(0, 1fr));">
                                         <label class="cursor-pointer block relative">
                                             <input type="checkbox" value="ATIVO" class="filter-vinculo peer sr-only">
                                             <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
@@ -652,7 +665,7 @@
                                 </div>
                                 <div class="docia-filtro-linha">
                                     <span class="docia-filtro-rotulo">Perfil</span>
-                                    <div class="docia-grupo-exclusivo grid bg-white border border-gray-300 rounded-xl overflow-hidden shadow-sm divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(2, minmax(0, 1fr));">
+                                    <div class="docia-grupo-exclusivo docia-grade-seg grid bg-white border border-gray-300 rounded-xl overflow-hidden divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(2, minmax(0, 1fr));">
                                         <label class="cursor-pointer block relative">
                                             <input type="checkbox" value="Veterano" class="filter-perfil peer sr-only">
                                             <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
@@ -676,7 +689,7 @@
                                 </div>
                                 <div class="docia-filtro-linha">
                                     <span class="docia-filtro-rotulo">Mudou de IES</span>
-                                    <div class="docia-grupo-exclusivo grid bg-white border border-gray-300 rounded-xl overflow-hidden shadow-sm divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(2, minmax(0, 1fr));">
+                                    <div class="docia-grupo-exclusivo docia-grade-seg grid bg-white border border-gray-300 rounded-xl overflow-hidden divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(2, minmax(0, 1fr));">
                                         <label class="cursor-pointer block relative">
                                             <input type="checkbox" value="S" class="filter-mudou-ies peer sr-only">
                                             <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
@@ -693,7 +706,7 @@
                                 </div>
                                 <div class="docia-filtro-linha">
                                     <span class="docia-filtro-rotulo">Mudou de bolsa</span>
-                                    <div class="docia-grupo-exclusivo grid bg-white border border-gray-300 rounded-xl overflow-hidden shadow-sm divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(2, minmax(0, 1fr));">
+                                    <div class="docia-grupo-exclusivo docia-grade-seg grid bg-white border border-gray-300 rounded-xl overflow-hidden divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(2, minmax(0, 1fr));">
                                         <label class="cursor-pointer block relative">
                                             <input type="checkbox" value="S" class="filter-mudou-bolsa peer sr-only">
                                             <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
@@ -709,6 +722,8 @@
                                     </div>
                                 </div>
                             </section>
+                           </div>
+                          </div>
                         </div>
 
                         <section class="docia-filtro-secao">
@@ -729,7 +744,7 @@
                                     </div>
                                     <div class="flex flex-col items-start overflow-hidden min-w-0">
                                         <span class="text-[10px] text-gray-400 font-semibold uppercase">Filtro de IES</span>
-                                        <span class="text-xs font-bold text-gray-700 uppercase w-full text-left" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="ies-selecionadas-text" title="Todas as Instituições">Todas as Instituições</span>
+                                        <span class="text-xs font-bold text-gray-700 uppercase w-full text-left" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="ies-selecionadas-text">Todas as Instituições</span>
                                     </div>
                                 </div>
                                 <i class="fa-solid fa-chevron-right text-gray-400 text-xs shrink-0 ml-2 pr-2"></i>
@@ -927,7 +942,7 @@
                     <div class="cfgx__secao-topo">
                         <span class="cfgx__passo">2</span>
                         <span class="cfgx__secao-texto">
-                            <strong>Como cada documento vem</strong>
+                            <strong>Bot de extração inteligente</strong>
                             <span>Sem marcar nada, todos usarão a atualização inteligente — baixando apenas o que falta no espelho.</span>
                         </span>
                     </div>
@@ -941,12 +956,12 @@
                             </span>
                             <button type="button" class="cfgx-acao cfg-bruta" data-doc="CONTRATOS"
                                     aria-pressed="false"
-                                    title="Baixa o período inteiro deste documento, ignorando o que já está no espelho">
+                                   >
                                 <i class="fa-solid fa-arrows-rotate"></i><span>Bruta</span>
                             </button>
                             <button type="button" class="cfgx-acao cfg-abrir-lista" data-doc="CONTRATOS"
                                     aria-expanded="false"
-                                    title="Reprocessar apenas as inscrições que você informar">
+                                   >
                                 <i class="fa-solid fa-list-ul"></i><span>Inscrições</span>
                             </button>
                         </div>
@@ -965,12 +980,12 @@
                             </span>
                             <button type="button" class="cfgx-acao cfg-bruta" data-doc="RIAF"
                                     aria-pressed="false"
-                                    title="Baixa o período inteiro deste documento, ignorando o que já está no espelho">
+                                   >
                                 <i class="fa-solid fa-arrows-rotate"></i><span>Bruta</span>
                             </button>
                             <button type="button" class="cfgx-acao cfg-abrir-lista" data-doc="RIAF"
                                     aria-expanded="false"
-                                    title="Reprocessar apenas as inscrições que você informar">
+                                   >
                                 <i class="fa-solid fa-list-ul"></i><span>Inscrições</span>
                             </button>
                         </div>
@@ -989,12 +1004,12 @@
                             </span>
                             <button type="button" class="cfgx-acao cfg-bruta" data-doc="HISTORICO"
                                     aria-pressed="false"
-                                    title="Baixa o período inteiro deste documento, ignorando o que já está no espelho">
+                                   >
                                 <i class="fa-solid fa-arrows-rotate"></i><span>Bruta</span>
                             </button>
                             <button type="button" class="cfgx-acao cfg-abrir-lista" data-doc="HISTORICO"
                                     aria-expanded="false"
-                                    title="Reprocessar apenas as inscrições que você informar">
+                                   >
                                 <i class="fa-solid fa-list-ul"></i><span>Inscrições</span>
                             </button>
                         </div>
@@ -1013,12 +1028,12 @@
                             </span>
                             <button type="button" class="cfgx-acao cfg-bruta" data-doc="BENEFICIOS"
                                     aria-pressed="false"
-                                    title="Baixa o período inteiro deste documento, ignorando o que já está no espelho">
+                                   >
                                 <i class="fa-solid fa-arrows-rotate"></i><span>Bruta</span>
                             </button>
                             <button type="button" class="cfgx-acao cfg-abrir-lista" data-doc="BENEFICIOS"
                                     aria-expanded="false"
-                                    title="Reprocessar apenas as inscrições que você informar">
+                                   >
                                 <i class="fa-solid fa-list-ul"></i><span>Inscrições</span>
                             </button>
                         </div>
@@ -1037,12 +1052,12 @@
                             </span>
                             <button type="button" class="cfgx-acao cfg-bruta" data-doc="FINANCIAMENTO"
                                     aria-pressed="false"
-                                    title="Baixa o período inteiro deste documento, ignorando o que já está no espelho">
+                                   >
                                 <i class="fa-solid fa-arrows-rotate"></i><span>Bruta</span>
                             </button>
                             <button type="button" class="cfgx-acao cfg-abrir-lista" data-doc="FINANCIAMENTO"
                                     aria-expanded="false"
-                                    title="Reprocessar apenas as inscrições que você informar">
+                                   >
                                 <i class="fa-solid fa-list-ul"></i><span>Inscrições</span>
                             </button>
                         </div>
@@ -1084,7 +1099,7 @@
                 </span>
                 <div class="flex items-center gap-3">
                     <span id="console-status" class="text-[10px] font-mono uppercase tracking-widest text-purple-400 shrink-0">Aguardando</span>
-                    <button type="button" id="btn-fechar-console" title="Fechar (a atualização continua em segundo plano)"
+                    <button type="button" id="btn-fechar-console"
                             class="text-purple-400 hover:text-pink-600 w-8 h-8 flex items-center justify-center rounded-lg transition-colors">
                         <i class="fa-solid fa-xmark"></i>
                     </button>
