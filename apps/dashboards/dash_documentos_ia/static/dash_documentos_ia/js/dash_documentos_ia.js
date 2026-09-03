@@ -747,6 +747,8 @@ document.addEventListener('turbo:load', () => {
                     if (jaEstava >= 0) window.__recortesDocIA.splice(jaEstava, 1);
                     else window.__recortesDocIA.push(chave);
 
+                    // A caixa de Documento da barra segue as fatias — ver abaixo.
+                    sincronizarCaixasDeDocumento();
                     // `recarregar` e não só a tabela: as roscas de fato não mudam, mas
                     // os KPIs do topo contam o que está sendo listado.
                     recarregar();
@@ -755,6 +757,22 @@ document.addEventListener('turbo:load', () => {
                     repintarLegendas();
                 });
             }
+
+            /*  A CAIXA DE DOCUMENTO SEGUE AS FATIAS, e não uma cópia da intenção.
+
+                Na vista de beneficiários o filtro "Documento" é um atalho: marcá-lo
+                acende as seis fatias daquele documento (ver `aplicarDocumentosNasFatias`).
+                Se depois a pessoa tirar uma delas pela legenda, o recorte deixou de ser
+                "o contrato inteiro" — e a barra não pode continuar dizendo "Contratos"
+                sobre outra coisa. A caixa fica marcada exatamente enquanto TODAS as seis
+                fatias daquele documento estiverem dentro, o que também acerta o caminho
+                inverso: chegar às seis clicando fatia a fatia acende a caixa sozinho.  */
+            const sincronizarCaixasDeDocumento = () => {
+                checkboxesDocumento.forEach((caixa) => {
+                    caixa.checked = BALDES_DA_VIEW.every((balde) =>
+                        window.__recortesDocIA.includes(recorteDe(caixa.value, balde)));
+                });
+            };
 
             /**
              * O QUE FAZ: reflete o recorte atual nas cinco roscas e nas cinco legendas.
@@ -843,6 +861,26 @@ document.addEventListener('turbo:load', () => {
 
                 const semestres = marcados(checkboxesSemestre);
                 if (semestres.length > 0) parametros.append('semestres', semestres.join(','));
+
+                /*  SITUAÇÃO DO ALUNO E MUDANÇAS NO SEMESTRE.
+
+                    Estas quatro caixas desenhavam a etiqueta sobre a tabela e o selo da
+                    seção, mas o valor NUNCA saía daqui: a query string ia sem eles e o
+                    servidor devolvia o recorte inteiro. Quem marcasse "Desligado" via a
+                    tela dizer "Vínculo: DESLIGADO" com os mesmos 184 mil documentos
+                    embaixo — um filtro que parece ligado e não recorta nada.
+
+                    Vão em `parametrosDeFiltro`, e não em `parametrosDaTabela`, porque
+                    recortam o UNIVERSO: "os desligados" são outra população, e as roscas
+                    têm de mostrar a proporção DELES. É o contrário de `documentos` e
+                    `status_doc`, que escolhem o que listar dentro do mesmo universo.  */
+                [['vinculo', checkboxesVinculo],
+                 ['perfil', checkboxesPerfil],
+                 ['mudou_ies', checkboxesMudouIES],
+                 ['mudou_bolsa', checkboxesMudouBolsa]].forEach(([nome, caixas]) => {
+                    const escolhidos = marcados(caixas);
+                    if (escolhidos.length > 0) parametros.append(nome, escolhidos.join(','));
+                });
 
                 // Separador '||' e não ',': nome de faculdade tem vírgula.
                 if (typeof activeIESFilters !== 'undefined' && activeIESFilters.length > 0) {
@@ -1114,12 +1152,29 @@ document.addEventListener('turbo:load', () => {
                         'ies'));
                 }
 
-                // Os pares da legenda: o rótulo mostra os dois lados, porque é o par que
-                // filtra — "CONTRATO / Processados" e não um documento e uma situação
-                // soltos que se cruzariam com os outros pares.
+                /*  Os pares da legenda: o rótulo mostra os dois lados, porque é o par
+                    que filtra — "CONTRATO / Processados" e não um documento e uma
+                    situação soltos que se cruzariam com os outros pares.
+
+                    UM DOCUMENTO INTEIRO VIRA UMA ETIQUETA SÓ. Marcar "Contratos" na
+                    barra acende as seis fatias do contrato de uma vez; seis etiquetas
+                    dizendo a mesma coisa empurrariam para fora da faixa justamente as
+                    outras, que são as que ninguém lembra de ter deixado ligadas. Lido do
+                    estado real (as fatias) e não de quem as acendeu: chegar às seis pela
+                    legenda dá a mesma etiqueta, porque descreve o mesmo recorte.  */
+                const documentoInteiro = (doc) => BALDES_DA_VIEW.every(
+                    (balde) => window.__recortesDocIA.includes(recorteDe(doc, balde)));
+
+                const jaEtiquetados = [];
                 window.__recortesDocIA.forEach((par) => {
                     const [doc, balde] = par.split(':');
-                    etiquetas.push(chip('Fatia', doc + ' / ' + balde, 'recorte:' + par));
+                    if (!documentoInteiro(doc)) {
+                        etiquetas.push(chip('Fatia', doc + ' / ' + balde, 'recorte:' + par));
+                        return;
+                    }
+                    if (jaEtiquetados.includes(doc)) return;
+                    jaEtiquetados.push(doc);
+                    etiquetas.push(chip('Documento', doc, 'documento:' + doc));
                 });
 
                 const termo = (elTabela.busca && elTabela.busca.value || '').trim();
@@ -1168,6 +1223,17 @@ document.addEventListener('turbo:load', () => {
                     else if (tipo === 'recorte') {
                         const posicao = window.__recortesDocIA.indexOf(valor);
                         if (posicao >= 0) window.__recortesDocIA.splice(posicao, 1);
+                        sincronizarCaixasDeDocumento();
+                        repintarLegendas();
+                    }
+                    /*  O X da etiqueta de documento apaga as SEIS fatias de uma vez —
+                        é o desfazer do gesto que as acendeu, e não seis cliques.  */
+                    else if (tipo === 'documento') {
+                        BALDES_DA_VIEW.forEach((balde) => {
+                            const posicao = window.__recortesDocIA.indexOf(recorteDe(valor, balde));
+                            if (posicao >= 0) window.__recortesDocIA.splice(posicao, 1);
+                        });
+                        desmarcar(checkboxesDocumento);
                         repintarLegendas();
                     }
                     else if (tipo === 'busca') {
@@ -1414,12 +1480,12 @@ document.addEventListener('turbo:load', () => {
                     // escopo do modal, que pode não ter sido inicializado ainda.
                     ['contador-ies', typeof activeIESFilters !== 'undefined'
                                         ? activeIESFilters.length : 0],
-                    /*  O de documento só conta no modo IES, que é o único onde ele
-                        recorta alguma coisa. Marcado e invisível, ele inflaria o total
-                        do cabeçalho com um filtro que não está agindo — que é
-                        exatamente o oposto do que o contador existe para evitar.  */
-                    ['contador-documentos', modoSelecionado() === 'ies'
-                                        ? marcados(checkboxesDocumento).length : 0],
+                    /*  Conta nos DOIS modos: no IES ele recorta a linha da tabela, em
+                        beneficiários ele acende as fatias daquele documento. Ficou fora
+                        do total enquanto era invisível em beneficiários — hoje ele age
+                        nos dois lugares, e um filtro que age sem aparecer no contador é
+                        exatamente o que o contador existe para evitar.  */
+                    ['contador-documentos', marcados(checkboxesDocumento).length],
                 ];
                 let total = 0;
                 porSecao.forEach(([id, quantidade]) => {
@@ -1446,6 +1512,7 @@ document.addEventListener('turbo:load', () => {
                     window.fetchDadosIES();
                     return;
                 }
+
                 window.fetchChartData();
                 window.fetchTableData();
             };
@@ -1671,7 +1738,7 @@ document.addEventListener('turbo:load', () => {
                 instituição com muita cobrança indevida pareceria estar devendo mais
                 documento do que realmente deve, e o denominador puniria justamente
                 quem foi cobrado errado.  */
-            const esperadosDe = (linha) => (linha.total || 0) - (linha.Inadimplentes || 0);
+            const esperadosDe = (linha) => (linha.Processados || 0) + (linha.NaoProcessados || 0) + (linha.NaoEnviados || 0);
             const enviadosDe = (linha) => esperadosDe(linha) - (linha.NaoEnviados || 0);
 
             /*  O PERCENTUAL DIZ QUANTO JÁ ESTÁ RESOLVIDO — quanto MAIOR, MELHOR.
@@ -1706,11 +1773,11 @@ document.addEventListener('turbo:load', () => {
                 { chave: 'Processados',    rotulo: FATIAS[0], numero: true,
                   pct: (l) => fatia(l.Processados, esperadosDe(l)) },
 
-                { chave: 'NaoProcessados', rotulo: FATIAS[1], numero: true,
-                  pct: (l) => progresso(l.NaoProcessados, enviadosDe(l)) },
+                { chave: 'NaoProcessados', rotulo: FATIAS[1], numero: true, inverso: true,
+                  pct: (l) => fatia(l.NaoProcessados, esperadosDe(l)) },
 
-                { chave: 'NaoEnviados',    rotulo: FATIAS[2], numero: true,
-                  pct: (l) => progresso(l.NaoEnviados, esperadosDe(l)) },
+                { chave: 'NaoEnviados',    rotulo: FATIAS[2], numero: true, inverso: true,
+                  pct: (l) => fatia(l.NaoEnviados, esperadosDe(l)) },
 
                 { chave: 'InadProc',       rotulo: FATIAS[3], numero: true, inverso: true,
                   pct: (l) => fatia(l.InadProc, l.total) },
@@ -1801,13 +1868,41 @@ document.addEventListener('turbo:load', () => {
              */
             const pintarChipsIES = () => {
                 if (!elIES.chips) return;
-                const totais = dadosIES.totais || {};
-                const soma = CHAVES_DAS_FATIAS.reduce((acc, chave) => acc + (totais[chave] || 0), 0);
+
+                /*  OS CHIPS SEGUEM A BUSCA, e não o recorte inteiro.
+
+                    Eles liam `dadosIES.totais` — a soma que veio do servidor — enquanto a
+                    tabela logo abaixo já estava filtrada pelo nome digitado. Procurar uma
+                    instituição deixava a tela contando duas histórias ao mesmo tempo: 107
+                    instituições somadas em cima, uma só listada embaixo. O selo ao lado do
+                    título até dizia "1 de 107", mas ninguém lê um selo para desconfiar de
+                    um número grande.
+
+                    SOMAR AS LINHAS VISÍVEIS É EXATO nestas seis colunas: cada linha de
+                    documento pertence a UMA instituição e a UM balde, então somar por IES
+                    não conta nada duas vezes. É literalmente a conta que o servidor faz
+                    para `totais` (ver `api_resumo_ies`), e é o que mantém o chip igual à
+                    soma da coluna embaixo dele — com a busca vazia dá o mesmo número que
+                    vinha de lá.
+
+                    NÃO VALERIA para `beneficiarios`: quem troca de instituição no meio do
+                    período aparece nas duas linhas, e somá-las contaria a pessoa duas
+                    vezes. É por isso que o servidor conta CPF distinto naquele, e por isso
+                    ele não é um destes chips — nem pode virar um somando coluna.  */
+                const visiveis = linhasVisiveisIES();
+                const totais = {};
+                CHAVES_DAS_FATIAS.forEach((chave) => {
+                    totais[chave] = visiveis.reduce((acc, linha) => acc + (linha[chave] || 0), 0);
+                });
+
+                const somaTudo = CHAVES_DAS_FATIAS.reduce((acc, chave) => acc + (totais[chave] || 0), 0);
+                const somaEsperados = ['Processados', 'NaoProcessados', 'NaoEnviados'].reduce((acc, chave) => acc + (totais[chave] || 0), 0);
 
                 elIES.chips.innerHTML = FATIAS.map((nome, indice) => {
                     const chave = CHAVES_DAS_FATIAS[indice];
                     const valor = totais[chave] || 0;
-                    const percentual = soma > 0 ? (valor / soma) * 100 : 0;
+                    const base = (indice < 3) ? somaEsperados : somaTudo;
+                    const percentual = base > 0 ? (valor / base) * 100 : 0;
                     
                     return `<div class="flex-1 min-w-[9rem] bg-gradient-to-br from-white/90 to-gray-50/50 backdrop-blur-md border border-white/60 shadow-[0_4px_20px_rgb(0,0,0,0.08)] rounded-3xl py-2.5 px-4 flex items-center justify-between cursor-default" title="${escaparHtml(nome)}">
                         <div class="flex flex-col pr-2" style="min-width: 0;">
@@ -1854,6 +1949,88 @@ document.addEventListener('turbo:load', () => {
                 elIES.filtros.classList.toggle('flex', etiquetas.length > 0);
             };
 
+            /* ==================================================================
+               DA CÉLULA PARA AS PESSOAS — cada número maior que zero é uma porta
+               ==================================================================
+               A tabela por IES responde "QUANTO". A pergunta seguinte é sempre "QUEM",
+               e ela só tem resposta na outra vista. Sem esta ponte, quem visse "1
+               pendente na Anhanguera" teria de trocar de modo, abrir o modal de
+               instituições, achar a Anhanguera no meio de 107 nomes, marcar a fatia
+               certa na legenda de um dos cinco cards e torcer para não ter deixado
+               ligado nada de antes — cinco gestos para uma pergunta que a célula já
+               sabe responder inteira.
+
+               ZERO NÃO É PORTA. Não há linha nenhuma do outro lado, e um botão que
+               abre uma tabela vazia ensina a não clicar nos outros.
+               ================================================================== */
+
+            /*  QUAL FATIA CADA COLUNA ABRE.
+
+                As seis dos baldes abrem a sua, uma só — `CHAVES_DAS_FATIAS[i]` e
+                `BALDES_DA_VIEW[i]` descrevem a mesma fatia, é o que já alinha o chip,
+                a coluna e a cor.
+
+                `Beneficiários` abre as TRÊS que não são inadimplência, e não as seis:
+                é exatamente a conta que produziu aquele número (ver `_resumo_por_ies`
+                na view — CPF distinto entre as linhas que ficam FORA dos baldes de
+                inadimplência). Abrir as seis mostraria gente que a coluna não contou,
+                e o total da tabela não bateria com o número que foi clicado.  */
+            const baldesDaColuna = (chave) => {
+                if (chave === 'beneficiarios') return BALDES_DA_VIEW.slice(0, 3);
+                const indice = CHAVES_DAS_FATIAS.indexOf(chave);
+                return indice >= 0 ? [BALDES_DA_VIEW[indice]] : [];
+            };
+
+            /**
+             * O QUE FAZ: leva o clique de uma célula para a vista de beneficiários, já
+             *   recortada no que aquele número contava.
+             * COMO: escreve o estado do modo beneficiários e só então troca de modo.
+             *   Mexer nas caixas uma a uma aqui não funcionaria: a troca de modo devolve
+             *   o estado guardado daquela vista (ver `estadoPorModo`) e passaria por cima
+             *   do recorte recém-montado. Escrevendo o estado, é ele que a troca devolve.
+             * O QUE LIMPA: os filtros que só existem em beneficiários — situação do
+             *   aluno, mudanças no semestre e a busca. Nenhum deles recorta a vista por
+             *   IES, então deixá-los ligados abriria a tabela num número diferente do que
+             *   foi clicado, e a conclusão seria "a conta está errada" em vez de "sobrou
+             *   um filtro de ontem".
+             * O QUE LEVA: o período e o documento do modo IES — que são a pergunta que
+             *   estava sendo feita — mais a instituição da linha.
+             */
+            const abrirBeneficiariosDaCelula = (ies, chave) => {
+                const baldes = baldesDaColuna(chave);
+                if (!ies || baldes.length === 0) return;
+
+                const pares = [];
+                marcados(checkboxesDocumento).forEach((doc) =>
+                    baldes.forEach((balde) => pares.push(recorteDe(doc, balde))));
+                if (pares.length === 0) return;
+
+                [checkboxesVinculo, checkboxesPerfil, checkboxesMudouIES, checkboxesMudouBolsa]
+                    .forEach((caixas) => caixas.forEach((caixa) => (caixa.checked = false)));
+                if (elTabela.busca) elTabela.busca.value = '';
+                marcarBotaoDeLimpar();
+
+                /*  A caixa de Documento vai VAZIA de propósito: marcada, ela significa
+                    "as seis fatias deste documento" (ver `aplicarDocumentosNasFatias`), e
+                    o que se está abrindo é uma ou três delas. Quem descreve este recorte
+                    são as etiquetas de fatia sobre a tabela.  */
+                estadoPorModo.beneficiarios = {
+                    semestres: marcados(checkboxesSemestre),
+                    documentos: [],
+                    ies: [ies],
+                    recortes: pares,
+                };
+                aplicarModo('beneficiarios', true);
+            };
+
+            if (elIES.corpo) {
+                elIES.corpo.addEventListener('click', (evento) => {
+                    const botao = evento.target.closest('.docia-ies-link');
+                    if (!botao) return;
+                    abrirBeneficiariosDaCelula(botao.dataset.ies, botao.dataset.coluna);
+                });
+            }
+
             const pintarTabelaIES = () => {
                 if (!elIES.corpo || !elIES.cabecalho) return;
                 const linhas = linhasVisiveisIES();
@@ -1873,8 +2050,11 @@ document.addEventListener('turbo:load', () => {
                     return;
                 }
 
-                elIES.corpo.innerHTML = linhas.map((linha) =>
-                    '<tr class="hover:bg-pink-50/60 transition-colors group cursor-default">'
+                elIES.corpo.innerHTML = linhas.map((linha) => {
+                    const ehFantasma = (!linha.beneficiarios || Number(linha.beneficiarios) === 0);
+                    const rowClass = ehFantasma ? '' : 'hover:bg-pink-50/60';
+                    const bgStyle = ehFantasma ? ' style="background-color: #fff7ed;"' : '';
+                    return `<tr class="${rowClass} transition-colors group cursor-default"${bgStyle}>`
                     + COLUNAS_IES.map((coluna) => {
                         const valor = linha[coluna.chave];
                         if (!coluna.numero) {
@@ -1895,20 +2075,40 @@ document.addEventListener('turbo:load', () => {
                         let estiloHtml = '';
                         
                         if (valorPct !== null) {
-                            /*  Calcula a cor de Hue 0 (vermelho) a 120 (verde).
-                                - Colunas normais: 100% progresso = 120 (verde), 0% = 0 (vermelho).
-                                - Inversas (inadimplentes): 100% = 0 (vermelho), 0% = 120 (verde).  */
-                            const hue = Math.max(0, Math.min(120, coluna.inverso ? 120 - (valorPct * 1.2) : valorPct * 1.2));
+                            let hue;
+                            if (coluna.chave === 'NaoProcessados') {
+                                // 0% -> 120 (Verde). O resto segue pro Amarelo alaranjado
+                                hue = (valor === 0) ? 120 : Math.max(50, Math.min(120, 120 - (valorPct * 0.7)));
+                            } else if (coluna.inverso) {
+                                // Pendentes e Inadimplentes: Tolerância zero. > 0 é Vermelho. = 0 é Verde.
+                                hue = (valor === 0) ? 120 : 0;
+                            } else {
+                                // Processados: Degradê, quanto maior melhor.
+                                hue = Math.max(0, Math.min(120, valorPct * 1.2));
+                            }
                             estiloHtml = ` style="color: hsl(${hue}, 80%, 42%); font-weight: 700;"`;
                             classeCor = '';
                         }
 
                         const pct = valorPct === null ? '' :
                             `<span class="docia-ies-pct opacity-80">(${formatarPercentual(valorPct)})</span>`;
-                        return `<td class="docia-ies-num px-4 py-2.5 border-b border-gray-100 text-[13px] text-right transition-colors${classeCor}"${estiloHtml}>` +
-                               `<span class="docia-ies-valor${zero}">${formatarNumero(valor)}</span>${pct}</td>`;
+                        const miolo = `<span class="docia-ies-valor${zero}">${formatarNumero(valor)}</span>${pct}`;
+
+                        /*  MAIOR QUE ZERO VIRA BOTÃO — ver `abrirBeneficiariosDaCelula`.
+                            O zero fica texto: não há ninguém do outro lado para listar. */
+                        const conteudo = Number(valor) > 0
+                            ? `<button type="button" class="docia-ies-link"
+                                       data-ies="${escaparHtml(linha.ies)}"
+                                       data-coluna="${escaparHtml(coluna.chave)}"
+                                       title="Ver os beneficiários — ${escaparHtml(coluna.rotulo)} de ${escaparHtml(linha.ies)}"
+                               >${miolo}</button>`
+                            : miolo;
+
+                        return `<td class="docia-ies-num px-4 py-2.5 border-b border-gray-100 text-[13px] text-right transition-colors${classeCor}"${estiloHtml}>`
+                               + conteudo + '</td>';
                     }).join('')
-                    + '</tr>').join('');
+                    + '</tr>';
+                }).join('');
             };
 
             const pintarVistaIES = () => {
@@ -2031,9 +2231,45 @@ document.addEventListener('turbo:load', () => {
             }
 
             // --- Documento: cada clique refaz a consulta da vista ----------------
-            // Somam, como os semestres: "contrato E histórico" é pergunta que se faz.
+            const exclusividadeDocumento = (caixa, todasCaixas) => {
+                const emIES = modoSelecionado() === 'ies';
+                if (caixa.checked) {
+                    todasCaixas.forEach((outra) => { if (outra !== caixa) outra.checked = false; });
+                } else if (emIES && marcados(todasCaixas).length === 0) {
+                    caixa.checked = true; // no modo IES não permite ficar vazio
+                    return false;
+                }
+                return true;
+            };
+
+            /*  NO MODO BENEFICIÁRIOS, DOCUMENTO É ATALHO DE FATIA.
+
+                Escolher "Contratos" escondia os outros quatro cards e deixava um só no
+                ar. Isso tira da tela justamente a comparação que ela existe para fazer —
+                e o card que sobrava continuava mostrando os seis estados do contrato,
+                sem recortar coisa nenhuma embaixo: escondia, mas não filtrava.
+
+                Agora o clique ACENDE as seis fatias do documento escolhido, nos seis
+                itens da legenda daquele card, e apaga as dos outros quatro. É exatamente
+                o estado que se obteria clicando fatia por fatia na legenda — o mesmo
+                `recortes` que o servidor já sabe interseccionar com o resto — e os cinco
+                cards continuam no ar, agora dizendo de si mesmos quem ficou de fora.
+
+                Os seis baldes cobrem 100% das linhas do documento (ver `BALDES` na
+                view), então "as seis fatias do contrato" e "todo o contrato" são o mesmo
+                recorte: a tabela desce com as linhas de contrato e nada mais.  */
+            const aplicarDocumentosNasFatias = () => {
+                window.__recortesDocIA.length = 0;
+                marcados(checkboxesDocumento).forEach((doc) => BALDES_DA_VIEW.forEach(
+                    (balde) => window.__recortesDocIA.push(recorteDe(doc, balde))));
+                repintarLegendas();
+            };
+
             checkboxesDocumento.forEach((caixa) => caixa.addEventListener('change', () => {
-                if (exclusividadeFiltroUnico(caixa, checkboxesDocumento, false)) recarregar();
+                if (!exclusividadeDocumento(caixa, checkboxesDocumento)) return;
+                // No IES o documento é um parâmetro da consulta; aqui, um atalho de fatia.
+                if (modoSelecionado() !== 'ies') aplicarDocumentosNasFatias();
+                recarregar();
             }));
 
 
@@ -2067,11 +2303,80 @@ document.addEventListener('turbo:load', () => {
                 return (marcado && marcado.value) || MODO_PADRAO;
             };
 
-            /*  `buscarDados` é falso na carga: o `recarregar()` do fim da inicialização
+            /*  OS DOIS MODOS NÃO DIVIDEM FILTRO NENHUM.
+
+                Período, Documento e Instituição são os três controles que aparecem nas
+                duas vistas — e apareciam com o MESMO estado. O recorte montado para
+                comparar instituições ("2026-1, contrato, estas três IES") seguia a
+                pessoa até a lista de alunos, e o contrário também; pior, a volta ao modo
+                IES forçava semestre e documento, apagando em silêncio o que estava
+                escolhido do outro lado. São perguntas diferentes feitas ao mesmo dado, e
+                agora cada uma guarda a sua resposta.
+
+                Guardamos o estado de quem SAI e devolvemos o de quem ENTRA. Na primeira
+                entrada de um modo não há o que devolver, e valem as regras obrigatórias
+                logo abaixo: um semestre só nos dois, e no IES um documento só.
+
+                O que já era exclusivo de um modo continua onde estava: as quatro caixas
+                de pessoa e a busca só existem em beneficiários.
+
+                AS FATIAS VIAJAM JUNTO com o documento, e não à parte. Elas são o efeito
+                da caixa de Documento nesta vista (ver `aplicarDocumentosNasFatias`), e
+                guardar uma sem a outra deixaria a barra dizendo "Contratos" sobre uma
+                legenda inteira acesa — ou seis fatias de contrato acesas sem caixa
+                nenhuma marcada. Guardadas juntas, quem clicou fatia a fatia também
+                reencontra exatamente o que deixou.
+
+                `buscarDados` é falso na carga: o `recarregar()` do fim da inicialização
                 já cuida disso, e chamar os dois seria pedir a mesma coisa duas vezes.  */
+            const estadoPorModo = { beneficiarios: null, ies: null };
+
+            /*  Qual modo está no ar — local, e não em `window` como as instâncias dos
+                gráficos: a troca de estado só faz sentido dentro de UMA inicialização.
+                Num `turbo:load` a barra inteira é outra, e herdar o "modo anterior" da
+                página que saiu mandaria devolver um recorte a caixas que já não existem. */
+            let modoAnterior = null;
+
+            /*  O que vale ao entrar num modo pela PRIMEIRA vez. Sem isto, a primeira
+                visita herdaria o recorte do outro modo — que é exatamente o vazamento
+                que este bloco existe para fechar.  */
+            const PADRAO_DO_MODO = {
+                beneficiarios: { semestres: ['2025-1'], documentos: [], ies: [], recortes: [] },
+                ies: { semestres: ['2025-1'], documentos: ['CONTRATO'], ies: [], recortes: [] },
+            };
+
+            const lerFiltrosCompartilhados = () => ({
+                semestres: marcados(checkboxesSemestre),
+                documentos: marcados(checkboxesDocumento),
+                ies: (typeof activeIESFilters !== 'undefined') ? activeIESFilters.slice() : [],
+                recortes: window.__recortesDocIA.slice(),
+            });
+
+            const escreverFiltrosCompartilhados = (estado) => {
+                checkboxesSemestre.forEach((caixa) =>
+                    (caixa.checked = estado.semestres.indexOf(caixa.value) >= 0));
+                checkboxesDocumento.forEach((caixa) =>
+                    (caixa.checked = estado.documentos.indexOf(caixa.value) >= 0));
+                window.__recortesDocIA.length = 0;
+                (estado.recortes || []).forEach((par) => window.__recortesDocIA.push(par));
+                if (typeof window.definirFiltroIES === 'function') window.definirFiltroIES(estado.ies);
+            };
+
             const aplicarModo = (modo, buscarDados) => {
                 const emIES = modo === 'ies';
-                
+                const anterior = modoAnterior;
+
+                /*  Os rádios primeiro: `modoSelecionado` lê deles, e o que vem abaixo
+                    (a exclusividade do documento, o contador) precisa já enxergar o modo
+                    novo. Com a ordem invertida, a primeira troca decidia pelo modo velho. */
+                radiosModo.forEach((radio) => (radio.checked = radio.value === modo));
+
+                if (anterior && anterior !== modo) {
+                    estadoPorModo[anterior] = lerFiltrosCompartilhados();
+                    escreverFiltrosCompartilhados(estadoPorModo[modo] || PADRAO_DO_MODO[modo]);
+                }
+                modoAnterior = modo;
+
                 const mSemestres = marcados(checkboxesSemestre);
                 if (mSemestres.length !== 1) {
                     checkboxesSemestre.forEach((caixa) => caixa.checked = (caixa.value === (mSemestres[0] || '2025-1')));
@@ -2083,20 +2388,23 @@ document.addEventListener('turbo:load', () => {
                         checkboxesDocumento.forEach((caixa) => caixa.checked = (caixa.value === (mDocumentos[0] || 'CONTRATO')));
                     }
                 }
-                
-                radiosModo.forEach((radio) => (radio.checked = radio.value === modo));
+
                 if (vistaBeneficiarios) vistaBeneficiarios.style.display = emIES ? 'none' : 'flex';
                 if (vistaIES) vistaIES.style.display = emIES ? 'flex' : 'none';
                 if (filtrosBeneficiarios) filtrosBeneficiarios.style.display = emIES ? 'none' : '';
-                /*  Documento é o espelho de `filtros-beneficiarios`: só recorta a vista
-                    de IES, e no modo beneficiários os cinco documentos são a tela
-                    inteira — um card cada. Ele some junto para não aceitar cliques que
-                    não mudariam nada.  */
-                if (filtroDocumentos) filtroDocumentos.style.display = emIES ? '' : 'none';
+                // Documento existe nos dois modos: parâmetro da consulta no IES, atalho
+                // de fatia em beneficiários (ver `aplicarDocumentosNasFatias`).
+                if (filtroDocumentos) filtroDocumentos.style.display = '';
+
+                // A legenda só se repinta na vista que está no ar: no IES as cinco
+                // roscas estão num container sem altura, e pintá-las ali é trabalho
+                // jogado fora que ainda deixa o Apex com a medida errada.
+                if (!emIES && anterior && anterior !== modo) repintarLegendas();
+
                 if (!buscarDados) {
                     // Na carga é o `recarregar()` do fim da inicialização que busca; aqui
-                    // só o contador precisa acompanhar, porque o de documento entra e sai
-                    // do total conforme o modo.
+                    // só o contador precisa acompanhar, porque o modo pode ter acabado de
+                    // forçar um semestre (e, no IES, um documento) que ele ainda não viu.
                     atualizarContadores();
                     return;
                 }
@@ -2132,11 +2440,20 @@ document.addEventListener('turbo:load', () => {
                     checkboxesMudouBolsa.forEach((caixa) => (caixa.checked = false));
                     checkboxesVinculo.forEach((caixa) => (caixa.checked = false));
                     checkboxesPerfil.forEach((caixa) => (caixa.checked = false));
-                    /*  O padrão do filtro de documento NÃO é vazio: é CONTRATO, que é
-                        como a tela nasce. Desmarcar tudo aqui deixaria "Restaurar
-                        Padrão" num estado que o carregamento da página nunca produz.  */
+                    /*  Limpa também o estado guardado do OUTRO modo. "Restaurar Padrão"
+                        que só limpasse a vista no ar deixaria o recorte do outro lado
+                        intacto, esperando para ressuscitar na próxima troca — que é o
+                        filtro esquecido de novo, agora escondido atrás de um botão que
+                        prometeu tê-lo apagado.  */
+                    estadoPorModo.beneficiarios = null;
+                    estadoPorModo.ies = null;
+
+                    /*  O padrão do filtro de documento varia: no IES é 'CONTRATO' para
+                        não quebrar a leitura percentual. Em beneficiários o padrão é
+                        vazio (as cinco roscas com a legenda inteira acesa). */
+                    const emIES = modoSelecionado() === 'ies';
                     checkboxesDocumento.forEach((caixa) =>
-                        (caixa.checked = caixa.value === 'CONTRATO'));
+                        (caixa.checked = emIES ? caixa.value === 'CONTRATO' : false));
                     if (elIES.busca) elIES.busca.value = '';
                     if (elIES.limparBusca) elIES.limparBusca.classList.add('hidden');
                     window.__ordemIES = Object.assign({}, ORDEM_PADRAO_IES);
@@ -2987,6 +3304,21 @@ document.addEventListener('turbo:load', () => {
         window.resetFiltroIES = function () {
             selectedIES.clear();
             activeIESFilters = [];
+            atualizarRotuloIES();
+            renderSelectedIES();
+        };
+
+        /**
+         * O QUE FAZ: aplica uma seleção de IES vinda de fora do modal.
+         * POR QUÊ EXISTE: o modo de visualização guarda um recorte por modo e precisa
+         * devolver o que estava valendo quando se volta para ele. `resetFiltroIES`
+         * só sabe zerar; devolver "as três que eu tinha escolhido" precisava disto.
+         * NÃO recarrega nada de propósito: quem chama está no meio de uma troca de modo
+         * e dispara a consulta uma vez só, no fim.
+         */
+        window.definirFiltroIES = function (lista) {
+            activeIESFilters = Array.isArray(lista) ? lista.slice() : [];
+            selectedIES = new Set(activeIESFilters);
             atualizarRotuloIES();
             renderSelectedIES();
         };
