@@ -213,7 +213,7 @@ document.addEventListener('turbo:load', () => {
                     a forma.  */
                 const borda = temaAtual() === 'eleitoral'
                     ? 'rgba(255,255,255,0.16)' : 'rgba(107,0,123,0.14)';
-                return `<div style="background:${fundo};backdrop-filter:blur(10px);border:1px solid ${borda};
+                return `<div style="background:${fundo};border:1px solid ${borda};
                     border-radius:12px;padding:9px 13px;font-family:Poppins,sans-serif;
                     box-shadow:0 1px 2px rgba(17,24,39,0.08), 0 6px 16px -6px rgba(17,24,39,0.22);">${conteudo}</div>`;
             };
