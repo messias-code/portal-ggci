@@ -2863,7 +2863,7 @@ def gerar_aba_relatorio_contratos(writer, df_docs, sems_contratos):
             if pendentes:
                 f_men = f'=IFERROR(SUMIFS(Contrato!{c_mensalidade_sem_desc_c}:{c_mensalidade_sem_desc_c}, Contrato!{c_facul_c}:{c_facul_c}, $A$2, Contrato!{c_sem_c}:{c_sem_c}, "{sem}", Contrato!{c_status_ia_c}:{c_status_ia_c}, "Ausente", Contrato!{c_status_ia_c}:{c_status_ia_c}, "<>INADIMPLENTE"), 0)'
             else:
-                f_men = f'=IFERROR(SUMIFS(Contrato!{c_mensalidade_sem_desc_c}:{c_mensalidade_sem_desc_c}, Contrato!{c_facul_c}:{c_facul_c}, $A$2, Contrato!{c_sem_c}:{c_sem_c}, "{sem}", Contrato!{c_status_ia_c}:{c_status_ia_c}, "<>INADIMPLENTE"), 0)'
+                f_men = f'=IFERROR(SUMIFS(Contrato!{c_mensalidade_sem_desc_c}:{c_mensalidade_sem_desc_c}, Contrato!{c_facul_c}:{c_facul_c}, $A$2, Contrato!{c_sem_c}:{c_sem_c}, "{sem}", Contrato!{c_status_ia_c}:{c_status_ia_c}, "<>INADIMPLENTE", Contrato!{c_msd_doc_c}:{c_msd_doc_c}, "<>VALOR NÃO LOCALIZADO NO DOCUMENTO"), 0)'
             linha.append((f_men, fmt_moeda_azul1, 6))
         if has_var:
             cp = col_to_letter(1 + prev_idx * 6)
@@ -2877,7 +2877,7 @@ def gerar_aba_relatorio_contratos(writer, df_docs, sems_contratos):
             if pendentes:
                 f_men = f'=IFERROR(SUMIFS(Contrato!{c_mensalidade_com_desc_c}:{c_mensalidade_com_desc_c}, Contrato!{c_facul_c}:{c_facul_c}, $A$2, Contrato!{c_sem_c}:{c_sem_c}, "{sem}", Contrato!{c_status_ia_c}:{c_status_ia_c}, "Ausente", Contrato!{c_status_ia_c}:{c_status_ia_c}, "<>INADIMPLENTE"), 0)'
             else:
-                f_men = f'=IFERROR(SUMIFS(Contrato!{c_mensalidade_com_desc_c}:{c_mensalidade_com_desc_c}, Contrato!{c_facul_c}:{c_facul_c}, $A$2, Contrato!{c_sem_c}:{c_sem_c}, "{sem}", Contrato!{c_status_ia_c}:{c_status_ia_c}, "<>INADIMPLENTE"), 0)'
+                f_men = f'=IFERROR(SUMIFS(Contrato!{c_mensalidade_com_desc_c}:{c_mensalidade_com_desc_c}, Contrato!{c_facul_c}:{c_facul_c}, $A$2, Contrato!{c_sem_c}:{c_sem_c}, "{sem}", Contrato!{c_status_ia_c}:{c_status_ia_c}, "<>INADIMPLENTE", Contrato!{c_mcd_doc_c}:{c_mcd_doc_c}, "<>VALOR NÃO LOCALIZADO NO DOCUMENTO"), 0)'
             linha.append((f_men, fmt_moeda_azul1, 6))
         if has_var:
             cp = col_to_letter(1 + prev_idx * 6)
