@@ -2828,7 +2828,7 @@ body :is(button, a[href]):disabled { cursor: not-allowed; }
 }
 
 html[data-tela-cheia="1"] .docia-legenda--ia {
-    height: 165px; /* Compensa o padding extra dos itens em tela cheia */
+    height: 180px; /* Compensa o padding extra dos itens em tela cheia */
 }
 
 .docia-legenda--ia .docia-legenda__item { padding: 0 6px; }
