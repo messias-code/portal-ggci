@@ -496,127 +496,134 @@
          *   que o rótulo já diz, com menos precisão. Legenda também não: é UMA série,
          *   e o nome de cada coluna está debaixo dela.
          */
-        const opcoesDeBarra = (categorias, valores, cores, maximo, altura, formato) => ({
-            chart: {
-                type: 'bar',
-                height: altura,
-                fontFamily: 'Poppins, sans-serif',
-                toolbar: { show: false },
-                animations: { enabled: false },
-                background: 'transparent',
-                /*  O Apex reserva 15px acima do gráfico por conta própria, para um
-                    título que aqui não existe — o título é o `<h3>` do card.  */
-                parentHeightOffset: 0,
-            },
-            series: [{ name: 'Linhas', data: valores }],
-            xaxis: {
-                categories: categorias,
-                labels: {
-                    style: { colors: tintaMedia(), fontSize: '10px', fontWeight: 600 },
-                    /*  `rotate: 0` com `rotateAlways: false` é o que IMPEDE o giro
-                        automático: o Apex inclina o rótulo sozinho quando acha que
-                        não cabe, e um eixo de cinco rótulos inclinados é ilegível.
-                        Quem faz caber é a quebra em duas linhas.  */
-                    rotate: 0,
-                    rotateAlways: false,
-                    trim: false,
-                    hideOverlappingLabels: false,
+        const opcoesDeBarra = (categorias, valores, cores, maximo, altura, formato) => {
+            /*  ALTURA MÍNIMA PARA BARRAS: Barras com valores pequenos (ex: 1 ou 3 perto de 160)
+                sumiam e viravam um risco no chão. Isso garante que qualquer valor > 0 tenha
+                pelo menos 4% da altura máxima para a barra ser visível e acomodar o número.  */
+            const alturaMinima = maximo * 0.04;
+            const valoresVisuais = valores.map(v => (v > 0 && v < alturaMinima) ? alturaMinima : v);
+
+            return {
+                chart: {
+                    type: 'bar',
+                    height: altura,
+                    fontFamily: 'Poppins, sans-serif',
+                    toolbar: { show: false },
+                    animations: { enabled: false },
+                    background: 'transparent',
+                    /*  O Apex reserva 15px acima do gráfico por conta própria, para um
+                        título que aqui não existe — o título é o `<h3>` do card.  */
+                    parentHeightOffset: 0,
                 },
-                axisBorder: { show: false },
-                axisTicks: { show: false },
-                crosshairs: { show: false },
-                tooltip: { enabled: false },
-            },
-            yaxis: {
-                /*  TETO EXPLÍCITO, com folga de 18%. Sem ele a maior coluna encosta no
-                    topo do gráfico e não sobra onde escrever o número — ele cai DENTRO
-                    da barra, em tinta de texto sobre fundo saturado. A folga é o lugar
-                    do rótulo.  */
-                max: maximo,
-                min: 0,
-                labels: { show: false },
-                axisBorder: { show: false },
-                axisTicks: { show: false },
-            },
-            /*  A GRADE NÃO APARECE, mas o `padding` dela é o que reserva o ar em cima
-                (para o número) e embaixo (para o nome em três linhas).  */
-            grid: {
-                show: false,
-                padding: {
-                    left: -6, right: 0, top: -12,
-                    bottom: formato === 'moeda' ? 12 : 32,
-                    //  Três linhas de rótulo nas medidas de mensalidade; uma só no de
-                    //  repasse, onde a categoria é um algarismo.
+                series: [{ name: 'Linhas', data: valoresVisuais }],
+                xaxis: {
+                    categories: categorias,
+                    labels: {
+                        style: { colors: tintaMedia(), fontSize: '10px', fontWeight: 600 },
+                        /*  `rotate: 0` com `rotateAlways: false` é o que IMPEDE o giro
+                            automático: o Apex inclina o rótulo sozinho quando acha que
+                            não cabe, e um eixo de cinco rótulos inclinados é ilegível.
+                            Quem faz caber é a quebra em duas linhas.  */
+                        rotate: 0,
+                        rotateAlways: false,
+                        trim: false,
+                        hideOverlappingLabels: false,
+                    },
+                    axisBorder: { show: false },
+                    axisTicks: { show: false },
+                    crosshairs: { show: false },
+                    tooltip: { enabled: false },
                 },
-            },
-            plotOptions: {
-                bar: {
-                    horizontal: false,
-                    /*  RAIO DE 8, o mesmo vocabulário do anel ao lado (que usa 10 nas
-                        pontas). Com 4 as colunas ficavam com o topo quase reto e a
-                        faixa inteira lia como um gráfico de outro lugar.  */
-                    borderRadius: 8,
-                    /*  Só o topo do dado é arredondado; a base fica cravada na linha
-                        de origem. Arredondar os dois lados descola a coluna do zero e
-                        faz o olho ler um começo que não existe.  */
-                    borderRadiusApplication: 'end',
-                    /*  COLUNA MAIS LARGA.  */
-                    columnWidth: '70%',
-                    distributed: Array.isArray(cores) && cores.length > 1,
-                    dataLabels: { position: 'top' },
+                yaxis: {
+                    /*  TETO EXPLÍCITO, com folga de 18%. Sem ele a maior coluna encosta no
+                        topo do gráfico e não sobra onde escrever o número — ele cai DENTRO
+                        da barra, em tinta de texto sobre fundo saturado. A folga é o lugar
+                        do rótulo.  */
+                    max: maximo,
+                    min: 0,
+                    labels: { show: false },
+                    axisBorder: { show: false },
+                    axisTicks: { show: false },
                 },
-            },
-            colors: cores,
-            /*  NÚMERO EM TODA COLUNA, e não seletivo: são quatro ou cinco, o número é
-                a resposta da pergunta ("quantos") e não há eixo de valores para
-                consultar. É também o alívio que o validador de paleta exige do rosa
-                claro e do cinza, que ficam abaixo de 3:1 de contraste.  */
-            dataLabels: {
-                enabled: true,
-                offsetY: -18,
-                /*  Em reais o número inteiro não cabe em cima de uma coluna estreita
-                    (R$ 74.080.081,86 são 17 caracteres), então o gráfico de repasse
-                    escreve em milhões — e o balão, ao passar o mouse, mostra o valor
-                    exato. O rótulo dá a ordem de grandeza; o balão dá o número.  */
-                /*  EM REAIS O RÓTULO É SELETIVO: sete colunas estreitas não comportam
-                    "R$ 235 mil" cada uma, e o resultado era uma faixa de texto colado.
-                    Escreve só nas colunas que respondem a pergunta — as que passam de
-                    5% do maior valor —, e o balão dá o número exato de qualquer uma.
-                    Nas colunas de contagem todas levam rótulo: são quatro, e o número
-                    É a resposta.  */
-                formatter: (valor, opcoes) => {
-                    if (formato !== 'moeda') return formatarNumero(valor);
-                    const serie = opcoes && opcoes.w ? opcoes.w.config.series[0].data : [];
-                    const maior = serie.length ? Math.max.apply(null, serie) : 0;
-                    if (maior > 0 && valor < maior * 0.05) return '';
-                    return formatarMilhoes(valor);
+                /*  A GRADE NÃO APARECE, mas o `padding` dela é o que reserva o ar em cima
+                    (para o número) e embaixo (para o nome em três linhas).  */
+                grid: {
+                    show: false,
+                    padding: {
+                        left: -6, right: 0, top: -12,
+                        bottom: formato === 'moeda' ? 12 : 32,
+                        //  Três linhas de rótulo nas medidas de mensalidade; uma só no de
+                        //  repasse, onde a categoria é um algarismo.
+                    },
                 },
-                style: { fontSize: '11px', fontWeight: 700, colors: [tintaMedia()] },
-                background: { enabled: false },
-                dropShadow: { enabled: false },
-            },
-            legend: { show: false },
-            /*  BALÃO PRÓPRIO, o mesmo da outra aba. O do Apex vem com cabeçalho de
-                categoria, moldura cinza e o nome da série ("Linhas"), que aqui não diz
-                nada — a série é uma só e a categoria já está escrita embaixo da coluna.  */
-            tooltip: {
-                intersect: false,
-                shared: true,
-                marker: { show: false },
-                custom: ({ series, seriesIndex, dataPointIndex, w }) => {
-                    const dados = series[seriesIndex];
-                    const soma = dados.reduce((a, b) => a + b, 0);
-                    const nome = [].concat(w.globals.labels[dataPointIndex]).join(' ');
-                    const cor = w.globals.colors[dataPointIndex] || w.globals.colors[0];
-                    return balao(conteudoDoBalao(cor, nome, dados[dataPointIndex], soma,
-                                                 formato));
+                plotOptions: {
+                    bar: {
+                        horizontal: false,
+                        /*  RAIO DE 8, o mesmo vocabulário do anel ao lado (que usa 10 nas
+                            pontas). Com 4 as colunas ficavam com o topo quase reto e a
+                            faixa inteira lia como um gráfico de outro lugar.  */
+                        borderRadius: 8,
+                        /*  Só o topo do dado é arredondado; a base fica cravada na linha
+                            de origem. Arredondar os dois lados descola a coluna do zero e
+                            faz o olho ler um começo que não existe.  */
+                        borderRadiusApplication: 'end',
+                        /*  COLUNA MAIS LARGA.  */
+                        columnWidth: '70%',
+                        distributed: Array.isArray(cores) && cores.length > 1,
+                        dataLabels: { position: 'top' },
+                    },
                 },
-            },
-            states: {
-                hover: { filter: { type: 'lighten', value: 0.16 } },
-                active: { filter: { type: 'none' } },
-            },
-        });
+                colors: cores,
+                /*  NÚMERO EM TODA COLUNA, e não seletivo: são quatro ou cinco, o número é
+                    a resposta da pergunta ("quantos") e não há eixo de valores para
+                    consultar. É também o alívio que o validador de paleta exige do rosa
+                    claro e do cinza, que ficam abaixo de 3:1 de contraste.  */
+                dataLabels: {
+                    enabled: true,
+                    offsetY: -18,
+                    /*  Em reais o número inteiro não cabe em cima de uma coluna estreita
+                        (R$ 74.080.081,86 são 17 caracteres), então o gráfico de repasse
+                        escreve em milhões — e o balão, ao passar o mouse, mostra o valor
+                        exato. O rótulo dá a ordem de grandeza; o balão dá o número.  */
+                    /*  EM REAIS O RÓTULO É SELETIVO: sete colunas estreitas não comportam
+                        "R$ 235 mil" cada uma, e o resultado era uma faixa de texto colado.
+                        Escreve só nas colunas que respondem a pergunta — as que passam de
+                        5% do maior valor —, e o balão dá o número exato de qualquer uma.
+                        Nas colunas de contagem todas levam rótulo: são quatro, e o número
+                        É a resposta.  */
+                    formatter: (valorVis, opcoes) => {
+                        const valorReal = valores[opcoes.dataPointIndex];
+                        if (formato !== 'moeda') return formatarNumero(valorReal);
+                        const maior = Math.max.apply(null, valores);
+                        if (maior > 0 && valorReal < maior * 0.05) return '';
+                        return formatarMilhoes(valorReal);
+                    },
+                    style: { fontSize: '11px', fontWeight: 700, colors: [tintaMedia()] },
+                    background: { enabled: false },
+                    dropShadow: { enabled: false },
+                },
+                legend: { show: false },
+                /*  BALÃO PRÓPRIO, o mesmo da outra aba. O do Apex vem com cabeçalho de
+                    categoria, moldura cinza e o nome da série ("Linhas"), que aqui não diz
+                    nada — a série é uma só e a categoria já está escrita embaixo da coluna.  */
+                tooltip: {
+                    intersect: false,
+                    shared: true,
+                    marker: { show: false },
+                    custom: ({ seriesIndex, dataPointIndex, w }) => {
+                        const valorReal = valores[dataPointIndex];
+                        const soma = valores.reduce((a, b) => a + b, 0);
+                        const nome = [].concat(w.globals.labels[dataPointIndex]).join(' ');
+                        const cor = w.globals.colors[dataPointIndex] || w.globals.colors[0];
+                        return balao(conteudoDoBalao(cor, nome, valorReal, soma, formato));
+                    },
+                },
+                states: {
+                    hover: { filter: { type: 'lighten', value: 0.16 } },
+                    active: { filter: { type: 'none' } },
+                },
+            };
+        };
 
         /** Troca o gráfico por uma explicação — ver `.docia-grafico-vazio` no CSS. */
         const mostrarVazio = (id, icone, texto) => {
