@@ -775,28 +775,33 @@
             que a outra aba já ensina. Com qualquer fatia escolhida, as demais ficam
             riscadas — escolher uma é, ao mesmo tempo, deixar as outras de fora, e
             elas passam a dizer isso de si mesmas.  */
-        const pintarLegendaRosca = (nomes, valores, cores) => {
-            const caixa = document.getElementById('ia-legenda-veredito');
+        const pintarLegendaRosca = (idCaixa, nomes, valores, cores, chaves = null, recorteSet = null) => {
+            const caixa = document.getElementById(idCaixa);
             if (!caixa) return;
 
             const total = valores.reduce((soma, valor) => soma + valor, 0);
-            const haRecorte = recorteVereditos.size > 0;
+            const haRecorte = recorteSet ? recorteSet.size > 0 : false;
 
             caixa.innerHTML = nomes.map((nome, i) => {
-                const chave = chavesDoVeredito[i];
-                const ativo = recorteVereditos.has(chave);
+                const chave = chaves ? chaves[i] : nome;
+                const ativo = recorteSet ? recorteSet.has(chave) : false;
                 const fora = haRecorte && !ativo;
                 const marca = (ativo ? ' docia-legenda__item--ativo' : '')
                     + (fora ? ' docia-legenda__item--fora' : '');
                 const pct = total > 0 ? (valores[i] / total) * 100 : 0;
-                return '<button type="button" class="docia-legenda__item' + marca + '"'
-                    + ' data-chave="' + escaparHtml(chave) + '">'
+                
+                // If it's clickable (has a recorte set), we add data-chave.
+                const btnData = recorteSet ? ' data-chave="' + escaparHtml(chave) + '"' : '';
+                const tag = recorteSet ? 'button type="button"' : 'div';
+                const tagClose = recorteSet ? 'button' : 'div';
+                
+                return '<' + tag + ' class="docia-legenda__item' + marca + '"' + btnData + '>'
                     + '<span class="docia-legenda__ponto" style="background:' + cores[i] + ';"></span>'
                     + '<span class="docia-legenda__nome">' + escaparHtml(nome) + '</span>'
                     + '<span class="docia-legenda__valor">' + formatarNumero(valores[i]) + '</span>'
                     + '<span class="docia-legenda__pct">'
                     + pct.toFixed(1).replace('.', ',') + '%</span>'
-                    + '</button>';
+                    + '</' + tagClose + '>';
             }).join('');
         };
 
@@ -1112,7 +1117,7 @@
                 const rotulos = nomes.map(rotuloDoVeredito);
                 const valores = nomes.map((n) => veredito[n] || 0);
                 desenharRosca('ia-gr-veredito', rotulos, valores, cores);
-                pintarLegendaRosca(rotulos, valores, cores);
+                pintarLegendaRosca('ia-legenda-veredito', rotulos, valores, cores, chavesDoVeredito, recorteVereditos);
             }
 
             /* ------------------------------------------------------------------
@@ -1230,11 +1235,13 @@
                     das duas medidas. É o que deixa os cards comparáveis lado a
                     lado — a leitura óbvia de dois gráficos vizinhos é comparar as
                     barras, e réguas diferentes fariam essa leitura mentir.  */
-                desenhar(idGr,
-                         ordem.map((b) => ROTULO_MENSALIDADE[b] || [b]),
-                         ordem.map((b) => contagem[b] || 0),
-                         CORES_MENSALIDADE(tema),
-                         corpo.processados);
+                
+                const cats = ordem.map((b) => ROTULO_MENSALIDADE[b] || [b]).map(a => Array.isArray(a) ? a.join(' ') : a);
+                const vals = ordem.map((b) => contagem[b] || 0);
+                const colors = CORES_MENSALIDADE(tema);
+                desenharRosca(idGr, cats, vals, colors);
+                pintarLegendaRosca(idGr.replace('gr', 'legenda'), cats, vals, colors);
+
             });
         };
 
