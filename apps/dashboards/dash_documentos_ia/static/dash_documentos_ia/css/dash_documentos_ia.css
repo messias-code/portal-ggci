@@ -1621,7 +1621,8 @@ html[data-tela-cheia="1"] .docia-legenda__pct { width: 44px; }
    entrada continuam com o Apex — é ele quem move o balão, e mexer nisso aqui
    brigaria com `prenderBalao`.
    ========================================================================== */
-.chart-doc .apexcharts-tooltip {
+.chart-doc .apexcharts-tooltip,
+.docia-grafico-ia .apexcharts-tooltip {
     background: transparent !important;
     border: 0 !important;
     box-shadow: none !important;
@@ -2210,7 +2211,7 @@ html[data-tela-cheia="1"] .docia-legenda__pct { width: 44px; }
    arquivo, e resolve a leitura em relance sem aumentar a pílula.
    ========================================================================== */
 .docia-chip {
-    min-height: 25px;
+    height: 25px;
     padding: 0 6px 0 0;
     gap: 8px;
     background-color: rgba(107, 0, 123, 0.06);
@@ -2218,10 +2219,18 @@ html[data-tela-cheia="1"] .docia-legenda__pct { width: 44px; }
     overflow: hidden;
 }
 
+/*  A MARCA SÓLIDA COBRE A BORDA, e é isso que a margem negativa faz.
+
+    `align-self: stretch` estica o bloco até a caixa de CONTEÚDO, que termina por
+    dentro da borda de 1px da etiqueta. Sobrava um fio da borda clara contornando
+    o roxo por cima, por baixo e à esquerda — a "linha branca vazando no fundo
+    roxo". Puxando o bloco 1px para fora nos três lados, ele encosta na aresta e o
+    `overflow: hidden` da etiqueta o recorta na curva da pílula. */
 .docia-chip__tipo {
     align-self: stretch;
     display: inline-flex;
     align-items: center;
+    margin: -1px 0 -1px -1px;
     padding: 5px 9px;
     background-color: #6B007B;
     color: #FFFFFF;
@@ -2230,6 +2239,13 @@ html[data-tela-cheia="1"] .docia-legenda__pct { width: 44px; }
     letter-spacing: 0.07em;
     opacity: 1;
 }
+
+/*  ETIQUETA SEM X — o período e o documento, que a tela impõe e não deixa remover.
+
+    A folga de 6px à direita da etiqueta é o respiro do BOTÃO de remover. Sem ele,
+    o valor encostava na curva da pílula e a ponta lia como cortada. Aqui a folga
+    passa a ser do texto, e a etiqueta volta a ser simétrica. */
+.docia-chip--fixo { padding-right: 12px; }
 
 .docia-chip__valor {
     font-size: 11px;
@@ -2624,9 +2640,268 @@ body :is(button, a[href]):disabled { cursor: not-allowed; }
 
 /* Permite que o balão vaze para fora do gráfico sobrepondo os cards vizinhos */
 .chart-doc .apexcharts-canvas,
-.chart-doc .apexcharts-svg {
+.chart-doc .apexcharts-svg,
+.docia-grafico-ia .apexcharts-canvas,
+.docia-grafico-ia .apexcharts-svg {
     overflow: visible !important;
 }
-.chart-doc .apexcharts-tooltip {
+.chart-doc .apexcharts-tooltip,
+.docia-grafico-ia .apexcharts-tooltip {
     pointer-events: none !important;
+}
+
+/* ==========================================================================
+   ABA ANÁLISE IA
+   ========================================================================== */
+
+/*  A TELINHA DE INCONSISTÊNCIAS — mesma forma do filtro de Instituições.
+    Ela existe porque as frases são INTEIRAS ("Mensalidade com desconto no
+    contrato é menor que o esperado") e são até 48 no RIAF: numa barra de 335px
+    isso vira uma coluna de texto quebrado que ninguém varre. */
+.docia-inc-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 0.875rem;
+    cursor: pointer;
+    border-radius: 0.75rem;
+    border: 1px solid transparent;
+    transition: background-color 0.15s, border-color 0.15s;
+}
+
+.docia-inc-item:hover { background-color: #FFFFFF; border-color: #E5E7EB; }
+
+/*  A caixa é desenhada, e não o `input` nativo: o nativo não aceita cor de
+    marca em todos os navegadores. O `input` continua no DOM (fora da vista)
+    porque é dele que vêm o foco por teclado e o anúncio do leitor de tela. */
+.docia-inc-item__caixa {
+    width: 1.125rem;
+    height: 1.125rem;
+    border: 1.5px solid #9CA3AF;
+    border-radius: 0.3125rem;
+    flex-shrink: 0;
+    position: relative;
+    background-color: #FFFFFF;
+    transition: background-color 0.15s, border-color 0.15s;
+}
+
+.docia-inc-item input:checked + .docia-inc-item__caixa {
+    background-color: #6B007B;
+    border-color: #6B007B;
+}
+
+.docia-inc-item input:checked + .docia-inc-item__caixa::after {
+    content: '';
+    position: absolute;
+    left: 0.34375rem;
+    top: 0.09375rem;
+    width: 0.3125rem;
+    height: 0.625rem;
+    border: solid #FFFFFF;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.docia-inc-item input:focus-visible + .docia-inc-item__caixa {
+    outline: 2px solid #6B007B;
+    outline-offset: 2px;
+}
+
+/*  A frase NÃO é cortada com reticências: a diferença entre duas delas mora
+    justamente no fim ("...é menor que o esperado" contra "...é maior que o
+    esperado"). Na largura da telinha ela cabe; se não couber, quebra. */
+.docia-inc-item__texto {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1.35;
+    color: #374151;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/*  Quantas linhas cada frase tem — é o que diz se a opção vale o clique antes
+    de dar o clique. */
+.docia-inc-item__n {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: #9CA3AF;
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+.docia-inc-escolhida {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 0.75rem;
+    background-color: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.docia-inc-escolhida__texto {
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.35;
+    color: #374151;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.docia-inc-escolhida__x {
+    flex-shrink: 0;
+    width: 1.5rem;
+    height: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    color: #9CA3AF;
+    transition: color 0.15s, background-color 0.15s;
+}
+
+.docia-inc-escolhida__x:hover { color: #6B007B; background-color: #FAF5FB; }
+
+/*  Vazio é resultado, não erro: Benefícios e Financiamento não trazem
+    inconsistência nenhuma, e a telinha precisa dizer isso em vez de abrir em
+    branco. */
+.docia-inc-vazio {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 2rem 1rem;
+    text-align: center;
+    color: #9CA3AF;
+    font-size: 0.8125rem;
+    font-weight: 500;
+}
+
+.docia-inc-vazio__icone { font-size: 2rem; opacity: 0.45; }
+
+/*  A base de cada gráfico, embaixo do título. Pequena de propósito: é uma
+    ressalva, não um dado — mas tem de estar à vista, porque é ela que explica
+    por que o total do gráfico não é o total da tabela. */
+.docia-grafico-base {
+    font-variant-numeric: tabular-nums;
+}
+
+/*  Quando o documento não responde a pergunta do card (o histórico não traz
+    mensalidade; Benefícios não tem processado nenhum), o lugar do gráfico
+    recebe a explicação. Um gráfico zerado ali seria lido como "a IA não achou
+    nada", que é uma acusação — e não é o que aconteceu. */
+.docia-grafico-vazio {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0 1rem;
+    text-align: center;
+    color: #9CA3AF;
+}
+
+.docia-grafico-vazio__icone { font-size: 1.5rem; opacity: 0.5; }
+.docia-grafico-vazio__texto { font-size: 0.6875rem; font-weight: 600; line-height: 1.4; }
+
+/*  A LEGENDA DA ROSCA DA ANÁLISE IA usa as classes da casa (`docia-legenda__*`)
+    inteiras — quadradinho, realce do ativo, risco no que ficou de fora, os dois
+    temas. O que muda aqui é o tamanho: CINCO linhas, uma por veredito da IA,
+    contra as seis fatias da outra aba.
+
+    ALTURA RESERVADA ANTES DE HAVER CONTEÚDO, pelo mesmo motivo documentado na
+    `.docia-legenda`: o ApexCharts mede o contêiner no render e trava a altura. Com
+    a legenda vazia ele mediria o card inteiro, e as linhas que chegam depois
+    vazariam para fora. O número já esteve errado nos dois sentidos: curto demais, a
+    rosca era desenhada POR CIMA do texto; longo demais, sobrava um vão morto embaixo
+    dela. Cinco linhas de ~14,5px mais o respiro do topo dão 82. */
+.docia-legenda--ia {
+    min-height: 82px;
+    gap: 0;
+    font-size: 9.5px;
+}
+
+.docia-legenda--ia .docia-legenda__item { padding: 1px 6px; }
+
+
+/*  O AVISO DE "COPIADO" — em CSS, e não em utilitárias como na outra aba.
+
+    Lá ele é montado com uma dúzia de classes Tailwind numa string; aqui vale a
+    mesma regra que o resto deste arquivo segue: o portal é bundle purgado e sem
+    build, então toda classe utilitária usada em JS depende de já existir no
+    `output.css` por acaso de outra tela usá-la. Em CSS próprio, não depende. */
+.docia-aviso {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background-color: #FFFFFF;
+    border-left: 4px solid #D6008F;
+    border-radius: 0 0.75rem 0.75rem 0;
+    padding: 0.875rem 1.125rem;
+    margin-bottom: 0.75rem;
+    box-shadow: 0 10px 30px -10px rgba(17, 24, 39, 0.35);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #374151;
+    animation: docia-aviso-entra 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.docia-aviso--erro { border-left-color: #D62828; }
+
+.docia-aviso__icone {
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    background-color: #FCE7F3;
+    color: #D6008F;
+}
+
+.docia-aviso--erro .docia-aviso__icone { background-color: #FEE2E2; color: #D62828; }
+
+@keyframes docia-aviso-entra {
+    from { transform: translateX(1.5rem); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+/*  Movimento é decoração aqui: quem pediu para reduzi-lo continua vendo o aviso,
+    só que sem a entrada lateral. */
+@media (prefers-reduced-motion: reduce) {
+    .docia-aviso { animation: none; }
+}
+
+/*  A FAIXA DE NÚMEROS DA ANÁLISE IA tem SEIS cards, contra quatro da outra aba, e
+    cada um leva uma terceira linha dizendo a base da conta. Sem os tamanhos abaixo,
+    o rótulo de `DIF. C/DESC.` e o valor em reais brigavam pela mesma largura. */
+.docia-kpi-rotulo {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #9CA3AF;
+    margin-bottom: 1px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/*  A BASE DA CONTA, embaixo do número. É ela que impede a leitura errada: "1.486 de
+    13.622 lidos divergem" diz que a soma acima fala de 13.622 linhas, e não das
+    22.993 da tabela. Pequena porque é ressalva, à vista porque é necessária. */
+.docia-kpi-base {
+    font-size: 9px;
+    font-weight: 600;
+    color: #9CA3AF;
+    margin-top: 1px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
