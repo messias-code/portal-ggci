@@ -115,8 +115,8 @@
            `.filter-documento-ies:checked + .docia-grade-doc__caixa`.
 
            Por isso NADA aqui procura a partir do `document`: uma busca global
-           acharia também as caixas da aba vizinha, e um clique em Período aqui
-           marcaria o Período de lá. O recorte de cada aba é dela, e é a raiz
+           acharia também as caixas da aba vizinha, e um clique em Semestre aqui
+           marcaria o Semestre de lá. O recorte de cada aba é dela, e é a raiz
            que garante isso.
            ================================================================== */
         const raizFiltros = document.getElementById('filtros-analise') || document;
@@ -1410,7 +1410,7 @@
             const etiquetas = [];
 
             marcados(caixasSemestre).forEach(
-                (v) => etiquetas.push(chip('Período', v, 'semestre:' + v, true)));
+                (v) => etiquetas.push(chip('Semestre', v, 'semestre:' + v, true)));
             marcados(caixasDocumento).forEach(
                 (v) => etiquetas.push(chip('Documento', v, 'documento:' + v, true)));
 
@@ -1890,7 +1890,7 @@
         });
 
         /*  O modo LEMBRADO manda, e o marcado no HTML é a reserva — ver
-            `aba_lembrada.js`. Os rádios também são reescritos, senão a barra
+            `estado_aba.js`. Os rádios também são reescritos, senão a barra
             mostraria "Performance" aceso com a vista de Relatórios no ar.  */
         const marcado = Array.from(radiosModo).find((radio) => radio.checked);
         const modoInicial = window.dociaModoLembrado

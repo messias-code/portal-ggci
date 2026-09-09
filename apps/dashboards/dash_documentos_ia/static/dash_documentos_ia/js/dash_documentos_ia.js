@@ -2295,7 +2295,7 @@ document.addEventListener('turbo:load', () => {
             const pintarFiltrosAtivosIES = () => {
                 if (!elIES.filtros) return;
                 const etiquetas = [];
-                marcados(checkboxesSemestre).forEach((v) => etiquetas.push(chip('Período', v, 'semestre:' + v, true)));
+                marcados(checkboxesSemestre).forEach((v) => etiquetas.push(chip('Semestre', v, 'semestre:' + v, true)));
                 marcados(checkboxesDocumento).forEach((v) => etiquetas.push(chip('Documento', v, 'documento:' + v, true)));
                 if (typeof activeIESFilters !== 'undefined' && activeIESFilters.length > 0) {
                     etiquetas.push(chip('IES', activeIESFilters.length + ' selecionada'
@@ -2704,7 +2704,7 @@ document.addEventListener('turbo:load', () => {
 
             /*  OS DOIS MODOS NÃO DIVIDEM FILTRO NENHUM.
 
-                Período, Documento e Instituição são os três controles que aparecem nas
+                Semestre, Documento e Instituição são os três controles que aparecem nas
                 duas vistas — e apareciam com o MESMO estado. O recorte montado para
                 comparar instituições ("2026-1, contrato, estas três IES") seguia a
                 pessoa até a lista de alunos, e o contrário também; pior, a volta ao modo
@@ -2833,7 +2833,7 @@ document.addEventListener('turbo:load', () => {
             radiosModo.forEach((radio) => radio.addEventListener('change', () => {
                 if (!radio.checked) return;
                 // Trocar de modo é uma escolha, e é ela que a tela devolve na
-                // próxima entrada — ver `aba_lembrada.js`.
+                // próxima entrada — ver `estado_aba.js`.
                 if (window.dociaLembrarModo) window.dociaLembrarModo(radio.value);
                 aplicarModo(radio.value, true);
             }));
@@ -3594,7 +3594,7 @@ document.addEventListener('turbo:load', () => {
             }
 
             /*  AS TRÊS GUARDAS DE SAÍDA ignoram a navegação entre as abas do próprio
-                Documentos IA — ver `__dociaNavegacaoInterna` em `aba_lembrada.js`.
+                Documentos IA — ver `__dociaNavegacaoInterna` em `estado_aba.js`.
                 Ir de Envios & Pendências para a Análise IA é olhar o MESMO dado por
                 outro ângulo, como trocar de modo dentro de uma aba; a extração roda
                 no servidor e continua alimentando as duas.

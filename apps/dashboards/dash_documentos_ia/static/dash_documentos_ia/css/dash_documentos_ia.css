@@ -2921,7 +2921,7 @@ body :is(button, a[href]):disabled { cursor: not-allowed; }
    AS DUAS ABAS DO DOCUMENTOS IA
    ==========================================================================
    QUEM DECIDE QUAL PAINEL APARECE é o atributo `data-docia-aba` no `<html>`,
-   escrito por `aba_lembrada.js` ainda no `<head>` — antes da primeira pintura.
+   escrito por `estado_aba.js` ainda no `<head>` — antes da primeira pintura.
 
    POR QUE NO CSS E NÃO NO JS: a aba lembrada precisa nascer visível. Se o JS
    trocasse `style.display` depois do DOM pronto, quem trabalha na Análise IA

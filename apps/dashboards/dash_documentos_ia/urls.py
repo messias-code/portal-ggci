@@ -26,6 +26,11 @@ urlpatterns = [
     path('api/exportar/', views.api_exportar, name='dash_documentos_ia_exportar'),
     path('api/exportar-ies/', views.api_exportar_ies, name='dash_documentos_ia_exportar_ies'),
 
+    # API da aba Análise IA
+    path('api/tabela-ia/', views.api_tabela_ia, name='dash_documentos_ia_tabela_ia'),
+    path('api/resumo-ia/', views.api_resumo_ia, name='dash_documentos_ia_resumo_ia'),
+    path('api/exportar-ia/', views.api_exportar_ia, name='dash_documentos_ia_exportar_ia'),
+
     # API do botão "Atualizar"
     path('api/iniciar/', views.iniciar_atualizacao_docia, name='dash_documentos_ia_iniciar'),
     path('api/status/<int:processo_id>/', views.status_atualizacao_docia, name='dash_documentos_ia_status'),

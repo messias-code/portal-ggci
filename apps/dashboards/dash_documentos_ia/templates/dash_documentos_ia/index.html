@@ -22,7 +22,7 @@
         aparece. Carregado no fim do corpo, quem trabalha na Análise IA veria a
         aba de Envios montar inteira para só então sumir.
     -->
-    <script src="{% static 'dash_documentos_ia/js/aba_lembrada.js' %}?v=20260909b"></script>
+    <script src="{% static 'dash_documentos_ia/js/estado_aba.js' %}?v=20260909c"></script>
 
 
     <link rel="stylesheet" href="{% static 'css/output.css' %}">
@@ -482,7 +482,7 @@
 
                     OS FILTROS SÃO DELA. A barra lateral traz dois conjuntos de
                     controles — `#filtros-envios` e `#filtros-analise` — e mostra o da
-                    aba que está na tela. Mexer no Período aqui não mexe no de lá: são
+                    aba que está na tela. Mexer no Semestre aqui não mexe no de lá: são
                     perguntas diferentes sobre a mesma base, e cada uma guarda o seu
                     recorte.
 
@@ -849,7 +849,7 @@
                         -->
                         <section class="docia-filtro-secao">
                             <div class="docia-filtro-cabecalho">
-                                <h4 class="docia-filtro-titulo">Período</h4>
+                                <h4 class="docia-filtro-titulo">Semestre</h4>
                                 <span class="docia-filtro-contador" id="contador-semestres" style="display: none;">0</span>
                             </div>
                             <!--
@@ -1087,7 +1087,7 @@
                         OS FILTROS DA ABA ANÁLISE IA
                         ========================================================
                         Conjunto próprio, e não os mesmos controles reaproveitados:
-                        mexer no Período aqui não pode mexer no Período de Envios &
+                        mexer no Semestre aqui não pode mexer no Semestre de Envios &
                         Pendências. São perguntas diferentes sobre a mesma base, e
                         cada aba guarda o seu recorte.
 
@@ -1147,7 +1147,7 @@
                         -->
                         <section class="docia-filtro-secao">
                             <div class="docia-filtro-cabecalho">
-                                <h4 class="docia-filtro-titulo">Período</h4>
+                                <h4 class="docia-filtro-titulo">Semestre</h4>
                                 <span class="docia-filtro-contador" id="contador-semestres-ia" style="display: none;">0</span>
                             </div>
                             <div class="docia-grade-seg grid bg-white border border-gray-300 rounded-xl overflow-hidden divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(4, minmax(0, 1fr));">
@@ -1301,7 +1301,7 @@
 
                         <!--
                             A ORDEM DAS SEÇÕES SEGUE O FUNIL, do universo para a pessoa:
-                            Período e Documento dizem QUAL RECORTE, Inconsistências e
+                            Semestre e Documento dizem QUAL RECORTE, Inconsistências e
                             Instituição dizem ONDE, e as duas últimas dizem QUEM. As de
                             pessoa ficam no fim de propósito — são as que menos se mexem
                             no dia a dia, e as que mais empurram as outras para fora da
@@ -1620,7 +1620,7 @@
                     <div class="cfgx__secao-topo">
                         <span class="cfgx__passo">1</span>
                         <span class="cfgx__secao-texto">
-                            <strong>Período</strong>
+                            <strong>Semestre</strong>
                             <span>Quais semestres entram nesta atualização. Vale para os cinco documentos.</span>
                         </span>
                         <button type="button" class="cfgx__mini" id="btn-config-periodos">todos</button>
@@ -1864,12 +1864,12 @@
     -->
     <script src="{% static 'js/motor-ocupado.js' %}?v=1"></script>
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-    <script src="{% static 'dash_documentos_ia/js/dash_documentos_ia.js' %}?v=20260909b"></script>
+    <script src="{% static 'dash_documentos_ia/js/dash_documentos_ia.js' %}?v=20260909c"></script>
     <!--
         A ABA ANÁLISE IA. Depois de `dash_documentos_ia.js` porque o filtro de
         instituições e o console de atualização vivem lá e são compartilhados; este
         arquivo só monta a segunda aba.
     -->
-    <script src="{% static 'dash_documentos_ia/js/analise_ia.js' %}?v=20260909b"></script>
+    <script src="{% static 'dash_documentos_ia/js/analise_ia.js' %}?v=20260909c"></script>
 </body>
 </html>
