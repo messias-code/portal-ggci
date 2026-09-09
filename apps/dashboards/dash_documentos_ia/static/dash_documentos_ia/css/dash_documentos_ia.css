@@ -2820,7 +2820,9 @@ body :is(button, a[href]):disabled { cursor: not-allowed; }
     rosca era desenhada POR CIMA do texto; longo demais, sobrava um vão morto embaixo
     dela. Cinco linhas de ~14,5px mais o respiro do topo dão 82. */
 .docia-legenda--ia {
-    min-height: 82px;
+    height: 96px; /* Força todas as legendas a terem o mesmo tamanho para alinhar as roscas */
+    overflow-y: auto;
+    overflow-x: hidden;
     gap: 0;
     font-size: 9.5px;
 }
@@ -2904,4 +2906,54 @@ body :is(button, a[href]):disabled { cursor: not-allowed; }
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+/* Oculta as setas do balão do ApexCharts na aba Análise IA */
+.apexcharts-tooltip.apexcharts-theme-light::before,
+.apexcharts-tooltip.apexcharts-theme-light::after,
+.apexcharts-tooltip::before,
+.apexcharts-tooltip::after {
+    display: none !important;
+}
+
+
+/* ==========================================================================
+   AS DUAS ABAS DO DOCUMENTOS IA
+   ==========================================================================
+   QUEM DECIDE QUAL PAINEL APARECE é o atributo `data-docia-aba` no `<html>`,
+   escrito por `aba_lembrada.js` ainda no `<head>` — antes da primeira pintura.
+
+   POR QUE NO CSS E NÃO NO JS: a aba lembrada precisa nascer visível. Se o JS
+   trocasse `style.display` depois do DOM pronto, quem trabalha na Análise IA
+   veria a aba de Envios montar inteira — os quatro KPIs, as cinco roscas e a
+   tabela — para só então sumir. Aqui a decisão chega junto com o primeiro
+   quadro, e não há troca nenhuma para se ver.
+
+   O `display` de repouso é `none` para os quatro blocos, e a regra com o
+   atributo devolve o valor certo a dois deles. Os painéis voltam como `flex`
+   (são colunas de altura cheia, `flex-1 flex flex-col` no template) e os blocos
+   da barra como `block`, que é o que a pilha de seções pede.
+
+   PESO DOS SELETORES, porque aqui isso decide: `#aba-envios` (1,0,0) vence a
+   utilitária `.flex` (0,1,0) do Tailwind, e a regra com o atributo (1,1,0)
+   vence as duas. Nenhum dos quatro pode carregar `display` em atributo `style`
+   no template — inline ganharia de todos.
+   ========================================================================== */
+#aba-envios,
+#aba-analise,
+#filtros-envios,
+#filtros-analise { display: none; }
+
+html[data-docia-aba="envios"] #aba-envios,
+html[data-docia-aba="analise"] #aba-analise { display: flex; }
+
+html[data-docia-aba="envios"] #filtros-envios,
+html[data-docia-aba="analise"] #filtros-analise { display: block; }
+
+.docia-legenda--ia::-webkit-scrollbar {
+    width: 4px;
+}
+.docia-legenda--ia::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
 }

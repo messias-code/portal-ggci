@@ -653,7 +653,7 @@
 
             O piso existe para o caso oposto: num card muito baixo o flex espreme a caixa
             a quase zero, e um gráfico de 3px não é gráfico.  */
-        const alturaDe = (alvo) => Math.max(alvo.clientHeight || 0, 140);
+        const alturaDe = (alvo) => Math.max(alvo.clientHeight || 0, 90);
 
         /* ==================================================================
            A ROSCA — OS SEIS BALDES, IGUAIS AOS DE ENVIOS & PENDÊNCIAS
