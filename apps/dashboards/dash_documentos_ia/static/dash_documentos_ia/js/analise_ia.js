@@ -1192,7 +1192,7 @@
                     lado — a leitura óbvia de dois gráficos vizinhos é comparar as
                     barras, e réguas diferentes fariam essa leitura mentir.  */
                 
-                const cats = ordem.map((b) => ROTULO_MENSALIDADE[b] || [b]).map(a => Array.isArray(a) ? a.join(' ') : a);
+                const cats = ordem.map((b) => ROTULO_MENSALIDADE[b] || [b]);
                 const vals = ordem.map((b) => contagem[b] || 0);
                 const colors = CORES_MENSALIDADE(tema);
                 desenhar(idGr, cats, vals, colors, corpo.processados, 'numero');
