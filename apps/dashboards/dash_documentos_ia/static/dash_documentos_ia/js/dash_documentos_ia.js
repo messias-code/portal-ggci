@@ -11,6 +11,47 @@ document.addEventListener('turbo:load', () => {
 
 /* Extracted from index.html */
         const initDashDocumentosIA = () => {
+            /* ==================================================================
+               ESTA FUNÇÃO É SÓ A TELA DE ENVIOS & PENDÊNCIAS
+               ==================================================================
+               Este arquivo é carregado por TODAS as telas do Documentos IA, porque
+               o filtro de instituições (o modal Mantenedora -> IES) vive no FIM
+               dele, fora desta função, e é o mesmo em todas.
+
+               O que está aqui dentro, não: são os KPIs, as cinco roscas e o
+               Detalhamento desta tela. Na Análise IA os controles da barra lateral
+               têm as MESMAS classes (`filter-semestre`, `filter-documento-ies`, ...)
+               — de propósito, porque o CSS que os pinta parte delas. Sem esta saída,
+               os ouvintes daqui também se prendiam àquelas caixas e cada clique lá
+               disparava duas consultas para gráficos e tabela que não existem lá.
+
+               A SAÍDA É A PRIMEIRA LINHA, e não uma linha abaixo do toggle da barra
+               como já esteve: o ouvinte do toggle chama `forcarResize`, que é um
+               `const` declarado bem mais abaixo. Saindo depois de registrá-lo, o
+               ouvinte ficava vivo numa tela onde a função nunca alcança a declaração
+               — e cada clique na barra morria num ReferenceError, com a barra até
+               abrindo (as classes trocam antes) e o console enchendo. Cada tela
+               registra o SEU toggle; o desta é o de baixo, o da Análise IA está em
+               `analise_ia.js`.
+               ================================================================== */
+            if (!document.getElementById('vista-beneficiarios')) return;
+
+            /* ==================================================================
+               OS FILTROS DESTA ABA SÃO SÓ DELA
+               ==================================================================
+               A barra lateral carrega os controles das DUAS abas — os desta em
+               `#filtros-envios`, os da Análise IA em `#filtros-analise` — e
+               esconde o conjunto da aba que não está na tela. As classes se
+               repetem nos dois de propósito: é delas que parte o CSS que pinta a
+               caixinha marcada (`.filter-documento-ies:checked + ...`).
+
+               Buscar a partir do `document` acharia os dois conjuntos, e marcar
+               "2025-1" aqui marcaria o "2025-1" de lá. Cada aba guarda o seu
+               recorte, e é esta raiz que garante isso.
+               ================================================================== */
+            const raizFiltros = document.getElementById('filtros-envios') || document;
+            const nosFiltros = (seletor) => raizFiltros.querySelectorAll(seletor);
+
             const sidebar = document.getElementById('filter-sidebar');
             const toggleBtn = document.getElementById('toggle-sidebar-btn');
             const toggleIcon = document.getElementById('toggle-sidebar-icon');
@@ -1039,11 +1080,11 @@ document.addEventListener('turbo:load', () => {
                apaga é o pior tipo de filtro.
                ================================================================== */
 
-            const checkboxesSemestre = document.querySelectorAll('.filter-semestre');
-            const checkboxesMudouIES = document.querySelectorAll('.filter-mudou-ies');
-            const checkboxesMudouBolsa = document.querySelectorAll('.filter-mudou-bolsa');
-            const checkboxesVinculo = document.querySelectorAll('.filter-vinculo');
-            const checkboxesPerfil = document.querySelectorAll('.filter-perfil');
+            const checkboxesSemestre = nosFiltros('.filter-semestre');
+            const checkboxesMudouIES = nosFiltros('.filter-mudou-ies');
+            const checkboxesMudouBolsa = nosFiltros('.filter-mudou-bolsa');
+            const checkboxesVinculo = nosFiltros('.filter-vinculo');
+            const checkboxesPerfil = nosFiltros('.filter-perfil');
 
             const marcados = (caixas) => Array.from(caixas)
                 .filter((caixa) => caixa.checked)
@@ -1816,11 +1857,15 @@ document.addEventListener('turbo:load', () => {
                     window.fetchDadosIES();
                     return;
                 }
+                if (modoSelecionado() === 'performance') {
+                    return;
+                }
 
                 window.fetchChartData();
                 window.fetchTableData();
             };
-            window.recarregarDocumentosIA = recarregar;
+            window.recarregarDocumentosIA = () => window.dispatchEvent(new Event('docia:recarregar'));
+            window.addEventListener('docia:recarregar', recarregar);
 
             // --- Semestres: cada clique refaz a consulta ------------------------
             // Agora é excludente em TODOS os modos. Um semestre apenas pode ser visualizado.
@@ -2042,7 +2087,7 @@ document.addEventListener('turbo:load', () => {
                 instituição com muita cobrança indevida pareceria estar devendo mais
                 documento do que realmente deve, e o denominador puniria justamente
                 quem foi cobrado errado.  */
-            const esperadosDe = (linha) => (linha.Processados || 0) + (linha.NaoProcessados || 0) + (linha.NaoEnviados || 0);
+            const esperadosDe = (linha) => (linha.total || 0) - (linha.Inadimplentes || 0);
             const enviadosDe = (linha) => esperadosDe(linha) - (linha.NaoEnviados || 0);
 
             /*  O PERCENTUAL DIZ QUANTO JÁ ESTÁ RESOLVIDO — quanto MAIOR, MELHOR.
@@ -2061,10 +2106,6 @@ document.addEventListener('turbo:load', () => {
                 em curso, e a meta é levá-lo a zero. Um complemento ali ("97% não
                 inadimplente") esconderia justamente o que a coluna existe para denunciar.
 
-                CADA % TEM DENOMINADOR PRÓPRIO, e é por isso que o cabeçalho nomeia a
-                medida embaixo do nome da coluna. Sem esse rótulo, "36 (97,2%)" na coluna
-                de pendências lê como "97,2% estão pendentes" — o oposto do que diz.
-
                 Devolve `null` quando a base é zero: não há progresso a medir sobre nada,
                 e mostrar "0,0%" ou "100,0%" ali seria inventar um fato.  */
             const fatia = (valor, base) => (base > 0 ? ((valor || 0) / base) * 100 : null);
@@ -2077,19 +2118,34 @@ document.addEventListener('turbo:load', () => {
                 { chave: 'Processados',    rotulo: FATIAS[0], numero: true,
                   pct: (l) => fatia(l.Processados, esperadosDe(l)) },
 
+                /*  MOSTRA O % JÁ PROCESSADO, e não a fatia de não processados: com a
+                    fila vazia a célula diz 100%, que é o que "0 na fila" significa.
+                    A base é o que CHEGOU (`enviadosDe`) — o que ainda não chegou não
+                    tinha como ser lido, e contá-lo aqui misturaria duas perguntas.  */
                 { chave: 'NaoProcessados', rotulo: FATIAS[1], numero: true, inverso: true,
-                  pct: (l) => fatia(l.NaoProcessados, esperadosDe(l)) },
+                  pct: (l) => progresso(l.NaoProcessados, enviadosDe(l)) },
 
+                /*  MOSTRA O % ENVIADO. "0 pendentes (0,0%)" lia como zero por cento de
+                    alguma coisa boa; quem tem zero pendência enviou tudo, e o número
+                    que descreve isso é 100%.  */
                 { chave: 'NaoEnviados',    rotulo: FATIAS[2], numero: true, inverso: true,
-                  pct: (l) => fatia(l.NaoEnviados, esperadosDe(l)) },
+                  pct: (l) => progresso(l.NaoEnviados, esperadosDe(l)) },
 
-                { chave: 'InadProc',       rotulo: FATIAS[3], numero: true, inverso: true,
+                /*  OS TRÊS DE INADIMPLÊNCIA SÃO A EXCEÇÃO: fatia crua sobre o total da
+                    linha, onde MAIOR É PIOR. Não são um passo do caminho que se
+                    completa — são erro em curso, e a meta é levá-los a zero. Um
+                    complemento aqui ("97% não inadimplente") esconderia justamente o
+                    que a coluna existe para denunciar.  */
+                { chave: 'InadProc',       rotulo: FATIAS[3], numero: true,
+                  inverso: true,
                   pct: (l) => fatia(l.InadProc, l.total) },
 
-                { chave: 'InadNaoProc',    rotulo: FATIAS[4], numero: true, inverso: true,
+                { chave: 'InadNaoProc',    rotulo: FATIAS[4], numero: true,
+                  inverso: true,
                   pct: (l) => fatia(l.InadNaoProc, l.total) },
 
-                { chave: 'Inadimplentes',  rotulo: FATIAS[5], numero: true, inverso: true,
+                { chave: 'Inadimplentes',  rotulo: FATIAS[5], numero: true,
+                  inverso: true,
                   pct: (l) => fatia(l.Inadimplentes, l.total) },
             ];
 
@@ -2103,7 +2159,7 @@ document.addEventListener('turbo:load', () => {
                 filtros: document.getElementById('ies-filtros'),
             };
 
-            const checkboxesDocumento = document.querySelectorAll('.filter-documento-ies');
+            const checkboxesDocumento = nosFiltros('.filter-documento-ies');
             /*  Vive em `window` pelo mesmo motivo dos gráficos e dos recortes:
                 `initDashDocumentosIA` roda no DOMContentLoaded E no turbo:load, e a
                 ordem escolhida não pode se perder na segunda passada.  */
@@ -2635,7 +2691,7 @@ document.addEventListener('turbo:load', () => {
                depois no bundle purgado, que não é garantia nenhuma. Os dois modais desta
                tela já contornam isso do mesmo jeito.  */
             const MODO_PADRAO = 'beneficiarios';
-            const radiosModo = document.querySelectorAll('.filter-modo');
+            const radiosModo = nosFiltros('.filter-modo');
             const vistaBeneficiarios = document.getElementById('vista-beneficiarios');
             const vistaIES = document.getElementById('vista-ies');
             const filtrosBeneficiarios = document.getElementById('filtros-beneficiarios');
@@ -2763,24 +2819,38 @@ document.addEventListener('turbo:load', () => {
                     /*  Sempre relê, mesmo já tendo lido antes: o botão "Atualizar" pode
                         ter rodado o motor enquanto a outra vista estava no ar, e a tela
                         ficaria mostrando o recorte da execução anterior sem dizer isso.  */
-                    recarregar();
+                    window.dispatchEvent(new Event('docia:recarregar'));
                     return;
                 }
                 /*  De volta aos beneficiários: os dados podem ter envelhecido enquanto a
                     outra vista estava no ar, e as roscas passaram esse tempo dentro de um
                     container sem altura — o ApexCharts recebe a altura como número e não
                     percebe sozinho que ela voltou.  */
-                recarregar();
+                window.dispatchEvent(new Event('docia:recarregar'));
                 setTimeout(forcarResize, 60);
             };
 
             radiosModo.forEach((radio) => radio.addEventListener('change', () => {
-                if (radio.checked) aplicarModo(radio.value, true);
+                if (!radio.checked) return;
+                // Trocar de modo é uma escolha, e é ela que a tela devolve na
+                // próxima entrada — ver `aba_lembrada.js`.
+                if (window.dociaLembrarModo) window.dociaLembrarModo(radio.value);
+                aplicarModo(radio.value, true);
             }));
 
             /*  O navegador restaura o rádio marcado ao recarregar a página (o Firefox
-                faz isso), e aí o markup diria "Beneficiários" com o modo IES marcado.  */
-            aplicarModo(modoSelecionado(), false);
+                faz isso), e aí o markup diria "Beneficiários" com o modo IES marcado.
+
+                E ANTES DELE vem o modo LEMBRADO: quem trabalha na vista por IES
+                voltava para Beneficiários a cada entrada e refazia o caminho. A lista
+                de valores aceitos é passada de propósito — um valor guardado por uma
+                versão anterior marcaria um rádio que não existe mais, e a tela abriria
+                sem modo nenhum aceso.  */
+            aplicarModo(
+                window.dociaModoLembrado
+                    ? window.dociaModoLembrado(modoSelecionado(), ['beneficiarios', 'ies'])
+                    : modoSelecionado(),
+                false);
 
             // --- "Restaurar Padrão": limpa semestres, IES e fatias escondidas ---
             const btnLimparFiltros = document.getElementById('btn-clear-filters');
@@ -3107,6 +3177,13 @@ document.addEventListener('turbo:load', () => {
             let progressoAlvo = 0;       // último valor vindo do backend
             let progressoExibido = 0;    // valor que a barra mostra agora
             let rolagemPresa = true;     // o usuário está acompanhando o fim?
+
+            const procLembrado = sessionStorage.getItem('__processo_id_docia');
+            if (procLembrado) {
+                window.__processo_id_docia = procLembrado;
+                animarProgresso();
+                acompanhar(procLembrado);
+            }
 
             const ROTULO_STATUS = {
                 PENDENTE:  'Preparando',
@@ -3439,6 +3516,7 @@ document.addEventListener('turbo:load', () => {
                             consoleLogs.innerHTML += `<div class="mt-3 text-amber-600 font-bold">⚠ ${escapar(String(data.msg || ''))}</div>`;
                         }
                         window.__processo_id_docia = data.processo_id;
+                        sessionStorage.setItem('__processo_id_docia', data.processo_id);
                         window.__iniciandoDocIA = false;
                         animarProgresso();
                         acompanhar(data.processo_id);
@@ -3480,6 +3558,8 @@ document.addEventListener('turbo:load', () => {
 
                             if (data.status === 'CONCLUIDO') {
                                 encerrarAcompanhamento();
+                                sessionStorage.removeItem('__processo_id_docia');
+                                window.__processo_id_docia = null;
                                 progressoAlvo = 100;
                                 progressoExibido = 100;
                                 if (consoleBarra) consoleBarra.style.width = '100%';
@@ -3493,6 +3573,8 @@ document.addEventListener('turbo:load', () => {
                                 if (window.recarregarDocumentosIA) window.recarregarDocumentosIA();
                             } else if (data.status === 'FALHA') {
                                 encerrarAcompanhamento();
+                                sessionStorage.removeItem('__processo_id_docia');
+                                window.__processo_id_docia = null;
                                 if (consoleStatus) consoleStatus.innerText = 'Falha';
                                 abrirConsole();
                                 restaurarBotaoAtualizar();
@@ -3500,6 +3582,8 @@ document.addEventListener('turbo:load', () => {
                         })
                         .catch((erro) => {
                             encerrarAcompanhamento();
+                                sessionStorage.removeItem('__processo_id_docia');
+                                window.__processo_id_docia = null;
                             if (consoleLogs) {
                                 consoleLogs.innerHTML += `<div class="mt-3 text-red-400">✖ Perdi contato com o servidor (${escapar(String(erro.message || erro))}). O processo pode continuar rodando — recarregue a página para conferir.</div>`;
                             }
@@ -3509,9 +3593,20 @@ document.addEventListener('turbo:load', () => {
                 }, 2000);
             }
 
+            /*  AS TRÊS GUARDAS DE SAÍDA ignoram a navegação entre as abas do próprio
+                Documentos IA — ver `__dociaNavegacaoInterna` em `aba_lembrada.js`.
+                Ir de Envios & Pendências para a Análise IA é olhar o MESMO dado por
+                outro ângulo, como trocar de modo dentro de uma aba; a extração roda
+                no servidor e continua alimentando as duas.
+
+                A do `pagehide` era a pior das três: ela não perguntava nada, apenas
+                mandava PARAR o processo. Quem clicasse na outra aba no meio de uma
+                atualização perdia a atualização inteira.  */
+            const saidaDeVerdade = () => !window.__dociaNavegacaoInterna;
+
             // Avisar ao recarregar a página (F5 ou Fechar aba)
             window.addEventListener('beforeunload', (e) => {
-                if (window.__processo_id_docia) {
+                if (window.__processo_id_docia && saidaDeVerdade()) {
                     e.preventDefault();
                     e.returnValue = 'A extração está em andamento. Tem certeza que deseja sair e cancelar o processo?';
                     return e.returnValue;
@@ -3520,14 +3615,14 @@ document.addEventListener('turbo:load', () => {
             
             // Abortar de fato caso ele saia da aba
             window.addEventListener('pagehide', () => {
-                if (window.__processo_id_docia) {
+                if (window.__processo_id_docia && saidaDeVerdade()) {
                     navigator.sendBeacon(`/dashboards/documentos-ia/api/parar/${window.__processo_id_docia}/`);
                 }
             });
 
             // Avisar caso use a navegação interna do Turbo
             document.addEventListener('turbo:before-visit', (e) => {
-                if (window.__processo_id_docia) {
+                if (window.__processo_id_docia && saidaDeVerdade()) {
                     if (!confirm('A extração está em andamento. Tem certeza que deseja sair e cancelar o processo?')) {
                         e.preventDefault();
                     } else {
@@ -3653,6 +3748,10 @@ document.addEventListener('turbo:load', () => {
             atualizarRotuloIES();
             elIES('modal-ies').style.display = 'none';
             if (typeof window.recarregarDocumentosIA === 'function') window.recarregarDocumentosIA();
+        };
+
+        window.dociaIESAtivas = function (aba) {
+            return activeIESFilters.slice();
         };
 
         /**

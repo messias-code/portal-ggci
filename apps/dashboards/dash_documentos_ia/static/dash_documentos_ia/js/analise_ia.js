@@ -106,38 +106,45 @@
         vistaPerformance.dataset.ligado = '1';
 
         /* ==================================================================
-           A BARRA DE FILTROS ABRE E FECHA
+           OS FILTROS DESTA ABA SÃO SÓ DELA
            ==================================================================
-           O toggle é registrado AQUI, e não reaproveitado de
-           `dash_documentos_ia.js`: o de lá está dentro da função que monta a
-           tela de Envios & Pendências, e ela sai pela porta de trás na primeira
-           linha quando não é aquela tela.
+           As duas abas vivem no MESMO documento e a barra lateral carrega os
+           dois conjuntos de controles, um escondido de cada vez. As classes são
+           as mesmas nos dois (`filter-semestre`, `filter-documento-ies`, ...),
+           e têm de ser: o CSS que pinta a caixinha marcada parte delas — ver
+           `.filter-documento-ies:checked + .docia-grade-doc__caixa`.
 
-           UM ouvinte por botão, e é isso que importa. Cada ouvinte LÊ o estado
-           atual e o inverte, então dois ouvintes no mesmo clique devolvem a
-           barra ao lugar de onde ela saiu — e três a abrem por acidente de
-           paridade. Foi o que esta tela teve por meses, com dois blocos iguais
-           no template mais o do arquivo compartilhado.
+           Por isso NADA aqui procura a partir do `document`: uma busca global
+           acharia também as caixas da aba vizinha, e um clique em Período aqui
+           marcaria o Período de lá. O recorte de cada aba é dela, e é a raiz
+           que garante isso.
            ================================================================== */
-        const sidebar = document.getElementById('filter-sidebar');
-        const botaoBarra = document.getElementById('toggle-sidebar-btn');
-        const iconeBarra = document.getElementById('toggle-sidebar-icon');
-        const conteudo = document.getElementById('main-content');
+        const raizFiltros = document.getElementById('filtros-analise') || document;
+        const nosFiltros = (seletor) => raizFiltros.querySelectorAll(seletor);
 
-        if (botaoBarra && sidebar) {
-            botaoBarra.addEventListener('click', () => {
-                const fechada = sidebar.classList.contains('-translate-x-full');
-                sidebar.classList.toggle('-translate-x-full', !fechada);
-                if (conteudo) {
-                    conteudo.classList.toggle('pl-[345px]', fechada);
-                    conteudo.style.paddingLeft = fechada ? '335px' : '';
-                }
-                if (iconeBarra) {
-                    iconeBarra.classList.toggle('fa-chevron-right', !fechada);
-                    iconeBarra.classList.toggle('fa-chevron-left', fechada);
-                }
-            });
-        }
+        /* ==================================================================
+           A BARRA DE FILTROS NÃO É REGISTRADA AQUI
+           ==================================================================
+           A barra é UMA só, do lado de fora das duas abas, e quem a abre e
+           fecha é `dash_documentos_ia.js` — que roda sempre, porque a aba de
+           Envios & Pendências está sempre no documento, mesmo escondida.
+
+           ESTE ARQUIVO JÁ TEVE O SEU PRÓPRIO OUVINTE, de quando as abas eram
+           duas páginas separadas e o de lá não chegava até aqui. Com as duas no
+           mesmo documento, os dois passaram a disparar no mesmo clique: cada um
+           LÊ o estado atual e o inverte, então o segundo desfazia o primeiro e
+           a barra não abria mais. Um botão, um ouvinte.
+
+           `esteEstaVisivel` é o que sobrou da necessidade: o ApexCharts mede a
+           caixa no momento em que desenha, e enquanto esta aba está escondida a
+           caixa tem largura zero.
+           ================================================================== */
+        const esteEstaVisivel = () => vistaPerformance.offsetParent !== null;
+
+        /*  As instituições escolhidas NESTA aba. Vem de `dash_documentos_ia.js`,
+            que é o dono do modal e guarda uma lista para cada aba.  */
+        const iesDaAba = () => (typeof window.dociaIESAtivas === 'function'
+            ? window.dociaIESAtivas('analise') : []);
 
         const el = {
             cabecalho: document.getElementById('ia-tabela-cabecalho'),
@@ -147,9 +154,9 @@
             rolagem: document.getElementById('ia-tabela-rolagem'),
         };
 
-        const radiosModo = document.querySelectorAll('.filter-modo');
-        const caixasSemestre = document.querySelectorAll('.filter-semestre');
-        const caixasDocumento = document.querySelectorAll('.filter-documento-ies');
+        const radiosModo = nosFiltros('.filter-modo');
+        const caixasSemestre = nosFiltros('.filter-semestre');
+        const caixasDocumento = nosFiltros('.filter-documento-ies');
 
         const marcados = (caixas) => Array.from(caixas)
             .filter((caixa) => caixa.checked)
@@ -245,16 +252,20 @@
             }
 
             FILTROS_DE_PESSOA.forEach(([parametro, classe]) => {
-                const escolhidos = marcados(document.querySelectorAll('.' + classe));
+                const escolhidos = marcados(nosFiltros('.' + classe));
                 if (escolhidos.length) busca.append(parametro, escolhidos.join(','));
             });
 
             /*  `||` e não vírgula: nome de faculdade tem vírgula, e a view separa
-                esta lista por `||` justamente por isso. `activeIESFilters` é do
-                escopo do filtro de instituições, em `dash_documentos_ia.js`.  */
-            if (typeof activeIESFilters !== 'undefined' && activeIESFilters.length) {
-                busca.append('ies', activeIESFilters.join('||'));
-            }
+                esta lista por `||` justamente por isso.
+
+                A LISTA É POR ABA. O modal de instituições é um só — é uma telinha
+                passageira, não precisa de duas cópias —, mas a seção que ele grava
+                é a da aba aberta: mexer nas instituições aqui não pode mexer nas de
+                Envios & Pendências. Quem guarda as duas listas é
+                `dash_documentos_ia.js`, e `dociaIESAtivas` devolve a desta.  */
+            const ies = iesDaAba();
+            if (ies.length) busca.append('ies', ies.join('||'));
 
             return busca;
         };
@@ -277,16 +288,15 @@
 
         const atualizarContadores = () => {
             let total = 0;
-            total += contador('contador-semestres', marcados(caixasSemestre).length);
-            total += contador('contador-situacao',
-                marcados(document.querySelectorAll('.filter-vinculo')).length
-                + marcados(document.querySelectorAll('.filter-perfil')).length);
-            total += contador('contador-mudancas',
-                marcados(document.querySelectorAll('.filter-mudou-ies')).length
-                + marcados(document.querySelectorAll('.filter-mudou-bolsa')).length);
+            total += contador('contador-semestres-ia', marcados(caixasSemestre).length);
+            total += contador('contador-situacao-ia',
+                marcados(nosFiltros('.filter-vinculo')).length
+                + marcados(nosFiltros('.filter-perfil')).length);
+            total += contador('contador-mudancas-ia',
+                marcados(nosFiltros('.filter-mudou-ies')).length
+                + marcados(nosFiltros('.filter-mudou-bolsa')).length);
             total += contador('contador-inconsistencias', inconsistenciasEscolhidas.size);
-            total += contador('contador-ies',
-                (typeof activeIESFilters !== 'undefined') ? activeIESFilters.length : 0);
+            total += contador('contador-ies-ia', iesDaAba().length);
             contador('contador-filtros', total);
         };
 
@@ -1134,31 +1144,40 @@
             escrever('ia-kpi-integral', formatarNumero(bolsa.Integral || 0),
                      fatia(bolsa.Integral || 0));
 
-            /*  BOLSA PAGA POR QUANTIDADE DE PAGAMENTOS — a única peça da tela que fala
-                de dinheiro repassado, e não de documento. O eixo é ordinal (0 a 6),
-                então as colunas ficam na ordem do número e não na do valor.  */
-            const bolsaPaga = corpo.bolsa_paga || [];
-            const baseBolsa = document.getElementById('ia-base-bolsa');
-            const somaPaga = bolsaPaga.reduce((s, f) => s + f.soma, 0);
+            /*  RECÁLCULO DAS BOLSAS — a única peça da tela que fala de DINHEIRO, e
+                não de documento. São duas somas do MESMO recorte: o que a coleta de
+                dados diz que a OVG devia pagar e o que o documento lido pela IA diz.
+                A pergunta é de quanto elas divergem, e é a linha de base que responde.
 
-            if (!bolsaPaga.length || somaPaga === 0) {
-                if (baseBolsa) {
-                    baseBolsa.textContent = bolsaPaga.length ? 'nenhum repasse no recorte' : '';
+                DUAS COLUNAS E NÃO UM KPI de diferença: o valor sozinho não diz se a
+                divergência é grande perto do total. Lado a lado, a altura das duas
+                colunas já responde isso antes de ler número nenhum.
+
+                As cores são os dois degraus de marca da paleta (roxo e rosa), na
+                mesma ordem em que a tela usa "sistema" e "documento" nos KPIs de
+                diferença logo acima — trocá-las aqui faria a mesma oposição aparecer
+                com duas linguagens de cor na mesma faixa.  */
+            const recalc = corpo.recalculo_bolsas || { coleta: 0, documento: 0 };
+            const baseRecalc = document.getElementById('ia-base-recalculo');
+
+            if (recalc.coleta > 0 || recalc.documento > 0) {
+                if (baseRecalc) {
+                    baseRecalc.textContent = 'diferença de '
+                        + formatarMoeda(recalc.documento - recalc.coleta);
                 }
-                mostrarVazio('ia-gr-bolsa', 'fa-hand-holding-dollar',
-                             bolsaPaga.length
-                                 ? 'Nenhum repasse registrado neste recorte.'
-                                 : 'Sem dados de pagamento neste documento.');
-            } else {
-                if (baseBolsa) baseBolsa.textContent = formatarMoeda(somaPaga).replace('+', '');
-                /*  O RÓTULO É SÓ O NÚMERO. Com "pagamentos" embaixo, sete colunas de
-                    47px viravam "pagamentopagamentospagamentos" — e a palavra já está
-                    no título do card, que é onde ela se lê uma vez só.  */
-                desenhar('ia-gr-bolsa',
-                         bolsaPaga.map((f) => [String(f.qtd)]),
-                         bolsaPaga.map((f) => f.soma),
-                         [PALETA_OVG[tema][0]],
+                /*  `base` em 0: a régua sai do maior dos dois valores, e é o que se
+                    quer aqui — as duas colunas são a MESMA medida, então a régua
+                    delas é uma só e não precisa vir de fora, como vem nos dois
+                    cards de mensalidade.  */
+                desenhar('ia-gr-recalculo',
+                         [['Coleta de Dados'], ['Documento']],
+                         [recalc.coleta, recalc.documento],
+                         [PALETA_OVG[tema][2], PALETA_OVG[tema][1]],
                          0, 'moeda');
+            } else {
+                if (baseRecalc) baseRecalc.textContent = '';
+                mostrarVazio('ia-gr-recalculo', 'fa-hand-holding-dollar',
+                             'Sem valor de bolsa para comparar neste recorte.');
             }
 
             /*  AS DUAS DIFERENÇAS. Moeda com sinal: negativo é o documento cobrando
@@ -1224,6 +1243,10 @@
             tabela com o recorte que já não está na barra.  */
         let pedidoAtual = 0;
 
+        /*  Ficou uma consulta por fazer enquanto a aba estava escondida? Ver
+            `recarregar` e o ouvinte de `docia:aba`.  */
+        let pendenteDeRecarga = false;
+
         /*  A última resposta dos gráficos, guardada para repintar na troca de tema
             sem ir ao servidor: o recorte não mudou, só as cores.  */
         let ultimoResumo = null;
@@ -1266,6 +1289,20 @@
             atualizarContadores();
             pintarFiltrosAtivos();
             if (!el.corpo || !el.cabecalho) return;
+
+            /*  ABA ESCONDIDA NÃO CONSULTA. As duas abas dividem a mesma barra e o
+                mesmo botão "Atualizar", então tudo o que acontece lá chega aqui —
+                e responder a cada clique com uma consulta de 63 colunas para uma
+                tabela que ninguém está vendo é gastar duas vezes para mostrar uma.
+
+                A DÍVIDA FICA ANOTADA e é paga no instante em que a aba abre (ver o
+                ouvinte de `docia:aba`), então quem troca de aba encontra o recorte
+                de agora — o que se perde é a consulta invisível, não o dado.  */
+            if (!esteEstaVisivel()) {
+                pendenteDeRecarga = true;
+                return;
+            }
+            pendenteDeRecarga = false;
 
             marcarContagem('<b>...</b>', true);
             const minhaVez = ++pedidoAtual;
@@ -1311,9 +1348,9 @@
                 });
         };
 
-        /*  O filtro de instituições chama este gancho ao aplicar a seleção — é
-            assim que ele avisa a tela, sem saber qual tela é.  */
-        window.recarregarDocumentosIA = recarregar;
+        /*  O filtro de instituições e a troca de abas disparam `docia:recarregar`
+            ao aplicar a seleção ou quando a visualização exige atualização.  */
+        window.addEventListener('docia:recarregar', recarregar);
 
         /* ==================================================================
            AS ETIQUETAS DE FILTRO ATIVO
@@ -1355,14 +1392,15 @@
              ['Perfil', 'filter-perfil', 'perfil'],
              ['Mudou IES', 'filter-mudou-ies', 'mudou_ies'],
              ['Mudou bolsa', 'filter-mudou-bolsa', 'mudou_bolsa']].forEach(([rotulo, classe, acao]) => {
-                marcados(document.querySelectorAll('.' + classe)).forEach(
+                marcados(nosFiltros('.' + classe)).forEach(
                     (v) => etiquetas.push(chip(rotulo, v, acao + ':' + v)));
             });
 
-            if (typeof activeIESFilters !== 'undefined' && activeIESFilters.length) {
-                etiquetas.push(chip('IES', activeIESFilters.length === 1
-                    ? activeIESFilters[0]
-                    : activeIESFilters.length + ' instituições', 'ies:*'));
+            const iesEscolhidas = iesDaAba();
+            if (iesEscolhidas.length) {
+                etiquetas.push(chip('IES', iesEscolhidas.length === 1
+                    ? iesEscolhidas[0]
+                    : iesEscolhidas.length + ' instituições', 'ies:*'));
             }
 
             inconsistenciasEscolhidas.forEach(
@@ -1398,7 +1436,7 @@
                 //  pode ter dois-pontos, e parti-la em todos truncaria o valor.
                 const [tipo, valor] = String(botao.dataset.acao).split(/:(.*)/);
 
-                const desmarcar = (classe) => document.querySelectorAll('.' + classe)
+                const desmarcar = (classe) => nosFiltros('.' + classe)
                     .forEach((caixa) => { if (caixa.value === valor) caixa.checked = false; });
 
                 if (tipo === 'vinculo') desmarcar('filter-vinculo');
@@ -1421,7 +1459,7 @@
                     //  zerá-los deixaria a tela sem recorte nenhum — que não é um
                     //  estado que ela saiba mostrar.
                     ['filter-vinculo', 'filter-perfil', 'filter-mudou-ies', 'filter-mudou-bolsa']
-                        .forEach((classe) => document.querySelectorAll('.' + classe)
+                        .forEach((classe) => nosFiltros('.' + classe)
                             .forEach((caixa) => (caixa.checked = false)));
                     if (typeof window.resetFiltroIES === 'function') window.resetFiltroIES();
                     inconsistenciasEscolhidas.clear();
@@ -1639,8 +1677,17 @@
             aplicarModo(radio.value);
         }));
 
-        // Período SOMA: marcar dois semestres é pergunta legítima ("2025-2 e 2026-1").
-        caixasSemestre.forEach((caixa) => caixa.addEventListener('change', recarregar));
+        const exclusividadeSemestre = (evento) => {
+            if (!evento.target.checked) {
+                evento.target.checked = true;
+                return;
+            }
+            caixasSemestre.forEach((caixa) => {
+                if (caixa !== evento.target) caixa.checked = false;
+            });
+            recarregar();
+        };
+        caixasSemestre.forEach((caixa) => caixa.addEventListener('change', exclusividadeSemestre));
 
         /*  DOCUMENTO É ESCOLHA ÚNICA E OBRIGATÓRIA — diferente da aba Envios &
             Pendências, onde ele é atalho de fatia e pode ficar vazio.
@@ -1685,7 +1732,7 @@
             consulta precisa sair DEPOIS de o par ter sido desfeito — senão ela
             ainda leva os dois valores.  */
         const exclusivo = (classe) => {
-            const caixas = document.querySelectorAll('.' + classe);
+            const caixas = nosFiltros('.' + classe);
             caixas.forEach((caixa) => caixa.addEventListener('change', () => {
                 if (caixa.checked) {
                     caixas.forEach((outra) => {
@@ -1699,10 +1746,15 @@
         ['filter-vinculo', 'filter-perfil',
          'filter-mudou-ies', 'filter-mudou-bolsa'].forEach(exclusivo);
 
+        /*  "RESTAURAR PADRÃO" É DA ABA QUE ESTÁ NA TELA. O botão é um só, no
+            cabeçalho da barra, e os dois módulos o escutam — sem esta saída, um
+            clique aqui zeraria também o recorte da aba vizinha, que a pessoa não
+            está vendo e não pediu para mexer.  */
         const botaoLimpar = document.getElementById('btn-clear-filters');
         if (botaoLimpar) {
             botaoLimpar.addEventListener('click', () => {
-                document.querySelectorAll(
+                if (!esteEstaVisivel()) return;
+                nosFiltros(
                     '.filter-semestre, .filter-vinculo, .filter-perfil,'
                     + ' .filter-mudou-ies, .filter-mudou-bolsa'
                 ).forEach((caixa) => (caixa.checked = false));
@@ -1726,26 +1778,90 @@
             if (ultimoResumo) pintarGraficos(ultimoResumo);
         });
 
-        /*  A altura das barras vem do card, que é `flex`. Uma troca de modo ou a
-            barra de filtros abrindo mudam a largura, e o Apex só acompanha a
-            largura sozinho no `resize` da janela.  */
+        /* ==================================================================
+           OS GRÁFICOS ACOMPANHAM A CAIXA
+           ==================================================================
+           MESMO MECANISMO DE `ajustarAlturas` EM `dash_documentos_ia.js`, e não
+           uma segunda ideia: as cinco roscas da outra aba já resolveram este
+           problema, e a versão anterior daqui errava nos três pontos que a de lá
+           acerta. Era isso que entortava a rosca quando a barra de filtros abria.
+
+           1. ZERAR `min-height` ANTES DE MEDIR. Depois de renderizar, o Apex
+              escreve `min-height: <altura>px` INLINE na nossa caixa. Isso anula o
+              `min-height: 0` do template e trava o piso da caixa na maior altura
+              que ela já teve: ela cresce, mas nunca encolhe. Medir sem zerar é
+              medir o passado.
+
+           2. SÓ REDESENHAR SE A ALTURA MUDOU. Abrir a barra muda a LARGURA dos
+              cards, não a altura — e largura o Apex acompanha sozinho, pelo
+              `resize` da janela. Sem esta guarda, cada quadro da animação
+              disparava `updateOptions` nos quatro gráficos, e cada chamada
+              redesenha o SVG inteiro. A rosca aparecia oval porque estava sendo
+              redesenhada no meio da transição, medindo uma caixa que ainda
+              estava a caminho.
+
+           3. ESPERAR A TRANSIÇÃO TERMINAR. A barra leva 500 ms; medir antes disso
+              é medir uma largura intermediária. `requestAnimationFrame`, que era o
+              que estava aqui, faz exatamente o contrário: mede a cada quadro.
+
+           O `resize` da janela que o botão da barra dispara (ver `forcarResize` em
+           `dash_documentos_ia.js`) é o que reavisa a LARGURA; este observador
+           cuida da ALTURA. Os dois juntos são o que a outra aba já tinha.
+           ================================================================== */
+        const ajustarAlturasIA = () => {
+            Object.keys(graficos).forEach((id) => {
+                const alvo = document.getElementById(id);
+                if (!alvo || !graficos[id]) return;
+
+                alvo.style.minHeight = '0px';
+                const altura = alvo.clientHeight;
+                /*  Caixa sem altura é caixa escondida — esta aba pode estar fora
+                    da tela. Medir aqui gravaria o piso de 140px como se fosse a
+                    altura boa, e ela voltaria assim quando a aba abrisse.  */
+                if (!altura) return;
+
+                if (graficos[id].__alturaAplicada === altura) return;
+                graficos[id].__alturaAplicada = altura;
+                graficos[id].updateOptions({ chart: { height: altura } }, false, false);
+            });
+        };
+
         if (window.ResizeObserver && vistaPerformance) {
-            let quadro = null;
+            let pendente = null;
             new ResizeObserver(() => {
-                if (quadro) cancelAnimationFrame(quadro);
-                quadro = requestAnimationFrame(() => {
-                    /*  A LARGURA o Apex acompanha sozinho pelo `resize` da janela; a
-                        ALTURA, não — e é ela que muda quando a barra de filtros abre,
-                        o card expande ou a base do gráfico quebra numa linha a mais.  */
-                    Object.keys(graficos).forEach((id) => {
-                        const alvo = document.getElementById(id);
-                        if (!alvo || !graficos[id]) return;
-                        graficos[id].updateOptions(
-                            { chart: { height: alturaDe(alvo) } }, false, false);
-                    });
-                });
+                clearTimeout(pendente);
+                pendente = setTimeout(ajustarAlturasIA, 250);
             }).observe(vistaPerformance);
         }
+
+        /* ==================================================================
+           QUANDO ESTA ABA ENTRA NA TELA
+           ==================================================================
+           DUAS COISAS ACONTECEM, e nenhuma delas é recarregar a página.
+
+           A CONSULTA PENDENTE. Enquanto a aba está escondida, `recarregar` não
+           vai ao servidor: seria uma consulta de 63 colunas para uma tabela que
+           ninguém está vendo, a cada clique dado na outra aba. Em vez disso ela
+           anota que ficou devendo, e é aqui que a dívida se paga — a aba abre já
+           com o recorte atual, não com o de quando foi fechada.
+
+           A MEDIDA DOS GRÁFICOS. O Apex mede a caixa na hora de desenhar, e
+           enquanto a aba está escondida a caixa não tem largura nenhuma: um
+           gráfico renderizado ali nasce com 0 de largura e é isso que chega
+           torto na tela. O `resize` da janela reavisa a largura, e
+           `ajustarAlturasIA` a altura.
+
+           O `requestAnimationFrame` espera o CSS aplicar o `display` novo: no
+           mesmo quadro do evento a caixa ainda mede zero.
+           ================================================================== */
+        document.addEventListener('docia:aba', (evento) => {
+            if (!evento.detail || evento.detail.aba !== 'analise') return;
+            requestAnimationFrame(() => {
+                if (pendenteDeRecarga) recarregar();
+                window.dispatchEvent(new Event('resize'));
+                ajustarAlturasIA();
+            });
+        });
 
         /*  O modo LEMBRADO manda, e o marcado no HTML é a reserva — ver
             `aba_lembrada.js`. Os rádios também são reescritos, senão a barra
