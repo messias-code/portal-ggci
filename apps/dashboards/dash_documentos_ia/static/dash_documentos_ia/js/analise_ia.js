@@ -830,7 +830,7 @@
             const minVisual = Math.ceil(totalCru * 0.03);
             const inflado = valores.map((v) => (v > 0 && v < minVisual) ? minVisual : v);
             
-            const opcoes = opcoesDeRosca(nomes, inflado, cores, alturaDe(alvo), valores);
+            const opcoes = opcoesDeRosca(nomes, inflado, cores, '100%', valores);
             if (graficos[id] && graficos[id].__tipo === 'donut') {
                 graficos[id].updateOptions(opcoes, false, false);
                 return;
