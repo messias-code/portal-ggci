@@ -1632,6 +1632,24 @@ html[data-tela-cheia="1"] .docia-legenda__pct { width: 44px; }
 }
 
 
+/*  O BICO DO BALÃO NÃO EXISTE NESTE PROJETO.
+
+    Ele é peça do balão do Apex, não do nosso: nos gráficos de EIXO (as duas
+    colunas de mensalidade) a v7 desenha um `.apexcharts-tooltip-arrow` branco
+    apontando para a coluna, posicionado por `--apx-tt-arrow-y`. Como a pintura
+    da caixa do Apex está anulada logo acima, sobrava só o bico solto ao lado do
+    NOSSO balão — um triângulo branco que não pertence a caixa nenhuma.
+
+    A rosca nunca teve o bico (o balão de `pie`/`donut` não desenha um), e é ela
+    que define a forma da casa: balão sem bico. A regra vale para os dois tipos
+    de gráfico de propósito, para que uma coluna nova em qualquer aba já nasça
+    igual em vez de reabrir isto.  */
+.chart-doc .apexcharts-tooltip-arrow,
+.docia-grafico-ia .apexcharts-tooltip-arrow {
+    display: none !important;
+}
+
+
 /* ==========================================================================
    "RESTAURAR PADRÃO" QUEBRAVA EM DUAS LINHAS
    ==========================================================================
