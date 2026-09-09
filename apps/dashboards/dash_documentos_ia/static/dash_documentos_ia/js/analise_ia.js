@@ -47,8 +47,8 @@
        A ORDEM É FIXA e nunca gira: cada categoria tem o seu degrau, e um filtro
        que mude a quantidade de barras não pode repintar as que sobraram.  */
     const PALETA_OVG = {
-        claro:     ['#EB8DC8', '#D6008F', '#6B007B', '#BF616A', '#A3A3A3', '#D62828'],
-        eleitoral: ['#99F0D0', '#3EA9B2', '#6B71B2', '#BF616A', '#A3A3A3', '#F94144'],
+        claro:     ['#EB8DC8', '#D6008F', '#6B007B', '#BF616A', '#A3A3A3', '#D62828', '#888888', '#444444'],
+        eleitoral: ['#99F0D0', '#3EA9B2', '#6B71B2', '#BF616A', '#A3A3A3', '#F94144', '#888888', '#444444'],
     };
 
     /*  Mensalidade: os três primeiros e o CINZA — pulando o quarto degrau de

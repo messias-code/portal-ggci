@@ -1341,7 +1341,6 @@ def _carregar_aba_inteira(rotulo):
         df['status_ia'] = (
             df['status_ia'].astype('string').fillna('Não Processado').str.strip().str.upper()
         )
-        df = df[df['status_ia'].isin(STATUS_PROCESSADO)]
         df['status_vinculo'] = (
             df['status_vinculo'].astype('string').fillna('DESLIGADO').str.strip().str.upper()
         )
@@ -1435,7 +1434,7 @@ VEREDITOS_DE_PROCESSADO = ['VÁLIDO', 'INVÁLIDO', 'FALSO VÁLIDO', 'FALSO INVÁ
 # O QUE FICOU DE FORA CONTINUA NA TELA: a linha de base do card diz sobre quantas das
 # linhas do recorte a rosca fala, e a tabela abaixo mostra todas.
 VEREDITOS_DO_GRAFICO = [
-    'VÁLIDO', 'INVÁLIDO', 'FALSO VÁLIDO', 'FALSO INVÁLIDO', 'CORROMPIDO',
+    'VÁLIDO', 'INVÁLIDO', 'FALSO VÁLIDO', 'FALSO INVÁLIDO', 'CORROMPIDO', 'NÃO PROCESSADO', 'PENDENTE'
 ]
 
 
@@ -1673,6 +1672,9 @@ def _recorte_da_rosca(df, request):
         dentro |= _balde_do_documento(df).isin(baldes)
     if vereditos:
         alvo = {v.strip().upper() for v in vereditos}
+        if 'PENDENTE' in alvo:
+            alvo.remove('PENDENTE')
+            alvo.update({'AUSENTE', 'INADIMPLENTE'})
         dentro |= df['status_ia'].isin(alvo)
     return df[dentro]
 
@@ -1708,6 +1710,8 @@ def api_resumo_ia(request):
     if len(recorte):
         contagem_ia = recorte['status_ia'].value_counts()
         veredito = {nome: int(contagem_ia.get(nome, 0)) for nome in VEREDITOS_DO_GRAFICO}
+        if 'PENDENTE' in VEREDITOS_DO_GRAFICO:
+            veredito['PENDENTE'] = int(contagem_ia.get('AUSENTE', 0)) + int(contagem_ia.get('INADIMPLENTE', 0))
         #  OS SEIS BALDES, pela MESMA função da outra aba. É isso que faz o número da
         #  fatia "Inadimplentes Proc." daqui ser o mesmo de lá — inclusive os dois
         #  desempates (`documento_ausente` e `veredito_documento`), que são a única
