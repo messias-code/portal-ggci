@@ -1561,7 +1561,7 @@ body { font-family: 'Poppins', sans-serif; }
     do template, exatamente para que a linha abaixo consiga sobrepô-lo. */
 .docia-faixa-graficos { flex: 1.6 1 0; min-height: 0; min-width: 0; }
 
-html[data-tela-cheia="1"] .docia-faixa-graficos { flex: 1.15 1 0; }
+html[data-tela-cheia="1"] .docia-faixa-graficos { flex: 1.7 1 0; }
 
 /*  O `min-height` acompanha o corpo maior — ele reserva a altura da legenda
     ANTES de haver conteúdo, e o comentário no topo do bloco `.docia-legenda`
