@@ -1148,12 +1148,20 @@
                     if (!medida.tem_dado) {
                         if (valor) valor.textContent = '—';
                         if (base) base.textContent = 'sem valor lido neste recorte';
+                        if (valor && valor.parentElement) valor.parentElement.title = '';
                         return;
                     }
                     if (valor) valor.textContent = formatarMoeda(medida.soma);
                     if (base) {
-                        base.textContent = formatarNumero(medida.divergentes)
-                            + ' de ' + formatarNumero(medida.linhas) + ' lidos divergem';
+                        base.textContent = formatarNumero(medida.coincidem)
+                            + ' de ' + formatarNumero(medida.linhas) + ' coincidem';
+                    }
+                    if (valor && valor.parentElement) {
+                        let texto_pct = 'valores exatos';
+                        if (medida.pct > 0) texto_pct = 'a coleta tem ' + formatarNumero(medida.pct) + '% a mais';
+                        else if (medida.pct < 0) texto_pct = 'a coleta tem ' + formatarNumero(Math.abs(medida.pct)) + '% a menos';
+                        
+                        valor.parentElement.title = 'Do documento para a coleta, ' + texto_pct + ', representando esse valor.';
                     }
                 });
 

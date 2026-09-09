@@ -1554,14 +1554,19 @@ def _diferenca_de_mensalidade(processados, chave):
     val_ia = pd.to_numeric(processados[na_ia], errors='coerce').fillna(0)
     val_sistema = pd.to_numeric(processados[no_sistema], errors='coerce').fillna(0)
     
-    diferenca = val_ia - val_sistema
+    diferenca = val_sistema - val_ia
+    soma_ia = float(val_ia.sum())
+    soma_diff = float(diferenca.sum())
+    pct = (soma_diff / soma_ia * 100) if soma_ia else 0.0
+
+    balde = processados[coluna].astype('string').str.strip().str.upper()
+    coincidem = int((balde == 'COLETA DE DADOS CONFORME DOCUMENTO').sum())
 
     return {
-        'soma': round(float(diferenca.sum()), 2),
+        'soma': round(soma_diff, 2),
         'linhas': int(len(diferenca)),
-        # Quantas linhas de fato divergem. Sem isso, uma soma pequena não distingue
-        # "quase tudo bateu" de "muitas divergências que se anulam".
-        'divergentes': int((diferenca != 0).sum()),
+        'coincidem': coincidem,
+        'pct': round(pct, 2),
         'tem_dado': True,
     }
 
