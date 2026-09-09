@@ -851,7 +851,7 @@
                 tamanho que "Bateu 25.585" no card ao lado: duas barras iguais dizendo
                 números que diferem em três vezes.  */
             const teto = Math.max(base || 0, ...valores, 1) * 1.12;
-            const opcoes = opcoesDeBarra(categorias, valores, cores, teto, alturaDe(alvo),
+            const opcoes = opcoesDeBarra(categorias, valores, cores, teto, '100%',
                                          formato);
             if (graficos[id] && graficos[id].__tipo === 'bar') {
                 graficos[id].updateOptions(opcoes, false, false);

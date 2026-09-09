@@ -2954,6 +2954,11 @@ html[data-docia-aba="analise"] #aba-analise { display: flex; }
 html[data-docia-aba="envios"] #filtros-envios,
 html[data-docia-aba="analise"] #filtros-analise { display: block; }
 
+/* Corrige o bug do ApexCharts que injeta min-height fixo e não deixa a caixa encolher */
+.docia-grafico-ia .apexcharts-canvas {
+    min-height: 0 !important;
+}
+
 .docia-legenda--ia::-webkit-scrollbar {
     width: 4px;
 }
