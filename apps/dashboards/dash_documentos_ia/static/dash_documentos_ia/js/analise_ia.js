@@ -492,7 +492,6 @@
                 height: altura,
                 fontFamily: 'Poppins, sans-serif',
                 toolbar: { show: false },
-                parentHeightOffset: 0,
                 animations: { enabled: false },
                 background: 'transparent',
                 /*  O Apex reserva 15px acima do gráfico por conta própria, para um
@@ -534,9 +533,9 @@
                 show: false,
                 padding: {
                     left: -6, right: 0, top: -12,
+                    bottom: formato === 'moeda' ? 12 : 32,
                     //  Três linhas de rótulo nas medidas de mensalidade; uma só no de
                     //  repasse, onde a categoria é um algarismo.
-                    bottom: 0,
                 },
             },
             plotOptions: {
@@ -671,7 +670,6 @@
                 height: altura,
                 fontFamily: 'Poppins, sans-serif',
                 toolbar: { show: false },
-                parentHeightOffset: 0,
                 animations: {
                     enabled: true, easing: 'easeout', speed: 1200,
                     dynamicAnimation: { speed: 500 },
