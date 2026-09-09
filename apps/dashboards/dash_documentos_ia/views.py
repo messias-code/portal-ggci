@@ -1477,12 +1477,23 @@ def _contagem_por_tipo_de_bolsa(recorte):
 
 def _recalculo_bolsas(recorte):
     import pandas as pd
-    if len(recorte) == 0 or not {'soma_ovg_devia_pagar_sis', 'soma_ovg_devia_pagar_ia'} <= set(recorte.columns):
-        return {'coleta': 0, 'documento': 0}
+    if len(recorte) == 0 or not {'soma_ovg_devia_pagar_ia', 'soma_prejuizo_ovg', 'diagnostico_financeiro_final'} <= set(recorte.columns):
+        return {'conformidade': 0, 'acima': 0, 'abaixo': 0, 'excedente': 0}
     
-    coleta = pd.to_numeric(recorte['soma_ovg_devia_pagar_sis'], errors='coerce').sum()
-    doc = pd.to_numeric(recorte['soma_ovg_devia_pagar_ia'], errors='coerce').sum()
-    return {'coleta': float(coleta), 'documento': float(doc)}
+    diag = recorte['diagnostico_financeiro_final'].astype(str).str.strip().str.upper()
+    
+    conformidade = pd.to_numeric(recorte.loc[diag == 'PAGAMENTO CORRETO', 'soma_ovg_devia_pagar_ia'], errors='coerce').sum()
+    acima = pd.to_numeric(recorte.loc[diag == 'OVG PAGOU A MAIS', 'soma_ovg_devia_pagar_ia'], errors='coerce').sum()
+    abaixo = pd.to_numeric(recorte.loc[diag == 'OVG PAGOU A MENOS', 'soma_ovg_devia_pagar_ia'], errors='coerce').sum()
+    
+    excedente = pd.to_numeric(recorte.loc[diag == 'OVG PAGOU A MAIS', 'soma_prejuizo_ovg'], errors='coerce').sum()
+    
+    return {
+        'conformidade': float(conformidade),
+        'acima': float(acima),
+        'abaixo': float(abaixo),
+        'excedente': float(excedente)
+    }
 
 def _bolsa_paga_por_quantidade(recorte):
     """

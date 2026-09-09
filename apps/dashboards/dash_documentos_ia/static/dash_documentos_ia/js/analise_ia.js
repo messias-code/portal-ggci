@@ -1162,27 +1162,46 @@
                 mesma ordem em que a tela usa "sistema" e "documento" nos KPIs de
                 diferença logo acima — trocá-las aqui faria a mesma oposição aparecer
                 com duas linguagens de cor na mesma faixa.  */
-            const recalc = corpo.recalculo_bolsas || { coleta: 0, documento: 0 };
+            const recalc = corpo.recalculo_bolsas || { conformidade: 0, acima: 0, abaixo: 0, excedente: 0 };
             const baseRecalc = document.getElementById('ia-base-recalculo');
+            const boxExcedente = document.getElementById('ia-box-excedente');
+            const valExcedente = document.getElementById('ia-val-excedente');
 
-            if (recalc.coleta > 0 || recalc.documento > 0) {
+            if (recalc.conformidade > 0 || recalc.acima > 0 || recalc.abaixo > 0) {
                 if (baseRecalc) {
-                    baseRecalc.textContent = 'diferença de '
-                        + formatarMoeda(recalc.documento - recalc.coleta);
+                    baseRecalc.textContent = 'baseado no diagnóstico financeiro';
                 }
-                /*  `base` em 0: a régua sai do maior dos dois valores, e é o que se
-                    quer aqui — as duas colunas são a MESMA medida, então a régua
-                    delas é uma só e não precisa vir de fora, como vem nos dois
-                    cards de mensalidade.  */
-                desenhar('ia-gr-recalculo',
-                         [['Coleta de Dados'], ['Documento']],
-                         [recalc.coleta, recalc.documento],
-                         [PALETA_OVG[tema][2], PALETA_OVG[tema][1]],
-                         0, 'moeda');
+                const rotulos = ['Soma das Bolsas Pagas - Recálculo (Em Conformidade)', 'Soma das Bolsas Pagas - Recálculo (Acima do Esperado)', 'Soma das Bolsas Pagas - Recálculo (Abaixo do Esperado)'];
+                const valores = [recalc.conformidade, recalc.acima, recalc.abaixo];
+                // cores: verde, vermelho, amarelo ou semelhantes
+                const cores = [PALETA_OVG[tema][0], PALETA_OVG[tema][3], PALETA_OVG[tema][2]];
+                
+                desenharRosca('ia-gr-recalculo', rotulos, valores, cores);
+                
+                const caixa = document.getElementById('ia-legenda-recalculo');
+                if (caixa) {
+                    const total = valores.reduce((soma, valor) => soma + valor, 0);
+                    caixa.innerHTML = rotulos.map((nome, i) => {
+                        const pct = total > 0 ? (valores[i] / total) * 100 : 0;
+                        return '<div class="docia-legenda__item">'
+                            + '<span class="docia-legenda__ponto" style="background:' + cores[i] + ';"></span>'
+                            + '<span class="docia-legenda__nome" style="white-space: normal; line-height: 1.1; padding-right: 4px;" title="' + escaparHtml(nome) + '">' + escaparHtml(nome) + '</span>'
+                            + '<span class="docia-legenda__valor" style="width: auto; padding-left: 8px;">' + formatarMoeda(valores[i]) + '</span>'
+                            + '<span class="docia-legenda__pct">' + pct.toFixed(1).replace('.', ',') + '%</span>'
+                            + '</div>';
+                    }).join('');
+                }
+                if (boxExcedente) {
+                    boxExcedente.style.display = 'flex';
+                    if (valExcedente) valExcedente.textContent = formatarMoeda(recalc.excedente);
+                }
             } else {
                 if (baseRecalc) baseRecalc.textContent = '';
                 mostrarVazio('ia-gr-recalculo', 'fa-hand-holding-dollar',
                              'Sem valor de bolsa para comparar neste recorte.');
+                const caixa = document.getElementById('ia-legenda-recalculo');
+                if (caixa) caixa.innerHTML = '';
+                if (boxExcedente) boxExcedente.style.display = 'none';
             }
 
             /*  AS DUAS DIFERENÇAS. Moeda com sinal: negativo é o documento cobrando
