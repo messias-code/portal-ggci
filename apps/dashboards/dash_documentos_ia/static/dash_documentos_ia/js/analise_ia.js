@@ -550,7 +550,7 @@
                 grid: {
                     show: false,
                     padding: {
-                        left: -6, right: 0, top: -12,
+                        left: -15, right: -15, top: -12,
                         bottom: formato === 'moeda' ? 12 : 32,
                         //  Três linhas de rótulo nas medidas de mensalidade; uma só no de
                         //  repasse, onde a categoria é um algarismo.
@@ -692,13 +692,16 @@
                     vizinha e nasce uma mancha cinza na emenda.  */
                 dropShadow: { enabled: false },
             },
+            grid: {
+                padding: { left: -12, right: -12, top: 0, bottom: 0 },
+            },
             series: valores,
             labels: nomes,
             colors: cores,
             plotOptions: {
                 pie: {
                     expandOnClick: false,
-                    customScale: 0.98,
+                    customScale: 1.0,
                     //  As pontas das fatias são ARREDONDADAS, como no quantitativo da
                     //  outra aba. Sem isto o anel fica com emendas em esquadro.
                     borderRadius: 10,
