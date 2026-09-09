@@ -604,6 +604,8 @@
                 categoria, moldura cinza e o nome da série ("Linhas"), que aqui não diz
                 nada — a série é uma só e a categoria já está escrita embaixo da coluna.  */
             tooltip: {
+                intersect: false,
+                shared: true,
                 custom: ({ series, seriesIndex, dataPointIndex, w }) => {
                     const dados = series[seriesIndex];
                     const soma = dados.reduce((a, b) => a + b, 0);
