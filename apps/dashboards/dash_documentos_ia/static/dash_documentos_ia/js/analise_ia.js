@@ -847,7 +847,7 @@
                 normalizava pelo próprio máximo, e "Bateu 8.936" desenhava do mesmo
                 tamanho que "Bateu 25.585" no card ao lado: duas barras iguais dizendo
                 números que diferem em três vezes.  */
-            const teto = Math.max(base || 0, ...valores, 1) * 1.18;
+            const teto = Math.max(base || 0, ...valores, 1) * 1.12;
             const opcoes = opcoesDeBarra(categorias, valores, cores, teto, alturaDe(alvo),
                                          formato);
             if (graficos[id] && graficos[id].__tipo === 'bar') {
