@@ -627,7 +627,6 @@
                                 <h3 class="text-sm font-extrabold text-gray-700 m-0 text-center shrink-0" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">MENSALIDADE SEM DESCONTO</h3>
                                 <p class="docia-grafico-base text-[10px] text-gray-400 text-center m-0 mb-1 shrink-0" id="ia-base-msd"></p>
                                 <div class="docia-grafico-ia w-full" id="ia-gr-msd" style="flex: 1 1 0; min-height: 0;"></div>
-                                <div class="docia-legenda docia-legenda--ia shrink-0" id="ia-legenda-msd"></div>
                             </div>
 
                             <div class="docia-card-doc bg-gradient-to-b from-white to-gray-50/40 backdrop-blur-md border border-white/60 rounded-3xl py-4 px-2 flex flex-col"
@@ -635,28 +634,6 @@
                                 <h3 class="text-sm font-extrabold text-gray-700 m-0 text-center shrink-0" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">MENSALIDADE COM DESCONTO</h3>
                                 <p class="docia-grafico-base text-[10px] text-gray-400 text-center m-0 mb-1 shrink-0" id="ia-base-mcd"></p>
                                 <div class="docia-grafico-ia w-full" id="ia-gr-mcd" style="flex: 1 1 0; min-height: 0;"></div>
-                                <div class="docia-legenda docia-legenda--ia shrink-0" id="ia-legenda-mcd"></div>
-                            </div>
-
-                            <!--
-                                RECÁLCULO DAS BOLSAS — a única peça da faixa que fala de
-                                DINHEIRO, e não de documento. São duas somas do mesmo
-                                recorte: o que a coleta de dados diz que a OVG devia pagar
-                                e o que o documento lido pela IA diz. A linha de base
-                                responde de quanto elas divergem.
-                            -->
-                            <div class="docia-card-doc bg-gradient-to-b from-white to-gray-50/40 backdrop-blur-md border border-white/60 rounded-3xl py-4 px-2 flex flex-col"
-                                 style="flex: 1.4 1 0; min-width: 0; min-height: 0;">
-                                <h3 class="text-sm font-extrabold text-gray-700 m-0 text-center shrink-0" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">ANÁLISE FINANCEIRA</h3>
-                                <p class="docia-grafico-base text-[10px] text-gray-400 text-center m-0 mb-1 shrink-0" id="ia-base-recalculo"></p>
-                                <div class="docia-grafico-ia w-full" id="ia-gr-recalculo" style="flex: 1 1 0; min-height: 0;"></div>
-                                <div class="docia-legenda docia-legenda--ia shrink-0" id="ia-legenda-recalculo"></div>
-                                <div class="mt-2 flex justify-between items-center bg-red-50/50 px-2 py-1.5 rounded-lg border border-red-100 shrink-0" id="ia-box-excedente" style="display: none;">
-                                    <div class="flex flex-col">
-                                        <span class="text-[10px] font-semibold text-red-700">Soma do Valor Excedente Pago</span>
-                                    </div>
-                                    <span class="text-xs font-bold text-red-700" id="ia-val-excedente"></span>
-                                </div>
                             </div>
                         </div>
 

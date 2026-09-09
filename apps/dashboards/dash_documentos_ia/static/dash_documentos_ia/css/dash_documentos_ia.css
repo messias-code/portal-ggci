@@ -2820,14 +2820,14 @@ body :is(button, a[href]):disabled { cursor: not-allowed; }
     rosca era desenhada POR CIMA do texto; longo demais, sobrava um vão morto embaixo
     dela. Cinco linhas de ~14,5px mais o respiro do topo dão 82. */
 .docia-legenda--ia {
-    height: 96px; /* Força todas as legendas a terem o mesmo tamanho para alinhar as roscas */
+    height: 106px; /* Aumentado um pouco para caber os 5 itens sem scroll */
     overflow-y: auto;
     overflow-x: hidden;
     gap: 0;
-    font-size: 9.5px;
+    font-size: 9px; /* Reduzido levemente */
 }
 
-.docia-legenda--ia .docia-legenda__item { padding: 1px 6px; }
+.docia-legenda--ia .docia-legenda__item { padding: 0 6px; }
 
 
 /*  O AVISO DE "COPIADO" — em CSS, e não em utilitárias como na outra aba.

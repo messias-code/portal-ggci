@@ -1092,10 +1092,11 @@
                 /*  A BASE DIZ SOBRE QUANTAS LINHAS A ROSCA FALA. Ela cobre só os
                     processados, e sem esta linha o total dela contradiria o da tabela
                     logo abaixo sem nada na tela explicando por quê.  */
-                base.textContent = corpo.processados === corpo.total
-                    ? formatarNumero(corpo.total) + ' documentos lidos'
-                    : formatarNumero(corpo.processados) + ' lidos de '
-                      + formatarNumero(corpo.total) + ' documentos';
+                if (corpo.processados === corpo.total) {
+                    base.innerHTML = formatarNumero(corpo.total) + ' documentos lidos';
+                } else {
+                    base.innerHTML = '<span class="text-red-500 font-medium">' + formatarNumero(corpo.processados) + ' lidos de ' + formatarNumero(corpo.total) + ' documentos</span>';
+                }
             }
             /*  A ROSCA MOSTRA SÓ O QUE A IA LEU. Pendentes, não processados e
                 inadimplentes descrevem a AUSÊNCIA de leitura — num gráfico chamado
@@ -1134,7 +1135,7 @@
             const bolsa = corpo.bolsa || {};
             const totalBolsa = (bolsa.Parcial || 0) + (bolsa.Integral || 0);
             const fatia = (n) => (totalBolsa > 0
-                ? (n / totalBolsa * 100).toFixed(1).replace('.', ',') + '% dos documentos'
+                ? (n / totalBolsa * 100).toFixed(1).replace('.', ',') + '% dos beneficiários'
                 : '');
 
             /*  BENEFICIÁRIOS é PESSOA e DOCUMENTOS é LINHA — o mesmo CPF aparece em
@@ -1148,61 +1149,6 @@
                      fatia(bolsa.Parcial || 0));
             escrever('ia-kpi-integral', formatarNumero(bolsa.Integral || 0),
                      fatia(bolsa.Integral || 0));
-
-            /*  RECÁLCULO DAS BOLSAS — a única peça da tela que fala de DINHEIRO, e
-                não de documento. São duas somas do MESMO recorte: o que a coleta de
-                dados diz que a OVG devia pagar e o que o documento lido pela IA diz.
-                A pergunta é de quanto elas divergem, e é a linha de base que responde.
-
-                DUAS COLUNAS E NÃO UM KPI de diferença: o valor sozinho não diz se a
-                divergência é grande perto do total. Lado a lado, a altura das duas
-                colunas já responde isso antes de ler número nenhum.
-
-                As cores são os dois degraus de marca da paleta (roxo e rosa), na
-                mesma ordem em que a tela usa "sistema" e "documento" nos KPIs de
-                diferença logo acima — trocá-las aqui faria a mesma oposição aparecer
-                com duas linguagens de cor na mesma faixa.  */
-            const recalc = corpo.recalculo_bolsas || { conformidade: 0, acima: 0, abaixo: 0, excedente: 0 };
-            const baseRecalc = document.getElementById('ia-base-recalculo');
-            const boxExcedente = document.getElementById('ia-box-excedente');
-            const valExcedente = document.getElementById('ia-val-excedente');
-
-            if (recalc.conformidade > 0 || recalc.acima > 0 || recalc.abaixo > 0) {
-                if (baseRecalc) {
-                    baseRecalc.textContent = 'baseado no diagnóstico financeiro';
-                }
-                const rotulos = ['Soma das Bolsas Pagas - Recálculo (Em Conformidade)', 'Soma das Bolsas Pagas - Recálculo (Acima do Esperado)', 'Soma das Bolsas Pagas - Recálculo (Abaixo do Esperado)'];
-                const valores = [recalc.conformidade, recalc.acima, recalc.abaixo];
-                // cores: verde, vermelho, amarelo ou semelhantes
-                const cores = [PALETA_OVG[tema][0], PALETA_OVG[tema][3], PALETA_OVG[tema][2]];
-                
-                desenharRosca('ia-gr-recalculo', rotulos, valores, cores);
-                
-                const caixa = document.getElementById('ia-legenda-recalculo');
-                if (caixa) {
-                    const total = valores.reduce((soma, valor) => soma + valor, 0);
-                    caixa.innerHTML = rotulos.map((nome, i) => {
-                        const pct = total > 0 ? (valores[i] / total) * 100 : 0;
-                        return '<div class="docia-legenda__item">'
-                            + '<span class="docia-legenda__ponto" style="background:' + cores[i] + ';"></span>'
-                            + '<span class="docia-legenda__nome" style="white-space: normal; line-height: 1.1; padding-right: 4px;" title="' + escaparHtml(nome) + '">' + escaparHtml(nome) + '</span>'
-                            + '<span class="docia-legenda__valor" style="width: auto; padding-left: 8px;">' + formatarMoeda(valores[i]) + '</span>'
-                            + '<span class="docia-legenda__pct">' + pct.toFixed(1).replace('.', ',') + '%</span>'
-                            + '</div>';
-                    }).join('');
-                }
-                if (boxExcedente) {
-                    boxExcedente.style.display = 'flex';
-                    if (valExcedente) valExcedente.textContent = formatarMoeda(recalc.excedente);
-                }
-            } else {
-                if (baseRecalc) baseRecalc.textContent = '';
-                mostrarVazio('ia-gr-recalculo', 'fa-hand-holding-dollar',
-                             'Sem valor de bolsa para comparar neste recorte.');
-                const caixa = document.getElementById('ia-legenda-recalculo');
-                if (caixa) caixa.innerHTML = '';
-                if (boxExcedente) boxExcedente.style.display = 'none';
-            }
 
             /*  AS DUAS DIFERENÇAS. Moeda com sinal: negativo é o documento cobrando
                 MENOS do que o sistema espera, e o sinal é metade do recado.  */
@@ -1258,8 +1204,7 @@
                 const cats = ordem.map((b) => ROTULO_MENSALIDADE[b] || [b]).map(a => Array.isArray(a) ? a.join(' ') : a);
                 const vals = ordem.map((b) => contagem[b] || 0);
                 const colors = CORES_MENSALIDADE(tema);
-                desenharRosca(idGr, cats, vals, colors);
-                pintarLegendaRosca(idGr.replace('gr', 'legenda'), cats, vals, colors);
+                desenhar(idGr, cats, vals, colors, corpo.processados, 'numero');
 
             });
         };
