@@ -701,7 +701,7 @@
             plotOptions: {
                 pie: {
                     expandOnClick: false,
-                    customScale: 1.0,
+                    customScale: 1.1,
                     //  As pontas das fatias são ARREDONDADAS, como no quantitativo da
                     //  outra aba. Sem isto o anel fica com emendas em esquadro.
                     borderRadius: 10,
