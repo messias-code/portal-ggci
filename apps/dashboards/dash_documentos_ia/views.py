@@ -1546,13 +1546,15 @@ def _diferenca_de_mensalidade(processados, chave):
     if len(processados) == 0 or not {coluna, no_sistema, na_ia} <= set(processados.columns):
         return vazio
 
-    balde = processados[coluna].astype('string').str.strip().str.upper()
-    lidos = processados[balde.isin(BALDES_LIDOS)]
-    if len(lidos) == 0:
+    if len(processados) == 0:
         return vazio
 
-    diferenca = (pd.to_numeric(lidos[na_ia], errors='coerce')
-                 - pd.to_numeric(lidos[no_sistema], errors='coerce')).dropna()
+    # O usuário pediu para o dashboard bater com o relatório em Excel, que trata
+    # valores não localizados pela IA como 0 na soma, gerando a divergência total.
+    val_ia = pd.to_numeric(processados[na_ia], errors='coerce').fillna(0)
+    val_sistema = pd.to_numeric(processados[no_sistema], errors='coerce').fillna(0)
+    
+    diferenca = val_ia - val_sistema
 
     return {
         'soma': round(float(diferenca.sum()), 2),
