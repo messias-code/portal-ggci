@@ -551,9 +551,18 @@
                     show: false,
                     padding: {
                         left: -15, right: -15, top: -12,
-                        bottom: formato === 'moeda' ? 12 : 32,
+                        bottom: formato === 'moeda' ? 12 : 8,
                         //  Três linhas de rótulo nas medidas de mensalidade; uma só no de
                         //  repasse, onde a categoria é um algarismo.
+                        //
+                        //  ERA 32, E ISSO SOBRAVA: o Apex já mede sozinho a altura das
+                        //  três linhas do rótulo e reserva a faixa do eixo; o `padding`
+                        //  daqui vem POR CIMA dela. Medido na bancada, o desenho parava
+                        //  56,8px acima da borda do card — um vão morto que não mudava com
+                        //  a altura da janela, e que era justamente o "espaçamento embaixo"
+                        //  que sobrava depois do F11. Com 8 são 32,8px, dos quais 16 são o
+                        //  `py-4` do card, e ainda sobram ~17px abaixo da última linha do
+                        //  rótulo: nada fica cortado, e as colunas ganham os 24px.
                     },
                 },
                 plotOptions: {
@@ -638,16 +647,26 @@
 
         /*  A ALTURA VAI EM PIXELS, MEDIDA — e não `height: '100%'`.
 
-            Com `100%` o ApexCharts lê a altura do contêiner NO MOMENTO DO RENDER e a
-            trava num `min-height` inline. Como o gráfico é pintado assim que a resposta
-            chega, ele media a caixa antes de o card ter se acomodado e travava um valor
-            maior do que o que sobra de verdade — a rosca era desenhada POR CIMA da
-            legenda, que fica logo abaixo dela. Com `overflow: visible` no canvas (que o
-            balão precisa para vazar), nada a segurava.
+            `100%` NÃO É A CAIXA DO GRÁFICO: no ApexCharts (v7.1.0, o que o CDN serve
+            hoje), `setSVGDimensions` resolve altura em porcentagem sobre
+            `getDimensions(this.el.parentNode)` — o CARD inteiro, do qual a nossa caixa
+            é só uma fatia. Medido na bancada: card de 393px devolvia svg de 371px numa
+            caixa de 180px, e o anel era desenhado 191px para fora, por cima da legenda.
+            Com `overflow: visible` no canvas (que o balão precisa para vazar), nada o
+            segurava. E como o Apex só grava o `min-height` inline no caminho em PIXEL,
+            no caminho da porcentagem a caixa nem sequer crescia junto: o desenho
+            simplesmente transbordava.
+
+            ZERAR O `min-height` ANTES DE MEDIR, pelo mesmo motivo de `ajustarAlturasIA`:
+            o valor que o Apex deixou inline no render anterior é o piso da caixa, e
+            medir sem zerar é medir o passado — a caixa cresceria e nunca encolheria.
 
             O piso existe para o caso oposto: num card muito baixo o flex espreme a caixa
             a quase zero, e um gráfico de 3px não é gráfico.  */
-        const alturaDe = (alvo) => Math.max(alvo.clientHeight || 0, 90);
+        const alturaDe = (alvo) => {
+            alvo.style.minHeight = '0px';
+            return Math.max(alvo.clientHeight || 0, 90);
+        };
 
         /* ==================================================================
            A ROSCA — OS SEIS BALDES, IGUAIS AOS DE ENVIOS & PENDÊNCIAS
@@ -830,7 +849,7 @@
             const minVisual = Math.ceil(totalCru * 0.03);
             const inflado = valores.map((v) => (v > 0 && v < minVisual) ? minVisual : v);
             
-            const opcoes = opcoesDeRosca(nomes, inflado, cores, '100%', valores);
+            const opcoes = opcoesDeRosca(nomes, inflado, cores, alturaDe(alvo), valores);
             if (graficos[id] && graficos[id].__tipo === 'donut') {
                 graficos[id].updateOptions(opcoes, false, false);
                 return;
@@ -851,7 +870,7 @@
                 tamanho que "Bateu 25.585" no card ao lado: duas barras iguais dizendo
                 números que diferem em três vezes.  */
             const teto = Math.max(base || 0, ...valores, 1) * 1.12;
-            const opcoes = opcoesDeBarra(categorias, valores, cores, teto, '100%',
+            const opcoes = opcoesDeBarra(categorias, valores, cores, teto, alturaDe(alvo),
                                          formato);
             if (graficos[id] && graficos[id].__tipo === 'bar') {
                 graficos[id].updateOptions(opcoes, false, false);
@@ -1807,12 +1826,27 @@
             });
         };
 
-        if (window.ResizeObserver && vistaPerformance) {
+        /*  O OBSERVADOR OLHA AS CAIXAS, e não só a vista inteira — é o que a outra
+            aba já faz (`caixasDeGrafico()` em `dash_documentos_ia.js`).
+
+            A vista sozinha não bastava porque ela quase nunca muda de altura: quem
+            muda é a REPARTIÇÃO dela. `pintarGraficos` desenha a rosca e só depois
+            escreve a base dos seis KPIs do topo; a linha de texto que nasce ali
+            empurra 9px para fora da faixa dos gráficos, a caixa encolhe, o desenho
+            fica maior do que ela — e a vista, que não mudou de tamanho, não avisava
+            ninguém. Medido na bancada: svg de 191px numa caixa de 182px, em toda
+            carga da página.  */
+        if (window.ResizeObserver) {
             let pendente = null;
-            new ResizeObserver(() => {
+            const observador = new ResizeObserver(() => {
                 clearTimeout(pendente);
                 pendente = setTimeout(ajustarAlturasIA, 250);
-            }).observe(vistaPerformance);
+            });
+            if (vistaPerformance) observador.observe(vistaPerformance);
+            ['ia-gr-veredito', 'ia-gr-msd', 'ia-gr-mcd'].forEach((id) => {
+                const caixa = document.getElementById(id);
+                if (caixa) observador.observe(caixa);
+            });
         }
 
         /* ==================================================================

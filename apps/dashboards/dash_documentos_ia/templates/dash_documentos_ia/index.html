@@ -43,10 +43,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia.css' %}?v=20260903f">
+    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia.css' %}?v=20260909d">
 
     <!-- Camada escura desta tela: o que os arquivos compartilhados não alcançam -->
-    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia-eleitoral.css' %}?v=20260903f">
+    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia-eleitoral.css' %}?v=20260909d">
 </head>
 
 <body class="grid-bg bg-[#f8f6fb] text-gray-800 fixed inset-0 p-4 lg:p-6 flex transition-colors duration-500 overflow-hidden">
@@ -618,7 +618,22 @@
                                     com o da tabela logo abaixo sem explicação nenhuma.
                                 -->
                                 <p class="docia-grafico-base text-[10px] text-gray-400 text-center m-0 mb-1 shrink-0" id="ia-base-veredito"></p>
-                                <div class="docia-grafico-ia w-full flex justify-center" id="ia-gr-veredito" style="flex: 1 1 0; min-height: 0; max-height: 180px;"></div>
+                                <!--
+                                    SEM TETO DE ALTURA, ao contrário dos vizinhos de
+                                    mensalidade que nunca tiveram um. O `max-height: 180px`
+                                    que estava aqui congelava a caixa: o card cresce com a
+                                    janela (e cresce mais ainda no F11, onde a faixa ganha
+                                    `flex: 1.5`), a legenda tem altura fixa, e o que
+                                    sobrava virava um vão morto embaixo dos chips — 53px
+                                    medidos em tela cheia, contra os 15px de folga dos
+                                    outros dois cards.
+
+                                    Quem protege a legenda não é o teto, é o próprio flex:
+                                    a caixa é `1 1 0` com `min-height: 0` e a legenda é
+                                    `shrink-0` de altura fixa, então o anel só recebe o que
+                                    sobra — nunca o espaço dela.
+                                -->
+                                <div class="docia-grafico-ia w-full flex justify-center" id="ia-gr-veredito" style="flex: 1 1 0; min-height: 0;"></div>
                                 <div class="docia-legenda docia-legenda--ia shrink-0" id="ia-legenda-veredito"></div>
                             </div>
 
@@ -1847,6 +1862,6 @@
         instituições e o console de atualização vivem lá e são compartilhados; este
         arquivo só monta a segunda aba.
     -->
-    <script src="{% static 'dash_documentos_ia/js/analise_ia.js' %}?v=20260909c"></script>
+    <script src="{% static 'dash_documentos_ia/js/analise_ia.js' %}?v=20260909d"></script>
 </body>
 </html>

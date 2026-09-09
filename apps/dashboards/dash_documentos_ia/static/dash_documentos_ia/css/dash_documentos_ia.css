@@ -2954,8 +2954,19 @@ html[data-docia-aba="analise"] #aba-analise { display: flex; }
 html[data-docia-aba="envios"] #filtros-envios,
 html[data-docia-aba="analise"] #filtros-analise { display: block; }
 
-/* Corrige o bug do ApexCharts que injeta min-height fixo e não deixa a caixa encolher */
-.docia-grafico-ia .apexcharts-canvas {
+/*  O `min-height` QUE O APEXCHARTS INJETA, e que não deixa a caixa encolher.
+
+    Quem recebe o valor é a NOSSA caixa, não o canvas: no fonte da v7.1.0 o Apex
+    escreve em `Paper.node.parentNode.parentNode`, e a árvore é
+    `.docia-grafico-ia > .apexcharts-canvas > svg` — o bisavô do svg é a caixa.
+    A regra mirando `.apexcharts-canvas` era inerte (lá o Apex escreve `height`,
+    não `min-height`).
+
+    Com o piso anulado aqui, a caixa volta a valer o que o flex do card manda em
+    todo ajuste — inclusive ao SAIR do F11, que é quando ela precisa encolher.
+    `!important` de folha de autor vence a declaração inline do Apex, que vem sem
+    ele; a altura do desenho continua sendo dada em pixel pelo JS.  */
+.docia-grafico-ia {
     min-height: 0 !important;
 }
 
