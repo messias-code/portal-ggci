@@ -1278,6 +1278,652 @@ def _montar_linhas(df):
             for linha in recorte.values.tolist()]
 
 
+# --------------------------------------------------------------------------------
+# A TABELA DA ABA ANÁLISE IA — UM DOCUMENTO, TODAS AS COLUNAS DELE
+# --------------------------------------------------------------------------------
+# É o oposto da `api_tabela`, e as duas existem por perguntas diferentes.
+#
+# LÁ a pergunta é "esta inscrição está enviando os documentos que deve?", e a resposta
+# empilha os cinco documentos numa tabela só. Por isso as colunas são as 31 fixas de
+# `COLUNAS_TABELA`: a interseção das cinco abas. O que é próprio de uma delas
+# (mensalidade no contrato, assinaturas no RIAF) sairia vazio nas outras quatro.
+#
+# AQUI a pergunta é "o que a IA leu neste documento, e bateu com o cadastro?". Ela só se
+# responde com as colunas `gemini_*` ao lado das colunas de cadastro correspondentes — e
+# essas são justamente as que a outra tabela não pode ter. Daí o documento ser escolha
+# obrigatória e única nesta tela: uma aba por vez, com o conjunto INTEIRO de colunas dela.
+#
+# AS ABAS NÃO TÊM O MESMO CONJUNTO: Contrato, Histórico, Benefício e Financiamento têm 63
+# colunas; o RIAF tem 76 (assinaturas, matrícula com e sem desconto, CNPJ da IES). Por
+# isso o cabeçalho da tela vem da resposta, e não de uma lista fixa deste arquivo: fixá-la
+# seria escolher uma das abas e mentir sobre as outras quatro.
+#
+# E O CONJUNTO MUDA: toda vez que o motor ganha uma coluna, ela aparece aqui na execução
+# seguinte sem ninguém mexer em código. É o mesmo motivo pelo qual a `api_tabela` lê o
+# esquema com `_colunas_presentes` em vez de confiar numa lista.
+
+# Cache de UMA aba inteira. Separado do `_cache_abas` de propósito: aquele guarda as
+# cinco concatenadas com um punhado de colunas, e a chave dele é a tupla de colunas
+# pedidas. Pedir as 76 do RIAF por lá carregaria as CINCO abas com 76 colunas cada, e
+# guardaria uma cópia dessas por documento escolhido.
+_cache_aba_inteira = {}
+
+
+def _carregar_aba_inteira(rotulo):
+    """
+    O QUE FAZ: devolve UMA aba com TODAS as colunas dela, normalizada do mesmo jeito que
+        `_carregar_abas` normaliza as cinco — é o que faz `_aplicar_filtros` valer aqui
+        sem nenhuma exceção.
+    ATENÇÃO: o retorno é o objeto do cache, como em `_carregar_abas`. Quem chama pode
+        filtrar (filtro gera cópia), mas NÃO pode escrever coluna nele.
+    """
+    import pandas as pd
+
+    aba = ABA_POR_ROTULO[rotulo]
+    caminho = os.path.join(pasta_parquet_atual(), f'{aba}.parquet')
+    marca = os.path.getmtime(caminho) if os.path.exists(caminho) else 0.0
+
+    guardado = _cache_aba_inteira.get(rotulo)
+    if guardado is not None and guardado[0] == (caminho, marca):
+        return guardado[1]
+
+    if not os.path.exists(caminho):
+        df = pd.DataFrame()
+    else:
+        try:
+            df = pd.read_parquet(caminho)
+        except Exception as erro:  # arquivo truncado, sem permissão, etc.
+            print(f'[dash_documentos_ia] Falha ao ler {aba}.parquet: {erro}')
+            df = pd.DataFrame()
+
+    if len(df):
+        df = df.copy()
+        df['status_ia'] = (
+            df['status_ia'].astype('string').fillna('Não Processado').str.strip().str.upper()
+        )
+        df = df[df['status_ia'].isin(STATUS_PROCESSADO)]
+        df['status_vinculo'] = (
+            df['status_vinculo'].astype('string').fillna('DESLIGADO').str.strip().str.upper()
+        )
+        df['semestre'] = df['semestre'].astype('string')
+        df['faculdade'] = df['faculdade'].astype('string')
+
+    _cache_aba_inteira[rotulo] = ((caminho, marca), df)
+    return df
+
+
+def _documento_do_pedido(request):
+    """
+    O rótulo do documento escolhido na tela. Cai em CONTRATO quando vem vazio ou
+    desconhecido: é a aba de maior cobertura (todos os semestres) e é por ela que a tela
+    abre — devolver lista vazia por causa de um parâmetro torto deixaria a tabela em
+    branco sem dizer por quê.
+    """
+    pedido = (request.GET.get('documento') or '').strip().upper()
+    return pedido if pedido in ABA_POR_ROTULO else 'CONTRATO'
+
+
+# --------------------------------------------------------------------------------
+# OS TRÊS GRÁFICOS DA ABA ANÁLISE IA
+# --------------------------------------------------------------------------------
+# A BASE DOS DOIS DE MENSALIDADE É `STATUS_PROCESSADO`, e não os baldes da própria
+# coluna `msd_doc`/`mcd_doc`. Elas trazem "Valor Não Localizado No Documento" para
+# documento que a IA NUNCA LEU — nos 14.919 inadimplentes do contrato, `veredito_documento`
+# mostra que 14.608 estão como "Não Processado" por baixo, e ainda assim 14.507 deles
+# aparecem como "não localizado". Fosse essa a base, o gráfico acusaria a IA de não ter
+# achado um valor num arquivo que ela nunca abriu.
+#
+# Com `STATUS_PROCESSADO` a conta fecha exata e sozinha: no contrato, 25.585 + 984 +
+# 2.584 + 2.260 = 31.413, que é o número de processados. Nenhum balde de "não lido"
+# vaza para dentro.
+#
+# NEM TODO DOCUMENTO TEM MENSALIDADE. No Histórico as duas colunas são 100% "não
+# localizado" nos 16.479 processados: o documento não carrega esse valor, e um gráfico
+# ali diria que a IA falhou em achar o que não está lá. Benefícios e Financiamento não
+# têm processado nenhum. Por isso a resposta traz `tem_dado` por medida — quem desenha
+# precisa saber a diferença entre "zero" e "esta pergunta não se faz aqui".
+MENSALIDADE_BALDES = {
+    'COLETA DE DADOS CONFORME DOCUMENTO': 'Bateu',
+    'VALOR NO DOCUMENTO É MAIOR': 'Maior',
+    'VALOR NO DOCUMENTO É MENOR': 'Menor',
+    'VALOR NÃO LOCALIZADO NO DOCUMENTO': 'Não localizado',
+}
+
+# A ordem em que as fatias são lidas: o que conferiu, as duas direções em que divergiu e,
+# por último, o que a IA não achou no arquivo.
+ORDEM_MENSALIDADE = ['Bateu', 'Menor', 'Maior', 'Não localizado']
+
+# OS OITO ESTADOS, e não uma seleção deles: são TODOS os valores que `status_ia`
+# assume, então a rosca soma exatamente o total do recorte e `fora_do_grafico` é zero.
+#
+# Ela nasceu com cinco e deixava 28.776 das 80.480 linhas do contrato de fora —
+# ausentes, inadimplentes e corrompidos. Um gráfico que cobre 64% do recorte precisa de
+# uma ressalva escrita ao lado para não passar por retrato do todo; um que cobre 100%
+# não precisa de ressalva nenhuma, e ainda bate com o total da tabela logo abaixo.
+#
+# A ORDEM É A DO CAMINHO DO DOCUMENTO: os cinco vereditos que só existem depois de a IA
+# ler o arquivo, depois os dois que descrevem a ausência de leitura, e por último a
+# cobrança, que não é veredito nenhum — é estado financeiro escrito por cima.
+# Os seis baldes da rosca, na ordem em que a outra aba os desenha. Os nomes são os
+# mesmos de `_balde_do_documento` porque é ELA quem os produz: contados de outro jeito,
+# a fatia "Inadimplentes Proc." desta aba não bateria com a de lá e não haveria como
+# saber qual das duas está certa.
+BALDES_DA_ROSCA = [
+    BALDE_PROCESSADOS, BALDE_NAO_PROCESSADOS, BALDE_PENDENTES,
+    BALDE_INAD_PROC, BALDE_INAD_NAO_PROC, BALDE_INAD,
+]
+
+# Os cinco vereditos que vivem DENTRO de `Processados` — o detalhe de que aquele balde
+# é feito. Eles não viram fatia: dez fatias exigiriam dez cores distinguíveis entre si
+# duas a duas, e a paleta da marca colapsa aí (medido: ΔE 1,0 sob daltonismo e 4,1 na
+# visão normal, contra os pisos de 8 e 15). Viram LINHAS da legenda, onde o nome e o
+# número os separam sem depender de cor nenhuma.
+VEREDITOS_DE_PROCESSADO = ['VÁLIDO', 'INVÁLIDO', 'FALSO VÁLIDO', 'FALSO INVÁLIDO', 'CORROMPIDO']
+
+# A rosca mostra SÓ O QUE A IA LEU — os cinco vereditos de `STATUS_PROCESSADO`.
+#
+# Ela já teve oito estados, com pendentes, não processados e inadimplentes junto. O
+# problema não era de espaço: os três descrevem a AUSÊNCIA de leitura, e um deles
+# (Inadimplente) nem é veredito — é estado financeiro escrito por cima. Num gráfico
+# chamado "Veredito da IA" eles respondiam outra pergunta, e ainda esmagavam as duas
+# fatias que a tela existe para vigiar: Falso Válido e Falso Inválido somam 268 contra
+# 48.475 de não-leitura, e viravam fios de cabelo.
+#
+# Com cinco, cada fatia é uma decisão que a IA de fato tomou, e cinco cabe folgado nos
+# seis degraus da paleta da OVG — sem inventar cor nenhuma.
+#
+# O QUE FICOU DE FORA CONTINUA NA TELA: a linha de base do card diz sobre quantas das
+# linhas do recorte a rosca fala, e a tabela abaixo mostra todas.
+VEREDITOS_DO_GRAFICO = [
+    'VÁLIDO', 'INVÁLIDO', 'FALSO VÁLIDO', 'FALSO INVÁLIDO', 'CORROMPIDO',
+]
+
+
+# Os três baldes em que a IA REALMENTE LEU um valor. "Valor Não Localizado No Documento"
+# fica de fora porque ali a coluna `gemini_*` vem ZERADA — ela não é "a IA leu zero", é
+# "a IA não achou". Somar essas linhas contaria a mensalidade inteira do sistema como se
+# fosse divergência: no contrato isso infla a diferença sem desconto de R$ 636 mil para
+# R$ 4,8 milhões, e a com desconto de R$ 4,7 para R$ 23,8 milhões.
+BALDES_LIDOS = {
+    'COLETA DE DADOS CONFORME DOCUMENTO',
+    'VALOR NO DOCUMENTO É MAIOR',
+    'VALOR NO DOCUMENTO É MENOR',
+}
+
+# Cada medida: a coluna do balde, a do sistema e a que a IA leu.
+MEDIDAS_DE_MENSALIDADE = {
+    'sem_desconto': ('msd_doc', 'mensalidade_sem_desc', 'gemini_mensalidade_sem_desc'),
+    'com_desconto': ('mcd_doc', 'mensalidade_com_desc', 'gemini_mensalidade_com_desc'),
+}
+
+
+# Os dois tipos de bolsa, como o motor os escreve. São os únicos dois valores da coluna
+# (medido: 58.354 Parcial e 22.126 Integral no contrato, sem nulo nenhum).
+TIPOS_DE_BOLSA = ['Parcial', 'Integral']
+
+
+def _contagem_por_tipo_de_bolsa(recorte):
+    """
+    CONTA LINHAS, e não pessoas. Por CPF a conta não fecha: 714 beneficiários têm DUAS
+    inscrições no mesmo semestre, e quando uma é Parcial e a outra Integral eles entram
+    nos dois lados — no contrato de 2025-1 isso dá 16.581 + 6.112 = 22.693 contra 22.279
+    beneficiários de verdade. Por linha fecha exato com o total de documentos
+    (16.812 + 6.181 = 22.993), que é o número ao lado na mesma faixa.
+    """
+    if len(recorte) == 0 or 'tipo_bolsa_final' not in recorte.columns:
+        return {tipo: 0 for tipo in TIPOS_DE_BOLSA}
+    contagem = recorte['tipo_bolsa_final'].astype('string').str.strip().value_counts()
+    return {tipo: int(contagem.get(tipo, 0)) for tipo in TIPOS_DE_BOLSA}
+
+
+def _recalculo_bolsas(recorte):
+    import pandas as pd
+    if len(recorte) == 0 or not {'soma_ovg_devia_pagar_sis', 'soma_ovg_devia_pagar_ia'} <= set(recorte.columns):
+        return {'coleta': 0, 'documento': 0}
+    
+    coleta = pd.to_numeric(recorte['soma_ovg_devia_pagar_sis'], errors='coerce').sum()
+    doc = pd.to_numeric(recorte['soma_ovg_devia_pagar_ia'], errors='coerce').sum()
+    return {'coleta': float(coleta), 'documento': float(doc)}
+
+def _bolsa_paga_por_quantidade(recorte):
+    """
+    O QUE FAZ: a soma de `total_bolsa_paga` agrupada pela QUANTIDADE de pagamentos do
+        semestre — de 0 a 6.
+
+    O QUE ELE RESPONDE: quanto dinheiro está em cada faixa de regularidade. No contrato
+    de 2025-1, 15.217 linhas com os seis pagamentos concentram R$ 74 milhões, e as 7.255
+    com zero pagamento somam exatamente R$ 0 — a coluna zerada é a prova de que a soma e
+    a contagem estão falando da mesma coisa.
+
+    SOMA LINHAS, e pode: dentro de um documento e um semestre a inscrição é ÚNICA
+    (conferido: zero duplicadas), então não há como o mesmo repasse entrar duas vezes.
+    """
+    import pandas as pd
+
+    if len(recorte) == 0 or not {'qtd_pagtos', 'total_bolsa_paga'} <= set(recorte.columns):
+        return []
+
+    qtd = pd.to_numeric(recorte['qtd_pagtos'], errors='coerce')
+    valor = pd.to_numeric(recorte['total_bolsa_paga'], errors='coerce')
+    tabela = pd.DataFrame({'qtd': qtd, 'valor': valor}).dropna(subset=['qtd'])
+    if len(tabela) == 0:
+        return []
+
+    agrupado = tabela.groupby('qtd', sort=True).agg(soma=('valor', 'sum'),
+                                                    linhas=('valor', 'size'))
+    return [{'qtd': int(indice), 'soma': round(float(linha.soma), 2),
+             'linhas': int(linha.linhas)}
+            for indice, linha in agrupado.iterrows()]
+
+
+def _diferenca_de_mensalidade(processados, chave):
+    """
+    O QUE FAZ: soma DOCUMENTO menos SISTEMA, só sobre as linhas em que a IA leu um valor.
+
+    O SINAL É O RECADO: negativo quer dizer que o documento cobra MENOS do que o sistema
+    espera, somado no recorte inteiro. É por isso que a soma é assinada e não absoluta —
+    o valor absoluto diria o tamanho da bagunça, mas não para que lado ela pende, que é
+    a pergunta de quem olha dinheiro.
+
+    Devolve `tem_dado` falso quando não há nenhuma linha lida: o documento não carrega
+    esse valor (o histórico) ou não há processado nenhum no recorte. Zero de diferença e
+    "não há o que comparar" são coisas diferentes, e o card precisa saber qual é qual.
+    """
+    import pandas as pd
+
+    coluna, no_sistema, na_ia = MEDIDAS_DE_MENSALIDADE[chave]
+    vazio = {'soma': 0.0, 'linhas': 0, 'divergentes': 0, 'tem_dado': False}
+    if len(processados) == 0 or not {coluna, no_sistema, na_ia} <= set(processados.columns):
+        return vazio
+
+    balde = processados[coluna].astype('string').str.strip().str.upper()
+    lidos = processados[balde.isin(BALDES_LIDOS)]
+    if len(lidos) == 0:
+        return vazio
+
+    diferenca = (pd.to_numeric(lidos[na_ia], errors='coerce')
+                 - pd.to_numeric(lidos[no_sistema], errors='coerce')).dropna()
+
+    return {
+        'soma': round(float(diferenca.sum()), 2),
+        'linhas': int(len(diferenca)),
+        # Quantas linhas de fato divergem. Sem isso, uma soma pequena não distingue
+        # "quase tudo bateu" de "muitas divergências que se anulam".
+        'divergentes': int((diferenca != 0).sum()),
+        'tem_dado': True,
+    }
+
+
+def _contagem_de_mensalidade(processados, coluna):
+    """Os quatro baldes de uma das colunas `*_doc`, na ordem de `ORDEM_MENSALIDADE`."""
+    contagem = {balde: 0 for balde in ORDEM_MENSALIDADE}
+    if coluna not in processados.columns or len(processados) == 0:
+        return contagem, False
+
+    bruto = processados[coluna].astype('string').str.strip().str.upper()
+    for valor, quantas in bruto.value_counts().items():
+        balde = MENSALIDADE_BALDES.get(valor)
+        if balde:
+            contagem[balde] += int(quantas)
+
+    # "Tem dado" é ter alguma leitura de verdade. Só "não localizado" em tudo é o
+    # documento que não carrega o valor — ver o comentário do bloco.
+    tem_dado = any(contagem[b] for b in ('Bateu', 'Menor', 'Maior'))
+    return contagem, tem_dado
+
+
+# DUAS NORMALIZAÇÕES, e as duas foram descobertas olhando a lista pronta na tela.
+#
+# 1. A CAIXA. As frases vêm coladas por vírgula numa coluna só, e da segunda em diante
+#    chegam em minúscula ("Valor da mensalidade... , valor da matrícula..."). Sem dobrar
+#    a caixa, a MESMA frase vira duas opções — no contrato eram 8.304 numa e 3.218 na
+#    outra, e quem marcasse uma acharia que a outra metade não existe.
+#
+# 2. O ACENTO. A IA escreve "Sem inconsistências" e "Sem inconsistencias" — 7.904 linhas
+#    numa grafia e 61 na outra, uma ao lado da outra na mesma lista. É o mesmo defeito
+#    com outra roupa, e o filtro tem de tratar as duas como a mesma coisa.
+#
+# A GRAFIA QUE APARECE é a MAIS FREQUENTE, não a primeira encontrada: entre 7.904 com
+# acento e 61 sem, quem manda é a maioria — a lista mostra a forma que a IA de fato usa.
+def _chave_da_inconsistencia(frase):
+    """Sem acento e em minúsculas — a forma pela qual duas grafias viram uma opção."""
+    import unicodedata
+
+    plana = unicodedata.normalize('NFD', frase.strip().lower())
+    return ''.join(c for c in plana if unicodedata.category(c) != 'Mn')
+
+
+def _frases_de_inconsistencia(serie):
+    """
+    O QUE FAZ: conta as frases ATÔMICAS de `gemini_inconsistencia`, sem diferenciar caixa
+        nem acento, e devolve [(frase legível, quantas)] da mais comum para a menos.
+    POR QUE ATÔMICAS: a coluna guarda a LISTA de inconsistências da linha. Filtrar pelo
+        texto inteiro faria uma opção por combinação — no RIAF isso são centenas —, e
+        nenhuma delas responderia "quantos tiveram problema de assinatura".
+    """
+    import collections
+
+    contagem = collections.Counter()
+    grafias = collections.defaultdict(collections.Counter)
+    for texto in serie.dropna().astype(str):
+        # `set` na linha: a mesma frase repetida numa linha é UMA linha com aquele
+        # problema, não duas.
+        for frase in {p.strip() for p in texto.split(',') if p.strip()}:
+            chave = _chave_da_inconsistencia(frase)
+            contagem[chave] += 1
+            grafias[chave][frase] += 1
+
+    def melhor(chave):
+        escolhida = grafias[chave].most_common(1)[0][0]
+        return escolhida[:1].upper() + escolhida[1:]
+
+    return [(melhor(c), n) for c, n in contagem.most_common()]
+
+
+def _aplicar_inconsistencias(df, request):
+    """
+    Recorta pelas frases escolhidas na barra. União entre elas: marcar duas traz quem
+    tem uma OU a outra, que é como as outras seções desta barra já se comportam.
+
+    Separador `||` porque a frase TEM vírgula em volta — é justamente por vírgula que a
+    coluna cola várias numa string só.
+    """
+    escolhidas = _lista_do_parametro(request, 'inconsistencias', separador='||')
+    if not escolhidas or 'gemini_inconsistencia' not in df.columns:
+        return df
+
+    alvo = {_chave_da_inconsistencia(frase) for frase in escolhidas}
+    coluna = df['gemini_inconsistencia'].astype('string')
+
+    def casa(texto):
+        return bool(alvo & {_chave_da_inconsistencia(p)
+                            for p in str(texto).split(',') if p.strip()})
+
+    #  `na_action='ignore'` e NÃO um teste de nulo dentro de `casa`: no dtype
+    #  `string` o ausente é `pd.NA`, e `pd.NA != pd.NA` devolve `NA` — não `True`,
+    #  como em `float('nan')`. O `if` clássico de NaN estoura ali com "boolean value
+    #  of NA is ambiguous", e a linha sem inconsistência nenhuma é a MAIORIA da aba
+    #  (48.767 das 80.480 no contrato), então isso é a rota inteira caindo.
+    mascara = coluna.map(casa, na_action='ignore')
+    return df[mascara.fillna(False).astype(bool)]
+
+
+def _recorte_da_rosca(df, request):
+    """
+    O QUE FAZ: aplica o recorte clicado na legenda da rosca — os BALDES (as seis fatias,
+        pela mesma regra de `_balde_do_documento`) e os VEREDITOS (os cinco status que a
+        IA escreve dentro de `Processados`).
+
+    UNIÃO ENTRE OS DOIS, e não interseção: clicar "Pendentes" e depois "Válido" quer
+    dizer "me mostre os dois", que é como a legenda da outra aba já se comporta. Fossem
+    interseccionados, o segundo clique devolveria zero linhas — pendente é justamente o
+    documento que não tem veredito.
+    """
+    baldes = _lista_do_parametro(request, 'baldes', separador='||')
+    vereditos = _lista_do_parametro(request, 'vereditos', separador='||')
+    if not baldes and not vereditos:
+        return df
+    if len(df) == 0:
+        return df
+
+    import pandas as pd
+
+    dentro = pd.Series(False, index=df.index)
+    if baldes:
+        dentro |= _balde_do_documento(df).isin(baldes)
+    if vereditos:
+        alvo = {v.strip().upper() for v in vereditos}
+        dentro |= df['status_ia'].isin(alvo)
+    return df[dentro]
+
+
+@login_required(login_url='/')
+def api_resumo_ia(request):
+    """
+    O QUE FAZ: serve os três gráficos da aba Análise IA e a lista de inconsistências da
+        barra lateral, numa resposta só — a tela inteira depende do mesmo recorte, e
+        quatro chamadas para o mesmo `documento` releriam a mesma aba quatro vezes.
+
+    A LISTA DE INCONSISTÊNCIAS IGNORA O PRÓPRIO FILTRO DE INCONSISTÊNCIA, de propósito:
+    ela é o menu de opções, não o resultado. Calculada depois do recorte, marcar uma
+    frase apagaria todas as outras da barra e não haveria como marcar a segunda.
+    Os GRÁFICOS, esses, respeitam tudo — eles são o retrato do que está na tela.
+    """
+    if not _tem_permissao(request.user):
+        return JsonResponse({'status': 'erro', 'mensagem': 'Sem permissão.'}, status=403)
+
+    rotulo = _documento_do_pedido(request)
+    df = _carregar_aba_inteira(rotulo)
+
+    if len(df):
+        df = _aplicar_filtros(df, request)
+        df = _aplicar_busca(df, (request.GET.get('busca') or '').strip())
+
+    inconsistencias = (_frases_de_inconsistencia(df['gemini_inconsistencia'])
+                       if len(df) and 'gemini_inconsistencia' in df.columns else [])
+
+    recorte = _aplicar_inconsistencias(df, request) if len(df) else df
+    recorte = _recorte_da_rosca(recorte, request) if len(recorte) else recorte
+
+    if len(recorte):
+        contagem_ia = recorte['status_ia'].value_counts()
+        veredito = {nome: int(contagem_ia.get(nome, 0)) for nome in VEREDITOS_DO_GRAFICO}
+        #  OS SEIS BALDES, pela MESMA função da outra aba. É isso que faz o número da
+        #  fatia "Inadimplentes Proc." daqui ser o mesmo de lá — inclusive os dois
+        #  desempates (`documento_ausente` e `veredito_documento`), que são a única
+        #  forma de separar cobrança sem lastro de documento lido.
+        contagem_balde = _balde_do_documento(recorte).value_counts()
+        baldes = {nome: int(contagem_balde.get(nome, 0)) for nome in BALDES_DA_ROSCA}
+        processados = recorte[recorte['status_ia'].isin(STATUS_PROCESSADO)]
+    else:
+        veredito = {nome: 0 for nome in VEREDITOS_DO_GRAFICO}
+        baldes = {nome: 0 for nome in BALDES_DA_ROSCA}
+        processados = recorte
+
+    sem_desconto, tem_sem = _contagem_de_mensalidade(processados, 'msd_doc')
+    com_desconto, tem_com = _contagem_de_mensalidade(processados, 'mcd_doc')
+
+    return JsonResponse({
+        'status': 'ok',
+        'documento': rotulo,
+        'total': int(len(recorte)),
+        'processados': int(len(processados)),
+        # Quanto os oito estados NÃO cobrem. Hoje é sempre zero — eles são todos os
+        # valores de `status_ia` —, e continua vindo porque é ele que denuncia, na
+        # primeira execução em que o motor inventar um estado novo, que a rosca deixou
+        # de somar o total. Sem isso, a fatia faltante sumiria em silêncio.
+        'fora_do_grafico': int(len(recorte)) - sum(veredito.values()),
+        'veredito': veredito,
+        #  Beneficiários é PESSOA, não linha: o mesmo CPF aparece em mais de uma
+        #  inscrição no mesmo semestre (714 no contrato de 2025-1).
+        'beneficiarios': int(recorte[~_balde_do_documento(recorte).isin(BALDES_INADIMPLENTES)]['cpf'].nunique()) if len(recorte) else 0,
+        'bolsa': _contagem_por_tipo_de_bolsa(recorte),
+        'bolsa_paga': _bolsa_paga_por_quantidade(recorte),
+        'recalculo_bolsas': _recalculo_bolsas(recorte),
+        'baldes': baldes,
+        'ordem_baldes': BALDES_DA_ROSCA,
+        'vereditos_de_processado': VEREDITOS_DE_PROCESSADO,
+        'mensalidade': {
+            'sem_desconto': {'contagem': sem_desconto, 'tem_dado': tem_sem},
+            'com_desconto': {'contagem': com_desconto, 'tem_dado': tem_com},
+        },
+        'ordem_mensalidade': ORDEM_MENSALIDADE,
+        'diferencas': {
+            'sem_desconto': _diferenca_de_mensalidade(processados, 'sem_desconto'),
+            'com_desconto': _diferenca_de_mensalidade(processados, 'com_desconto'),
+        },
+        'inconsistencias': [{'frase': f, 'linhas': n} for f, n in inconsistencias],
+    })
+
+
+@login_required(login_url='/')
+def api_tabela_ia(request):
+    """
+    O QUE FAZ: serve a tabela da aba Análise IA — UMA aba, com todas as colunas dela.
+
+    PARÂMETROS: `documento` (obrigatório na prática, com CONTRATO de reserva) e os
+    mesmos filtros da barra lateral que a outra tabela usa — `semestres`, `ies`,
+    `status`, `busca` e os quatro de pessoa, todos por `_aplicar_filtros`.
+
+    `documentos` (no plural) NÃO vale aqui: lá ele recorta quais das cinco abas entram
+    na pilha; aqui a aba é a própria escolha, e aceitar os dois deixaria dois controles
+    respondendo pela mesma coisa.
+    """
+    if not _tem_permissao(request.user):
+        return JsonResponse({'status': 'erro', 'mensagem': 'Sem permissão.', 'linhas': []},
+                            status=403)
+
+    rotulo = _documento_do_pedido(request)
+    df = _carregar_aba_inteira(rotulo)
+
+    if len(df) == 0:
+        return JsonResponse({'status': 'ok', 'documento': rotulo, 'colunas': [],
+                             'linhas': [], 'total_rows': 0, 'limite': _limite_da_tabela(request)})
+
+    df = _aplicar_filtros(df, request)
+    df = _aplicar_busca(df, (request.GET.get('busca') or '').strip())
+    df = _aplicar_inconsistencias(df, request)
+    df = _recorte_da_rosca(df, request)
+
+    colunas = list(df.columns)
+    limite = _limite_da_tabela(request)
+    total = int(len(df))
+
+    #  UMA COLUNA INTEIRA, sem teto de linhas: é o botão de copiar do cabeçalho.
+    #  Ele existe porque a pergunta que segue a tela é quase sempre "me dá essas
+    #  inscrições" — e copiar 200 células a mão, com o resto da base fora da tela,
+    #  não é resposta. Mesma rota e mesmos filtros da tabela, então o que se copia é
+    #  exatamente o recorte que está sendo visto, e não a base inteira.
+    coluna_unica = request.GET.get('apenas_coluna')
+    if coluna_unica and coluna_unica in df.columns:
+        return JsonResponse({
+            'status': 'ok',
+            'valores': df[coluna_unica].dropna().astype(str).tolist(),
+        })
+
+    if total:
+        # `_ordem` fica de fora: ele desempata ENTRE abas, e aqui só existe uma.
+        chaves = [c for c in ORDEM_DA_TABELA if c != '_ordem' and c in df.columns]
+        df = df.sort_values(chaves, kind='stable').head(limite)
+
+    return JsonResponse({
+        'status': 'ok',
+        'documento': rotulo,
+        'colunas': colunas,
+        'linhas': _montar_linhas_cruas(df, colunas),
+        'total_rows': total,
+        'limite': limite,
+    })
+
+
+def _montar_linhas_cruas(df, colunas):
+    """
+    Lista de listas, na ordem de `colunas` — o mesmo formato e o mesmo cuidado de
+    `_montar_linhas`: identificadores como texto (senão a inscrição 2090214 aparece
+    "2.090.214", que ninguém digita) e `NaN`/`NaT` viram `None`, que o JSON aceita.
+    """
+    import pandas as pd
+
+    if len(df) == 0:
+        return []
+
+    recorte = df[colunas].copy()
+    for coluna in COLUNAS_IDENTIFICADORAS:
+        if coluna in recorte.columns:
+            recorte[coluna] = recorte[coluna].astype('string')
+    recorte = recorte.astype(object).where(pd.notna(recorte), None)
+    return [[v if v is None or isinstance(v, (str, int, float, bool)) else str(v) for v in linha]
+            for linha in recorte.values.tolist()]
+
+
+@login_required(login_url='/')
+def api_exportar_ia(request):
+    """
+    O QUE FAZ: devolve a tabela da Análise IA como .xlsx, com o MESMO recorte que está
+        na tela — e com TODAS as colunas da aba escolhida (63, ou 76 no RIAF).
+
+    POR QUÊ EXISTE: a tela tem teto (200 linhas, 500 expandida) porque HTML não aguenta
+    80 mil linhas de 63 colunas. Em vez de esconder o resto, o arquivo entrega o
+    conjunto inteiro num formato feito para isso.
+
+    A CADEIA DE FILTROS É A MESMA da `api_tabela_ia`, na mesma ordem. Se as duas
+    divergissem, o arquivo baixado deixaria de ser o que a pessoa estava vendo — e
+    ninguém descobriria sem conferir número a número. O `expandido` não vale aqui: a
+    exportação é sempre completa.
+    """
+    if not _tem_permissao(request.user):
+        return JsonResponse({'status': 'erro', 'mensagem': 'Sem permissão.'}, status=403)
+
+    import io as _io
+
+    import xlsxwriter
+
+    rotulo = _documento_do_pedido(request)
+    df = _carregar_aba_inteira(rotulo)
+
+    if len(df):
+        df = _aplicar_filtros(df, request)
+        df = _aplicar_busca(df, (request.GET.get('busca') or '').strip())
+        df = _aplicar_inconsistencias(df, request)
+        df = _recorte_da_rosca(df, request)
+
+    colunas = list(df.columns)
+    if len(df):
+        chaves = [c for c in ORDEM_DA_TABELA if c != '_ordem' and c in df.columns]
+        df = df.sort_values(chaves, kind='stable').head(LIMITE_LINHAS_EXPORTACAO)
+
+    linhas = _montar_linhas_cruas(df, colunas)
+    rotulos = [_rotulo_de_coluna(nome) for nome in colunas]
+
+    buffer = _io.BytesIO()
+    livro = xlsxwriter.Workbook(buffer, {'in_memory': True})
+    aba = livro.add_worksheet('Análise da IA')
+
+    cabecalho = livro.add_format({
+        'bold': True, 'font_color': '#FFFFFF', 'bg_color': '#6B007B',
+        'align': 'left', 'valign': 'vcenter', 'border': 1, 'border_color': '#6B007B',
+    })
+    # Fundo único no lugar do zebrado nativo: com 63 colunas a alternância de faixas
+    # compete com a leitura horizontal, que é o sentido em que esta tabela se lê.
+    corpo = livro.add_format({'bg_color': '#E4DFEC', 'border': 1, 'border_color': '#FFFFFF'})
+
+    # As larguras saem de uma AMOSTRA: medir 80 mil valores por coluna custaria mais que
+    # escrever o arquivo. O teto de 46 impede que a razão social de uma faculdade estique
+    # a coluna até o arquivo ficar impossível de navegar.
+    amostra = linhas[:400]
+    for indice, nome in enumerate(rotulos):
+        largura = len(nome)
+        for linha in amostra:
+            largura = max(largura, len(str(linha[indice] or '')))
+        aba.set_column(indice, indice, min(max(largura + 2, 10), 46))
+
+    aba.freeze_panes(1, 0)
+    aba.write_row(0, 0, rotulos, cabecalho)
+    for numero, linha in enumerate(linhas, start=1):
+        aba.write_row(numero, 0, linha, corpo)
+
+    #  Identificadores como TEXTO: sem isto o Excel marca cada célula de inscrição e CPF
+    #  com o aviso "número armazenado como texto" — um triângulo verde em 80 mil linhas.
+    faixas = []
+    for indice, nome in enumerate(colunas):
+        if nome in COLUNAS_DE_TEXTO_NO_EXCEL:
+            faixas.append(xlsxwriter.utility.xl_range(1, indice, max(len(linhas), 1), indice))
+    if faixas:
+        aba.ignore_errors({'number_stored_as_text': faixas})
+
+    livro.close()
+
+    resposta = HttpResponse(
+        buffer.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    #  Nome em português, com o documento e a data como se escreve aqui: quem recebe o
+    #  arquivo por e-mail precisa saber o que é sem abrir.
+    resposta['Content-Disposition'] = (
+        'attachment; filename="Analise da IA - %s - %s.xlsx"'
+        % (rotulo.title(), localtime().strftime('%d-%m-%Y as %Hh%M')))
+    return resposta
+
+
 @login_required(login_url='/')
 def api_tabela(request):
     """
