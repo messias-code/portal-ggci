@@ -1157,11 +1157,14 @@
                             + ' de ' + formatarNumero(medida.linhas) + ' coincidem';
                     }
                     if (valor && valor.parentElement) {
-                        let texto_pct = 'valores exatos';
-                        if (medida.pct > 0) texto_pct = 'a coleta tem ' + formatarNumero(medida.pct) + '% a mais';
-                        else if (medida.pct < 0) texto_pct = 'a coleta tem ' + formatarNumero(Math.abs(medida.pct)) + '% a menos';
+                        let texto_tooltip = 'Os valores da coleta batem exatamente com os do documento.';
+                        if (medida.pct > 0) {
+                            texto_tooltip = 'Comparado ao documento, a coleta tem um AUMENTO de ' + formatarNumero(medida.pct) + '%. Isso significa que o valor no sistema é maior (estamos pagando mais caro).';
+                        } else if (medida.pct < 0) {
+                            texto_tooltip = 'Comparado ao documento, a coleta tem uma QUEDA de ' + formatarNumero(Math.abs(medida.pct)) + '%. Isso significa que o valor no sistema é menor (estamos pagando a menos).';
+                        }
                         
-                        valor.parentElement.title = 'Do documento para a coleta, ' + texto_pct + ', representando esse valor.';
+                        valor.parentElement.title = texto_tooltip;
                     }
                 });
 
