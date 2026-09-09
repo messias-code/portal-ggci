@@ -512,7 +512,7 @@
             xaxis: {
                 categories: categorias,
                 labels: {
-                    style: { colors: tintaMedia(), fontSize: '8.5px', fontWeight: 600 },
+                    style: { colors: tintaMedia(), fontSize: '10px', fontWeight: 600 },
                     /*  `rotate: 0` com `rotateAlways: false` é o que IMPEDE o giro
                         automático: o Apex inclina o rótulo sozinho quando acha que
                         não cabe, e um eixo de cinco rótulos inclinados é ilegível.
@@ -591,7 +591,7 @@
                     if (maior > 0 && valor < maior * 0.05) return '';
                     return formatarMilhoes(valor);
                 },
-                style: { fontSize: '10px', fontWeight: 700, colors: [tintaMedia()] },
+                style: { fontSize: '11px', fontWeight: 700, colors: [tintaMedia()] },
                 background: { enabled: false },
                 dropShadow: { enabled: false },
             },
