@@ -1727,9 +1727,7 @@ document.addEventListener('turbo:load', () => {
                         /*  `text-gray-800` saiu junto com o fundo branco do selo: sobre
                             o roxo ele seria texto quase preto em cima de escuro. A cor
                             agora é do selo inteiro, no CSS — ver `.docia-contagem`.  */
-                        marcarContagem(exibidas < total
-                            ? `<b>${formatarNumero(exibidas)}</b><span class="docia-contagem__de">de</span><b>${formatarNumero(total)}</b>`
-                            : `<b>${formatarNumero(total)}</b>`);
+                        marcarContagem(`<b>${formatarNumero(exibidas)}</b><span class="docia-contagem__de">de</span><b>${formatarNumero(total)}</b>`);
                         pintarFiltrosAtivos(exibidas, total);
 
                         if (elTabela.rolagem) elTabela.rolagem.scrollTop = 0;
@@ -2516,9 +2514,7 @@ document.addEventListener('turbo:load', () => {
                 const total = dadosIES.linhas.length;
                 const exibidas = linhasVisiveisIES().length;
                 const plural = (n) => n === 1 ? 'instituição' : 'instituições';
-                marcarContagemIES(exibidas === total
-                    ? `${formatarNumero(total)} ${plural(total)}`
-                    : `${formatarNumero(exibidas)} de ${formatarNumero(total)} ${plural(total)}`,
+                marcarContagemIES(`${formatarNumero(exibidas)} de ${formatarNumero(total)} ${plural(total)}`,
                     false);
             };
 

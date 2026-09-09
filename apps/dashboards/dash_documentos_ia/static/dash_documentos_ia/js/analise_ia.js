@@ -1303,10 +1303,8 @@
                         tela seria mentira. Zero também aparece — é resultado, não
                         ausência de resultado, e sem o selo o filtro parece não ter
                         rodado.  */
-                    marcarContagem(linhas.length < total
-                        ? `<b>${formatarNumero(linhas.length)}</b>`
-                          + `<span class="docia-contagem__de">de</span><b>${formatarNumero(total)}</b>`
-                        : `<b>${formatarNumero(total)}</b>`);
+                    marcarContagem(`<b>${formatarNumero(linhas.length)}</b>`
+                          + `<span class="docia-contagem__de">de</span><b>${formatarNumero(total)}</b>`);
 
                     if (el.rolagem) el.rolagem.scrollTop = 0;
                     pintar(corpo.colunas || [], linhas);
