@@ -524,6 +524,7 @@
                 },
                 axisBorder: { show: false },
                 axisTicks: { show: false },
+                crosshairs: { show: false },
                 tooltip: { enabled: false },
             },
             yaxis: {
@@ -559,25 +560,10 @@
                         de origem. Arredondar os dois lados descola a coluna do zero e
                         faz o olho ler um começo que não existe.  */
                     borderRadiusApplication: 'end',
-                    /*  COLUNA MAIS FINA. A 58% elas eram blocos grossos e saturados
-                        colados uns nos outros — o skill de dataviz chama isso pelo
-                        nome, "thick saturated blocks", e é o que fazia a faixa parecer
-                        pesada ao lado do anel fino.  */
-                    columnWidth: '42%',
+                    /*  COLUNA MAIS LARGA.  */
+                    columnWidth: '70%',
                     distributed: Array.isArray(cores) && cores.length > 1,
                     dataLabels: { position: 'top' },
-                    /*  A CALHA ATRÁS DA COLUNA — o resto até o teto do eixo.
-
-                        É ela que resolve o vazio que sobrava em cima: a área branca
-                        deixa de ser espaço perdido e passa a mostrar a PROPORÇÃO. Numa
-                        medida em que 8.936 de 14.766 bateram, a coluna preenchendo
-                        pouco mais da metade da calha diz isso de relance, sem ler
-                        número nenhum. E o teto é o mesmo nos dois cards de mensalidade,
-                        então as calhas também são comparáveis entre eles.  */
-                    colors: {
-                        backgroundBarColors: [corDaCalha()],
-                        backgroundBarRadius: 8,
-                    },
                 },
             },
             colors: cores,
@@ -616,6 +602,7 @@
             tooltip: {
                 intersect: false,
                 shared: true,
+                marker: { show: false },
                 custom: ({ series, seriesIndex, dataPointIndex, w }) => {
                     const dados = series[seriesIndex];
                     const soma = dados.reduce((a, b) => a + b, 0);
@@ -1194,7 +1181,11 @@
                     return;
                 }
                 if (alvoBase) {
-                    alvoBase.textContent = formatarNumero(corpo.processados) + ' processados';
+                    if (corpo.processados === corpo.total) {
+                        alvoBase.innerHTML = formatarNumero(corpo.total) + ' documentos lidos';
+                    } else {
+                        alvoBase.innerHTML = '<span class="text-red-500 font-medium">' + formatarNumero(corpo.processados) + ' lidos de ' + formatarNumero(corpo.total) + ' documentos</span>';
+                    }
                 }
                 /*  A régua dos dois é o TOTAL DE PROCESSADOS, que é a mesma base
                     das duas medidas. É o que deixa os cards comparáveis lado a
