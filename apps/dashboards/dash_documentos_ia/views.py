@@ -1696,6 +1696,7 @@ def api_resumo_ia(request):
 
     rotulo = _documento_do_pedido(request)
     df = _carregar_aba_inteira(rotulo)
+    if len(df): df = df[~df['status_ia'].isin({'INADIMPLENTE'})]
 
     if len(df):
         df = _aplicar_filtros(df, request)
@@ -1779,6 +1780,7 @@ def api_tabela_ia(request):
 
     rotulo = _documento_do_pedido(request)
     df = _carregar_aba_inteira(rotulo)
+    if len(df): df = df[~df['status_ia'].isin({'INADIMPLENTE'})]
 
     if len(df) == 0:
         return JsonResponse({'status': 'ok', 'documento': rotulo, 'colunas': [],
@@ -1864,6 +1866,7 @@ def api_exportar_ia(request):
 
     rotulo = _documento_do_pedido(request)
     df = _carregar_aba_inteira(rotulo)
+    if len(df): df = df[~df['status_ia'].isin({'INADIMPLENTE'})]
 
     if len(df):
         df = _aplicar_filtros(df, request)
