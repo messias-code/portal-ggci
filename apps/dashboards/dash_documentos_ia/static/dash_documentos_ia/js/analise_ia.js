@@ -985,7 +985,7 @@
                 dropShadow: { enabled: false },
             },
             grid: {
-                padding: { left: -12, right: -12, top: 0, bottom: 0 },
+                padding: id === 'ia-gr-inconsistencias' ? { left: 15, right: 15, top: 15, bottom: 15 } : { left: -12, right: -12, top: 0, bottom: 0 },
             },
             series: valores,
             labels: nomes,
@@ -993,7 +993,7 @@
             plotOptions: {
                 pie: {
                     expandOnClick: false,
-                    customScale: id === 'ia-gr-inconsistencias' ? 0.8 : 1.1,
+                    customScale: id === 'ia-gr-inconsistencias' ? 1.0 : 1.1,
                     //  As pontas das fatias são ARREDONDADAS, como no quantitativo da
                     //  outra aba. Sem isto o anel fica com emendas em esquadro.
                     borderRadius: 10,
@@ -1004,7 +1004,7 @@
                             show: true,
                             name: {
                                 show: true, fontSize: id === 'ia-gr-inconsistencias' ? '10px' : '12px', fontWeight: 600,
-                                color: tintaMedia(), offsetY: id === 'ia-gr-inconsistencias' ? 15 : 20,
+                                color: tintaMedia(), offsetY: id === 'ia-gr-inconsistencias' ? 12 : 20,
                             },
                             /*  O NÚMERO GRANDE ACOMPANHA A ALTURA do card, em vez dos
                                 28px fixos da outra aba. Lá a legenda tem seis linhas;
@@ -1015,7 +1015,7 @@
                                 show: true,
                                 fontSize: Math.max(17, Math.round(altura * 0.135 * (id === 'ia-gr-inconsistencias' ? 0.72 : 1))) + 'px',
                                 fontWeight: 800,
-                                color: tintaForte(), offsetY: id === 'ia-gr-inconsistencias' ? -14 : -18,
+                                color: tintaForte(), offsetY: id === 'ia-gr-inconsistencias' ? -10 : -18,
                                 formatter: (valor) => formatarNumero(valor),
                             },
                             /*  `total` é o par NÚMERO + RÓTULO, e o `fontSize` daqui é
