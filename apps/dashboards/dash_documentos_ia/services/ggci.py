@@ -843,11 +843,17 @@ def get_engine():
         DB_PASS = os.getenv('SIBU_BANCO_DADOS_PASS')
         DB_NAME = os.getenv('SIBU_BANCO_DADOS_NAME')
         
+        # `pool_pre_ping` porque este engine é cache de módulo: vive enquanto o processo
+        # viver e as conexões ficam paradas entre uma execução e outra. O `pool_recycle`
+        # cobre a conexão velha, mas não a que morreu antes da hora (timeout de leitura,
+        # queda de rede) — essa volta do pool aparentemente viva e falha na primeira query.
+        # O ping descarta e recria, ao custo de um SELECT 1 por checkout.
         _ENGINE_CACHE = create_engine(
             f'mysql+mysqlconnector://{DB_USER}:{quote_plus(DB_PASS)}@{DB_HOST}/{DB_NAME}',
             pool_size=5,
             max_overflow=10,
             pool_recycle=3600,
+            pool_pre_ping=True,
             connect_args={'connect_timeout': 30, 'read_timeout': 300}
         )
     return _ENGINE_CACHE

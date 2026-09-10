@@ -695,9 +695,18 @@ def atualizar_cache_parquets(docs_selecionados=None):
     os.makedirs(pasta_parquets, exist_ok=True)
     
     try:
+        # `pool_pre_ping` porque um timeout não fica contido na tabela que estourou.
+        # Em 10/09/2026 o `read_timeout` de 300s disparou no espelho de contrato 2025 e o
+        # mysql-connector fechou a conexão; o pool devolveu esse mesmo soquete morto para as
+        # duas tabelas seguintes, que morreram sem nem tentar — contrato 2026 com
+        # "MySQL Connection not available" e riaf 2026 com um erro sem nexo ("Identifier name
+        # 'SELECT * FROM ...' is too long", que é o driver perdido, não SQL inválido).
+        # Com o ping, a conexão morta é descartada e recriada no `connect()` seguinte: quem
+        # estoura é só quem demorou, e as outras tabelas seguem o caminho normal.
         engine = create_engine(
             f'mysql+mysqlconnector://{DB_USER}:{quote_plus(DB_PASS)}@{DB_HOST}/{DB_NAME}',
-            connect_args={'connect_timeout': 30, 'read_timeout': 300}
+            connect_args={'connect_timeout': 30, 'read_timeout': 300},
+            pool_pre_ping=True
         )
         mapa_tabelas = [
             ("PY_ggci_coleta_de_dados_beneficiarios_temp_d1_documentos_ia", os.path.join(PROJECT_ROOT, "apps/dashboards/dash_documentos_ia/sql/beneficiarios/PY_ggci_coleta_de_dados_beneficiarios_temp_d1_documentos_ia.sql"), ["TODOS"]),
