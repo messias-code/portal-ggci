@@ -499,12 +499,6 @@
          *   e o nome de cada coluna está debaixo dela.
          */
         const opcoesDeBarra = (categorias, valores, cores, maximo, altura, formato) => {
-            /*  ALTURA MÍNIMA PARA BARRAS: Barras com valores pequenos (ex: 1 ou 3 perto de 160)
-                sumiam e viravam um risco no chão. Isso garante que qualquer valor > 0 tenha
-                pelo menos 4% da altura máxima para a barra ser visível e acomodar o número.  */
-            const alturaMinima = maximo * 0.04;
-            const valoresVisuais = valores.map(v => (v > 0 && v < alturaMinima) ? alturaMinima : v);
-
             return {
                 chart: {
                     type: 'bar',
@@ -517,7 +511,7 @@
                         título que aqui não existe — o título é o `<h3>` do card.  */
                     parentHeightOffset: 0,
                 },
-                series: [{ name: 'Linhas', data: valoresVisuais }],
+                series: [{ name: 'Linhas', data: valores }],
                 xaxis: {
                     categories: categorias,
                     labels: {
@@ -749,9 +743,6 @@
         const AR_QUE_O_APEX_GUARDA = 8;
 
         const opcoesDeBarraHorizontal = (categorias, valores, cores, maximo, altura, faixa, formato, totalParaPct) => {
-            const alturaMinima = maximo * 0.04;
-            const valoresVisuais = valores.map(v => (v > 0 && v < alturaMinima) ? alturaMinima : v);
-
             return {
                 chart: {
                     type: 'bar',
@@ -762,7 +753,7 @@
                     background: 'transparent',
                     parentHeightOffset: 0,
                 },
-                series: [{ name: 'Linhas', data: valoresVisuais }],
+                series: [{ name: 'Linhas', data: valores }],
                 xaxis: {
                     categories: categorias,
                     /*  O EIXO DOS VALORES. O teto com folga é o que reserva o lugar do
