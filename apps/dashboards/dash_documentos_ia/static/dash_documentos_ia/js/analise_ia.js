@@ -931,16 +931,10 @@
             guarda no alto do desenho (o mesmo espaço morto de `AR_QUE_O_APEX_GUARDA`,
             aqui inteiro em vez de metade). `0,92` é o respiro que sobra dos lados,
             para o anel não encostar na linha que separa o desenho da lista.  */
-        const FRACAO_DO_DESENHO = { 'ia-gr-veredito': 0.90, 'ia-gr-inconsistencias': 0.60 };
-        const ESCALA_DO_ANEL = 1.12;
-        const AR_NO_ALTO_DA_ROSCA = 23;
-        const SOBRA_DOS_LADOS = 0.82;
+        const FRACAO_DO_DESENHO = { 'ia-gr-veredito': 0.90 };
         const alturaDoDesenho = (id, altura, largura) => {
             const fracao = FRACAO_DO_DESENHO[id];
-            if (!fracao) return altura;
-            const tetoPelaLargura = (largura || altura) * SOBRA_DOS_LADOS
-                / ESCALA_DO_ANEL + AR_NO_ALTO_DA_ROSCA;
-            return Math.round(Math.min(altura * fracao, tetoPelaLargura));
+            return fracao ? Math.round(altura * fracao) : altura;
         };
 
         /* ==================================================================
@@ -999,7 +993,7 @@
             plotOptions: {
                 pie: {
                     expandOnClick: false,
-                    customScale: 1.1,
+                    customScale: id === 'ia-gr-inconsistencias' ? 1.0 : 1.1,
                     //  As pontas das fatias são ARREDONDADAS, como no quantitativo da
                     //  outra aba. Sem isto o anel fica com emendas em esquadro.
                     borderRadius: 10,

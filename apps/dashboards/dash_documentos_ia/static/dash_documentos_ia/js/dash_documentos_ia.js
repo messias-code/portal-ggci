@@ -78,16 +78,13 @@ document.addEventListener('turbo:load', () => {
                         toggleIcon.classList.add('fa-chevron-right');
                     }
                     
-                    /*  UMA chamada, no fim da transição — eram três, a 100/300/500 ms.
-
-                        A largura o ApexCharts acompanha sozinho pelo `resize` da janela;
-                        o que ele não acompanha é a ALTURA, e a altura não muda durante
-                        esta animação. As três chamadas só serviam para redesenhar cinco
-                        SVGs no meio da transição e engasgá-la. A que sobrou é a garantia
-                        de que, se a altura tiver mudado por algum outro motivo, alguém
-                        percebeu — e `ajustarAlturas` agora sai sem fazer nada quando ela
-                        continua a mesma.  */
-                    setTimeout(forcarResize, 560);
+                    /*  DISPAROS PROGRESSIVOS: a transição dura 500ms. Disparar
+                        apenas no final faz os gráficos de barras parecerem que
+                        esticaram e "pularam" no fim. Disparos intermediários
+                        mantêm a proporção do texto/barras durante a transição. */
+                    for (let t = 80; t <= 560; t += 80) {
+                        setTimeout(forcarResize, t);
+                    }
                 });
             }
 
