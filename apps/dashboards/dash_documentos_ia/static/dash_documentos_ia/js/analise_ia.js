@@ -650,20 +650,20 @@
                 },
                 series: [{ name: 'Linhas', data: valoresVisuais }],
                 xaxis: {
-                    max: maximo,
-                    min: 0,
-                    labels: { show: false },
+                    categories: categorias,
+                    labels: {
+                        style: { colors: tintaMedia(), fontSize: '10px', fontWeight: 600 },
+                        maxWidth: 160,
+                    },
                     axisBorder: { show: false },
                     axisTicks: { show: false },
                     crosshairs: { show: false },
                     tooltip: { enabled: false },
                 },
                 yaxis: {
-                    categories: categorias,
-                    labels: {
-                        style: { colors: tintaMedia(), fontSize: '10px', fontWeight: 600 },
-                        maxWidth: 160,
-                    },
+                    max: maximo,
+                    min: 0,
+                    labels: { show: false },
                     axisBorder: { show: false },
                     axisTicks: { show: false },
                 },
@@ -678,14 +678,15 @@
                         borderRadiusApplication: 'end',
                         barHeight: '70%',
                         distributed: Array.isArray(cores) && cores.length > 1,
-                        dataLabels: { position: 'right' },
+                        dataLabels: { position: 'top' },
                     },
                 },
                 colors: cores,
                 dataLabels: {
                     enabled: true,
+                    offsetX: 10,
+                    offsetY: 2,
                     textAnchor: 'start',
-                    offsetX: 5,
                     formatter: (valorVis, opcoes) => {
                         const valorReal = valores[opcoes.dataPointIndex];
                         let escrito = formatarNumero(valorReal);
