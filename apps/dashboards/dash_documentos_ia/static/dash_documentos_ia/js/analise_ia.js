@@ -933,7 +933,7 @@
             guarda no alto do desenho (o mesmo espaço morto de `AR_QUE_O_APEX_GUARDA`,
             aqui inteiro em vez de metade). `0,92` é o respiro que sobra dos lados,
             para o anel não encostar na linha que separa o desenho da lista.  */
-        const FRACAO_DO_DESENHO = { 'ia-gr-veredito': 0.90 };
+        const FRACAO_DO_DESENHO = { 'ia-gr-veredito': 0.82 };
         const alturaDoDesenho = (id, altura, largura) => {
             const fracao = FRACAO_DO_DESENHO[id];
             const alturaCalc = fracao ? Math.round(altura * fracao) : altura;
@@ -1006,8 +1006,8 @@
                         labels: {
                             show: true,
                             name: {
-                                show: true, fontSize: '12px', fontWeight: 600,
-                                color: tintaMedia(), offsetY: 20,
+                                show: true, fontSize: id === 'ia-gr-veredito' ? '11px' : '12px', fontWeight: 600,
+                                color: tintaMedia(), offsetY: id === 'ia-gr-veredito' ? 17 : 20,
                             },
                             /*  O NÚMERO GRANDE ACOMPANHA A ALTURA do card, em vez dos
                                 28px fixos da outra aba. Lá a legenda tem seis linhas;
@@ -1017,11 +1017,11 @@
                             value: {
                                 show: true,
                                 fontSize: Math.max(
-                                    17,
-                                    Math.round(altura * 0.135)
+                                    id === 'ia-gr-veredito' ? 14 : 17,
+                                    Math.round(altura * (id === 'ia-gr-veredito' ? 0.11 : 0.135))
                                 ) + 'px',
                                 fontWeight: 800,
-                                color: tintaForte(), offsetY: -18,
+                                color: tintaForte(), offsetY: id === 'ia-gr-veredito' ? -15 : -18,
                                 formatter: (valor) => formatarNumero(valor),
                             },
                             /*  `total` é o par NÚMERO + RÓTULO, e o `fontSize` daqui é
@@ -1030,7 +1030,7 @@
                                 total e transbordava o furo.  */
                             total: {
                                 show: true, showAlways: true, label: rotuloDoCentro,
-                                fontSize: '12px', fontWeight: 600, color: tintaMedia(),
+                                fontSize: id === 'ia-gr-veredito' ? '11px' : '12px', fontWeight: 600, color: tintaMedia(),
                                 formatter: (w) => formatarNumero(
                                     valoresCru.reduce((a, b) => a + b, 0)),
                             },

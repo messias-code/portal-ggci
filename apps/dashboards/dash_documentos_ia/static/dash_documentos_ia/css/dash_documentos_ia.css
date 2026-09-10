@@ -3033,7 +3033,16 @@ html[data-docia-aba="analise"] #filtros-analise { display: block; }
     padding: 0 2px 0 10px;
     border-top: 0;
     border-left: 1px solid var(--tema-borda, rgba(17, 24, 39, 0.07));
+    font-size: 12px; /* Fonte maior em Inconsistências */
+    gap: 4px; /* Mais respiro entre os chips */
 }
+
+.docia-legenda--lado .docia-legenda__item {
+    padding: 2px 6px; /* Item mais alto */
+}
+
+.docia-legenda--lado .docia-legenda__valor { width: 54px; }
+.docia-legenda--lado .docia-legenda__pct { width: 48px; }
 
 html[data-tela-cheia="1"] .docia-legenda--lado { height: auto; }
 
