@@ -3050,7 +3050,7 @@ html[data-tela-cheia="1"] .docia-legenda--lado { height: auto; }
     min-height: 0;
 }
 
-.docia-anel-e-lista > .docia-grafico-ia { flex: 0 0 28%; min-width: 0; min-height: 0; }
+.docia-anel-e-lista > .docia-grafico-ia { flex: 0 0 20%; min-width: 0; min-height: 0; }
 .docia-anel-e-lista > .docia-legenda { flex: 1 1 0; min-width: 0; }
 
 /*  SEM LISTA, SEM COLUNA DE LISTA. Quando não há o que listar — recorte sem
