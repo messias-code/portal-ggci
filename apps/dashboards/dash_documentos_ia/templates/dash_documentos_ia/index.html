@@ -1334,37 +1334,6 @@
                             </div>
                         </section>
 
-                        <!--
-                            INCONSISTÊNCIAS — a única seção montada pelo JS, porque as
-                            opções são o que a IA ESCREVEU e mudam com o documento: 14 no
-                            contrato, 48 no RIAF, 10 no histórico, nenhuma em Benefícios
-                            e Financiamento.
-
-                            BOTÃO, e não a lista aqui dentro — mesma decisão do filtro de
-                            Instituição, e pelo mesmo motivo: as frases são INTEIRAS
-                            ("Mensalidade com desconto no contrato é menor que o
-                            esperado") e numa barra de 335px viram uma coluna de texto
-                            quebrado que ninguém varre. Dentro da telinha cada frase cabe
-                            numa linha, há busca e há o painel do que já foi escolhido.
-                        -->
-                        <section class="docia-filtro-secao">
-                            <div class="docia-filtro-cabecalho">
-                                <h4 class="docia-filtro-titulo">Inconsistências</h4>
-                                <span class="docia-filtro-contador" id="contador-inconsistencias" style="display: none;">0</span>
-                            </div>
-                            <button type="button" id="ia-btn-inconsistencias" class="w-full flex items-center justify-between bg-white border border-gray-200 rounded-xl p-2 hover:bg-gray-50 transition-all shadow-sm group">
-                                <div class="flex items-center gap-3 overflow-hidden min-w-0">
-                                    <div class="docia-icone-bg w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-colors">
-                                        <i class="fa-solid fa-triangle-exclamation docia-icone-color"></i>
-                                    </div>
-                                    <div class="flex flex-col items-start overflow-hidden min-w-0">
-                                        <span class="text-[10px] text-gray-400 font-semibold uppercase">Filtro de inconsistências</span>
-                                        <span class="text-xs font-bold text-gray-700 uppercase w-full text-left" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="ia-inconsistencias-texto">Todas as inconsistências</span>
-                                    </div>
-                                </div>
-                                <i class="fa-solid fa-chevron-right text-gray-400 text-xs shrink-0 ml-2 pr-2"></i>
-                            </button>
-                        </section>
 
                         <!--
                             INSTITUIÇÃO — o mesmo modal da outra aba (`#modal-ies`, que é
