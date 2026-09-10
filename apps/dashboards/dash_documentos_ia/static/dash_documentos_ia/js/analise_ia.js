@@ -1013,7 +1013,10 @@
                                 encostava nas fatias dos dois lados.  */
                             value: {
                                 show: true,
-                                fontSize: Math.max(17, Math.round(altura * 0.135 * (id === 'ia-gr-inconsistencias' ? 0.72 : 1))) + 'px',
+                                fontSize: Math.max(
+                                    id === 'ia-gr-inconsistencias' ? 14 : 17,
+                                    Math.round(altura * 0.135 * (id === 'ia-gr-inconsistencias' ? 0.6 : 1))
+                                ) + 'px',
                                 fontWeight: 800,
                                 color: tintaForte(), offsetY: -18,
                                 formatter: (valor) => formatarNumero(valor),
@@ -1024,7 +1027,7 @@
                                 total e transbordava o furo.  */
                             total: {
                                 show: true, showAlways: true, label: rotuloDoCentro,
-                                fontSize: '12px', fontWeight: 600, color: tintaMedia(),
+                                fontSize: id === 'ia-gr-inconsistencias' ? '10px' : '12px', fontWeight: 600, color: tintaMedia(),
                                 formatter: (w) => formatarNumero(
                                     valoresCru.reduce((a, b) => a + b, 0)),
                             },
