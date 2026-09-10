@@ -1386,6 +1386,7 @@ MENSALIDADE_BALDES = {
     'VALOR NO DOCUMENTO É MAIOR': 'Maior',
     'VALOR NO DOCUMENTO É MENOR': 'Menor',
     'VALOR NÃO LOCALIZADO NO DOCUMENTO': 'Não localizado',
+    'PENDENTE': 'Não localizado',
 }
 
 # A ordem em que as fatias são lidas: o que conferiu, as duas direções em que divergiu e,
