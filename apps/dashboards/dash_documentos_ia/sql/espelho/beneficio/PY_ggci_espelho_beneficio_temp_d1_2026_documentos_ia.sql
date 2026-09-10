@@ -3,11 +3,15 @@ WITH UltimaTentativa AS (
     SELECT 
         *,
         CONCAT(YEAR(data_create), '-', IF(MONTH(data_create) <= 6, 1, 2)) AS semestre_calc,
+        (SELECT l_ies.ins_codigo FROM sibu.lancamento l_ies
+          WHERE l_ies.uni_codigo = df.uni_codigo
+            AND l_ies.lan_anomes <= CAST(CONCAT(LEFT(df.semestre, 4), IF(RIGHT(df.semestre, 1) = '1', '06', '12')) AS UNSIGNED)
+          ORDER BY l_ies.lan_anomes DESC LIMIT 1) AS ins_codigo_semestre,
         ROW_NUMBER() OVER(
             PARTITION BY uni_codigo, semestre 
             ORDER BY data_create DESC, id DESC
         ) as ordem_tentativa
-    FROM sibu.documentos_faculdades
+    FROM sibu.documentos_faculdades df
     WHERE documentos_id = 41
       AND semestre LIKE '2026%'
 ),
@@ -87,7 +91,10 @@ FROM UltimaTentativa u
 LEFT JOIN UnicoUsuarioBolsista ub ON u.uni_codigo = ub.usuario
 LEFT JOIN sibu.universitarios uni ON u.uni_codigo = uni.uni_codigo
 LEFT JOIN ColetaBeneficios cd ON u.uni_codigo = cd.uni_codigo AND u.semestre = cd.semestre AND cd.rn_cd = 1
-LEFT JOIN sibu.instituicao i ON uni.ins_codigo = i.ins_codigo
+-- IES DO SEMESTRE: a instituição vem do último lançamento até o fim do semestre do
+-- documento (subquery `ins_codigo_semestre` na CTE), caindo no cadastro quando não há
+-- lançamento. Sem isso quem transfere fica com a IES nova em todos os semestres.
+LEFT JOIN sibu.instituicao i ON i.ins_codigo = COALESCE(u.ins_codigo_semestre, uni.ins_codigo)
 LEFT JOIN sibu.cursos c ON uni.cur_codigo = c.cur_codigo
 
 WHERE u.ordem_tentativa = 1;
