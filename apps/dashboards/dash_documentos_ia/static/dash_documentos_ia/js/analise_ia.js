@@ -1163,6 +1163,24 @@
             });
         }
 
+        if (document.getElementById('ia-legenda-inconsistencias')) {
+            document.getElementById('ia-legenda-inconsistencias').addEventListener('click', (evento) => {
+                const item = evento.target.closest('.docia-legenda__item');
+                if (!item) return;
+                const chave = item.dataset.chave;
+                if (chave.startsWith('Outras ')) {
+                    abrirInc();
+                    return;
+                }
+                if (inconsistenciasEscolhidas.has(chave)) inconsistenciasEscolhidas.delete(chave);
+                else inconsistenciasEscolhidas.add(chave);
+                marcarRecorteNaLegenda(item.parentElement, inconsistenciasEscolhidas);
+                atualizarRotuloInc();
+                recarregar();
+            });
+        }
+
+
         const desenharRosca = (id, nomes, valores, cores, rotuloDoCentro) => {
             const alvo = document.getElementById(id);
             if (!alvo || typeof ApexCharts === 'undefined') return;
@@ -1377,11 +1395,10 @@
                 ? cinza : degraus[i % degraus.length]);
 
             desenharRosca(id, nomes, valores, cores, 'Ocorrências');
-            /*  SEM CLIQUE, ao contrário da legenda do veredito: a última linha é uma
-                SOMA de frases, não uma frase, e não há filtro que ela possa pedir. O
-                recorte por inconsistência continua onde ele é exato, na telinha da
-                barra de filtros, que lista as 47 e aceita várias de uma vez.  */
-            pintarLegendaRosca('ia-legenda-inconsistencias', nomes, valores, cores);
+            /*  CLICÁVEL: agora os itens da legenda filtram a tabela diretamente,
+                assim como no Veredito. O item "Outras N" é especial e abre a
+                telinha completa quando clicado.  */
+            pintarLegendaRosca('ia-legenda-inconsistencias', nomes, valores, cores, nomes, inconsistenciasEscolhidas);
         };
 
         /* ==================================================================
