@@ -499,7 +499,7 @@
          *   e o nome de cada coluna está debaixo dela.
          */
         const opcoesDeBarra = (categorias, valores, cores, maximo, altura, formato) => {
-            const maximoVisual = Math.pow(maximo, 0.5);
+            const maximoVisual = Math.pow(maximo, 0.5) * 1.15;
             const valoresVisuais = valores.map(v => v > 0 ? Math.pow(v, 0.5) : 0);
 
             return {
@@ -751,7 +751,7 @@
                 ficaria com 2% da largura — uma linha invisível. A raiz quadrada infla as
                 diferenças na base, fazendo a barra de 400 ocupar ~15% do espaço e a de
                 1.000 ocupar ~25%. Os rótulos e balões continuam mostrando o valor real.  */
-            const maximoVisual = Math.pow(maximo, 0.5);
+            const maximoVisual = Math.pow(maximo, 0.5) * 1.15;
             const valoresVisuais = valores.map(v => v > 0 ? Math.pow(v, 0.5) : 0);
 
             return {
