@@ -511,7 +511,7 @@
                     height: altura,
                     fontFamily: 'Poppins, sans-serif',
                     toolbar: { show: false },
-                    animations: { enabled: false },
+                    animations: { enabled: true, easing: "easeinout", speed: 800, dynamicAnimation: { speed: 400 } },
                     background: 'transparent',
                     /*  O Apex reserva 15px acima do gráfico por conta própria, para um
                         título que aqui não existe — o título é o `<h3>` do card.  */
@@ -758,7 +758,7 @@
                     height: altura,
                     fontFamily: 'Poppins, sans-serif',
                     toolbar: { show: false },
-                    animations: { enabled: false },
+                    animations: { enabled: true, easing: "easeinout", speed: 800, dynamicAnimation: { speed: 400 } },
                     background: 'transparent',
                     parentHeightOffset: 0,
                 },
@@ -1003,8 +1003,8 @@
                         labels: {
                             show: true,
                             name: {
-                                show: true, fontSize: id === 'ia-gr-inconsistencias' ? '10px' : '12px', fontWeight: 600,
-                                color: tintaMedia(), offsetY: id === 'ia-gr-inconsistencias' ? 10 : 20,
+                                show: true, fontSize: '12px', fontWeight: 600,
+                                color: tintaMedia(), offsetY: 20,
                             },
                             /*  O NÚMERO GRANDE ACOMPANHA A ALTURA do card, em vez dos
                                 28px fixos da outra aba. Lá a legenda tem seis linhas;
@@ -1014,11 +1014,11 @@
                             value: {
                                 show: true,
                                 fontSize: Math.max(
-                                    id === 'ia-gr-inconsistencias' ? 11 : 17,
-                                    Math.round(altura * 0.135 * (id === 'ia-gr-inconsistencias' ? 0.45 : 1))
+                                    17,
+                                    Math.round(altura * 0.135)
                                 ) + 'px',
                                 fontWeight: 800,
-                                color: tintaForte(), offsetY: id === 'ia-gr-inconsistencias' ? -8 : -18,
+                                color: tintaForte(), offsetY: -18,
                                 formatter: (valor) => formatarNumero(valor),
                             },
                             /*  `total` é o par NÚMERO + RÓTULO, e o `fontSize` daqui é
@@ -1027,7 +1027,7 @@
                                 total e transbordava o furo.  */
                             total: {
                                 show: true, showAlways: true, label: rotuloDoCentro,
-                                fontSize: id === 'ia-gr-inconsistencias' ? '10px' : '12px', fontWeight: 600, color: tintaMedia(),
+                                fontSize: '12px', fontWeight: 600, color: tintaMedia(),
                                 formatter: (w) => formatarNumero(
                                     valoresCru.reduce((a, b) => a + b, 0)),
                             },
@@ -1193,7 +1193,7 @@
                                          alturaDoDesenho(id, alturaDe(alvo), alvo.clientWidth),
                                          valores, rotuloDoCentro);
             if (graficos[id] && graficos[id].__tipo === 'donut') {
-                graficos[id].updateOptions(opcoes, false, false);
+                graficos[id].updateOptions(opcoes, false, true);
                 return;
             }
             if (graficos[id]) { graficos[id].destroy(); delete graficos[id]; }
@@ -1225,7 +1225,7 @@
                 ? opcoesDeBarraHorizontal(categorias, valores, cores, teto, alturaDe(alvo), faixa, formato, totalParaPct)
                 : opcoesDeBarra(categorias, valores, cores, teto, alturaDe(alvo), formato);
             if (graficos[id] && graficos[id].__tipo === 'bar') {
-                graficos[id].updateOptions(opcoes, false, false);
+                graficos[id].updateOptions(opcoes, false, true);
                 return;
             }
             /*  `__tipo` guardado na instância: o card do veredito pode ter sido
