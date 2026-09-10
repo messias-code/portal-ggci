@@ -2995,3 +2995,69 @@ html[data-docia-aba="analise"] #filtros-analise { display: block; }
     background: #cbd5e1;
     border-radius: 4px;
 }
+
+/*  LINHA DE LEGENDA QUE NÃO É BOTÃO — a da rosca de inconsistências.
+
+    Ali a última linha é uma SOMA de frases ("Outras 39 inconsistências"), não uma
+    frase, e não há recorte que ela possa pedir. O item herda tudo o mais da legenda
+    da casa; o que ele não pode herdar é a promessa de clique — cursor de mão e
+    realce no hover num alvo inerte são o tipo de mentira que só se descobre
+    clicando. */
+.docia-legenda__item--estatico { cursor: default; }
+.docia-legenda__item--estatico:hover { background-color: transparent; }
+
+/*  A LEGENDA AO LADO DO ANEL — só a das inconsistências.
+
+    A legenda da casa nasce embaixo do gráfico: fio em cima, altura fixa, e o anel
+    ficando com o que sobra. Lá isso basta, porque a lista é curta e sabida — os sete
+    vereditos, de uma ou duas palavras. Na rosca de inconsistências a lista é de
+    frases inteiras da IA e quantas linhas cabem é o que limita quantas fatias o anel
+    pode ter; empurrada para o lado, ela ganha a altura inteira do card em vez da tira
+    que sobrava.
+
+    O QUE MUDA É A DIREÇÃO, e não a régua. A altura fixa sai (quem estica agora é o
+    `align-self: stretch` dentro da linha) e o fio de separação gira com o resto: era
+    `border-top` entre anel e lista, vira `border-left` pela mesma razão de existir —
+    marcar que ali começa a resposta de "quanto é cada uma".
+
+    `safe center` centra as linhas quando elas sobram e volta a alinhar pelo topo
+    quando não cabem. Sem o `safe`, uma lista mais alta que a caixa ficaria centrada e
+    as primeiras linhas sairiam para fora do lado de cima, onde a rolagem não alcança.
+    Navegador que não conhece a palavra descarta a declaração inteira e alinha pelo
+    topo, que é exatamente o que se quer no caso ruim. */
+.docia-legenda--lado {
+    height: auto;
+    align-self: stretch;
+    justify-content: safe center;
+    margin-top: 0;
+    padding: 0 2px 0 10px;
+    border-top: 0;
+    border-left: 1px solid var(--tema-borda, rgba(17, 24, 39, 0.07));
+}
+
+html[data-tela-cheia="1"] .docia-legenda--lado { height: auto; }
+
+/*  A LINHA "ANEL + LISTA" — a repartição de largura do card de inconsistências.
+
+    As medidas vivem aqui, e não em `style=` no template, por causa do caso vazio: o
+    JS precisa poder devolver a largura inteira ao anel trocando UMA classe, e regra
+    de folha de estilo não vence estilo inline. */
+.docia-anel-e-lista {
+    display: flex;
+    flex-direction: row;
+    gap: 4px;
+    flex: 1 1 0;
+    min-height: 0;
+}
+
+.docia-anel-e-lista > .docia-grafico-ia { flex: 0 0 28%; min-width: 0; min-height: 0; }
+.docia-anel-e-lista > .docia-legenda { flex: 1 1 0; min-width: 0; }
+
+/*  SEM LISTA, SEM COLUNA DE LISTA. Quando não há o que listar — recorte sem
+    documento lido, ou lido e sem nenhuma inconsistência — o que o card mostra é um
+    aviso de uma linha, e ele estava desenhado dentro da fatia de 28%: recado
+    espremido à esquerda, fio de separação no meio e dois terços de card vazios à
+    direita. Aqui a coluna da lista sai do fluxo e o aviso fica centrado no card,
+    que é onde se lê um aviso. */
+.docia-anel-e-lista--sozinho > .docia-legenda { display: none; }
+.docia-anel-e-lista--sozinho > .docia-grafico-ia { flex: 1 1 0; }

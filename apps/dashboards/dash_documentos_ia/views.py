@@ -1389,8 +1389,9 @@ MENSALIDADE_BALDES = {
 }
 
 # A ordem em que as fatias são lidas: o que conferiu, as duas direções em que divergiu e,
-# por último, o que a IA não achou no arquivo.
-ORDEM_MENSALIDADE = ['Bateu', 'Menor', 'Maior', 'Não localizado']
+# por último, o que a IA não achou no arquivo. Entre as duas direções vem primeiro a que
+# custa dinheiro — o documento cobrando MAIS do que o sistema previu.
+ORDEM_MENSALIDADE = ['Bateu', 'Maior', 'Menor', 'Não localizado']
 
 # OS OITO ESTADOS, e não uma seleção deles: são TODOS os valores que `status_ia`
 # assume, então a rosca soma exatamente o total do recorte e `fora_do_grafico` é zero.

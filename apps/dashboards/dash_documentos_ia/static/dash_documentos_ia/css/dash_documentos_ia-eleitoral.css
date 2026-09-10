@@ -233,6 +233,10 @@ html[data-tema="eleitoral"] .docia-legenda__pct { color: var(--tema-texto-fraco)
 html[data-tema="eleitoral"] .docia-legenda__item:hover {
     background-color: var(--tema-superficie-3);
 }
+/* A linha inerte da rosca de inconsistências também não se acende aqui. */
+html[data-tema="eleitoral"] .docia-legenda__item--estatico:hover {
+    background-color: transparent;
+}
 
 /* --- Pílulas dos filtros do Detalhamento ---------------------------------
    Mesmo caso da legenda: borda escrita à mão no CSS claro, reapresentada aqui. */

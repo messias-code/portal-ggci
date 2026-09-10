@@ -597,18 +597,47 @@
                             mostra o valor. A legenda é o MESMO componente
                             (`docia-legenda`), com o degrau de tamanho desta aba.
 
-                            AS DUAS DE MENSALIDADE SÃO COLUNAS: ali a pergunta é "quantos",
-                            que é magnitude, e as quatro categorias têm nome longo, vindo
-                            direto da coluna `msd_doc`/`mcd_doc` — é o texto que a pessoa
-                            encontra na tabela abaixo e na planilha, e traduzi-lo aqui
-                            criaria dois nomes para o mesmo fato.
+                            INCONSISTÊNCIAS TAMBÉM É ROSCA, e pela mesma razão: a
+                            pergunta é como o problema se REPARTE entre os
+                            apontamentos. Foi barra deitada por um tempo, e o que a
+                            derrubou foi a largura — o nome de cada barra é uma frase
+                            da IA de até 64 caracteres, e a faixa que elas pediam à
+                            esquerda comia metade do card. Na legenda a frase se lê
+                            inteira, uma sob a outra, com número e percentual.
 
-                            As cores são as da OVG nos quatro, na mesma ordem do
-                            quantitativo.
+                            AS DUAS DE MENSALIDADE SÃO BARRAS, cada uma no SEU card,
+                            e os dois cards UM SOBRE O OUTRO na mesma coluna. São a
+                            mesma medida lida duas vezes, com desconto e sem, e é
+                            comparando linha com linha — Conforme com Conforme, Maior
+                            com Maior — que a diferença entre elas aparece; lado a
+                            lado, a comparação era na horizontal e cada card tinha a
+                            própria escala. Empilhados, os quatro rótulos de um ficam
+                            exatamente acima dos quatro do outro.
+
+                            A COLUNA É A MAIS ESTREITA da faixa: os quatro baldes
+                            viraram uma palavra cada (ver `ROTULO_MENSALIDADE`), então
+                            o que eles pedem de largura é pouco — o que sobra vai para
+                            as inconsistências, que é onde há texto para ler.
+
+                            As cores são as da OVG nos quatro. Nas barras e no
+                            veredito, na ordem da paleta; nas inconsistências, a mesma
+                            paleta repetida em três tons, porque ali as fatias são
+                            treze e a casa tem cinco cores (ver `rampaDeInconsistencia`).
                         -->
                         <div class="docia-faixa-graficos flex flex-row w-full gap-3 mb-4 shrink-0 min-h-[320px]">
+                            <!--
+                                AS PROPORÇÕES DA FAIXA. As três colunas não pedem a
+                                mesma largura: o veredito é uma rosca com legenda de
+                                sete linhas curtas, as duas de mensalidade são quatro
+                                barras com rótulo de uma palavra, e as inconsistências
+                                carregam frases inteiras na legenda. Repartir em
+                                partes iguais dava 205px de faixa de nomes num card de
+                                mensalidade de 400px e reticências no card das frases,
+                                ao mesmo tempo. Aqui cada uma leva o que o conteúdo
+                                dela mede.
+                            -->
                             <div class="docia-card-doc bg-gradient-to-b from-white to-gray-50/40 backdrop-blur-md border border-white/60 rounded-3xl py-4 px-2 flex flex-col"
-                                 style="flex: 1 1 0; min-width: 0; min-height: 0;">
+                                 style="flex: 0.75 1 0; min-width: 0; min-height: 0;">
                                 <h3 class="text-sm font-extrabold text-gray-700 m-0 text-center shrink-0" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">VEREDITO DA IA</h3>
                                 <!--
                                     A BASE DO CARD, escrita e não subentendida. Os cinco
@@ -637,30 +666,89 @@
                                 <div class="docia-legenda docia-legenda--ia shrink-0" id="ia-legenda-veredito"></div>
                             </div>
 
-                            <!-- Coluna do Meio: Mensalidades -->
-                            <div class="docia-card-doc bg-gradient-to-b from-white to-gray-50/40 backdrop-blur-md border border-white/60 rounded-3xl py-4 px-2 flex flex-col justify-around gap-2"
-                                 style="flex: 1.2 1 0; min-width: 0; min-height: 0;">
-                                
-                                <div class="flex flex-col h-1/2">
+                            <!--
+                                A COLUNA DAS MENSALIDADES — dois cards, não um card
+                                dividido. O que os separa é o card: cada um tem o
+                                próprio título, a própria linha de base e a própria
+                                moldura, que é o que diz que são duas medidas e não
+                                duas metades de uma. O que os alinha é a coluna: mesma
+                                largura, mesmo `flex: 1 1 0`, mesmo par de barras na
+                                mesma altura da tela.
+
+                                O `gap-3` é o mesmo da faixa, para que o respiro entre
+                                um e outro seja igual ao respiro entre os cards
+                                vizinhos, e o `py-3` no lugar do `py-4` da faixa
+                                devolve 8px de altura a cada card — que aqui, com dois
+                                dividindo o que os outros têm inteiro, é o que separa
+                                quatro barras confortáveis de quatro barras espremidas.
+
+                                O PISO DE 250px É MEDIDO, e não um arredondamento. É a
+                                menor largura em que "13.629 (89,5%)" ainda cabe DEPOIS
+                                da barra: faixa dos nomes (~59px), o número (~85px), o
+                                respiro entre um e outro e a margem direita da grade
+                                somam ~180, e o que sobra precisa dar barra suficiente
+                                para a maior fatia. Abaixo disso o ApexCharts não
+                                deixa o rótulo sair da área de plotagem e o imprime
+                                POR CIMA da barra — foi o que se mediu a 1280px, com
+                                a coluna em 197px e o rótulo 6px dentro da barra.
+
+                                A proporção continua mandando em tela larga; o piso só
+                                aparece quando a janela aperta, e o que ele tira vem do
+                                card das inconsistências, que a 1280px ainda tem 700px.
+                            -->
+                            <div class="flex flex-col gap-3" style="flex: 0.62 1 0; min-width: 250px; min-height: 0;">
+                                <div class="docia-card-doc bg-gradient-to-b from-white to-gray-50/40 backdrop-blur-md border border-white/60 rounded-3xl py-3 px-2 flex flex-col"
+                                     style="flex: 1 1 0; min-width: 0; min-height: 0;">
                                     <h3 class="text-sm font-extrabold text-gray-700 m-0 text-center shrink-0" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">MENSALIDADE SEM DESCONTO</h3>
-                                    <p class="docia-grafico-base text-[10px] text-gray-400 text-center m-0 mb-1 shrink-0" id="ia-base-msd"></p>
+                                    <p class="docia-grafico-base text-[10px] text-gray-400 text-center m-0 shrink-0" id="ia-base-msd"></p>
                                     <div class="docia-grafico-ia w-full" id="ia-gr-msd" style="flex: 1 1 0; min-height: 0;"></div>
                                 </div>
-                                
-                                <div class="w-4/5 mx-auto border-t border-gray-200/60 shrink-0"></div>
 
-                                <div class="flex flex-col h-1/2">
+                                <div class="docia-card-doc bg-gradient-to-b from-white to-gray-50/40 backdrop-blur-md border border-white/60 rounded-3xl py-3 px-2 flex flex-col"
+                                     style="flex: 1 1 0; min-width: 0; min-height: 0;">
                                     <h3 class="text-sm font-extrabold text-gray-700 m-0 text-center shrink-0" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">MENSALIDADE COM DESCONTO</h3>
-                                    <p class="docia-grafico-base text-[10px] text-gray-400 text-center m-0 mb-1 shrink-0" id="ia-base-mcd"></p>
+                                    <p class="docia-grafico-base text-[10px] text-gray-400 text-center m-0 shrink-0" id="ia-base-mcd"></p>
                                     <div class="docia-grafico-ia w-full" id="ia-gr-mcd" style="flex: 1 1 0; min-height: 0;"></div>
                                 </div>
                             </div>
 
                             <div class="docia-card-doc bg-gradient-to-b from-white to-gray-50/40 backdrop-blur-md border border-white/60 rounded-3xl py-4 px-2 flex flex-col"
-                                 style="flex: 1.2 1 0; min-width: 0; min-height: 0;">
+                                 style="flex: 2.2 1 0; min-width: 0; min-height: 0;">
                                 <h3 class="text-sm font-extrabold text-gray-700 m-0 text-center shrink-0" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">INCONSISTÊNCIAS</h3>
                                 <p class="docia-grafico-base text-[10px] text-gray-400 text-center m-0 mb-1 shrink-0" id="ia-base-inconsistencias"></p>
-                                <div class="docia-grafico-ia w-full" id="ia-gr-inconsistencias" style="flex: 1 1 0; min-height: 0;"></div>
+                                <!--
+                                    A LEGENDA AO LADO DO ANEL, e não embaixo dele como
+                                    no veredito. O que muda entre os dois cards é o
+                                    tamanho da lista: o veredito tem sete vereditos
+                                    fixos, de uma ou duas palavras; aqui são dezenas de
+                                    frases inteiras da IA, e quantas delas cabem é o
+                                    que decide quantas fatias o anel pode ter.
+
+                                    Embaixo, a lista só podia ocupar a tira de altura
+                                    fixa que sobrava do anel — sete linhas, e o resto
+                                    das frases somado numa fatia cinza. Ao lado, ela
+                                    recebe a ALTURA INTEIRA do card e o anel continua
+                                    com a dele, então cabem o dobro de frases sem que
+                                    nenhum dos dois encolha.
+
+                                    O anel leva uma fração fixa da largura e a lista
+                                    fica com o resto: é a lista que tem texto de
+                                    tamanho variável, e é ela que precisa da folga.
+
+                                    28% E NÃO UM TERÇO. A frase mais longa que a IA
+                                    escreve ("Valor da mensalidade com desconto diverge
+                                    do sistema") mede ~296px na letra da legenda, e com
+                                    um terço da largura ela ficava com 297 a 1280px —
+                                    quatro linhas saíam com reticências. Os 6 pontos
+                                    percentuais a menos são ~40px de folga para o texto
+                                    e quase nada para o anel: da metade da faixa para
+                                    cima quem limita o anel é a ALTURA do card, não a
+                                    largura, então o que se tira daqui não o encolhe.
+                                -->
+                                <div class="docia-anel-e-lista">
+                                    <div class="docia-grafico-ia flex justify-center items-center" id="ia-gr-inconsistencias"></div>
+                                    <div class="docia-legenda docia-legenda--ia docia-legenda--lado" id="ia-legenda-inconsistencias"></div>
+                                </div>
                             </div>
                         </div>
 
