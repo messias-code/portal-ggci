@@ -288,14 +288,108 @@ html[data-tema="eleitoral"] .logo-tema--eleitoral {
         transform .2s ease;
 }
 
+/* --------------------------------------------------------------------------
+   A COR E O MOVIMENTO DO BOTÃO
+   --------------------------------------------------------------------------
+   Ele funcionava e era chapado: um círculo cinza com um ícone dentro, do mesmo
+   tom da borda, parado até alguém passar o mouse. Num cabeçalho onde tudo o
+   mais tem cor da marca, ele era a peça que parecia não ter sido desenhada.
+
+   TRÊS CAMADAS, e cada uma responde a um momento diferente:
+
+     o fundo em degradê   estado de repouso — é o que dá cor sem pedir atenção
+     o halo no `::before` hover — cresce de dentro para fora, a partir do ícone
+     o anel no `::after`  clique — um pulso que sai da borda e some
+
+   O DEGRADÊ MUDA COM O TEMA, e não é decoração: no claro ele puxa para o lilás
+   e o rosa da marca; no eleitoral, para o teal. O botão passa a pertencer ao
+   cabeçalho em que está, em vez de ser o mesmo cinza nos dois.
+
+   O HALO SAI DO CENTRO porque é de lá que o ícone sai e entra na troca de tema —
+   o movimento do hover antecipa o movimento do clique, e os dois lidos juntos
+   fazem sentido. Um brilho vindo da borda diria outra coisa.
+
+   `transform` no hover continua sendo 1px, e não mais: este botão fica ao lado
+   de "Voltar" e do bloco de "Atualizar" numa fileira apertada, e qualquer
+   deslocamento maior desalinha a fileira inteira aos olhos.
+   -------------------------------------------------------------------------- */
+
+/*  O degradê vive no `background-image` para não brigar com o
+    `background-color` que os dois temas já definem — quem não tiver suporte
+    (ou tiver o gradiente recusado) continua com a cor sólida de antes.  */
+.tema-toggle {
+    background-image: linear-gradient(140deg,
+                                      rgba(236, 72, 153, 0.14) 0%,
+                                      rgba(168, 85, 247, 0.10) 55%,
+                                      transparent 100%);
+    transition:
+        background-color .3s ease,
+        border-color .3s ease,
+        color .3s ease,
+        box-shadow .3s ease,
+        transform .2s ease;
+}
+
+/*  O halo. `inset: -30%` para ele poder crescer além do botão e ainda assim
+    ficar recortado pelo `overflow: hidden` do círculo — é isso que faz a luz
+    lamber a borda por dentro em vez de vazar como uma bolha quadrada.  */
+.tema-toggle::before {
+    content: '';
+    position: absolute;
+    inset: -30%;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 50%,
+                                var(--tema-primaria) 0%,
+                                transparent 62%);
+    opacity: 0;
+    transform: scale(.35);
+    transition: opacity .35s ease, transform .45s cubic-bezier(.34, 1.3, .64, 1);
+    pointer-events: none;
+}
+
+.tema-toggle:hover::before {
+    opacity: .22;
+    transform: scale(1);
+}
+
+/*  O anel do clique. Ele nasce na borda e se apaga para fora; `:active` dura o
+    tempo do botão pressionado, que é curto o bastante para o pulso não virar
+    animação em laço.  */
+.tema-toggle::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 2px solid var(--tema-primaria);
+    opacity: 0;
+    transform: scale(1);
+    transition: opacity .4s ease, transform .4s ease;
+    pointer-events: none;
+}
+
+.tema-toggle:active::after {
+    opacity: .55;
+    transform: scale(.82);
+    transition-duration: 0s;
+}
+
 .tema-toggle:hover {
     color: var(--tema-primaria);
-    border-color: var(--tema-primaria-borda);
+    border-color: var(--tema-primaria);
     transform: translateY(-1px);
+    box-shadow: 0 1px 2px rgba(17, 24, 39, 0.06),
+                0 6px 16px -6px var(--tema-primaria-borda);
+}
+
+/*  O ícone acompanha: um giro curto no hover, na mesma direção em que ele sai
+    quando o tema troca. Escala de 1,1 e não mais — em 19px, crescer demais
+    borra o traço de 1,6px do desenho.  */
+.tema-toggle:hover .tema-toggle__icone {
+    transform: rotate(-14deg) scale(1.1);
 }
 
 .tema-toggle:active {
-    transform: translateY(0);
+    transform: translateY(0) scale(.94);
 }
 
 .tema-toggle:focus-visible {
@@ -306,6 +400,13 @@ html[data-tema="eleitoral"] .logo-tema--eleitoral {
 /* No escuro o botão ganha um halo teal sutil, para não sumir no fundo. */
 html[data-tema="eleitoral"] .tema-toggle {
     background-color: rgba(102, 203, 182, 0.12);
+    /*  A rampa rosa/roxa do claro é a paleta que o eleitoral abandona. Aqui ela
+        percorre o eixo do tema — teal para índigo —, e o botão continua sendo o
+        mesmo objeto com a cor do lugar onde está.  */
+    background-image: linear-gradient(140deg,
+                                      rgba(111, 211, 191, 0.22) 0%,
+                                      rgba(107, 113, 178, 0.16) 55%,
+                                      transparent 100%);
     border-color: var(--tema-primaria-borda);
     color: var(--tema-primaria-suave);
 }
@@ -355,7 +456,16 @@ html[data-tema="eleitoral"] .tema-toggle__icone--sol {
         transition: opacity .01ms;
     }
 
-    .tema-toggle:hover {
+    .tema-toggle:hover,
+    .tema-toggle:active,
+    .tema-toggle:hover .tema-toggle__icone {
         transform: none;
+    }
+
+    /*  O halo e o anel são movimento puro: sem eles o botão continua mudando de
+        cor no hover, que é a informação. */
+    .tema-toggle::before,
+    .tema-toggle::after {
+        display: none;
     }
 }

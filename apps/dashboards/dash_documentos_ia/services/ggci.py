@@ -1144,8 +1144,8 @@ def mesclar_sql_e_reordenar(df, df_sql, df_pag=None, df_mes_a_mes=None):
             'email': 'E-mail',
             'telefone_1': 'Telefone 1',
             'telefone_2': 'Telefone 2',
-            'periodo_atual': 'Período atual',
-            'periodo_quantidade': 'Período quantidade',
+            'periodo_atual': 'Semestre atual',
+            'periodo_quantidade': 'Semestre quantidade',
             'matricula': 'Matricula',
             'ins_cnpj': 'Ins. CNPJ',
             'ins_razao_social': 'Ins. Razão Social',
@@ -1213,8 +1213,8 @@ def mesclar_sql_e_reordenar(df, df_sql, df_pag=None, df_mes_a_mes=None):
             # existe para cobrir. `periodo_atual` propaga o ultimo valor conhecido; o ajuste
             # por diferenca de semestre continua sendo feito no remapeamento acima (calc_diff).
             'modalidade': 'Modalidade',
-            'periodo_atual': 'Período atual',
-            'periodo_quantidade': 'Período quantidade',
+            'periodo_atual': 'Semestre atual',
+            'periodo_quantidade': 'Semestre quantidade',
             'qtd_disciplinas_matriculadas': 'Qtd Disciplinas Matriculadas',
             'qtd_disciplinas_reprovadas': 'Qtd Disciplinas Reprovadas',
             'sit_motivos': 'Situação do Motivo',
@@ -4485,8 +4485,8 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                         for col_orig, col_dest in [
                             ('matricula', 'Matricula'), ('modalidade', 'modalidade'), 
                             ('email', 'E-mail'), ('telefone_1', 'Telefone 1'), ('telefone_2', 'Telefone 2'),
-                            ('data_nascimento', 'Data nascimento'), ('periodo_atual', 'Período atual'),
-                            ('periodo_quantidade', 'Período quantidade')
+                            ('data_nascimento', 'Data nascimento'), ('periodo_atual', 'Semestre atual'),
+                            ('periodo_quantidade', 'Semestre quantidade')
                         ]:
                             if col_orig in row and pd.notna(row[col_orig]):
                                 novo_ausente[col_dest] = row[col_orig]
@@ -4545,8 +4545,8 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                             for col_orig, col_dest in [
                                 ('matricula', 'Matricula'), ('modalidade', 'modalidade'), 
                                 ('email', 'E-mail'), ('telefone_1', 'Telefone 1'), ('telefone_2', 'Telefone 2'),
-                                ('data_nascimento', 'Data nascimento'), ('periodo_atual', 'Período atual'),
-                                ('periodo_quantidade', 'Período quantidade')
+                                ('data_nascimento', 'Data nascimento'), ('periodo_atual', 'Semestre atual'),
+                                ('periodo_quantidade', 'Semestre quantidade')
                             ]:
                                 if col_orig in row and pd.notna(row[col_orig]):
                                     novo_ausente[col_dest] = row[col_orig]
@@ -4958,8 +4958,8 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             'Gemini Cnpj Faculdade', 'Gemini Nome Mantenedora', 'Gemini Assinatura Aluno', 'Gemini Assinatura Ies',
             'Gemini Beneficio Nome', 'Gemini Valor Beneficio', 'Gemini Valor Financiado', 'Gemini Nome Financiamento',
             'Gemini Modalidade', 'Gemini Email', 'Gemini Telefone', 'Gemini Periodo', 'Gemini Quantidade Periodos',
-            'Gemini Tipo Bolsa', 'Data nascimento', 'E-mail', 'Telefone 1', 'Telefone 2', 'Período atual',
-            'Período quantidade', 'Matricula', 'Ins. Cnpj', 'Ins. Nome Fantasia', 'Ins. Mantenedora',
+            'Gemini Tipo Bolsa', 'Data nascimento', 'E-mail', 'Telefone 1', 'Telefone 2', 'Semestre atual',
+            'Semestre quantidade', 'Matricula', 'Ins. Cnpj', 'Ins. Nome Fantasia', 'Ins. Mantenedora',
             'Modalidade', 'Matricula C/ Desconto', 'Matricula S/ Desconto', 'data_create', 'Processado',
             'Documento Ausente',
             'Veredito Documento',
@@ -5042,9 +5042,9 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             'Gemini Matricula': 'gemini_matricula',
             'Semestre': 'semestre',
             'Gemini Semestre': 'gemini_semestre',
-            'Período atual': 'periodo_atual',
-            'Gemini Período': 'gemini_periodo',
-            'Período quantidade': 'qtd_periodos',
+            'Semestre atual': 'periodo_atual',
+            'Gemini Semestre': 'gemini_periodo',
+            'Semestre quantidade': 'qtd_periodos',
             'Gemini Quantidade Periodos': 'gemini_qtd_periodos',
             'gemini_numero_semestres': 'gemini_numero_semestres',
             'gemini_semestres_feitos': 'gemini_semestres_feitos',

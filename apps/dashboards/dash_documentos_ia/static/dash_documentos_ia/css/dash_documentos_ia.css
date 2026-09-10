@@ -226,6 +226,29 @@ body { font-family: 'Poppins', sans-serif; }
    `height` existe por causa da barra HORIZONTAL: sem ele, o WebKit desenha a
    barra de baixo com altura zero e a rolagem lateral vira um gesto invisível.
    ========================================================================== */
+/*  AS SETINHAS DAS PONTAS SAEM.
+
+    `::-webkit-scrollbar-button` é o botão de passo em cada extremidade da barra.
+    Nenhuma das duas folhas o declarava, então ele vinha no desenho PADRÃO do
+    navegador: dois quadradinhos cinza com um triângulo dentro, em cada ponta.
+    Numa barra de 6px, o triângulo não cabe e o que sobra são duas manchas — e
+    elas são a única peça de cromo do sistema numa barra que existe justamente
+    para ser discreta.
+
+    Elas também não servem para nada aqui: rolar de 40px por clique numa tabela
+    de 5.000 linhas não é um gesto que alguém use, e quem quer precisão tem a
+    roda, o arrastar do polegar e as teclas.
+
+    `display: none` E as duas medidas em zero: parte das versões do WebKit ignora
+    o `display` neste pseudo-elemento e só respeita o tamanho. As duas juntas
+    cobrem os dois comportamentos.  */
+.docia-scroll-rosinha::-webkit-scrollbar-button,
+.custom-scrollbar-light::-webkit-scrollbar-button {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
 .docia-scroll-rosinha::-webkit-scrollbar { width: 6px; height: 6px; }
 .docia-scroll-rosinha::-webkit-scrollbar-track { background: transparent; }
 .docia-scroll-rosinha::-webkit-scrollbar-corner { background: transparent; }
@@ -254,7 +277,14 @@ body { font-family: 'Poppins', sans-serif; }
     display: flex;
     flex-direction: column;
     gap: 2px;
-    padding: 6px 4px 0;
+    /*  O fio acima da legenda separa as duas zonas do card — o anel responde
+        "qual é a proporção", a lista responde "quanto é cada uma". Sem ele, o
+        primeiro rótulo flutuava a meio caminho do anel e o card lia como uma
+        coisa só, mal espaçada. É 1px na cor da borda do tema, não uma régua
+        escura: a divisão precisa ser percebida, não anunciada.  */
+    margin-top: 6px;
+    padding: 9px 4px 0;
+    border-top: 1px solid var(--tema-borda, rgba(17, 24, 39, 0.07));
     /*  ALTURA RESERVADA ANTES DE HAVER CONTEÚDO — não é cosmético.
 
         O ApexCharts recebe a altura como número no render e, logo depois, escreve
@@ -270,8 +300,13 @@ body { font-family: 'Poppins', sans-serif; }
 
         58px reservavam TRÊS linhas, de quando a legenda tinha três. Hoje são seis, e o
         número tem de acompanhar: deixá-lo curto reproduz exatamente o vazamento que ele
-        existe para evitar.  */
-    min-height: 116px;
+        existe para evitar.
+
+        Medidos os 116px em tela, a legenda ocupa 137px — a reserva estava 18px curta
+        desde que ela passou de três para seis linhas, e era só o `ajustarAlturas` que
+        vinha atrás consertando. Reservar o número real é o que faz a PRIMEIRA pintura
+        já nascer certa, que é justamente para o que este `min-height` existe.  */
+    min-height: 138px;
     font-size: 10px;
     line-height: 1.35;
     font-weight: 600;
@@ -306,11 +341,25 @@ body { font-family: 'Poppins', sans-serif; }
 .docia-legenda__item--ativo .docia-legenda__nome { font-weight: 800; color: #6B007B; }
 .docia-legenda__item--ativo:hover { background-color: rgba(107, 0, 123, 0.14); }
 
+/*  QUADRADINHO DE PONTAS ARREDONDADAS, E NÃO BOLINHA.
+
+    O círculo de 9px era a peça mais frágil da tela: numa fatia de 3,5% ele já é
+    o único lugar onde a cor aparece com tamanho suficiente para ser comparada
+    com a do anel, e a diagonal do círculo joga fora quase um terço da área do
+    quadrado que ocupa. O retângulo de cantos arredondados devolve essa área,
+    encosta nas bordas retas do texto ao lado — o olho alinha a coluna de cores
+    sozinho — e é a mesma forma do marcador do balão, em `dash_documentos_ia.js`.
+
+    SÓ O BRILHO DE DENTRO. Ele tinha também uma sombra externa de 2px, e em 10px
+    de lado ela não cabia: metade do quadradinho virava borrão, e seis borrões
+    empilhados na coluna deixavam a legenda suja. Nada dentro do card projeta
+    sombra — a profundidade é do card, e só dele.  */
 .docia-legenda__ponto {
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
     flex: 0 0 auto;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
 .docia-legenda__nome {
@@ -336,12 +385,16 @@ body { font-family: 'Poppins', sans-serif; }
     color: #111827;
     font-weight: 700;
 }
+/*  `#9CA3AF` dava 2,6:1 contra o branco do card — abaixo do mínimo de 4,5:1 para
+    texto pequeno, e em 10px o percentual simplesmente não se lia sem aproximar. A
+    tinta nova mede 4,8:1 e continua claramente secundária ao lado do valor, que é
+    `#111827`. O apagado tem de vir da HIERARQUIA, não de o texto sumir.  */
 .docia-legenda__pct {
     flex: 0 0 auto;
     width: 40px;
     text-align: right;
     font-variant-numeric: tabular-nums;
-    color: #9CA3AF;
+    color: #6B7280;
 }
 
 /* --- Pílulas dos filtros do Detalhamento ---------------------------------
@@ -414,7 +467,7 @@ body { font-family: 'Poppins', sans-serif; }
     align-items: center;
     gap: 6px;
     max-width: 100%;
-    padding: 4px 6px 4px 12px;
+    padding: 4px 10px 4px 16px;
     border: 1px solid rgba(107, 0, 123, 0.18);
     border-radius: 999px;
     background-color: rgba(107, 0, 123, 0.05);
@@ -1267,19 +1320,30 @@ body { font-family: 'Poppins', sans-serif; }
     text-underline-offset: 2px;
 }
 
+/*  Mesmo desvio das outras duas: o token é violeta azulado no claro. */
 .docia-ies-link:focus-visible {
-    outline: 2px solid var(--tema-primaria, #6B007B);
+    outline: 2px solid #6B007B;
     outline-offset: 2px;
     border-radius: 0.25rem;
 }
 
+/*  O PERCENTUAL ESTAVA INVISÍVEL, e era acumulação de três decisões que
+    isoladamente pareciam pequenas: tinta `#B6BCC6` (1,9:1 contra o branco da
+    tabela), corpo de 10px, e ainda um `opacity-80` por cima no JS — que derruba
+    o contraste real para 1,7:1. Abaixo de 3:1 não é hierarquia, é texto que não
+    está lá.
+
+    A tinta nova mede 4,6:1 e o peso sobe de 500 para 600 — em 10px, peso é o que
+    segura a forma da letra. Ele continua claramente secundário ao número ao lado,
+    que é bold e colorido; a diferença passa a ser de hierarquia, não de
+    existência.  */
 .docia-ies-pct {
     display: inline-block;
     min-width: 3.4rem;
     margin-left: 0.4rem;
     font-size: 0.625rem;
-    font-weight: 500;
-    color: #B6BCC6;
+    font-weight: 600;
+    color: #767E8C;
     font-variant-numeric: tabular-nums;
     text-align: right;
 }
@@ -1298,3 +1362,1636 @@ body { font-family: 'Poppins', sans-serif; }
     tabela de vermelho dizendo "atenção" sobre "não há nada aqui", e o alarme parava de
     significar alguma coisa onde há inadimplência de verdade.  */
 .docia-ies-pct--inverso { color: #C77A80; }
+
+
+/* ==========================================================================
+   RELEVO — CARDS, GRADES E A BARRA DE FILTROS
+   ==========================================================================
+   A tela inteira era desenhada com UMA sombra por elemento, larga e fraca
+   (`shadow-[0_4px_24px_rgb(0,0,0,0.08)]` e a `shadow-sm` do Tailwind). Uma
+   sombra só não descreve um objeto apoiado numa superfície: ela borra a mesma
+   quantidade perto e longe da borda, e o resultado é uma mancha cinza atrás do
+   card em vez de um card levantado. Numa tela cheia de retângulos brancos sobre
+   fundo quase branco, é isso que dá a sensação de imagem com poucos pixels — não
+   falta resolução, falta o degradê curto que o olho lê como profundidade.
+
+   A RECEITA É SEMPRE A MESMA, em três camadas, e só muda de intensidade:
+
+     1. CONTATO — 1px, quase sem desfoque. É o que separa a borda do card do que
+        está atrás dele; sem ela, nenhuma quantidade de sombra larga faz a borda
+        parecer nítida.
+     2. AMBIENTE — o desfoque médio, deslocado para baixo, que dá o peso.
+   Mais uma INTERNA de 1px branco no topo, que é a aresta iluminada. É ela que faz
+   a diferença entre "retângulo pintado" e "placa com espessura".
+
+   TEVE UMA TERCEIRA CAMADA E ELA FOI TIRADA: um desfoque de 40px tingido de roxo,
+   que dava a fuga longa. Só que os cinco cards são vizinhos com 12px de intervalo,
+   e uma sombra de 40px não cabe nesse intervalo: ela atravessava para dentro do
+   card ao lado e pintava uma faixa arroxeada na emenda entre os dois. Sombra que
+   alcança o vizinho não é profundidade, é sujeira — e num painel de cards colados
+   o limite do desfoque é a distância até o vizinho, não o gosto de quem desenha.
+
+   POR QUE EM CSS E NÃO EM UTILITÁRIA: o bundle do Tailwind deste projeto é
+   purgado e não há build no repositório — uma `shadow-[...]` nova de quatro
+   camadas não seria gerada e falharia em silêncio. Mesmo motivo do bloco das
+   seções de filtro, mais acima.
+   ========================================================================== */
+
+/* --- Os cinco cards de documento ------------------------------------------ */
+.docia-card-doc {
+    box-shadow: 0 1px 2px rgba(17, 24, 39, 0.06),
+                0 5px 12px -4px rgba(17, 24, 39, 0.10),
+                inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    transition: box-shadow 0.25s ease;
+}
+
+/*  SÓ A SOMBRA MUDA NO HOVER, e de propósito. O card não é clicável (quem clica
+    é a linha da legenda dentro dele), e mover um elemento que não responde ao
+    clique promete o que ele não faz — a mesma razão registrada na faixa de KPIs,
+    no template. Aprofundar a sombra é dizer "o mouse está aqui" sem prometer
+    nada. */
+.docia-card-doc:hover {
+    box-shadow: 0 1px 2px rgba(17, 24, 39, 0.07),
+                0 8px 18px -6px rgba(17, 24, 39, 0.13),
+                inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+/* --- A faixa de KPIs ------------------------------------------------------
+   Mais rasa que os cards de documento: são faixas de 60px de altura encostadas
+   no topo da área de trabalho, e a mesma sombra de um card de 400px as faria
+   flutuar. A hierarquia da profundidade tem de acompanhar a do conteúdo. */
+.docia-kpi-card {
+    box-shadow: 0 1px 2px rgba(17, 24, 39, 0.05),
+                0 4px 9px -3px rgba(17, 24, 39, 0.08),
+                inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+/* --- As grades segmentadas da barra de filtros ----------------------------
+   `docia-grade-seg` (período, modo, vínculo, perfil, mudanças) e
+   `docia-grade-doc` (os cinco documentos) são o mesmo controle com duas
+   marcações diferentes — ver o bloco da grade de documento, acima. O relevo é
+   um só para as duas: elas ficam empilhadas na mesma coluna e qualquer
+   diferença aqui leria como estados diferentes. */
+.docia-grade-seg,
+.docia-grade-doc {
+    box-shadow: 0 1px 1px rgba(17, 24, 39, 0.04),
+                0 3px 8px -2px rgba(17, 24, 39, 0.09),
+                inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+/*  A OPÇÃO MARCADA AFUNDA. Ela era só um retângulo roxo, do mesmo plano das
+    vizinhas brancas: a cor dizia "escolhido" e mais nada. Com a sombra interna
+    ela lê como tecla pressionada — o estado passa a ter forma, e não só tinta,
+    e continua legível de canto de olho com a barra em movimento.
+
+    O seletor é `input:checked + div` porque a marcação é a do Tailwind
+    (`peer` no input, o `div` irmão logo depois) e é ela que o tema eleitoral
+    corrige nominalmente. Trocar a marcação para caber num seletor mais bonito
+    deixaria o modo escuro para trás.  */
+.docia-grade-seg input:checked + div,
+.filter-documento-ies:checked + .docia-grade-doc__caixa {
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.30),
+                inset 0 -1px 0 rgba(255, 255, 255, 0.14);
+}
+
+/* --- A borda da barra de filtros ------------------------------------------
+   A barra desliza POR CIMA da área de trabalho, e a sombra dela era um véu de
+   5% — na prática, a barra encostava no conteúdo sem nada dizendo qual das duas
+   estava na frente. Pelo `id` para vencer a utilitária `shadow-[...]` do
+   template sem `!important`. */
+/*  Aqui a fuga longa CABE, e por isso ficou: à direita da barra não há vizinho a
+    12px, há a área de trabalho inteira — e é justamente sobre ela que a barra
+    precisa parecer estar por cima.  */
+/* ==========================================================================
+   A BARRA NÃO ESTAVA DESLIZANDO — ELA SALTAVA
+   ==========================================================================
+   Medido quadro a quadro: ao fechar, a barra ia de `left: 23px` para `-312px`
+   em ZERO milissegundo, enquanto o `padding-left` do `#main-content` levava
+   570ms para fechar a calha de 335px que ela deixava. Ao abrir, o mesmo ao
+   contrário: a barra aparecia inteira num quadro e o conteúdo saía de baixo
+   dela devagar. Era esse o "degrau" — não havia duas animações fora de
+   compasso, havia UMA animação e um salto.
+
+   A CULPA ERA DESTE ARQUIVO, e da linha logo abaixo. Quando a sombra ganhou uma
+   transição própria, ela foi escrita na forma curta:
+
+       transition: transform 0.5s ..., box-shadow 0.35s ease;
+
+   `transition` é atalho: essa linha não ACRESCENTA a transição da sombra, ela
+   SUBSTITUI a lista inteira que vinha da utilitária `transition-transform` do
+   template. E, no Tailwind v4, quem move a barra não é `transform` — é a
+   propriedade `translate`:
+
+       .-translate-x-full { --tw-translate-x: -100%;
+                            translate: var(--tw-translate-x) var(--tw-translate-y); }
+       .transition-transform { transition-property: transform, translate, scale, rotate; }
+
+   A utilitária transicionava `translate`; a linha nova transicionava `transform`,
+   que aqui não muda nunca. A barra passou a trocar de posição sem percurso.
+
+   A CORREÇÃO É DEVOLVER `translate` À LISTA. Nada de `transform: translateX()`
+   nosso: `translate` e `transform` são propriedades SEPARADAS e se COMPÕEM — as
+   duas juntas moviam a barra -200% em vez de -100%, jogando-a 335px além do
+   necessário. Quem posiciona continua sendo a utilitária, sozinha.
+
+   `scale` e `rotate` entram junto pelo mesmo motivo: são o resto da lista que a
+   utilitária tinha, e omiti-las deixaria a mesma armadilha montada para a
+   próxima pessoa que puser um `hover:scale-*` aqui.
+
+   MESMA DURAÇÃO E MESMA CURVA do `#main-content` (0,5s, `cubic-bezier(.4,0,.2,1)`),
+   que é o que faz as duas coisas andarem juntas. A velocidade não mudou — era ela
+   que o dono da tela aprovou; o que faltava era o meio do caminho.
+   ========================================================================== */
+#filter-sidebar {
+    box-shadow: 1px 0 0 rgba(17, 24, 39, 0.06),
+                12px 0 28px -12px rgba(17, 24, 39, 0.22);
+    transition: translate 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                scale    0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                rotate   0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 0.35s ease;
+}
+
+/*  `transition-all` fazia o navegador vigiar TODAS as propriedades animáveis de
+    um container que envolve cinco gráficos e a tabela inteira, a cada quadro dos
+    500ms — quando a única que muda aqui é o `padding-left`. Duração e curva
+    continuam vindo das utilitárias do template; só a lista encolheu.  */
+#main-content { transition-property: padding-left; }
+
+/*  BARRA FECHADA NÃO PROJETA SOMBRA.
+
+    `-translate-x-full` tira a barra da tela pela esquerda, mas `box-shadow` é
+    desenhada a partir da caixa DEPOIS da transformação — e como a sombra sai para a
+    direita, ela continuava entrando na área de trabalho: um borrão cinza vertical
+    colado na borda esquerda, logo abaixo do botão "Filtros", sem nada visível que o
+    justificasse. A barra estava a 312px de distância e mesmo assim sujava o canto.
+
+    Some junto com a barra. E some ANTES de ela terminar de sair (0,35s contra os
+    0,5s do deslize), senão a sombra fica sozinha na tela no fim da animação.  */
+#filter-sidebar.-translate-x-full { box-shadow: none; }
+
+/*  O botão "Filtros" tinha um halo rosa de 15px (`shadow-[4px_0_15px_...]`) que
+    era a mancha mais forte daquele canto — um brilho colorido em volta de um
+    controle de 40px, sem nada por baixo que justificasse tanta luz. Trocado pelo
+    mesmo par contato + ambiente dos outros controles, em tinta neutra: o botão
+    continua descolado da casca, sem acender.  */
+#toggle-sidebar-btn {
+    box-shadow: 1px 0 0 rgba(17, 24, 39, 0.05),
+                4px 2px 10px -4px rgba(17, 24, 39, 0.20);
+}
+
+
+/* ==========================================================================
+   TELA CHEIA (F11) — ANEL MENOR, LEGENDA MAIOR
+   ==========================================================================
+   Em tela cheia a área de trabalho ganha a altura da barra do navegador, e ela
+   ia inteira para as roscas: o anel crescia e a legenda ficava nos mesmos 10px,
+   que ao lado de um anel maior parecem menores ainda. O ganho de espaço estava
+   sendo gasto justamente na parte da tela que já se lia bem.
+
+   Aqui uma fatia dele volta para a legenda — corpo maior, marcador maior, linhas
+   mais soltas — e o resto vai para a tabela. O anel encolhe em relação ao que
+   seria em tela cheia, mas continua maior que na janela normal.
+
+   Quem acende o atributo é `marcarTelaCheia`, em `dash_documentos_ia.js`; lá está
+   o porquê de não ser só uma `@media (display-mode: fullscreen)`.
+   ========================================================================== */
+
+/*  O `flex` da faixa dos gráficos mora nesta classe, e não no atributo `style`
+    do template, exatamente para que a linha abaixo consiga sobrepô-lo. */
+.docia-faixa-graficos { flex: 1.4 1 0; min-height: 0; min-width: 0; }
+
+html[data-tela-cheia="1"] .docia-faixa-graficos { flex: 1.5 1 0; }
+
+/*  O `min-height` acompanha o corpo maior — ele reserva a altura da legenda
+    ANTES de haver conteúdo, e o comentário no topo do bloco `.docia-legenda`
+    explica o que acontece quando ele fica curto: a legenda vaza para fora do
+    card, por baixo da tabela. Seis linhas de 11px com 4px de respiro pedem
+    ~158px, contra os 138px das mesmas seis linhas em 10px.  */
+html[data-tela-cheia="1"] .docia-legenda {
+    font-size: 11px;
+    min-height: 158px;
+}
+html[data-tela-cheia="1"] .docia-legenda__item { gap: 7px; padding: 4px 7px; }
+html[data-tela-cheia="1"] .docia-legenda__ponto { width: 11px; height: 11px; }
+/*  As duas colunas numéricas crescem junto com o corpo: mantidas em 46/40px,
+    `16.487` passaria a encostar em `100,0%` e a régua vertical que elas existem
+    para criar se perderia.  */
+html[data-tela-cheia="1"] .docia-legenda__valor { width: 50px; }
+html[data-tela-cheia="1"] .docia-legenda__pct { width: 44px; }
+
+
+/* ==========================================================================
+   O HALO DE HOVER DO APEXCHARTS
+   ==========================================================================
+   Passar o mouse numa fatia fazia o ApexCharts desenhar um `path` extra —
+   `apexcharts-pie-hover-outline-band` — que é uma cópia pálida da fatia num raio
+   maior, meio arco solto flutuando por fora do anel. Ele não diz nada que o
+   realce da própria fatia já não diga, e como sai FORA do anel ele invade o
+   espaço do card, parecendo um segundo gráfico fantasma por baixo do primeiro.
+
+   Vem da biblioteca, não da nossa configuração, e não há opção que o desligue:
+   `states.hover` controla o filtro aplicado à fatia, não este `path`. Some por
+   CSS, que é onde ele existe.
+
+   O REALCE DO HOVER CONTINUA: é o `lighten` de `states.hover.filter`, aplicado
+   na própria fatia — o mesmo lugar onde está o mouse.
+   ========================================================================== */
+.apexcharts-pie-hover-outline-band { display: none; }
+
+
+/*  O TÍTULO DOS CINCO CARDS voltou a ser só o que o template define
+    (`text-sm font-extrabold text-gray-700`). Eu tinha reduzido para 13px e
+    aberto o espaçamento para 0,09em achando que refinava — e espaçamento em
+    caixa alta muda a APARÊNCIA DA FONTE, não só o ritmo dela. Foi lido como
+    troca de tipografia, e com razão: era mesmo uma decisão minha, que ninguém
+    pediu, sobre um título que já estava certo.  */
+
+
+/* ==========================================================================
+   A CAIXA DO BALÃO DO APEXCHARTS
+   ==========================================================================
+   Com `tooltip.custom` quem desenha o balão é a nossa função `balao()`, no JS —
+   mas o ApexCharts continua desenhando a caixa DELE por baixo: fundo branco,
+   borda de 1px e `box-shadow: 2px 2px 6px -4px #999`. Eram dois balões
+   sobrepostos, e daí a sombra dupla e o filete claro que aparecia de fora do
+   nosso arredondamento em algumas posições.
+
+   Só a PINTURA é anulada. Posição, `z-index`, opacidade e a transição de
+   entrada continuam com o Apex — é ele quem move o balão, e mexer nisso aqui
+   brigaria com `prenderBalao`.
+   ========================================================================== */
+.chart-doc .apexcharts-tooltip,
+.docia-grafico-ia .apexcharts-tooltip {
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    /* O nosso balão tem 12px de raio; o `overflow` do Apex cortava os cantos. */
+    overflow: visible !important;
+    border-radius: 0 !important;
+}
+
+
+/*  O BICO DO BALÃO NÃO EXISTE NESTE PROJETO.
+
+    Ele é peça do balão do Apex, não do nosso: nos gráficos de EIXO (as duas
+    colunas de mensalidade) a v7 desenha um `.apexcharts-tooltip-arrow` branco
+    apontando para a coluna, posicionado por `--apx-tt-arrow-y`. Como a pintura
+    da caixa do Apex está anulada logo acima, sobrava só o bico solto ao lado do
+    NOSSO balão — um triângulo branco que não pertence a caixa nenhuma.
+
+    A rosca nunca teve o bico (o balão de `pie`/`donut` não desenha um), e é ela
+    que define a forma da casa: balão sem bico. A regra vale para os dois tipos
+    de gráfico de propósito, para que uma coluna nova em qualquer aba já nasça
+    igual em vez de reabrir isto.  */
+.chart-doc .apexcharts-tooltip-arrow,
+.docia-grafico-ia .apexcharts-tooltip-arrow {
+    display: none !important;
+}
+
+
+/* ==========================================================================
+   "RESTAURAR PADRÃO" QUEBRAVA EM DUAS LINHAS
+   ==========================================================================
+   Achado ao conferir a barra aberta em tela. O cabeçalho tem 270px úteis, o
+   título "Filtros" com o selo ocupa 132px e sobram 138px — o botão pedia 148px
+   com `tracking-widest` (1px por letra) e `px-3`. Faltavam 10px, e ele quebrava
+   em "RESTAURAR / PADRÃO", empurrando a própria altura do cabeçalho.
+
+   Dez pixels saem de onde não fazem falta: o espaçamento cai de 1px para 0,4px
+   por letra — em 16 caracteres são 9,6px — e o respiro lateral de 12px para 8px.
+   O rótulo continua em caixa alta espaçada, como os títulos de seção, e
+   `nowrap` garante que ele não volte a quebrar se a fonte cair no fallback.
+   ========================================================================== */
+#btn-clear-filters {
+    white-space: nowrap;
+    letter-spacing: 0.04em;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+}
+
+
+/* ==========================================================================
+   COLAPSO DO BLOCO DE FILTROS DE BENEFICIÁRIO
+   ==========================================================================
+   Trocar o modo para IES fazia `style.display = 'none'` no bloco: duas seções
+   inteiras de rótulos e controles desapareciam num quadro e a seção "Instituição"
+   saltava para cima. Conteúdo sumindo antes do container reagir é a definição do
+   defeito — só que aqui não havia nem container reagindo, era tudo instantâneo.
+
+   `grid-template-rows: 1fr -> 0fr` É O QUE PERMITE ANIMAR ALTURA DESCONHECIDA.
+   `height: auto` não interpola; `max-height` chutado ou corta o conteúdo ou faz
+   a animação parecer que trava no fim (o excesso de curso vazio). A grade de uma
+   linha só resolve os dois: `1fr` é exatamente a altura do conteúdo, `0fr` é
+   zero, e o caminho entre eles é linear e verdadeiro em qualquer tamanho.
+
+   SÃO DUAS CAMADAS por necessidade: a de fora é a grade que anima, a de dentro é
+   quem tem `overflow: hidden` — sem ela o conteúdo continuaria desenhado por
+   cima do que vem depois enquanto a linha encolhe.
+
+   OPACIDADE MAIS CURTA QUE A ALTURA (0,26s contra 0,4s) e sem atraso: o conteúdo
+   termina de apagar quando a altura ainda está na metade do caminho, e o que se
+   vê é o bloco se recolhendo, não texto sendo espremido até virar um risco.
+
+   `visibility` fecha no FIM (`transition: visibility 0s linear 0.4s`), e é ela
+   que faz o papel que o `display: none` fazia: com a altura em zero os controles
+   continuariam alcançáveis por Tab e pelo leitor de tela. Ao abrir ela volta em
+   0s, senão o conteúdo cresceria invisível.
+
+   A MARGEM ENTRA NA CONTA. O bloco é filho de uma pilha `space-y-6`, e uma
+   margem de 24px sobre um bloco de altura zero é um buraco no meio da barra que
+   nada explica. Ela zera junto, na mesma curva.
+   ========================================================================== */
+.docia-colapso {
+    display: grid;
+    grid-template-rows: 1fr;
+    opacity: 1;
+    transition: grid-template-rows 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.26s ease,
+                margin-top 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.docia-colapso__interno {
+    overflow: hidden;
+    /* Sem isto o item da grade recusa encolher abaixo do conteúdo, e o `0fr`
+       não tem efeito nenhum — é o mesmo `min-height: 0` que os cards flex
+       desta tela precisam, pela mesma razão. */
+    min-height: 0;
+    visibility: visible;
+    transition: visibility 0s;
+}
+
+.docia-colapso[data-fechado="1"] {
+    grid-template-rows: 0fr;
+    opacity: 0;
+    margin-top: 0;
+}
+
+.docia-colapso[data-fechado="1"] .docia-colapso__interno {
+    visibility: hidden;
+    transition: visibility 0s linear 0.4s;
+}
+
+/*  QUEM NÃO QUER ANIMAÇÃO NÃO RECEBE ANIMAÇÃO. A barra e o colapso são os dois
+    movimentos grandes da tela; para quem marcou "reduzir movimento" no sistema
+    eles são exatamente o tipo de deslocamento que incomoda. O estado final é o
+    mesmo — o que some é o percurso.  */
+@media (prefers-reduced-motion: reduce) {
+    #filter-sidebar,
+    #main-content,
+    .docia-colapso,
+    .docia-colapso__interno { transition-duration: 0.01ms; }
+}
+
+
+/* ==========================================================================
+   FLAGS DAS COLUNAS DE STATUS
+   ==========================================================================
+   O vocabulário e o porquê de cada cor estão no JS, junto de `COLUNAS_COM_FLAG`.
+   Aqui só a forma.
+
+   FUNDO PASTEL, TINTA ESCURA — e não o contrário. Uma flag de fundo sólido e
+   texto branco é uma mancha de cor forte repetida 200 vezes numa coluna: a
+   tabela vira um vitral e o dado que importa (o nome, a inscrição) perde a
+   disputa. O fundo a 10% carrega a cor o suficiente para se reconhecer de
+   relance, e a tinta escura é quem passa o contraste de leitura — todas as
+   cinco medem acima de 4,5:1 contra o próprio fundo.
+
+   A BORDA DE 1px NÃO É ENFEITE. Sem ela, um fundo a 10% sobre a linha em hover
+   (que é rosa a 60%) some, e a flag pisca ao passar o mouse. A borda mantém o
+   contorno em qualquer fundo por baixo.
+
+   `border-radius: 999px` — cápsula. Consistente com as pílulas de filtro
+   (`.docia-chip`) e com os contadores da barra, que já eram redondos: um raio
+   intermediário aqui criaria uma terceira família de cantos na mesma tela.
+   ========================================================================== */
+.docia-flag {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    padding: 2px 9px;
+    border: 1px solid;
+    border-radius: 999px;
+    /*  CAIXA ALTA NAS DUAS COLUNAS, e é isto que as iguala.
+
+        `Status Doc` vem da view em capitulares (`Processado`) e `Status IA` em
+        caixa alta (`VÁLIDO`) — são dois vocabulários com origens diferentes, e
+        os dois estão certos no dado. Na tela, lado a lado, viravam duas flags de
+        famílias diferentes: a de caixa alta parecia maior e mais pesada que a
+        outra, no mesmo corpo de 11px, porque maiúscula ocupa toda a altura-x.
+
+        `text-transform` resolve sem tocar no dado: ele muda a PINTURA, não o
+        texto do DOM — o que se copia, o que a busca acha e o que o Excel exporta
+        continua exatamente o que a view mandou.
+
+        A IGUALAÇÃO É EM CAPITULARES, e não em caixa alta. Caixa alta resolvia a
+        diferença entre as duas colunas, mas fazia toda flag parecer botão — e
+        `INADIMPLENTE NÃO PROC.` em versal ocupa quase o dobro da largura da
+        mesma palavra capitulada, o que empurrava a coluna. Capitulada, a flag
+        volta a ser rótulo e continua idêntica nas duas colunas.
+
+        Quem capitula é `rotuloDaFlag`, no JS, e não `text-transform`: o CSS não
+        sabe BAIXAR a caixa antes de levantar a inicial, e sem baixar `VÁLIDO`
+        continua `VÁLIDO`. O porquê está escrito lá.  */
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.5;
+    letter-spacing: 0.005em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    /*  NEUTRA É O PADRÃO. Valor que a folha não conhece — um status novo vindo
+        da view — sai como flag cinza, e não sem moldura: a coluna continua
+        legível como coluna de status, e o valor novo aparece como "existe e eu
+        não sei classificar", que é a verdade.  */
+    background-color: rgba(100, 116, 139, 0.10);
+    border-color: rgba(100, 116, 139, 0.22);
+    color: #475569;
+}
+
+/* --- verde: resolvido ----------------------------------------------------- */
+.docia-flag--processado,
+.docia-flag--valido {
+    background-color: rgba(5, 150, 105, 0.10);
+    border-color: rgba(5, 150, 105, 0.24);
+    color: #047857;
+}
+
+/* --- âmbar: chegou, a IA ainda não leu ------------------------------------ */
+.docia-flag--nao-processado {
+    background-color: rgba(217, 119, 6, 0.11);
+    border-color: rgba(217, 119, 6, 0.26);
+    color: #B45309;
+}
+
+/* --- ardósia: não chegou nada --------------------------------------------- */
+.docia-flag--pendente,
+.docia-flag--ausente {
+    background-color: rgba(100, 116, 139, 0.10);
+    border-color: rgba(100, 116, 139, 0.24);
+    color: #475569;
+}
+
+/* --- laranja: a IA leu e apontou ------------------------------------------ */
+.docia-flag--invalido,
+.docia-flag--falso-valido,
+.docia-flag--falso-invalido,
+.docia-flag--corrompido {
+    background-color: rgba(234, 88, 12, 0.11);
+    border-color: rgba(234, 88, 12, 0.26);
+    color: #C2410C;
+}
+
+/* --- vermelho: cobrança sem lastro ---------------------------------------- */
+.docia-flag--inadimplente,
+.docia-flag--inadimplente-proc,
+.docia-flag--inadimplente-nao-proc {
+    background-color: rgba(220, 38, 38, 0.10);
+    border-color: rgba(220, 38, 38, 0.26);
+    color: #B91C1C;
+}
+
+
+/* ==========================================================================
+   O CABEÇALHO DA TABELA ACOMPANHA A ROLAGEM
+   ==========================================================================
+   São 31 colunas e até 5.000 linhas. Passadas as primeiras vinte, quem rola já
+   não sabe se a coluna que está lendo é `Bolsa Anterior` ou `Bolsa Posterior` —
+   e as duas têm o mesmo tipo de conteúdo. A saída era rolar de volta ao topo,
+   contar as colunas e descer de novo.
+
+   `position: sticky` no `<th>` e não no `<thead>`: em tabela, o elemento de
+   grupo não é um contexto de posicionamento em todos os navegadores, e o que
+   funciona em todos é grudar cada célula do cabeçalho.
+
+   O fundo precisa ser OPACO. `bg-gray-50/50` do template é translúcido, e com o
+   cabeçalho por cima das linhas o texto delas passava por trás do rótulo. A cor
+   é a mesma, resolvida contra o branco do card.
+
+   A sombra só aparece DEPOIS que a rolagem começa? Não — ela é fixa e discreta:
+   detectar o topo exigiria um `IntersectionObserver` só para isso, e uma sombra
+   de 3px parada não incomoda quando não há nada por baixo dela.
+   ========================================================================== */
+#tabela-detalhamento thead th,
+#tabela-ies thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    /*  O cinza `#F7F8FA` com texto `text-gray-600` era a única faixa
+        completamente neutra de uma tela inteira construída sobre lilás e rosa —
+        lia como um pedaço de outro produto colado aqui. O fundo agora é o mesmo
+        lilás claríssimo do fundo da página (`#f8f6fb`), levemente adensado, e a
+        tinta é o roxo da marca dessaturado: continua secundário ao dado, mas
+        pertence à tela. Mede 6,1:1 — bem acima do mínimo, o que importa num
+        rótulo de 11px em caixa alta.  */
+    background-color: #F6F3F9;
+    color: #6A5C74;
+    /*  Sem `letter-spacing` nosso: o `tracking-wider` do template já define o
+        dele, e sobrepor mudava o desenho da palavra em caixa alta. O que foi
+        pedido aqui era a COR — e é só ela que fica.  */
+
+    /*  UMA LINHA SÓ SOB O CABEÇALHO.
+
+        Havia TRÊS camadas empilhadas ali, e o resultado era uma faixa listrada
+        de dois tons a 1px de distância:
+
+          1. `border-b border-gray-200`, que vem do `<th>` no template;
+          2. a linha roxa que eu somei aqui, em `inset 0 -1px 0`;
+          3. a sombra de 6px logo abaixo das duas.
+
+        Duas linhas coladas nunca leem como uma divisória mais forte — leem como
+        erro de renderização, que é exatamente a impressão relatada. A borda do
+        template sai, e sobra a linha roxa: ela é a que pertence à tela, e o
+        cinza `gray-200` era o mesmo neutro que fez o cabeçalho inteiro parecer
+        de outro produto.
+
+        A SOMBRA CONTINUA, mais funda e mais fraca (`-6px` de spread contra
+        `-4px`, opacidade de 0,24 para 0,16): ela existe para o cabeçalho grudado
+        parecer estar POR CIMA das linhas enquanto se rola, e nesse papel ela tem
+        de ser sentida sem ser vista. Com o desenho anterior ela virava uma
+        terceira listra.  */
+    border-bottom: 0;
+    box-shadow: inset 0 -1px 0 rgba(107, 0, 123, 0.16),
+                0 4px 8px -6px rgba(17, 24, 39, 0.16);
+}
+
+/*  A LINHA SOB O CURSOR GANHA UMA MARCA À ESQUERDA.
+
+    O fundo rosa a 60% que a tabela já tinha resolve "onde está o mouse" quando
+    a tela está calma, mas ele é claro demais para guiar o olho na varredura
+    horizontal de 31 colunas — no meio da tabela não há mais borda nenhuma por
+    perto para comparar. A barrinha na primeira célula dá um ponto de origem
+    fixo: o olho volta a ela e reencontra a linha.
+
+    `box-shadow` interno, e não `border-left`: borda muda a largura da célula e
+    empurraria a coluna inteira 3px a cada passagem do mouse.  */
+/*  O HOVER DA LINHA NÃO EXISTIA.
+
+    O template pede `hover:bg-pink-50/60`, e essa utilitária NÃO ESTÁ no bundle:
+    `static/css/output.css` é um Tailwind purgado e não há build no repositório —
+    classe que ninguém gerou não pinta nada e não avisa. Medido com o mouse em
+    cima da linha: `background-color: rgba(0, 0, 0, 0)`. O que se via de azul ao
+    arrastar era a seleção nativa do navegador, que também não tinha cor nossa
+    (ver `::selection`, logo abaixo).
+
+    Pintado aqui, à mão, no roxo da marca. No `<td>` e não no `<tr>`: com o
+    cabeçalho grudado e as bordas de célula, fundo no `<tr>` fica por baixo do
+    fundo das células em parte dos navegadores.  */
+.docia-tr:hover > td {
+    background-color: rgba(107, 0, 123, 0.055);
+}
+
+/*  A BARRINHA É `#6B007B`, NÃO `var(--tema-primaria)`.
+
+    O token vale `#7C3AED` no tema claro — um violeta AZULADO, que é a primária
+    genérica do portal, não a cor desta marca. Todo o resto desta tela usa
+    `#6B007B` escrito à mão (a fatia "Pendentes" da rosca, a pastilha escolhida
+    dos filtros, o selo de contagem, as pílulas), e esta barrinha era o único
+    lugar lendo o token: dava uma risca azul de 3px no meio de uma tela roxa.
+
+    Onde o token continua certo é no ELEITORAL, e por isso ele sobrevive lá: a
+    primária daquele tema é o teal, e é essa a cor que a barrinha deve ter no
+    escuro. O literal aqui, o token lá — cada um na regra do seu tema.  */
+.docia-tr:hover > td:first-child {
+    box-shadow: inset 3px 0 0 0 #6B007B;
+}
+
+/*  A SELEÇÃO TAMBÉM É DA MARCA. O azul do navegador é a única cor de sistema que
+    aparecia nesta tela, e ela aparece justamente quando alguém arrasta sobre uma
+    inscrição para copiar — que é um gesto comum aqui.  */
+.menu-shell ::selection {
+    background-color: rgba(107, 0, 123, 0.18);
+    color: inherit;
+}
+
+
+/* ==========================================================================
+   KPIs — O NÚMERO E O ÍCONE
+   ==========================================================================
+   O NÚMERO. Continua `font-black`, que já era o topo do peso disponível; o que
+   faltava era corpo e alinhamento. 22px contra 20px é pouco no papel e muito na
+   faixa: são quatro números lado a lado que se comparam entre si, e o rótulo
+   acima deles tem 10px — a distância entre os dois é que diz qual é o dado e
+   qual é a legenda do dado.
+
+   `tabular-nums` porque estes números TROCAM: cada filtro reescreve os quatro. Com
+   algarismos de largura variável o `23.142` encolhia para `1.640` e a faixa
+   inteira dançava a cada clique. Tabular, eles trocam no lugar.
+
+   `letter-spacing` negativo é o par obrigatório do corpo maior em peso 900: sem
+   ele os algarismos grossos se encostam e `23.142` lê como uma mancha.
+
+   O ÍCONE. Era `bg-gray-50` com `shadow-inner` — um quadrado cinza com sombra
+   interna, o vocabulário de caixa afundada de framework antigo. Vira um fundo
+   translúcido da própria cor do ícone: a cor identifica o indicador, e como é o
+   MESMO tom do glifo, o conjunto lê como uma peça só em vez de um ícone dentro
+   de uma caixa.
+
+   AS CORES NÃO SÃO TENDÊNCIA. Não há série temporal nesta resposta — nenhum dos
+   quatro KPIs tem valor anterior com que se comparar — então não há subida nem
+   descida para pintar de verde ou vermelho, e inventar uma seta seria inventar um
+   dado. O que a cor codifica aqui é o SUJEITO: ativos em verde, inativos em
+   ardósia, e os dois totais na cor da marca.
+   ========================================================================== */
+.docia-kpi-valor {
+    font-size: 1.375rem;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+}
+
+.docia-kpi-icone {
+    border: 1px solid transparent;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.docia-kpi-icone--marca {
+    background-color: rgba(107, 0, 123, 0.09);
+    border-color: rgba(107, 0, 123, 0.16);
+    color: #6B007B;
+}
+.docia-kpi-icone--ok {
+    background-color: rgba(5, 150, 105, 0.10);
+    border-color: rgba(5, 150, 105, 0.18);
+    color: #047857;
+}
+.docia-kpi-icone--inativo {
+    background-color: rgba(100, 116, 139, 0.10);
+    border-color: rgba(100, 116, 139, 0.20);
+    color: #475569;
+}
+.docia-kpi-icone--doc {
+    background-color: rgba(214, 0, 143, 0.09);
+    border-color: rgba(214, 0, 143, 0.18);
+    color: #B0007A;
+}
+
+
+/* ==========================================================================
+   ESTADOS INTERATIVOS DOS CONTROLES
+   ==========================================================================
+   FOCO VISÍVEL, que era o que faltava de verdade. Vários controles desta tela
+   não tinham NENHUMA indicação de foco de teclado — quem navega por Tab passava
+   por "Atualizar", pelas abas e pelos botões da tabela sem nada na tela dizendo
+   onde estava. `:focus-visible` e não `:focus`: o anel aparece para quem navega
+   pelo teclado e não pisca a cada clique de mouse.
+
+   O anel é `outline`, não `box-shadow`: `outline` não entra no cálculo de layout
+   (não empurra vizinho), acompanha o `border-radius` do elemento sozinho nos
+   navegadores atuais, e sobrevive a `overflow: hidden` do pai — que é o caso das
+   abas do cabeçalho e das grades de filtro.
+
+   Regra ampla de propósito. Escrever um seletor por botão deixaria de fora o
+   próximo botão que alguém adicionar, e um anel de foco que existe em oito dos
+   dez controles é pior do que nenhum: ensina que a ausência dele significa "não
+   é focável".
+
+   O AFUNDAMENTO NO CLIQUE fica nos controles de ação nomeados, e não em tudo:
+   nas abas e nas pílulas de filtro o movimento brigaria com a mudança de estado
+   que elas já fazem (a pílula marcada AFUNDA — ver `.docia-grade-seg`), e dois
+   afundamentos diferentes no mesmo gesto confundem em vez de responder.
+   ========================================================================== */
+/*  Mesmo caso da barrinha: `var(--tema-primaria)` é `#7C3AED` no claro, e o anel
+    de foco saía azulado. O eleitoral continua trocando por regra própria.  */
+.menu-shell :is(button, a[href], [tabindex]):focus-visible {
+    outline: 2px solid #6B007B;
+    outline-offset: 2px;
+}
+
+#btn-atualizar,
+#btn-config-atualizacao,
+#btn-abrir-console,
+#btn-clear-filters,
+#toggle-sidebar-btn,
+.tela-voltar,
+.docia-btn-copiar-coluna {
+    transition: background-color 0.18s ease, color 0.18s ease,
+                box-shadow 0.18s ease, translate 0.12s ease;
+}
+
+/*  1px, e só no eixo Y. É o mínimo que o olho registra como "apertou" e o
+    máximo que não desloca o rótulo a ponto de parecer que o botão mudou de
+    lugar. `translate` (a propriedade, não a função) para não brigar com nenhum
+    `transform` de utilitária — foi exatamente essa confusão que travou a
+    animação da barra de filtros.  */
+#btn-atualizar:active,
+#btn-config-atualizacao:active,
+#btn-abrir-console:active,
+#btn-clear-filters:active,
+#toggle-sidebar-btn:active,
+.tela-voltar:active,
+.docia-btn-copiar-coluna:active {
+    translate: 0 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #btn-atualizar:active,
+    #btn-config-atualizacao:active,
+    #btn-abrir-console:active,
+    #btn-clear-filters:active,
+    #toggle-sidebar-btn:active,
+    .tela-voltar:active,
+    .docia-btn-copiar-coluna:active { translate: none; }
+}
+
+
+/* ==========================================================================
+   CONTROLES SEGMENTADOS — DE TABELA PARA INTERRUPTOR
+   ==========================================================================
+   As grades da barra de filtros e as abas do cabeçalho eram a mesma coisa
+   desenhada duas vezes, e as duas desenhadas como TABELA: retângulo branco,
+   borda cinza de 1px em volta, divisórias cinzas de 1px entre as células,
+   cantos de 12px. Quatro semestres lado a lado com fio cinza entre eles são
+   visualmente indistinguíveis de quatro células de planilha — e é exatamente
+   por isso que a barra "parecia tabela". Nada ali dizia "isto se clica".
+
+   O VOCABULÁRIO NOVO É O DO INTERRUPTOR SEGMENTADO: uma calha de fundo tingido,
+   as opções flutuando DENTRO dela com cantos próprios, e a escolhida virando
+   uma peça sólida que se levanta da calha. As divisórias somem — quem separa as
+   opções passa a ser o respiro entre elas, que é o que separa objetos no mundo.
+
+   MESMA RECEITA NAS ABAS do cabeçalho, de propósito: "Envios & Pendências /
+   Análise IA" e "Beneficiários / IES" são a mesma pergunta feita duas vezes
+   (qual destes dois?), e respondê-las com dois desenhos diferentes obriga a
+   aprender duas vezes.
+
+   A CALHA TEM COR. Um cinza neutro devolveria o aspecto de planilha; o fundo é
+   um lilás de 5% — a marca em dose homeopática, o suficiente para o controle
+   pertencer à tela sem competir com o dado.
+   ========================================================================== */
+
+/* --- a calha ------------------------------------------------------------- */
+/*  O RESPIRO ENTRE AS OPÇÕES ERA CURTO DEMAIS. Com 3px de calha e 3px entre as
+    pastilhas, a escolhida — que é sólida e projeta sombra — encostava nas
+    vizinhas: a sombra dela caía sobre a opção do lado e as duas pareciam grudadas
+    numa peça só. Em 5px a pastilha tem onde apoiar a sombra, e o intervalo passa
+    a ser leitura de "são opções separadas" em vez de um fio espremido.  */
+#filter-sidebar .docia-grade-seg,
+.docia-grade-doc,
+.docia-abas {
+    padding: 5px;
+    gap: 5px;
+    border-color: transparent;
+    border-radius: 0.875rem;
+    background-color: rgba(107, 0, 123, 0.05);
+    box-shadow: inset 0 0 0 1px rgba(107, 0, 123, 0.09),
+                0 1px 2px rgba(17, 24, 39, 0.04);
+}
+
+/*  As divisórias do `divide-x` do template — o fio cinza vertical entre as
+    opções, que é metade do aspecto de planilha.
+
+    DUAS ARMADILHAS AQUI, e caí na segunda. A primeira é a especificidade: no
+    Tailwind v4 a regra vem embrulhada em `:where(& > :not(:last-child))`, e
+    `:where()` tem especificidade ZERO — qualquer seletor nosso vence, o `#id`
+    inclusive. A segunda é o LADO: `divide-x` desenha a divisória com
+    `border-inline-END-width`, não `start`. Zerar o `start` não apagava nada, e
+    os fios continuavam na tela mesmo com a regra "aplicada".
+
+    Os dois lados vão a zero: `--tw-divide-x-reverse` pode inverter qual dos dois
+    é usado, e zerar só o que hoje está em uso deixa o defeito à espera.  */
+#filter-sidebar .docia-grade-seg > label {
+    border-inline-start-width: 0;
+    border-inline-end-width: 0;
+}
+
+/* --- as opções dentro da calha ------------------------------------------- */
+#filter-sidebar .docia-grade-seg > label > div,
+.docia-grade-doc__caixa,
+.docia-aba {
+    border-radius: 0.625rem;
+    background-color: transparent;
+    transition: background-color 0.18s ease, color 0.18s ease,
+                box-shadow 0.18s ease;
+}
+
+#filter-sidebar .docia-grade-seg > label > div:hover,
+.docia-grade-doc__caixa:hover {
+    background-color: rgba(107, 0, 123, 0.07);
+}
+
+/*  A OPÇÃO ESCOLHIDA SE LEVANTA, em vez de afundar.
+
+    Ela afundava (sombra interna) enquanto era um retângulo dentro de uma borda —
+    tecla pressionada num painel. Dentro de uma calha a leitura se inverte: o que
+    está escolhido é a peça que está POR CIMA, e a calha é o trilho por onde ela
+    corre. É o gesto de um interruptor, e é o que todo mundo já sabe ler.  */
+#filter-sidebar .docia-grade-seg input:checked + div,
+.filter-documento-ies:checked + .docia-grade-doc__caixa,
+.docia-aba--ativa {
+    background-color: #6B007B;
+    color: #FFFFFF;
+    box-shadow: 0 1px 1px rgba(17, 24, 39, 0.10),
+                0 4px 10px -3px rgba(107, 0, 123, 0.45),
+                inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+/* --- abas do cabeçalho: o que sobra da marcação antiga -------------------- */
+.docia-abas {
+    /* O template dá `border border-gray-200` e um fundo branco à barra inteira;
+       a calha os substitui. `overflow: hidden` sai porque agora as pastilhas têm
+       cantos próprios e precisam do respiro de 3px em volta. */
+    border-width: 0;
+    overflow: visible;
+    height: 2.5rem;
+}
+
+.docia-aba {
+    background-color: transparent;
+    border-right-width: 0;
+    color: #6B5B72;
+    font-weight: 700;
+}
+
+.docia-aba:hover { background-color: rgba(107, 0, 123, 0.07); color: #6B007B; }
+
+/*  A aba ativa traz a cor em atributo `style` no template, que só perde para
+    `!important` — é a mesma razão pela qual o tema eleitoral já precisava dele
+    aqui.  */
+.docia-aba--ativa {
+    background-color: #6B007B !important;
+    color: #FFFFFF;
+}
+.docia-aba--ativa:hover { background-color: #5A0068 !important; }
+
+
+/* ==========================================================================
+   PÍLULAS DE FILTRO ATIVO ("SEMESTRE 2025-1 ×")
+   ==========================================================================
+   Elas já eram cápsulas, mas de uma cor só: tipo, valor e o "×" no mesmo roxo,
+   no mesmo peso, dentro de um fundo de 5% que quase não existia. O que se lê
+   primeiro numa etiqueta de filtro é o VALOR — "2025-1" —, e ele estava
+   empatado com a palavra "SEMESTRE" ao lado.
+
+   O tipo vira uma marca sólida colada à esquerda, dentro da própria cápsula: a
+   etiqueta passa a ter duas zonas com hierarquia clara, o rótulo em negativo e o
+   valor em corpo maior sobre o fundo claro. É o mesmo desenho de uma etiqueta de
+   arquivo, e resolve a leitura em relance sem aumentar a pílula.
+   ========================================================================== */
+.docia-chip {
+    height: 25px;
+    padding: 0 10px 0 0;
+    gap: 8px;
+    background-color: rgba(107, 0, 123, 0.06);
+    border-color: rgba(107, 0, 123, 0.16);
+    overflow: hidden;
+}
+
+/*  A MARCA SÓLIDA COBRE A BORDA, e é isso que a margem negativa faz.
+
+    `align-self: stretch` estica o bloco até a caixa de CONTEÚDO, que termina por
+    dentro da borda de 1px da etiqueta. Sobrava um fio da borda clara contornando
+    o roxo por cima, por baixo e à esquerda — a "linha branca vazando no fundo
+    roxo". Puxando o bloco 1px para fora nos três lados, ele encosta na aresta e o
+    `overflow: hidden` da etiqueta o recorta na curva da pílula. */
+.docia-chip__tipo {
+    align-self: stretch;
+    display: inline-flex;
+    align-items: center;
+    margin: -1px 0 -1px -1px;
+    padding: 5px 14px;
+    background-color: #6B007B;
+    color: #FFFFFF;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.07em;
+    opacity: 1;
+}
+
+/*  ETIQUETA SEM X — o período e o documento, que a tela impõe e não deixa remover.
+
+    A folga de 6px à direita da etiqueta é o respiro do BOTÃO de remover. Sem ele,
+    o valor encostava na curva da pílula e a ponta lia como cortada. Aqui a folga
+    passa a ser do texto, e a etiqueta volta a ser simétrica. */
+.docia-chip--fixo { padding-right: 16px; }
+
+.docia-chip__valor {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+}
+
+.docia-chip__x {
+    width: 17px;
+    height: 17px;
+    background-color: rgba(107, 0, 123, 0.10);
+}
+.docia-chip__x:hover { background-color: #6B007B; color: #FFFFFF; }
+
+/*  "Limpar filtros" é AÇÃO, não etiqueta: sem a marca sólida à esquerda, e com o
+    tracejado que ela já tinha para não se confundir com um filtro aplicado.
+
+    O TEXTO ESTAVA 1px ACIMA DO CENTRO. Medido: 4px de folga em cima, 5px
+    embaixo. A altura vinha de `padding: 4px` + linha de 14px + borda = 24px, e
+    sobrava um resto ÍMPAR para repartir entre as duas metades — o navegador não
+    tem meio pixel para dar, então joga a diferença para baixo e o texto sobe.
+    Um pixel em 24 é pouco para nomear e o bastante para incomodar, que é
+    exatamente o que aconteceu.
+
+    A saída não é acertar o padding no chute: é tirar o resto da conta. Com
+    `line-height` igual à altura interna da pílula, a caixa da linha PREENCHE o
+    conteúdo e não há sobra para repartir — o texto passa a se centrar pelas
+    métricas da fonte, que é o único jeito de acertar em qualquer corpo.
+
+    25px também é a altura das etiquetas ao lado (a marca sólida do tipo mais o
+    valor davam 24,6px): as duas famílias passam a bater na mesma régua, em vez
+    de ficar meio pixel fora uma da outra na mesma linha.  */
+.docia-chip--acao {
+    height: 25px;
+    padding: 0 12px;
+    line-height: 23px;
+    font-size: 10px;
+    letter-spacing: 0.03em;
+    border-color: rgba(107, 0, 123, 0.30);
+    background-color: transparent;
+}
+
+
+/* ==========================================================================
+   O SELO DE CONTAGEM ("200 de 48.042")
+   ==========================================================================
+   Era uma caixa branca de borda cinza com número quase preto — o mesmo desenho
+   dos dois botões ao lado dela. Só que ela não é um botão: é o RESULTADO, o
+   número que responde "quanto sobrou depois de todos os filtros". Vestida de
+   controle, ela se perdia entre os controles.
+
+   Sólida na cor da marca, ela vira o único elemento cheio daquela barra e se lê
+   antes de tudo, que é a ordem certa: primeiro quanto, depois o que fazer com
+   isso.
+
+   O "de" é branco cheio, como os números. Ele chegou a ficar a 55% (conectivo,
+   não dado), e por trás disso havia uma ideia certa mal executada: apagar a
+   palavra realmente ajuda a ler só os números, mas 55% de branco sobre roxo cai
+   para 2,9:1 — deixa de ser hierarquia e vira texto ilegível. A distinção entre
+   o dado e o conectivo fica por conta do PESO (800 contra 500), que separa os
+   dois sem tirar contraste de nenhum.
+
+   `tabular-nums` pela mesma razão dos KPIs: este selo é reescrito a cada filtro,
+   e com algarismo de largura variável ele muda de tamanho a cada consulta,
+   empurrando os botões do lado.
+   ========================================================================== */
+.docia-contagem {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
+    height: 2rem;
+    padding: 0 0.75rem;
+    border-radius: 0.5rem;
+    background-color: #6B007B;
+    color: #FFFFFF;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 2rem;
+    letter-spacing: normal;
+    text-transform: none;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    box-shadow: 0 1px 2px rgba(17, 24, 39, 0.10),
+                0 4px 10px -3px rgba(107, 0, 123, 0.40),
+                inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.docia-contagem b { font-weight: 800; }
+.docia-contagem__de { font-weight: 500; }
+
+/*  Enquanto conta, o selo apaga — o texto vira "contando..." e a opacidade diz
+    que aquele número ainda não vale. Já existia; só precisa continuar valendo
+    agora que o fundo é sólido.  */
+.docia-contagem--carregando { opacity: 0.55; }
+
+
+/* ==========================================================================
+   KPIs — O TÍTULO E O FUNDO
+   ==========================================================================
+   DUAS COISAS ESTAVAM ERRADAS, e a primeira era grave.
+
+   1. O TÍTULO ESTAVA ILEGÍVEL, E FUI EU QUE PIOREI. O template já trazia
+      `text-gray-400` (#9CA3AF) num rótulo de 9px — 2,6:1 contra o card, longe
+      dos 4,5:1 que texto pequeno exige. Em cima disso eu baixei o peso de 700
+      para 600 e abri o espaçamento para 0,1em, achando que refinava: em 9px,
+      letra fina e espaçada é exatamente a receita de texto que não se lê.
+
+      Volta em #4B5563 (7,4:1, passa AAA até em 9px), peso 700 e espaçamento de
+      volta a 0,06em. Continua secundário ao número — que tem 22px e peso 900 —,
+      só que agora por HIERARQUIA e não por desaparecimento.
+
+   2. O TRILHO RETO SAIU INTEIRO. Era `border-left: 3px` num `::before` que
+      cobria o card todo, e o resultado tinha o defeito que nenhuma quantidade de
+      ajuste resolve: o card já tem `border: 1px solid rgba(255,255,255,.6)` do
+      template, então o traço colorido nascia com um fio branco de um lado e o
+      canto arredondado do outro. Uma reta atravessada por uma borda clara não é
+      um acento, é um erro de montagem.
+
+   O QUE ENTRA NO LUGAR: DUAS ONDAS.
+
+   Formas abstratas, sem leitura de dado — e isso precisa ser dito, porque uma
+   curva no fundo de um KPI é exatamente o desenho de um sparkline. Estas NÃO são
+   série nenhuma: não há histórico nesta resposta, e uma curva que parecesse
+   dados seria uma mentira desenhada. Elas são ondas idênticas em todos os
+   cards, e é justamente por serem sempre iguais que ninguém as lê como número.
+
+   COMO A COR CHEGA NELAS: a onda é uma MÁSCARA, não uma imagem colorida. O SVG
+   entra em `mask-image` e quem pinta é `background-color: var(--kpi-cor)` — o
+   mesmo token que já servia ao ícone. É o que permite quatro cores com um
+   desenho só; SVG embutido em `url()` não enxerga variável CSS.
+
+   NENHUMA BORDA, e opacidade de 10% e 7%. As duas se cruzam, e é do cruzamento
+   que vem a profundidade: uma onda sozinha a 10% é uma mancha, duas defasadas
+   têm um terceiro tom onde se sobrepõem sem que nenhuma delas fique mais forte.
+
+   A SEGUNDA E A QUARTA SÃO ESPELHADAS. Quatro cards com a onda idêntica viram
+   papel de parede; alternar o sentido dá ritmo à faixa sem introduzir um
+   segundo desenho para manter.
+   ========================================================================== */
+.docia-kpi-card {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+}
+
+.docia-kpi-card::before,
+.docia-kpi-card::after {
+    content: '';
+    position: absolute;
+    left: -1px;
+    right: -1px;
+    bottom: -1px;
+    z-index: -1;
+    pointer-events: none;
+    background-color: var(--kpi-cor, #6B007B);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+    transition: opacity 0.3s ease;
+}
+
+/*  `-1px` nos três lados: a máscara termina exatamente na borda de 1px do card,
+    e sem o avanço sobra um fio da cor da borda entre a onda e o contorno — o
+    mesmo tipo de emenda visível que derrubou o trilho.  */
+.docia-kpi-card::before {
+    height: 82%;
+    opacity: 0.10;
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 70' preserveAspectRatio='none'%3E%3Cpath d='M0,42 C34,20 60,58 104,38 C148,18 172,50 200,30 L200,70 L0,70 Z' fill='black'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 70' preserveAspectRatio='none'%3E%3Cpath d='M0,42 C34,20 60,58 104,38 C148,18 172,50 200,30 L200,70 L0,70 Z' fill='black'/%3E%3C/svg%3E");
+}
+
+.docia-kpi-card::after {
+    height: 60%;
+    opacity: 0.07;
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 70' preserveAspectRatio='none'%3E%3Cpath d='M0,56 C46,34 68,68 114,50 C158,33 178,58 200,44 L200,70 L0,70 Z' fill='black'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 70' preserveAspectRatio='none'%3E%3Cpath d='M0,56 C46,34 68,68 114,50 C158,33 178,58 200,44 L200,70 L0,70 Z' fill='black'/%3E%3C/svg%3E");
+}
+
+.docia-kpi-card:nth-child(even)::before,
+.docia-kpi-card:nth-child(even)::after {
+    scale: -1 1;
+}
+
+/*  As ondas sobem um pouco com o mouse no card. É o mesmo gesto do ícone que
+    cresce, e o card continua sem prometer clique — o que muda é a cor de fundo,
+    não a posição de nada que se leia.  */
+.docia-kpi-card:hover::before { opacity: 0.15; }
+.docia-kpi-card:hover::after  { opacity: 0.10; }
+
+/*  O RÓTULO. `!important` porque `text-gray-400` é utilitária no elemento e
+    empata em especificidade com qualquer seletor de classe daqui — e este é o
+    ponto em que perder o empate significa deixar o título ilegível de novo.  */
+.docia-kpi-card p {
+    color: #4B5563 !important;
+    /*  10px fixo. O template pede `text-[9px] xl:text-[10px]`, mas medido em
+        1920px o rótulo saía com 9px: `xl:text-[10px]` é mais uma utilitária que
+        o bundle purgado não gerou, e o `xl:` nunca chegou. Nove pixels era o
+        piso do problema de leitura; fixar aqui é o que garante os 10 em toda
+        largura, e não só nas que o build esqueceu.  */
+    font-size: 10px !important;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+}
+
+/*  A cor de cada indicador, declarada uma vez e usada pelas ondas e pelo ícone.
+    Os quatro tons são os mesmos de `.docia-kpi-icone--*`.  */
+.docia-kpi-card:has(.docia-kpi-icone--marca)   { --kpi-cor: #6B007B; }
+.docia-kpi-card:has(.docia-kpi-icone--ok)      { --kpi-cor: #047857; }
+.docia-kpi-card:has(.docia-kpi-icone--inativo) { --kpi-cor: #64748B; }
+.docia-kpi-card:has(.docia-kpi-icone--doc)     { --kpi-cor: #B0007A; }
+
+
+/* ==========================================================================
+   A TELA RESPIRA MESMO PARADA
+   ==========================================================================
+   Um dashboard fica aberto em monitor por horas sem ninguém tocar nele. Sem
+   nenhum movimento ele lê como imagem — uma captura de tela, não um programa
+   rodando. O contrário também é ruim: coisa piscando o tempo todo cansa e
+   compete com o dado.
+
+   O ponto de equilíbrio é MOVIMENTO NA CHEGADA e um único convite permanente.
+
+   ENTRADA ESCALONADA. Os quatro KPIs e os cinco cards entram de baixo, 40ms de
+   diferença entre vizinhos. São 360ms do primeiro ao último — rápido demais
+   para ser espera, lento o bastante para o olho perceber que a tela está sendo
+   MONTADA na frente dele, e a ordem em que ela monta ensina a ordem de leitura.
+   Roda uma vez, na carga; não se repete a cada filtro (as roscas já animam
+   sozinhas quando os números mudam).
+
+   O CONVITE PERMANENTE é o botão "Filtros", e só ele. Ele é a única coisa da
+   tela que fica escondida atrás de um gesto — a barra vive fechada, e quem não
+   sabe que ela existe não vai procurar. A seta anda 3px a cada 6 segundos, num
+   pulso de 1,2s: no resto do tempo o botão está parado. É pouco o bastante para
+   não incomodar quem já sabe, e o bastante para o canto da tela pedir um clique
+   de vez em quando.
+   ========================================================================== */
+@keyframes docia-entrada {
+    from { opacity: 0; translate: 0 14px; }
+    to   { opacity: 1; translate: 0 0; }
+}
+
+.docia-kpi-card,
+.docia-card-doc {
+    animation: docia-entrada 0.45s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+/*  `backwards` faz o estado inicial valer JÁ durante o atraso — sem ele os
+    cards aparecem inteiros, somem e reaparecem animando.  */
+.docia-kpi-card:nth-child(1) { animation-delay: 0.00s; }
+.docia-kpi-card:nth-child(2) { animation-delay: 0.04s; }
+.docia-kpi-card:nth-child(3) { animation-delay: 0.08s; }
+.docia-kpi-card:nth-child(4) { animation-delay: 0.12s; }
+.docia-card-doc:nth-child(1) { animation-delay: 0.16s; }
+.docia-card-doc:nth-child(2) { animation-delay: 0.20s; }
+.docia-card-doc:nth-child(3) { animation-delay: 0.24s; }
+.docia-card-doc:nth-child(4) { animation-delay: 0.28s; }
+.docia-card-doc:nth-child(5) { animation-delay: 0.32s; }
+
+@keyframes docia-chamar {
+    /*  92% do ciclo parado: o movimento é um evento, não um estado. */
+    0%, 88%, 100% { translate: 0 0; }
+    92%           { translate: 3px 0; }
+    96%           { translate: 0 0; }
+}
+
+#toggle-sidebar-btn .sidebar-icon-wrapper {
+    animation: docia-chamar 6s ease-in-out infinite;
+}
+
+/*  Com a barra ABERTA o convite não faz sentido — ela já está à vista, e a seta
+    agora aponta para fechar. Parar aqui evita o pior tipo de animação: a que
+    continua chamando para algo que já aconteceu.  */
+#filter-sidebar:not(.-translate-x-full) ~ * #toggle-sidebar-btn .sidebar-icon-wrapper,
+#toggle-sidebar-btn:hover .sidebar-icon-wrapper {
+    animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .docia-kpi-card,
+    .docia-card-doc,
+    #toggle-sidebar-btn .sidebar-icon-wrapper { animation: none; }
+}
+
+
+/* ==========================================================================
+   O CURSOR DIZ O QUE A PEÇA FAZ
+   ==========================================================================
+   A tela inteira estava com a seta padrão, inclusive sobre coisas que fazem
+   três coisas diferentes: as que se clicam, as que só revelam informação ao
+   passar o mouse, e as que não fazem nada. Sem distinção no cursor, descobrir
+   qual é qual só clicando.
+
+   São três formas, e cada uma é uma promessa distinta:
+
+     pointer  eu faço alguma coisa se você me clicar
+     help     eu não sou clicável, mas tenho algo a mais para contar aqui
+     default  eu sou dado, e nada acontece
+
+   `help` é a que faltava e a que mais muda a tela. As fatias da rosca, os
+   rótulos de coluna cortados e as flags da tabela têm todos alguma coisa
+   escondida atrás do ponteiro — o balão, o nome inteiro da coluna, o valor cru
+   que a view mandou — e nenhum deles avisava. O cursor de interrogação é o
+   convite; sem ele, essa informação existe para quem já sabe que ela existe.
+
+   AS LINHAS DA TABELA SEGUEM `default`, de propósito: elas não são clicáveis, e
+   `pointer` numa linha inteira promete uma navegação que não existe. O realce
+   roxo do hover é orientação de leitura, não convite.
+   ========================================================================== */
+/*  As três formas passaram a ser desenhadas — ver "O PONTEIRO DA CASA", no fim
+    deste arquivo. A regra que ficava aqui foi absorvida por lá.  */
+
+
+/* ==========================================================================
+   O CURSOR É O DO SISTEMA
+   ==========================================================================
+   Houve aqui um conjunto de cursores desenhados — seta rosa da marca, mão, e um
+   selo colorido por fatia da rosca. Foram removidos a pedido, e o registro fica
+   porque a tentativa custou algumas idas e vindas e a conclusão vale para a
+   próxima vez que alguém pensar nisso:
+
+     - MÃO É INVIÁVEL EM 26px. Desenhei uma (contorno único, indicador em pé,
+       três dedos dobrados) e ela não sobrevive à redução — vira quatro caroços.
+       Mão mal desenhada é pior que a do sistema em tudo, inclusive em parecer
+       da casa.
+     - CURSOR DE MARCA BRIGA COM A TELA. Rosa sobre a fatia magenta da rosca não
+       tem contraste, e é ali que o mouse passa mais tempo. A saída é um contorno
+       claro grosso, que resolve — mas aí o desenho já é mais contorno que marca.
+     - O SISTEMA JÁ ACERTOU essas três formas há trinta anos, e elas vêm de graça
+       com o `cursor` nativo.
+
+   O que fica é a SEMÂNTICA, que era o ganho real: cada peça declara o que faz.
+   ========================================================================== */
+body :is(button, a[href], label:has(input), summary),
+body :is(button, a[href], label:has(input), summary) *,
+.docia-btn-copiar-coluna { cursor: pointer; }
+
+/*  Revelam algo ao passar o mouse e nada ao clicar: a fatia da rosca (o balão),
+    o rótulo de coluna cortado (o nome inteiro) e a flag (o valor cru da view).  */
+
+/*  Campo de texto fica com o cursor de texto: ali a forma diz onde o caractere
+    vai ser inserido.  */
+body :is(input[type='text'], input[type='search'], textarea) { cursor: text; }
+
+body :is(button, a[href]):disabled { cursor: not-allowed; }
+
+
+/* ==========================================================================
+   A VISTA POR IES GANHA O MESMO TRATAMENTO DA DE BENEFICIÁRIOS
+   ==========================================================================
+   Ela ficou para trás: enquanto a outra ganhou flags, cabeçalho grudado, realce
+   de linha e entrada escalonada, esta continuou uma tabela branca sobre um card
+   branco. O problema não é falta de enfeite — é que uma tabela de 12 colunas
+   numéricas sem NENHUMA marca horizontal obriga a usar o dedo na tela para não
+   pular de linha.
+
+   Nada aqui é novo: é o vocabulário que a outra vista já usa, aplicado aos
+   mesmos elementos. Duas telas do mesmo dashboard que se comportam diferente
+   custam duas aprendizagens.
+   ========================================================================== */
+
+/*  LISTRAS. A cada duas linhas, um fundo de 2,5% — abaixo do limiar em que se
+    percebe "cor" e acima do limiar em que se percebe "faixa". É o que dá a
+    régua horizontal que faltava. Fica no `<td>` e não no `<tr>` pelo mesmo
+    motivo do realce: com o cabeçalho grudado, fundo no `<tr>` fica por baixo do
+    fundo das células em parte dos navegadores.  */
+#tabela-ies tbody tr:nth-child(even):not(.docia-tr--fantasma) > td {
+    background-color: rgba(107, 0, 123, 0.025);
+}
+
+/*  A COLUNA DO NOME É A ÂNCORA e ganha peso próprio: é por ela que se procura a
+    instituição, e ela estava com o mesmo tratamento das doze colunas de número.  */
+#tabela-ies tbody td:first-child { font-weight: 600; }
+
+/*  A linha fantasma (instituição sem beneficiário no recorte) tem fundo âmbar
+    próprio, escrito no JS. O que faltava era a marca à esquerda dizendo que ela
+    é uma exceção, e não uma linha comum que por acaso ficou amarela.  */
+.docia-tr--fantasma > td:first-child {
+    box-shadow: inset 3px 0 0 0 #D97706;
+}
+
+/*  O card da tabela entra como os outros cinco da outra vista — mesma curva,
+    mesma duração. Sem isso, trocar de modo é a tela toda aparecendo de uma vez,
+    depois de uma pausa; com isso, é a tela sendo montada.  */
+#card-ies {
+    animation: docia-entrada 0.45s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #card-ies { animation: none; }
+}
+
+/* Permite que o balão vaze para fora do gráfico sobrepondo os cards vizinhos */
+.chart-doc .apexcharts-canvas,
+.chart-doc .apexcharts-svg,
+.docia-grafico-ia .apexcharts-canvas,
+.docia-grafico-ia .apexcharts-svg {
+    overflow: visible !important;
+}
+.chart-doc .apexcharts-tooltip,
+.docia-grafico-ia .apexcharts-tooltip {
+    pointer-events: none !important;
+}
+
+/* ==========================================================================
+   ABA ANÁLISE IA
+   ========================================================================== */
+
+/*  A TELINHA DE INCONSISTÊNCIAS — mesma forma do filtro de Instituições.
+    Ela existe porque as frases são INTEIRAS ("Mensalidade com desconto no
+    contrato é menor que o esperado") e são até 48 no RIAF: numa barra de 335px
+    isso vira uma coluna de texto quebrado que ninguém varre. */
+.docia-inc-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 0.875rem;
+    cursor: pointer;
+    border-radius: 0.75rem;
+    border: 1px solid transparent;
+    transition: background-color 0.15s, border-color 0.15s;
+}
+
+.docia-inc-item:hover { background-color: #FFFFFF; border-color: #E5E7EB; }
+
+/*  A caixa é desenhada, e não o `input` nativo: o nativo não aceita cor de
+    marca em todos os navegadores. O `input` continua no DOM (fora da vista)
+    porque é dele que vêm o foco por teclado e o anúncio do leitor de tela. */
+.docia-inc-item__caixa {
+    width: 1.125rem;
+    height: 1.125rem;
+    border: 1.5px solid #9CA3AF;
+    border-radius: 0.3125rem;
+    flex-shrink: 0;
+    position: relative;
+    background-color: #FFFFFF;
+    transition: background-color 0.15s, border-color 0.15s;
+}
+
+.docia-inc-item input:checked + .docia-inc-item__caixa {
+    background-color: #6B007B;
+    border-color: #6B007B;
+}
+
+.docia-inc-item input:checked + .docia-inc-item__caixa::after {
+    content: '';
+    position: absolute;
+    left: 0.34375rem;
+    top: 0.09375rem;
+    width: 0.3125rem;
+    height: 0.625rem;
+    border: solid #FFFFFF;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.docia-inc-item input:focus-visible + .docia-inc-item__caixa {
+    outline: 2px solid #6B007B;
+    outline-offset: 2px;
+}
+
+/*  A frase NÃO é cortada com reticências: a diferença entre duas delas mora
+    justamente no fim ("...é menor que o esperado" contra "...é maior que o
+    esperado"). Na largura da telinha ela cabe; se não couber, quebra. */
+.docia-inc-item__texto {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1.35;
+    color: #374151;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/*  Quantas linhas cada frase tem — é o que diz se a opção vale o clique antes
+    de dar o clique. */
+.docia-inc-item__n {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: #9CA3AF;
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+.docia-inc-escolhida {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 0.75rem;
+    background-color: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.docia-inc-escolhida__texto {
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.35;
+    color: #374151;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.docia-inc-escolhida__x {
+    flex-shrink: 0;
+    width: 1.5rem;
+    height: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    color: #9CA3AF;
+    transition: color 0.15s, background-color 0.15s;
+}
+
+.docia-inc-escolhida__x:hover { color: #6B007B; background-color: #FAF5FB; }
+
+/*  Vazio é resultado, não erro: Benefícios e Financiamento não trazem
+    inconsistência nenhuma, e a telinha precisa dizer isso em vez de abrir em
+    branco. */
+.docia-inc-vazio {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 2rem 1rem;
+    text-align: center;
+    color: #9CA3AF;
+    font-size: 0.8125rem;
+    font-weight: 500;
+}
+
+.docia-inc-vazio__icone { font-size: 2rem; opacity: 0.45; }
+
+/*  A base de cada gráfico, embaixo do título. Pequena de propósito: é uma
+    ressalva, não um dado — mas tem de estar à vista, porque é ela que explica
+    por que o total do gráfico não é o total da tabela. */
+.docia-grafico-base {
+    font-variant-numeric: tabular-nums;
+}
+
+/*  Quando o documento não responde a pergunta do card (o histórico não traz
+    mensalidade; Benefícios não tem processado nenhum), o lugar do gráfico
+    recebe a explicação. Um gráfico zerado ali seria lido como "a IA não achou
+    nada", que é uma acusação — e não é o que aconteceu. */
+.docia-grafico-vazio {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0 1rem;
+    text-align: center;
+    color: #9CA3AF;
+}
+
+.docia-grafico-vazio__icone { font-size: 1.5rem; opacity: 0.5; }
+.docia-grafico-vazio__texto { font-size: 0.6875rem; font-weight: 600; line-height: 1.4; }
+
+/*  A LEGENDA DA ROSCA DA ANÁLISE IA usa as classes da casa (`docia-legenda__*`)
+    inteiras — quadradinho, realce do ativo, risco no que ficou de fora, os dois
+    temas. O que muda aqui é o tamanho: CINCO linhas, uma por veredito da IA,
+    contra as seis fatias da outra aba.
+
+    ALTURA RESERVADA ANTES DE HAVER CONTEÚDO, pelo mesmo motivo documentado na
+    `.docia-legenda`: o ApexCharts mede o contêiner no render e trava a altura. Com
+    a legenda vazia ele mediria o card inteiro, e as linhas que chegam depois
+    vazariam para fora. O número já esteve errado nos dois sentidos: curto demais, a
+    rosca era desenhada POR CIMA do texto; longo demais, sobrava um vão morto embaixo
+    dela. Cinco linhas de ~14,5px mais o respiro do topo dão 82. */
+.docia-legenda--ia {
+    height: 130px; /* Mais espaço para os itens da legenda */
+    overflow-y: auto;
+    overflow-x: hidden;
+    gap: 0;
+    font-size: 11px; /* Letra maior para melhorar leitura */
+}
+
+html[data-tela-cheia="1"] .docia-legenda--ia {
+    height: 180px; /* Compensa o padding extra dos itens em tela cheia */
+}
+
+.docia-legenda--ia .docia-legenda__item { padding: 0 6px; }
+
+
+/*  O AVISO DE "COPIADO" — em CSS, e não em utilitárias como na outra aba.
+
+    Lá ele é montado com uma dúzia de classes Tailwind numa string; aqui vale a
+    mesma regra que o resto deste arquivo segue: o portal é bundle purgado e sem
+    build, então toda classe utilitária usada em JS depende de já existir no
+    `output.css` por acaso de outra tela usá-la. Em CSS próprio, não depende. */
+.docia-aviso {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background-color: #FFFFFF;
+    border-left: 4px solid #D6008F;
+    border-radius: 0 0.75rem 0.75rem 0;
+    padding: 0.875rem 1.125rem;
+    margin-bottom: 0.75rem;
+    box-shadow: 0 10px 30px -10px rgba(17, 24, 39, 0.35);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #374151;
+    animation: docia-aviso-entra 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.docia-aviso--erro { border-left-color: #D62828; }
+
+.docia-aviso__icone {
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    background-color: #FCE7F3;
+    color: #D6008F;
+}
+
+.docia-aviso--erro .docia-aviso__icone { background-color: #FEE2E2; color: #D62828; }
+
+@keyframes docia-aviso-entra {
+    from { transform: translateX(1.5rem); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+/*  Movimento é decoração aqui: quem pediu para reduzi-lo continua vendo o aviso,
+    só que sem a entrada lateral. */
+@media (prefers-reduced-motion: reduce) {
+    .docia-aviso { animation: none; }
+}
+
+/*  A FAIXA DE NÚMEROS DA ANÁLISE IA tem SEIS cards, contra quatro da outra aba, e
+    cada um leva uma terceira linha dizendo a base da conta. Sem os tamanhos abaixo,
+    o rótulo de `DIF. C/DESC.` e o valor em reais brigavam pela mesma largura. */
+.docia-kpi-rotulo {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #9CA3AF;
+    margin-bottom: 1px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/*  A BASE DA CONTA, embaixo do número. É ela que impede a leitura errada: "1.486 de
+    13.622 lidos divergem" diz que a soma acima fala de 13.622 linhas, e não das
+    22.993 da tabela. Pequena porque é ressalva, à vista porque é necessária. */
+.docia-kpi-base {
+    font-size: 9px;
+    font-weight: 600;
+    color: #9CA3AF;
+    margin-top: 1px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Oculta as setas do balão do ApexCharts na aba Análise IA */
+.apexcharts-tooltip.apexcharts-theme-light::before,
+.apexcharts-tooltip.apexcharts-theme-light::after,
+.apexcharts-tooltip::before,
+.apexcharts-tooltip::after {
+    display: none !important;
+}
+
+
+/* ==========================================================================
+   AS DUAS ABAS DO DOCUMENTOS IA
+   ==========================================================================
+   QUEM DECIDE QUAL PAINEL APARECE é o atributo `data-docia-aba` no `<html>`,
+   escrito por `estado_aba.js` ainda no `<head>` — antes da primeira pintura.
+
+   POR QUE NO CSS E NÃO NO JS: a aba lembrada precisa nascer visível. Se o JS
+   trocasse `style.display` depois do DOM pronto, quem trabalha na Análise IA
+   veria a aba de Envios montar inteira — os quatro KPIs, as cinco roscas e a
+   tabela — para só então sumir. Aqui a decisão chega junto com o primeiro
+   quadro, e não há troca nenhuma para se ver.
+
+   O `display` de repouso é `none` para os quatro blocos, e a regra com o
+   atributo devolve o valor certo a dois deles. Os painéis voltam como `flex`
+   (são colunas de altura cheia, `flex-1 flex flex-col` no template) e os blocos
+   da barra como `block`, que é o que a pilha de seções pede.
+
+   PESO DOS SELETORES, porque aqui isso decide: `#aba-envios` (1,0,0) vence a
+   utilitária `.flex` (0,1,0) do Tailwind, e a regra com o atributo (1,1,0)
+   vence as duas. Nenhum dos quatro pode carregar `display` em atributo `style`
+   no template — inline ganharia de todos.
+   ========================================================================== */
+#aba-envios,
+#aba-analise,
+#filtros-envios,
+#filtros-analise { display: none; }
+
+html[data-docia-aba="envios"] #aba-envios,
+html[data-docia-aba="analise"] #aba-analise { display: flex; }
+
+html[data-docia-aba="envios"] #filtros-envios,
+html[data-docia-aba="analise"] #filtros-analise { display: block; }
+
+/*  O `min-height` QUE O APEXCHARTS INJETA, e que não deixa a caixa encolher.
+
+    Quem recebe o valor é a NOSSA caixa, não o canvas: no fonte da v7.1.0 o Apex
+    escreve em `Paper.node.parentNode.parentNode`, e a árvore é
+    `.docia-grafico-ia > .apexcharts-canvas > svg` — o bisavô do svg é a caixa.
+    A regra mirando `.apexcharts-canvas` era inerte (lá o Apex escreve `height`,
+    não `min-height`).
+
+    Com o piso anulado aqui, a caixa volta a valer o que o flex do card manda em
+    todo ajuste — inclusive ao SAIR do F11, que é quando ela precisa encolher.
+    `!important` de folha de autor vence a declaração inline do Apex, que vem sem
+    ele; a altura do desenho continua sendo dada em pixel pelo JS.  */
+.docia-grafico-ia {
+    min-height: 0 !important;
+}
+
+.docia-legenda--ia::-webkit-scrollbar {
+    width: 4px;
+}
+.docia-legenda--ia::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}

@@ -11,6 +11,47 @@ document.addEventListener('turbo:load', () => {
 
 /* Extracted from index.html */
         const initDashDocumentosIA = () => {
+            /* ==================================================================
+               ESTA FUNÇÃO É SÓ A TELA DE ENVIOS & PENDÊNCIAS
+               ==================================================================
+               Este arquivo é carregado por TODAS as telas do Documentos IA, porque
+               o filtro de instituições (o modal Mantenedora -> IES) vive no FIM
+               dele, fora desta função, e é o mesmo em todas.
+
+               O que está aqui dentro, não: são os KPIs, as cinco roscas e o
+               Detalhamento desta tela. Na Análise IA os controles da barra lateral
+               têm as MESMAS classes (`filter-semestre`, `filter-documento-ies`, ...)
+               — de propósito, porque o CSS que os pinta parte delas. Sem esta saída,
+               os ouvintes daqui também se prendiam àquelas caixas e cada clique lá
+               disparava duas consultas para gráficos e tabela que não existem lá.
+
+               A SAÍDA É A PRIMEIRA LINHA, e não uma linha abaixo do toggle da barra
+               como já esteve: o ouvinte do toggle chama `forcarResize`, que é um
+               `const` declarado bem mais abaixo. Saindo depois de registrá-lo, o
+               ouvinte ficava vivo numa tela onde a função nunca alcança a declaração
+               — e cada clique na barra morria num ReferenceError, com a barra até
+               abrindo (as classes trocam antes) e o console enchendo. Cada tela
+               registra o SEU toggle; o desta é o de baixo, o da Análise IA está em
+               `analise_ia.js`.
+               ================================================================== */
+            if (!document.getElementById('vista-beneficiarios')) return;
+
+            /* ==================================================================
+               OS FILTROS DESTA ABA SÃO SÓ DELA
+               ==================================================================
+               A barra lateral carrega os controles das DUAS abas — os desta em
+               `#filtros-envios`, os da Análise IA em `#filtros-analise` — e
+               esconde o conjunto da aba que não está na tela. As classes se
+               repetem nos dois de propósito: é delas que parte o CSS que pinta a
+               caixinha marcada (`.filter-documento-ies:checked + ...`).
+
+               Buscar a partir do `document` acharia os dois conjuntos, e marcar
+               "2025-1" aqui marcaria o "2025-1" de lá. Cada aba guarda o seu
+               recorte, e é esta raiz que garante isso.
+               ================================================================== */
+            const raizFiltros = document.getElementById('filtros-envios') || document;
+            const nosFiltros = (seletor) => raizFiltros.querySelectorAll(seletor);
+
             const sidebar = document.getElementById('filter-sidebar');
             const toggleBtn = document.getElementById('toggle-sidebar-btn');
             const toggleIcon = document.getElementById('toggle-sidebar-icon');
@@ -194,10 +235,28 @@ document.addEventListener('turbo:load', () => {
              * CSS do Apex e acompanha o tema pelos tokens.
              */
             const balao = (conteudo) => {
-                const fundo = temaAtual() === 'eleitoral' ? token('--tema-superficie-2', '#424C5B') : 'rgba(255, 255, 255, 0.85)';
-                return `<div style="background:${fundo};backdrop-filter:blur(12px);border:1px solid ${token('--tema-borda', '#FBCFE8')};
-                    border-radius:12px;box-shadow:0 12px 32px rgba(236,72,153,0.14);padding:10px 14px;
-                    font-family:Poppins,sans-serif;">${conteudo}</div>`;
+                const fundo = temaAtual() === 'eleitoral'
+                    ? token('--tema-superficie-2', '#424C5B') : 'rgba(255, 255, 255, 0.96)';
+                /*  UMA sombra, curta. Eram DUAS pintando o mesmo balão: esta e a do
+                    próprio `.apexcharts-tooltip`, que é a caixa em volta — somadas,
+                    davam um halo rosado de 32px que sujava a rosca por baixo. A do Apex
+                    foi zerada no CSS; esta encolheu para o par contato + ambiente que o
+                    resto da tela usa.
+
+                    O fundo subiu de 0,85 para 0,96 de opacidade: a 0,85 a fatia passava
+                    por trás do texto, e é justamente o número que se veio ler.  */
+                /*  A BORDA ERA CINZA, e era ela a "ponta esquisita" do balão.
+                    `--tema-borda` é o token NEUTRO do portal — `#E5E7EB` no claro —,
+                    usado em divisórias de formulário. Em volta de um balão flutuante
+                    ele desenhava um contorno cinza de 1px que, nos cantos arredondados,
+                    aparecia como quatro pontinhos sujos destacados do fundo branco.
+                    Vai para a cor da marca a 14%: some como linha e continua fechando
+                    a forma.  */
+                const borda = temaAtual() === 'eleitoral'
+                    ? 'rgba(255,255,255,0.16)' : 'rgba(107,0,123,0.14)';
+                return `<div style="background:${fundo};border:1px solid ${borda};
+                    border-radius:12px;padding:9px 13px;font-family:Poppins,sans-serif;
+                    box-shadow:0 1px 2px rgba(17,24,39,0.08), 0 6px 16px -6px rgba(17,24,39,0.22);">${conteudo}</div>`;
             };
 
             /** Altura em número, medida do container — ver comentário em `ajustarAlturas`. */
@@ -227,14 +286,22 @@ document.addEventListener('turbo:load', () => {
                 // Apex redesenharia a cada frame; quem avisa do tamanho novo é o
                 // ResizeObserver de `observarTamanho`.
                 redrawOnParentResize: false,
-                dropShadow: {
-                    enabled: true,
-                    color: '#000',
-                    top: 5,
-                    left: 0,
-                    blur: 8,
-                    opacity: 0.12
-                }
+                /*  SEM SOMBRA NO ANEL. Não é economia de efeito: `dropShadow` do
+                    ApexCharts é aplicado POR FATIA, e num anel as fatias se tocam —
+                    então a sombra de cada uma cai em cima da vizinha. Onde duas fatias
+                    se emendam nascia uma mancha cinza, e as fatias pequenas do canto
+                    inferior (Inadimplentes Proc., Pendentes) ficavam cada uma com o seu
+                    borrão colado, como adesivos mal grudados.
+
+                    Pior no card sem dados: com a série toda em zero o anel não desenha,
+                    mas a região do filtro SVG continua sendo pintada — sobrava um vulto
+                    escuro no meio do card vazio, que lia como um gráfico fantasma atrás
+                    do outro.
+
+                    A PROFUNDIDADE DO GRÁFICO É A DO CARD, em `.docia-card-doc`. Ela
+                    envolve o anel inteiro de uma vez, que é o objeto real; a fatia é
+                    parte do desenho, não um objeto separado apoiado no card.  */
+                dropShadow: { enabled: false }
             });
 
             /**
@@ -324,7 +391,13 @@ document.addEventListener('turbo:load', () => {
                     // pelo texto e fazia os cinco anéis nascerem de tamanhos diferentes.
                     legend: { show: false },
                     states: { 
-                        hover: { filter: { type: 'lighten', value: 0.08 } },
+                        /*  0,08 de clareamento era invisível na fatia que mais precisa
+                            dele: `#EB8DC8`, o rosa claro de `Processados`, já está perto
+                            do branco do card — clarear 8% dele não muda nada que o olho
+                            registre, e passar o mouse na maior fatia da tela não dava
+                            retorno nenhum. 0,16 acende as seis de forma perceptível e
+                            ainda deixa a fatia reconhecível como a mesma cor.  */
+                        hover: { filter: { type: 'lighten', value: 0.16 } },
                         active: { filter: { type: 'none' } },
                         selection: { filter: { type: 'none' } }
                     },
@@ -340,7 +413,8 @@ document.addEventListener('turbo:load', () => {
                             const total = reais.reduce((soma, parcela) => soma + parcela, 0);
                             const percentual = total > 0 ? (valor / total) * 100 : 0;
                             return balao(`<div style="display:flex;align-items:center;gap:8px;">
-                                <span style="width:10px;height:10px;border-radius:50%;background:${w.globals.colors[seriesIndex]};display:inline-block;flex:0 0 auto;box-shadow:0 2px 4px rgba(0,0,0,0.1);"></span>
+                                <span style="width:11px;height:11px;border-radius:3px;background:${w.globals.colors[seriesIndex]};display:inline-block;flex:0 0 auto;
+                                    box-shadow:inset 0 1px 0 rgba(255,255,255,0.4);"></span>
                                 <span style="font-size:13px;font-weight:500;color:${tintaMedia};">${w.globals.labels[seriesIndex]}:
                                     <b style="color:${tintaForte};font-weight:800;margin-left:2px;">${formatarNumero(valor)}</b>
                                     <span style="font-size:11px;color:#9CA3AF;margin-left:2px;font-weight:600;">(${formatarPercentual(percentual)})</span></span></div>`);
@@ -424,6 +498,47 @@ document.addEventListener('turbo:load', () => {
              * a janela mudar de tamanho. O ResizeObserver enxerga os dois casos, porque
              * observa a CAIXA e não a janela.
              */
+            /* ==================================================================
+               TELA CHEIA (F11)
+               ==================================================================
+               Em tela cheia a área de trabalho ganha ~90px de altura, e eles iam todos
+               para as roscas: os anéis cresciam e a legenda continuava nos mesmos 10px,
+               parecendo menor ainda ao lado deles. Marcado o `<html>`, o CSS devolve
+               parte dessa altura ao card — anel um pouco menor, legenda um pouco maior
+               (ver `html[data-tela-cheia="1"]` em `dash_documentos_ia.css`).
+
+               O SINAL É `(display-mode: fullscreen)`, e não `document.fullscreenElement`:
+               no F11 quem muda é o display-mode, e `fullscreenElement` fica NULO — ele só
+               responde à tela cheia pedida por `requestFullscreen`, que não existe em
+               lugar nenhum deste projeto (o botão de expandir do Detalhamento é uma
+               classe CSS, não a API de fullscreen).
+
+               Comparar `innerHeight` com `screen.height` chegou a ser uma segunda
+               condição e foi tirada: em janela sem o cromo do navegador — headless,
+               kiosk — ela dá positivo o tempo todo, e a tela nasceria com o ajuste de
+               tela cheia aplicado sem ninguém ter apertado nada.
+
+               Ouvimos a PRÓPRIA media query, e não o `resize` da janela: ela dispara
+               exatamente na entrada e na saída do F11, sem passar por nenhuma das
+               dezenas de mudanças de tamanho que não são tela cheia.
+
+               Quem reavisa os gráficos da altura nova é o ResizeObserver logo abaixo —
+               ele observa a CAIXA, e é a caixa que o CSS acabou de encolher.
+               ================================================================== */
+            const consultaTelaCheia = window.matchMedia
+                && window.matchMedia('(display-mode: fullscreen)');
+
+            const marcarTelaCheia = () => {
+                document.documentElement.setAttribute(
+                    'data-tela-cheia', (consultaTelaCheia && consultaTelaCheia.matches) ? '1' : '0');
+            };
+
+            marcarTelaCheia();
+            if (consultaTelaCheia && !window.__telaCheiaLigadaDocIA) {
+                window.__telaCheiaLigadaDocIA = true;
+                consultaTelaCheia.addEventListener('change', marcarTelaCheia);
+            }
+
             const observarTamanho = () => {
                 if (typeof ResizeObserver === 'undefined' || window.__observadorDocIA) return;
                 let pendente = null;
@@ -436,6 +551,104 @@ document.addEventListener('turbo:load', () => {
                 });
                 caixasDeGrafico().forEach((alvo) => window.__observadorDocIA.observe(alvo));
             };
+
+            /* ==================================================================
+               BALÕES ÓRFÃOS DO APEXCHARTS
+               ==================================================================
+               O balão de um gráfico ficava aceso depois que o ponteiro já tinha ido
+               embora, e dava para acumular três ou quatro deles abertos ao mesmo tempo,
+               tapando as roscas vizinhas.
+
+               A CAUSA PROVÁVEL — e não confirmada, vale dizer: quem apaga o balão, no
+               ApexCharts, é o `mouseleave` do SVG daquele gráfico, e esse SVG é
+               REESCRITO por baixo do ponteiro a cada `updateSeries`/`updateOptions`
+               (clicar numa linha da legenda redesenha os cinco). O elemento que
+               receberia o `mouseleave` deixa de existir antes de recebê-lo, e o balão
+               fica para trás sem ninguém para fechá-lo. Não consegui reproduzir isso em
+               Chromium headless: lá o mouse sintético entra e sai limpo demais.
+
+               A LIMPEZA NA REPINTURA NÃO BASTA: ela cobria o caso do filtro, mas o
+               relato é de balão preso só passeando o mouse pelo dashboard, quando
+               repintura nenhuma acontece.
+
+               POR ISSO A GUARDA NÃO DEPENDE DO DIAGNÓSTICO. Ela não tenta antecipar os
+               caminhos que órfãm um balão: a cada movimento do ponteiro, todo balão que
+               não pertença ao gráfico sob o cursor é apagado, tenha ele chegado ali
+               como for. Enquanto o ponteiro está sobre uma rosca o balão dela é poupado
+               (o `requestAnimationFrame` garante que rodamos DEPOIS do handler do Apex,
+               então não competimos com ele); assim que ele sai para qualquer outro
+               lugar da tela, o balão morre no frame seguinte.
+               ================================================================== */
+
+            /**
+             * O QUE FAZ: apaga à força os balões do ApexCharts, menos o do gráfico
+             *   passado em `excecao` (a `.apexcharts-canvas` sob o ponteiro).
+             * COMO: o mesmo par que o Apex usa para esconder — tira `apexcharts-active`
+             *   e zera a opacidade. Ele regrava os dois ao mostrar de novo, então isto
+             *   não deixa nenhum balão inutilizado.
+             */
+            /*  O RESPIRO ENTRE O BALÃO E A BORDA DO CARD. Colado na borda ele lê como
+                se estivesse cortado mesmo quando está inteiro.  */
+            const MARGEM_DO_BALAO = 8;
+
+            /**
+             * O QUE FAZ: mantém o balão dentro da caixa do próprio gráfico.
+             * POR QUÊ EXISTE: o ApexCharts centra o balão no cursor e NÃO o prende ao
+             *   container. Na fatia da borda esquerda da primeira rosca ele ia parar em
+             *   `left: -118px` — 118px fora da janela — e o `overflow: hidden` de
+             *   `#vista-beneficiarios` cortava o que sobrava. O que se via era meio balão
+             *   encostado na borda do card, ou balão nenhum.
+             * POR QUE NÃO FOI MEXER NO `overflow`/`z-index`: `#vista-beneficiarios`,
+             *   `.area-trabalho`, `#main-content` e `.menu-shell` são todos
+             *   `overflow: hidden`, e é isso que segura a rolagem do Detalhamento e o
+             *   arredondamento da casca. Abrir a corrente inteira para o balão passar
+             *   trocaria um defeito visível por quatro invisíveis. Prender o balão
+             *   resolve na origem: se ele nunca sai do card, nunca há o que recortar.
+             * DE QUEBRA, ele deixa de invadir o card vizinho — que era a outra queixa.
+             */
+
+            const esconderBaloes = (excecao) => {
+                document.querySelectorAll('.apexcharts-tooltip').forEach((balao) => {
+                    if (excecao && excecao.contains(balao)) return;
+                    // Sai cedo no caso comum (já apagado): este código roda a cada frame
+                    // de movimento do mouse, e escrever no DOM à toa custa layout.
+                    if (!balao.classList.contains('apexcharts-active')) return;
+                    balao.classList.remove('apexcharts-active');
+                    balao.style.opacity = '0';
+                });
+            };
+            window.__esconderBaloesDocIA = esconderBaloes;
+
+            /*  Registrado UMA VEZ e no `document`: `initDashDocumentosIA` roda no
+                DOMContentLoaded E no turbo:load, e um par de ouvintes por passada se
+                empilharia.  */
+            if (!window.__baloesLigadosDocIA) {
+                window.__baloesLigadosDocIA = true;
+                let quadro = null;
+                const vigiar = (evento) => {
+                    // Um ajuste por frame, no máximo: `pointermove` dispara dezenas de
+                    // vezes por segundo e não há nada aqui que precise dessa cadência.
+                    if (quadro) return;
+                    const sobre = evento.target instanceof Element
+                        ? evento.target.closest('.apexcharts-canvas') : null;
+                    quadro = requestAnimationFrame(() => {
+                        quadro = null;
+                        esconderBaloes(sobre);
+                        // Depois de esconder os outros, acerta a posição do que ficou.
+                        // No mesmo frame, e depois do handler do Apex: ele já escreveu o
+                        // `left` que queria, e o que fazemos é corrigi-lo.
+                    });
+                };
+                document.addEventListener('pointermove', vigiar, { passive: true });
+                document.addEventListener('pointerdown', vigiar, { passive: true });
+                // O ponteiro que sai pela borda da janela (outra tela, a barra de
+                // tarefas) não gera mais `pointermove`: sem estes dois, o último balão
+                // aceso ficaria na tela até o próximo movimento lá dentro.
+                document.documentElement.addEventListener('pointerleave', () => esconderBaloes(null));
+                window.addEventListener('blur', () => esconderBaloes(null));
+                // Rolar a tabela leva a rosca para fora da vista com o balão junto.
+                document.addEventListener('scroll', () => esconderBaloes(null), true);
+            }
 
             const definirKpi = (id, valor) => {
                 const alvo = document.getElementById(id);
@@ -611,16 +824,23 @@ document.addEventListener('turbo:load', () => {
                     grafico.updateOptions({
                         colors: novasCores,
                         plotOptions: { pie: {
-                            donut: { labels: { total: { label: novoRotulo } } } } },
+                            donut: { labels: { 
+                                name: { color: token('--tema-texto-medio', '#4B5563') },
+                                value: { color: token('--tema-texto-forte', '#111827') },
+                                total: { label: novoRotulo, color: token('--tema-texto-medio', '#4B5563') } 
+                            } } } }
                     }, false, false);
                 }
 
                 grafico.selecionadoNoRecorte = haRecorte ? selecionado : null;
                 const inflado = cru.map((v) => (v > 0 && v < minVisual) ? minVisual : v);
-                grafico.updateSeries(inflado);
+                const assinaturaSeries = inflado.join(',');
+                if (grafico.__assinaturaSeries !== assinaturaSeries) {
+                    grafico.__assinaturaSeries = assinaturaSeries;
+                    grafico.updateSeries(inflado);
+                }
 
                 /*  O afastamento é feito no SVG, à mão. `toggleDataPointSelection` do
-                    ApexCharts não tem efeito em rosca (testado: `selectedDataPoints` fica
                     vazio e nada se move), e `expandOnClick` só responde ao clique do
                     usuário — aqui quem escolhe é a legenda.
 
@@ -707,7 +927,7 @@ document.addEventListener('turbo:load', () => {
                                         : (fora ? ' docia-legenda__item--fora' : '');
                     return `<button type="button" class="docia-legenda__item${marca}"
                                     data-indice="${indice}"
-                                    title="${ativo ? 'Remover do detalhamento' : `Somar ao detalhamento: ${doc} / ${nome}`}">
+                                   >
                         <span class="docia-legenda__ponto" style="background:${cores[indice]};"></span>
                         <span class="docia-legenda__nome">${nome}</span>
                         <span class="docia-legenda__valor">${formatarNumero(valor)}</span>
@@ -809,6 +1029,10 @@ document.addEventListener('turbo:load', () => {
                 const estado = window.__ultimoEstadoDocIA;
                 if (!estado) return;
 
+                // A repintura reescreve os SVGs por baixo do ponteiro, e o balão que
+                // estava aceso perde quem o fecharia — ver o bloco `BALÕES ÓRFÃOS`.
+                esconderBaloes(null);
+
                 definirKpi('kpi-beneficiarios', estado.beneficiarios);
                 definirKpi('kpi-ativos', estado.ativos);
                 definirKpi('kpi-inativos', estado.inativos);
@@ -833,6 +1057,17 @@ document.addEventListener('turbo:load', () => {
             };
 
             /* ==================================================================
+               MANUTENÇÃO DA SESSÃO (HEARTBEAT)
+               ==================================================================
+               Dashboards costumam ficar abertos em monitores sem interação. Como a
+               sessão global do portal expira em 20 minutos, fazemos um ping silencioso
+               para manter a sessão viva enquanto a tela estiver aberta.
+               ================================================================== */
+            setInterval(() => {
+                fetch(window.location.href, { method: 'HEAD' }).catch(() => {});
+            }, 14 * 60 * 1000);
+
+            /* ==================================================================
                FILTROS E BUSCA DE DADOS
                ==================================================================
                Os checkboxes de semestre e o modal de IES são a ÚNICA origem de filtro.
@@ -845,11 +1080,11 @@ document.addEventListener('turbo:load', () => {
                apaga é o pior tipo de filtro.
                ================================================================== */
 
-            const checkboxesSemestre = document.querySelectorAll('.filter-semestre');
-            const checkboxesMudouIES = document.querySelectorAll('.filter-mudou-ies');
-            const checkboxesMudouBolsa = document.querySelectorAll('.filter-mudou-bolsa');
-            const checkboxesVinculo = document.querySelectorAll('.filter-vinculo');
-            const checkboxesPerfil = document.querySelectorAll('.filter-perfil');
+            const checkboxesSemestre = nosFiltros('.filter-semestre');
+            const checkboxesMudouIES = nosFiltros('.filter-mudou-ies');
+            const checkboxesMudouBolsa = nosFiltros('.filter-mudou-bolsa');
+            const checkboxesVinculo = nosFiltros('.filter-vinculo');
+            const checkboxesPerfil = nosFiltros('.filter-perfil');
 
             const marcados = (caixas) => Array.from(caixas)
                 .filter((caixa) => caixa.checked)
@@ -1084,6 +1319,65 @@ document.addEventListener('turbo:load', () => {
                 return String(valor);
             };
 
+            /* ==================================================================
+               AS FLAGS DAS COLUNAS DE STATUS
+               ==================================================================
+               `Status Doc` e `Status IA` eram texto cinza no meio de outras 29 colunas
+               de texto cinza. São as duas colunas pelas quais se varre a tabela — a
+               pergunta desta tela é "quem ainda não mandou o quê" — e eram as duas
+               únicas sem nenhum peso visual. Achar "Inadimplente" numa lista de 200
+               linhas exigia ler linha a linha.
+
+               O TEXTO NÃO MUDA. A flag é um `<span>` em volta do MESMO valor que a
+               view mandou: continua sendo o que se copia, o que a busca encontra e o
+               que o Excel exporta. Só a moldura é nova.
+
+               A COR É SEMÂNTICA, e não a das roscas — e a diferença é proposital. A
+               rosca pinta BALDES, com a rampa da marca: rosa claro → magenta → roxo é
+               uma sequência, não um julgamento. A coluna aqui responde outra pergunta,
+               que é "isto está resolvido?", e para essa pergunta o leitor já tem um
+               vocabulário pronto na cabeça. Usar o rosa da rosca aqui obrigaria a
+               decorar qual dos rosas é o bom.
+
+                 verde     resolvido            Processado, VÁLIDO
+                 âmbar     esperando a IA       Não Processado
+                 ardósia   não chegou nada      Pendente, AUSENTE
+                 laranja   a IA leu e apontou   INVÁLIDO, FALSO *, CORROMPIDO
+                 vermelho  cobrança sem lastro  Inadimplente *
+
+               `INVÁLIDO` fica em LARANJA e não em vermelho de propósito: no fluxo do
+               SIBU inválido não é reprovação definitiva, e pintá-lo com a mesma tinta
+               do inadimplente ensinaria a ler como erro o que é uma etapa.
+             */
+            const COLUNAS_COM_FLAG = new Set(['status doc', 'status ia']);
+
+            /*  O slug é o próprio valor, sem acento e sem pontuação — `Inadimplente
+                Proc.` vira `inadimplente-proc`. Assim a folha de estilo lista os
+                valores que conhece e QUALQUER valor novo que a view passe a mandar cai
+                sozinho na flag neutra, em vez de aparecer sem moldura ou, pior, com a
+                cor de outro estado.  */
+            const slugDaFlag = (texto) => texto
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase().trim()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-|-$/g, '');
+
+            /**
+             * O QUE FAZ: escreve o valor da flag em Capitulares.
+             * POR QUÊ NÃO É `text-transform: capitalize`: `capitalize` só levanta a
+             *   primeira letra de cada palavra e NÃO baixa o resto — sobre `VÁLIDO`,
+             *   que é como a view manda `status_ia`, ele devolve `VÁLIDO`. Para sair
+             *   `Válido` é preciso baixar tudo primeiro, e encadear duas transformações
+             *   não existe em CSS.
+             * O VALOR CRU VAI NO `title`: quem precisa do que a view mandou — para
+             *   conferir contra o Parquet ou contra a query — encontra passando o mouse.
+             *   O texto do DOM passa a ser o capitulado, então é ele que sai numa
+             *   seleção manual; a exportação para Excel não usa este caminho (ela é
+             *   montada no servidor, a partir do dado).
+             */
+            const rotuloDaFlag = (texto) => texto.toLocaleLowerCase('pt-BR')
+                .replace(/(^|\s)(\p{L})/gu, (_, antes, letra) => antes + letra.toLocaleUpperCase('pt-BR'));
+
             /**
              * O QUE FAZ: escreve o selo de contagem ao lado do título.
              * POR QUÊ EXISTE: ele ficava com o número ANTERIOR durante a consulta, e
@@ -1113,15 +1407,45 @@ document.addEventListener('turbo:load', () => {
                ================================================================== */
             const elFiltros = document.getElementById('tabela-filtros');
 
-            const chip = (tipo, valor, acao) =>
-                `<span class="docia-chip" title="${escaparHtml(tipo + ': ' + valor)}">
+            /**
+             * O QUE FAZ: uma etiqueta de filtro ativo.
+             * @param {boolean} fixo etiqueta SEM o X — o filtro que ela nomeia não pode
+             *   ser removido. Ver `chipFixo`, logo abaixo, para o porquê.
+             */
+            const chip = (tipo, valor, acao, fixo) =>
+                `<span class="docia-chip${fixo ? ' docia-chip--fixo' : ''}"
+                      >
                     <span class="docia-chip__tipo">${escaparHtml(tipo)}</span>
                     <span class="docia-chip__valor">${escaparHtml(valor)}</span>
-                    <button type="button" class="docia-chip__x" data-acao="${acao}"
+                    ${fixo ? '' : `<button type="button" class="docia-chip__x" data-acao="${acao}"
                             aria-label="Remover o filtro ${escaparHtml(valor)}">
                         <i class="fa-solid fa-xmark"></i>
-                    </button>
+                    </button>`}
                 </span>`;
+
+            /* ==================================================================
+               O SEMESTRE NÃO SE REMOVE
+               ==================================================================
+               A barra lateral impõe UM semestre, sempre, em todos os modos — está
+               escrito em `exclusividadeFiltroUnico`, que devolve a caixa ao estado
+               marcado quando alguém tenta desmarcar a última: "impede a desmarcação".
+
+               O X desta etiqueta era um segundo caminho para o MESMO filtro, e ele
+               não passava por essa guarda: chamava `desmarcar()` direto no DOM e
+               deixava ZERO semestres marcados. Aí a consulta sai sem o parâmetro, o
+               servidor devolve os quatro semestres somados, e a tela passa a mostrar
+               um estado que a barra lateral jura ser impossível — sem nada escrito
+               dizendo que agora são quatro. Dois caminhos para o mesmo filtro, um
+               deles cumprindo a regra e o outro ignorando.
+
+               Sem o X, a etiqueta passa a ser o que ela sempre foi de verdade: a
+               legenda de qual semestre está na tela, e não uma oferta de removê-lo.
+               Trocar de semestre continua sendo um clique — na barra, onde os quatro
+               estão lado a lado e a troca é o gesto que faz sentido.
+
+               VALE PARA `Documento` NA VISTA DE IES pelo mesmo motivo:
+               `exclusividadeDocumento` também recusa deixar a lista vazia ali.
+               ================================================================== */
 
             /**
              * O QUE FAZ: redesenha a faixa de etiquetas a partir do estado atual.
@@ -1142,7 +1466,7 @@ document.addEventListener('turbo:load', () => {
 
 
                 marcados(checkboxesSemestre).forEach(
-                    (valor) => etiquetas.push(chip('Semestre', valor, 'semestre:' + valor)));
+                    (valor) => etiquetas.push(chip('Semestre', valor, 'semestre:' + valor, true)));
 
                 if (typeof activeIESFilters !== 'undefined' && activeIESFilters.length > 0) {
                     etiquetas.push(chip('IES',
@@ -1211,7 +1535,15 @@ document.addEventListener('turbo:load', () => {
                         if (caixa.value === valor) caixa.checked = false;
                     });
 
-                    if (tipo === 'semestre') { desmarcar(checkboxesSemestre); precisaDosGraficos = true; }
+                    /*  A ETIQUETA DO SEMESTRE JÁ NÃO TEM X — este ramo só é alcançável
+                        se alguém puser um de volta. A guarda fica porque a regra é da
+                        APLICAÇÃO, não do desenho da etiqueta: nenhum caminho pode
+                        deixar a tela sem semestre, e o dia em que um terceiro caminho
+                        aparecer, é aqui que ele para.  */
+                    if (tipo === 'semestre') {
+                        if (marcados(checkboxesSemestre).length <= 1) return;
+                        desmarcar(checkboxesSemestre); precisaDosGraficos = true;
+                    }
                     else if (tipo === 'mudou_ies') { desmarcar(checkboxesMudouIES); precisaDosGraficos = true; }
                     else if (tipo === 'mudou_bolsa') { desmarcar(checkboxesMudouBolsa); precisaDosGraficos = true; }
                     else if (tipo === 'vinculo') { desmarcar(checkboxesVinculo); precisaDosGraficos = true; }
@@ -1271,13 +1603,13 @@ document.addEventListener('turbo:load', () => {
                     const miolo = escaparHtml(rotuloColuna(nome));
                     
                     if (!copiavel) {
-                        return `<th class="px-4 py-3 text-[11px] font-extrabold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50/50" title="${escaparHtml(nome)}">${miolo}</th>`;
+                        return `<th class="px-4 py-3 text-[11px] font-extrabold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50/50">${miolo}</th>`;
                     }
                     
-                    return `<th class="px-4 py-3 text-[11px] font-extrabold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50/50" title="${escaparHtml(nome)}">
+                    return `<th class="px-4 py-3 text-[11px] font-extrabold text-gray-600 uppercase tracking-wider border-b border-gray-200 bg-gray-50/50">
                         <div class="flex items-center gap-2">
                             ${miolo}
-                            <button type="button" class="docia-btn-copiar-coluna text-gray-400 hover:text-pink-600 transition-colors bg-white rounded shadow-sm border border-gray-200 px-1.5 py-0.5" data-col-index="${i}" title="Copiar todas as inscrições desta coluna">
+                            <button type="button" class="docia-btn-copiar-coluna text-gray-400 hover:text-pink-600 transition-colors bg-white rounded shadow-sm border border-gray-200 px-1.5 py-0.5" data-col-index="${i}">
                                 <i class="fa-regular fa-copy"></i>
                             </button>
                         </div>
@@ -1304,10 +1636,20 @@ document.addEventListener('turbo:load', () => {
                     enquanto uma pintura está em andamento, a antiga percebe que já não é
                     a vez dela e para — senão as linhas do filtro velho continuariam
                     aparecendo por baixo das do novo.  */
+                // Quais colunas viram flag, resolvido UMA vez por pintura e não uma
+                // vez por célula: são até 5.000 linhas × 31 colunas.
+                const comFlag = colunas.map(
+                    (nome) => COLUNAS_COM_FLAG.has(String(nome).toLowerCase().replace(/_/g, ' ')));
+
                 const linhaHtml = (linha) =>
-                    '<tr class="hover:bg-pink-50/60 transition-colors group cursor-default">'
-                    + linha.map((valor, i) =>
-                        `<td class="px-4 py-2.5 border-b border-gray-100 text-[13px] text-gray-700 group-hover:text-gray-900 transition-colors ${i === 0 ? 'font-medium' : ''}">${escaparHtml(celula(valor))}</td>`).join('')
+                    '<tr class="docia-tr hover:bg-pink-50/60 transition-colors group cursor-default">'
+                    + linha.map((valor, i) => {
+                        const texto = celula(valor);
+                        const miolo = (comFlag[i] && texto !== '-')
+                            ? `<span class="docia-flag docia-flag--${slugDaFlag(texto)}">${escaparHtml(rotuloDaFlag(texto))}</span>`
+                            : escaparHtml(texto);
+                        return `<td class="px-4 py-2.5 border-b border-gray-100 text-[13px] text-gray-700 group-hover:text-gray-900 transition-colors ${i === 0 ? 'font-medium' : ''}">${miolo}</td>`;
+                    }).join('')
                     + '</tr>';
 
                 const minhaVez = ++pinturaAtual;
@@ -1382,9 +1724,10 @@ document.addEventListener('turbo:load', () => {
                         // de resultado — some o selo e o filtro parece não ter rodado.
                         const total = corpo.total_rows || 0;
                         const exibidas = tabelaAtual.linhas.length;
-                        marcarContagem(exibidas < total
-                            ? `<b class="text-gray-800">${formatarNumero(exibidas)}</b>&nbsp;de&nbsp;<b class="text-gray-800">${formatarNumero(total)}</b>`
-                            : `<b class="text-gray-800">${formatarNumero(total)}</b>`);
+                        /*  `text-gray-800` saiu junto com o fundo branco do selo: sobre
+                            o roxo ele seria texto quase preto em cima de escuro. A cor
+                            agora é do selo inteiro, no CSS — ver `.docia-contagem`.  */
+                        marcarContagem(`<b>${formatarNumero(exibidas)}</b><span class="docia-contagem__de">de</span><b>${formatarNumero(total)}</b>`);
                         pintarFiltrosAtivos(exibidas, total);
 
                         if (elTabela.rolagem) elTabela.rolagem.scrollTop = 0;
@@ -1512,11 +1855,15 @@ document.addEventListener('turbo:load', () => {
                     window.fetchDadosIES();
                     return;
                 }
+                if (modoSelecionado() === 'performance') {
+                    return;
+                }
 
                 window.fetchChartData();
                 window.fetchTableData();
             };
-            window.recarregarDocumentosIA = recarregar;
+            window.recarregarDocumentosIA = () => window.dispatchEvent(new Event('docia:recarregar'));
+            window.addEventListener('docia:recarregar', recarregar);
 
             // --- Semestres: cada clique refaz a consulta ------------------------
             // Agora é excludente em TODOS os modos. Um semestre apenas pode ser visualizado.
@@ -1645,7 +1992,7 @@ document.addEventListener('turbo:load', () => {
                     cardDetalhamento.classList.toggle('docia-detalhamento--expandido', expandir);
                     btnExpandir.classList.toggle('docia-botao-ativo', expandir);
                     btnExpandir.setAttribute('aria-pressed', expandir ? 'true' : 'false');
-                    btnExpandir.title = expandir ? 'Voltar ao tamanho normal' : 'Expandir o detalhamento';
+                    // btnExpandir.title = expandir ? 'Voltar ao tamanho normal' : 'Expandir o detalhamento';
                     const icone = document.getElementById('icone-expandir');
                     if (icone) icone.className = 'fa-solid text-xs '
                         + (expandir ? 'fa-compress' : 'fa-expand');
@@ -1683,7 +2030,7 @@ document.addEventListener('turbo:load', () => {
                     cardIES.classList.toggle('docia-detalhamento--expandido', expandir);
                     btnExpandirIES.classList.toggle('docia-botao-ativo', expandir);
                     btnExpandirIES.setAttribute('aria-pressed', expandir ? 'true' : 'false');
-                    btnExpandirIES.title = expandir ? 'Voltar ao tamanho normal' : 'Expandir a tabela de instituições';
+                    // btnExpandirIES.title = expandir ? 'Voltar ao tamanho normal' : 'Expandir a tabela de instituições';
                     const icone = document.getElementById('icone-expandir-ies');
                     if (icone) icone.className = 'fa-solid text-xs ' + (expandir ? 'fa-compress' : 'fa-expand');
                 };
@@ -1738,7 +2085,7 @@ document.addEventListener('turbo:load', () => {
                 instituição com muita cobrança indevida pareceria estar devendo mais
                 documento do que realmente deve, e o denominador puniria justamente
                 quem foi cobrado errado.  */
-            const esperadosDe = (linha) => (linha.Processados || 0) + (linha.NaoProcessados || 0) + (linha.NaoEnviados || 0);
+            const esperadosDe = (linha) => (linha.total || 0) - (linha.Inadimplentes || 0);
             const enviadosDe = (linha) => esperadosDe(linha) - (linha.NaoEnviados || 0);
 
             /*  O PERCENTUAL DIZ QUANTO JÁ ESTÁ RESOLVIDO — quanto MAIOR, MELHOR.
@@ -1757,10 +2104,6 @@ document.addEventListener('turbo:load', () => {
                 em curso, e a meta é levá-lo a zero. Um complemento ali ("97% não
                 inadimplente") esconderia justamente o que a coluna existe para denunciar.
 
-                CADA % TEM DENOMINADOR PRÓPRIO, e é por isso que o cabeçalho nomeia a
-                medida embaixo do nome da coluna. Sem esse rótulo, "36 (97,2%)" na coluna
-                de pendências lê como "97,2% estão pendentes" — o oposto do que diz.
-
                 Devolve `null` quando a base é zero: não há progresso a medir sobre nada,
                 e mostrar "0,0%" ou "100,0%" ali seria inventar um fato.  */
             const fatia = (valor, base) => (base > 0 ? ((valor || 0) / base) * 100 : null);
@@ -1773,19 +2116,34 @@ document.addEventListener('turbo:load', () => {
                 { chave: 'Processados',    rotulo: FATIAS[0], numero: true,
                   pct: (l) => fatia(l.Processados, esperadosDe(l)) },
 
+                /*  MOSTRA O % JÁ PROCESSADO, e não a fatia de não processados: com a
+                    fila vazia a célula diz 100%, que é o que "0 na fila" significa.
+                    A base é o que CHEGOU (`enviadosDe`) — o que ainda não chegou não
+                    tinha como ser lido, e contá-lo aqui misturaria duas perguntas.  */
                 { chave: 'NaoProcessados', rotulo: FATIAS[1], numero: true, inverso: true,
-                  pct: (l) => fatia(l.NaoProcessados, esperadosDe(l)) },
+                  pct: (l) => progresso(l.NaoProcessados, enviadosDe(l)) },
 
+                /*  MOSTRA O % ENVIADO. "0 pendentes (0,0%)" lia como zero por cento de
+                    alguma coisa boa; quem tem zero pendência enviou tudo, e o número
+                    que descreve isso é 100%.  */
                 { chave: 'NaoEnviados',    rotulo: FATIAS[2], numero: true, inverso: true,
-                  pct: (l) => fatia(l.NaoEnviados, esperadosDe(l)) },
+                  pct: (l) => progresso(l.NaoEnviados, esperadosDe(l)) },
 
-                { chave: 'InadProc',       rotulo: FATIAS[3], numero: true, inverso: true,
+                /*  OS TRÊS DE INADIMPLÊNCIA SÃO A EXCEÇÃO: fatia crua sobre o total da
+                    linha, onde MAIOR É PIOR. Não são um passo do caminho que se
+                    completa — são erro em curso, e a meta é levá-los a zero. Um
+                    complemento aqui ("97% não inadimplente") esconderia justamente o
+                    que a coluna existe para denunciar.  */
+                { chave: 'InadProc',       rotulo: FATIAS[3], numero: true,
+                  inverso: true,
                   pct: (l) => fatia(l.InadProc, l.total) },
 
-                { chave: 'InadNaoProc',    rotulo: FATIAS[4], numero: true, inverso: true,
+                { chave: 'InadNaoProc',    rotulo: FATIAS[4], numero: true,
+                  inverso: true,
                   pct: (l) => fatia(l.InadNaoProc, l.total) },
 
-                { chave: 'Inadimplentes',  rotulo: FATIAS[5], numero: true, inverso: true,
+                { chave: 'Inadimplentes',  rotulo: FATIAS[5], numero: true,
+                  inverso: true,
                   pct: (l) => fatia(l.Inadimplentes, l.total) },
             ];
 
@@ -1799,7 +2157,7 @@ document.addEventListener('turbo:load', () => {
                 filtros: document.getElementById('ies-filtros'),
             };
 
-            const checkboxesDocumento = document.querySelectorAll('.filter-documento-ies');
+            const checkboxesDocumento = nosFiltros('.filter-documento-ies');
             /*  Vive em `window` pelo mesmo motivo dos gráficos e dos recortes:
                 `initDashDocumentosIA` roda no DOMContentLoaded E no turbo:load, e a
                 ordem escolhida não pode se perder na segunda passada.  */
@@ -1904,7 +2262,7 @@ document.addEventListener('turbo:load', () => {
                     const base = (indice < 3) ? somaEsperados : somaTudo;
                     const percentual = base > 0 ? (valor / base) * 100 : 0;
                     
-                    return `<div class="flex-1 min-w-[9rem] bg-gradient-to-br from-white/90 to-gray-50/50 backdrop-blur-md border border-white/60 shadow-[0_4px_20px_rgb(0,0,0,0.08)] rounded-3xl py-2.5 px-4 flex items-center justify-between cursor-default" title="${escaparHtml(nome)}">
+                    return `<div class="flex-1 min-w-[9rem] bg-gradient-to-br from-white/90 to-gray-50/50 backdrop-blur-md border border-white/60 shadow-[0_4px_20px_rgb(0,0,0,0.08)] rounded-3xl py-2.5 px-4 flex items-center justify-between cursor-default">
                         <div class="flex flex-col pr-2" style="min-width: 0;">
                             <p class="text-[9px] xl:text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escaparHtml(nome)}</p>
                             <h4 class="text-xl font-black text-gray-800" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${formatarNumero(valor)}</h4>
@@ -1935,8 +2293,8 @@ document.addEventListener('turbo:load', () => {
             const pintarFiltrosAtivosIES = () => {
                 if (!elIES.filtros) return;
                 const etiquetas = [];
-                marcados(checkboxesSemestre).forEach((v) => etiquetas.push(chip('Período', v, 'semestre:' + v)));
-                marcados(checkboxesDocumento).forEach((v) => etiquetas.push(chip('Documento', v, 'documento:' + v)));
+                marcados(checkboxesSemestre).forEach((v) => etiquetas.push(chip('Semestre', v, 'semestre:' + v, true)));
+                marcados(checkboxesDocumento).forEach((v) => etiquetas.push(chip('Documento', v, 'documento:' + v, true)));
                 if (typeof activeIESFilters !== 'undefined' && activeIESFilters.length > 0) {
                     etiquetas.push(chip('IES', activeIESFilters.length + ' selecionada'
                                         + (activeIESFilters.length > 1 ? 's' : ''), 'ies:*'));
@@ -2052,14 +2410,20 @@ document.addEventListener('turbo:load', () => {
 
                 elIES.corpo.innerHTML = linhas.map((linha) => {
                     const ehFantasma = (!linha.beneficiarios || Number(linha.beneficiarios) === 0);
-                    const rowClass = ehFantasma ? '' : 'hover:bg-pink-50/60';
+                    /*  `docia-tr` é o que traz o realce roxo e a barrinha da primeira
+                        célula — o mesmo do Detalhamento. Esta tabela pedia
+                        `hover:bg-pink-50/60`, utilitária que NÃO existe no bundle
+                        purgado: aqui, como lá, o hover não pintava nada. A linha
+                        fantasma fica de fora porque ela já tem fundo próprio (âmbar),
+                        e um realce por cima só embaralharia os dois sinais.  */
+                    const rowClass = ehFantasma ? 'docia-tr--fantasma' : 'docia-tr';
                     const bgStyle = ehFantasma ? ' style="background-color: #fff7ed;"' : '';
                     return `<tr class="${rowClass} transition-colors group cursor-default"${bgStyle}>`
                     + COLUNAS_IES.map((coluna) => {
                         const valor = linha[coluna.chave];
                         if (!coluna.numero) {
                             return `<td class="px-4 py-2.5 border-b border-gray-100 text-[13px] font-medium text-gray-700 group-hover:text-gray-900 transition-colors"
-                                        ><div class="docia-ies-nome" title="${escaparHtml(valor)}">${escaparHtml(valor)}</div></td>`;
+                                        ><div class="docia-ies-nome">${escaparHtml(valor)}</div></td>`;
                         }
                         /*  O ZERO APAGA SÓ O NÚMERO, e não a célula inteira. Nas colunas
                             normais ele fica cinza pra não gritar "vermelho". Mas nos
@@ -2077,21 +2441,52 @@ document.addEventListener('turbo:load', () => {
                         if (valorPct !== null) {
                             let hue;
                             if (coluna.chave === 'NaoProcessados') {
-                                // 0% -> 120 (Verde). O resto segue pro Amarelo alaranjado
-                                hue = (valor === 0) ? 120 : Math.max(50, Math.min(120, 120 - (valorPct * 0.7)));
+                                /*  QUALQUER UM É LARANJA. Era um degradê que só saía do
+                                    verde depois de uma fatia grande: com 0,7 de
+                                    inclinação, 10% de não processados dava matiz 113 —
+                                    verde, praticamente indistinguível do zero. Uma IES
+                                    com dezenas de documentos parados na fila lia como
+                                    "está tudo certo".
+
+                                    E não está: `Não Processado` é documento que CHEGOU e
+                                    a IA ainda não leu. Não é falha da instituição, é
+                                    trabalho pendente do nosso lado — e é justamente por
+                                    isso que ele não pode se esconder no verde. Um é
+                                    diferente de nenhum, e a cor tem de dizer isso no
+                                    primeiro documento, não no centésimo.
+
+                                    Matiz 32 é o mesmo laranja da flag `Não Processado` no
+                                    Detalhamento (ver `.docia-flag--nao-processado`), e
+                                    pelo mesmo motivo: âmbar é "esperando a IA", distinto
+                                    do vermelho de `Pendentes` e `Inadimplentes`, que são
+                                    documento que não chegou e cobrança sem lastro.
+
+                                    O zero continua verde — ali a fila está vazia, que é o
+                                    estado que se quer.  */
+                                hue = (valor === 0) ? 120 : 32;
                             } else if (coluna.inverso) {
                                 // Pendentes e Inadimplentes: Tolerância zero. > 0 é Vermelho. = 0 é Verde.
                                 hue = (valor === 0) ? 120 : 0;
                             } else {
-                                // Processados: Degradê, quanto maior melhor.
-                                hue = Math.max(0, Math.min(120, valorPct * 1.2));
+                                // Processados: só 100% é verde, 0 é vermelho, o resto é laranja.
+                                if (valor === 0) {
+                                    hue = 0;
+                                } else if (valorPct >= 100) {
+                                    hue = 120;
+                                } else {
+                                    hue = 32;
+                                }
                             }
                             estiloHtml = ` style="color: hsl(${hue}, 80%, 42%); font-weight: 700;"`;
                             classeCor = '';
                         }
 
                         const pct = valorPct === null ? '' :
-                            `<span class="docia-ies-pct opacity-80">(${formatarPercentual(valorPct)})</span>`;
+                            /*  `opacity-80` saiu: ela vinha POR CIMA de uma tinta que já
+                                era clara demais, e o percentual acabava invisível. O
+                                apagado agora está só na cor, medida — ver
+                                `.docia-ies-pct` no CSS.  */
+                            `<span class="docia-ies-pct">(${formatarPercentual(valorPct)})</span>`;
                         const miolo = `<span class="docia-ies-valor${zero}">${formatarNumero(valor)}</span>${pct}`;
 
                         /*  MAIOR QUE ZERO VIRA BOTÃO — ver `abrirBeneficiariosDaCelula`.
@@ -2100,7 +2495,7 @@ document.addEventListener('turbo:load', () => {
                             ? `<button type="button" class="docia-ies-link"
                                        data-ies="${escaparHtml(linha.ies)}"
                                        data-coluna="${escaparHtml(coluna.chave)}"
-                                       title="Ver os beneficiários — ${escaparHtml(coluna.rotulo)} de ${escaparHtml(linha.ies)}"
+                                      
                                >${miolo}</button>`
                             : miolo;
 
@@ -2119,9 +2514,7 @@ document.addEventListener('turbo:load', () => {
                 const total = dadosIES.linhas.length;
                 const exibidas = linhasVisiveisIES().length;
                 const plural = (n) => n === 1 ? 'instituição' : 'instituições';
-                marcarContagemIES(exibidas === total
-                    ? `${formatarNumero(total)} ${plural(total)}`
-                    : `${formatarNumero(exibidas)} de ${formatarNumero(total)} ${plural(total)}`,
+                marcarContagemIES(`${formatarNumero(exibidas)} de ${formatarNumero(total)} ${plural(total)}`,
                     false);
             };
 
@@ -2213,6 +2606,8 @@ document.addEventListener('turbo:load', () => {
 
                     if (tipo === 'semestre' || tipo === 'documento') {
                         const caixas = tipo === 'semestre' ? checkboxesSemestre : checkboxesDocumento;
+                        // Mesma guarda do Detalhamento: aqui os dois são "exatamente um".
+                        if (marcados(caixas).length <= 1) return;
                         caixas.forEach((caixa) => { if (caixa.value === valor) caixa.checked = false; });
                     } else if (tipo === 'ies') {
                         if (typeof window.resetFiltroIES === 'function') window.resetFiltroIES();
@@ -2292,7 +2687,7 @@ document.addEventListener('turbo:load', () => {
                depois no bundle purgado, que não é garantia nenhuma. Os dois modais desta
                tela já contornam isso do mesmo jeito.  */
             const MODO_PADRAO = 'beneficiarios';
-            const radiosModo = document.querySelectorAll('.filter-modo');
+            const radiosModo = nosFiltros('.filter-modo');
             const vistaBeneficiarios = document.getElementById('vista-beneficiarios');
             const vistaIES = document.getElementById('vista-ies');
             const filtrosBeneficiarios = document.getElementById('filtros-beneficiarios');
@@ -2305,7 +2700,7 @@ document.addEventListener('turbo:load', () => {
 
             /*  OS DOIS MODOS NÃO DIVIDEM FILTRO NENHUM.
 
-                Período, Documento e Instituição são os três controles que aparecem nas
+                Semestre, Documento e Instituição são os três controles que aparecem nas
                 duas vistas — e apareciam com o MESMO estado. O recorte montado para
                 comparar instituições ("2026-1, contrato, estas três IES") seguia a
                 pessoa até a lista de alunos, e o contrário também; pior, a volta ao modo
@@ -2391,10 +2786,18 @@ document.addEventListener('turbo:load', () => {
 
                 if (vistaBeneficiarios) vistaBeneficiarios.style.display = emIES ? 'none' : 'flex';
                 if (vistaIES) vistaIES.style.display = emIES ? 'flex' : 'none';
-                if (filtrosBeneficiarios) filtrosBeneficiarios.style.display = emIES ? 'none' : '';
-                // Documento existe nos dois modos: parâmetro da consulta no IES, atalho
-                // de fatia em beneficiários (ver `aplicarDocumentosNasFatias`).
-                if (filtroDocumentos) filtroDocumentos.style.display = '';
+                /*  `data-fechado` e não `style.display`: o bloco COLAPSA, em vez de
+                    sumir num quadro. Ver `.docia-colapso` no CSS e o comentário no
+                    template. A troca é só de mecanismo — quando fechado ele continua
+                    fora do alcance do teclado e do leitor de tela, agora por
+                    `visibility` no fim da animação em vez de `display`.  */
+                if (filtrosBeneficiarios) {
+                    filtrosBeneficiarios.dataset.fechado = emIES ? '1' : '0';
+                }
+                // O filtro de Documento passa a existir apenas no modo IES.
+                if (filtroDocumentos) {
+                    filtroDocumentos.style.display = emIES ? '' : 'none';
+                }
 
                 // A legenda só se repinta na vista que está no ar: no IES as cinco
                 // roscas estão num container sem altura, e pintá-las ali é trabalho
@@ -2412,24 +2815,38 @@ document.addEventListener('turbo:load', () => {
                     /*  Sempre relê, mesmo já tendo lido antes: o botão "Atualizar" pode
                         ter rodado o motor enquanto a outra vista estava no ar, e a tela
                         ficaria mostrando o recorte da execução anterior sem dizer isso.  */
-                    recarregar();
+                    window.dispatchEvent(new Event('docia:recarregar'));
                     return;
                 }
                 /*  De volta aos beneficiários: os dados podem ter envelhecido enquanto a
                     outra vista estava no ar, e as roscas passaram esse tempo dentro de um
                     container sem altura — o ApexCharts recebe a altura como número e não
                     percebe sozinho que ela voltou.  */
-                recarregar();
+                window.dispatchEvent(new Event('docia:recarregar'));
                 setTimeout(forcarResize, 60);
             };
 
             radiosModo.forEach((radio) => radio.addEventListener('change', () => {
-                if (radio.checked) aplicarModo(radio.value, true);
+                if (!radio.checked) return;
+                // Trocar de modo é uma escolha, e é ela que a tela devolve na
+                // próxima entrada — ver `estado_aba.js`.
+                if (window.dociaLembrarModo) window.dociaLembrarModo(radio.value);
+                aplicarModo(radio.value, true);
             }));
 
             /*  O navegador restaura o rádio marcado ao recarregar a página (o Firefox
-                faz isso), e aí o markup diria "Beneficiários" com o modo IES marcado.  */
-            aplicarModo(modoSelecionado(), false);
+                faz isso), e aí o markup diria "Beneficiários" com o modo IES marcado.
+
+                E ANTES DELE vem o modo LEMBRADO: quem trabalha na vista por IES
+                voltava para Beneficiários a cada entrada e refazia o caminho. A lista
+                de valores aceitos é passada de propósito — um valor guardado por uma
+                versão anterior marcaria um rádio que não existe mais, e a tela abriria
+                sem modo nenhum aceso.  */
+            aplicarModo(
+                window.dociaModoLembrado
+                    ? window.dociaModoLembrado(modoSelecionado(), ['beneficiarios', 'ies'])
+                    : modoSelecionado(),
+                false);
 
             // --- "Restaurar Padrão": limpa semestres, IES e fatias escondidas ---
             const btnLimparFiltros = document.getElementById('btn-clear-filters');
@@ -2478,15 +2895,8 @@ document.addEventListener('turbo:load', () => {
             if (!window.__temaLigadoDocIA) {
                 window.__temaLigadoDocIA = true;
                 document.addEventListener('ggci:tema', () => {
-                    setTimeout(() => {
-                        caixasDeGrafico().forEach((alvo) => {
-                            if (graficos[alvo.id]) graficos[alvo.id].updateOptions(opcoesQuantitativo(alvo), false, false);
-                        });
-                        pintarResumo();
-                        // Os seis chips da vista de IES pegam a cor da mesma `PALETA`, e
-                        // ela também é lida como string no momento do render.
-                        pintarChipsIES();
-                    }, 60);
+                    pintarResumo();
+                    pintarChipsIES();
                 });
             }
 
@@ -2594,6 +3004,8 @@ document.addEventListener('turbo:load', () => {
                             : `${comAjuste} documentos com ajuste`);
 
                     resumoConfig.querySelector('span').innerText = partes.join(' · ');
+                    resumoConfig.classList.remove('text-red-600', 'font-bold');
+                    resumoConfig.innerHTML = `<i class="fa-solid fa-circle-info"></i><span>${partes.join(' · ')}</span>`;
                     resumoConfig.classList.toggle(
                         'tem-escopo', semestres.length > 0 || comAjuste > 0);
                 };
@@ -2693,9 +3105,17 @@ document.addEventListener('turbo:load', () => {
                         if (texto) forcadas.push({ documento: doc, semestres: semestres, lista: texto });
                     });
 
-                    // Nada escolhido em lugar nenhum: `{}` significa atualização completa.
-                    if (semestres.length === 0 && bruta.length === 0 && forcadas.length === 0) {
-                        return {};
+                    const temPeriodo = semestres.length > 0;
+                    const temDoc = bruta.length > 0 || forcadas.length > 0;
+
+                    if (!temPeriodo && !temDoc) {
+                        return { erro: 'É obrigatório selecionar o período e configurar o Bot de extração inteligente.' };
+                    }
+                    if (temPeriodo && !temDoc) {
+                        return { erro: 'Você selecionou o período, mas não configurou o Bot de extração inteligente.' };
+                    }
+                    if (!temPeriodo && temDoc) {
+                        return { erro: 'Você configurou o Bot de extração inteligente, mas não selecionou o período.' };
                     }
 
                     const periodosPorDoc = {};
@@ -2712,7 +3132,13 @@ document.addEventListener('turbo:load', () => {
                 };
 
                 document.getElementById('btn-config-aplicar').addEventListener('click', () => {
-                    window.__configDocIA = montarConfiguracao();
+                    const conf = montarConfiguracao();
+                    if (conf.erro) {
+                        resumoConfig.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i><span>${escaparHtml(conf.erro)}</span>`;
+                        resumoConfig.classList.add('text-red-600', 'font-bold');
+                        return;
+                    }
+                    window.__configDocIA = conf;
                     seloConfig.classList.toggle(
                         'hidden', Object.keys(window.__configDocIA).length === 0);
                     fecharConfig();
@@ -2747,6 +3173,13 @@ document.addEventListener('turbo:load', () => {
             let progressoAlvo = 0;       // último valor vindo do backend
             let progressoExibido = 0;    // valor que a barra mostra agora
             let rolagemPresa = true;     // o usuário está acompanhando o fim?
+
+            const procLembrado = sessionStorage.getItem('__processo_id_docia');
+            if (procLembrado) {
+                window.__processo_id_docia = procLembrado;
+                animarProgresso();
+                acompanhar(procLembrado);
+            }
 
             const ROTULO_STATUS = {
                 PENDENTE:  'Preparando',
@@ -3079,6 +3512,7 @@ document.addEventListener('turbo:load', () => {
                             consoleLogs.innerHTML += `<div class="mt-3 text-amber-600 font-bold">⚠ ${escapar(String(data.msg || ''))}</div>`;
                         }
                         window.__processo_id_docia = data.processo_id;
+                        sessionStorage.setItem('__processo_id_docia', data.processo_id);
                         window.__iniciandoDocIA = false;
                         animarProgresso();
                         acompanhar(data.processo_id);
@@ -3120,6 +3554,8 @@ document.addEventListener('turbo:load', () => {
 
                             if (data.status === 'CONCLUIDO') {
                                 encerrarAcompanhamento();
+                                sessionStorage.removeItem('__processo_id_docia');
+                                window.__processo_id_docia = null;
                                 progressoAlvo = 100;
                                 progressoExibido = 100;
                                 if (consoleBarra) consoleBarra.style.width = '100%';
@@ -3133,6 +3569,8 @@ document.addEventListener('turbo:load', () => {
                                 if (window.recarregarDocumentosIA) window.recarregarDocumentosIA();
                             } else if (data.status === 'FALHA') {
                                 encerrarAcompanhamento();
+                                sessionStorage.removeItem('__processo_id_docia');
+                                window.__processo_id_docia = null;
                                 if (consoleStatus) consoleStatus.innerText = 'Falha';
                                 abrirConsole();
                                 restaurarBotaoAtualizar();
@@ -3140,6 +3578,8 @@ document.addEventListener('turbo:load', () => {
                         })
                         .catch((erro) => {
                             encerrarAcompanhamento();
+                                sessionStorage.removeItem('__processo_id_docia');
+                                window.__processo_id_docia = null;
                             if (consoleLogs) {
                                 consoleLogs.innerHTML += `<div class="mt-3 text-red-400">✖ Perdi contato com o servidor (${escapar(String(erro.message || erro))}). O processo pode continuar rodando — recarregue a página para conferir.</div>`;
                             }
@@ -3149,9 +3589,20 @@ document.addEventListener('turbo:load', () => {
                 }, 2000);
             }
 
+            /*  AS TRÊS GUARDAS DE SAÍDA ignoram a navegação entre as abas do próprio
+                Documentos IA — ver `__dociaNavegacaoInterna` em `estado_aba.js`.
+                Ir de Envios & Pendências para a Análise IA é olhar o MESMO dado por
+                outro ângulo, como trocar de modo dentro de uma aba; a extração roda
+                no servidor e continua alimentando as duas.
+
+                A do `pagehide` era a pior das três: ela não perguntava nada, apenas
+                mandava PARAR o processo. Quem clicasse na outra aba no meio de uma
+                atualização perdia a atualização inteira.  */
+            const saidaDeVerdade = () => !window.__dociaNavegacaoInterna;
+
             // Avisar ao recarregar a página (F5 ou Fechar aba)
             window.addEventListener('beforeunload', (e) => {
-                if (window.__processo_id_docia) {
+                if (window.__processo_id_docia && saidaDeVerdade()) {
                     e.preventDefault();
                     e.returnValue = 'A extração está em andamento. Tem certeza que deseja sair e cancelar o processo?';
                     return e.returnValue;
@@ -3160,14 +3611,14 @@ document.addEventListener('turbo:load', () => {
             
             // Abortar de fato caso ele saia da aba
             window.addEventListener('pagehide', () => {
-                if (window.__processo_id_docia) {
+                if (window.__processo_id_docia && saidaDeVerdade()) {
                     navigator.sendBeacon(`/dashboards/documentos-ia/api/parar/${window.__processo_id_docia}/`);
                 }
             });
 
             // Avisar caso use a navegação interna do Turbo
             document.addEventListener('turbo:before-visit', (e) => {
-                if (window.__processo_id_docia) {
+                if (window.__processo_id_docia && saidaDeVerdade()) {
                     if (!confirm('A extração está em andamento. Tem certeza que deseja sair e cancelar o processo?')) {
                         e.preventDefault();
                     } else {
@@ -3295,6 +3746,10 @@ document.addEventListener('turbo:load', () => {
             if (typeof window.recarregarDocumentosIA === 'function') window.recarregarDocumentosIA();
         };
 
+        window.dociaIESAtivas = function (aba) {
+            return activeIESFilters.slice();
+        };
+
         /**
          * O QUE FAZ: devolve o filtro de IES ao estado "todas".
          * POR QUÊ EXISTE: o botão "Restaurar Padrão" vive no bloco dos gráficos e não
@@ -3332,7 +3787,7 @@ document.addEventListener('turbo:load', () => {
             else if (activeIESFilters.length === 1) texto = activeIESFilters[0];
             else texto = `${activeIESFilters.length} Instituições Selecionadas`;
             alvo.innerText = texto;
-            alvo.title = texto;
+            // alvo.title = texto;
         }
 
         /** Ícone de marcação de três estados: nenhuma, algumas, todas. */
@@ -3380,7 +3835,7 @@ document.addEventListener('turbo:load', () => {
                 marcador.dataset.mant = mant;
                 marcador.dataset.acao = 'marcar-mantenedora';
                 marcador.className = 'shrink-0 w-6 h-6 flex items-center justify-center rounded-md hover:bg-gray-100 transition-colors';
-                marcador.title = marcadas === visiveis.length ? 'Desmarcar toda a mantenedora' : 'Marcar toda a mantenedora';
+                // marcador.title = marcadas === visiveis.length ? 'Desmarcar toda a mantenedora' : 'Marcar toda a mantenedora';
                 const iconeMarc = document.createElement('i');
                 iconeMarc.className = `${iconeMarcacao(visiveis.length, marcadas)} text-lg`;
                 if (marcadas > 0) iconeMarc.classList.add('docia-icone-color');
@@ -3399,7 +3854,7 @@ document.addEventListener('turbo:load', () => {
                 nome.className = 'text-[13px] font-extrabold text-gray-800 leading-tight group-hover:text-pink-700 transition-colors';
                 nome.style.cssText = `${ELIPSE} min-width: 0;`;
                 nome.textContent = mant;      // textContent: nome é dado, não marcação
-                nome.title = mant;
+                // nome.title = mant;
 
                 const contador = document.createElement('span');
                 const temMaisDeUma = visiveis.length > 1;
@@ -3489,7 +3944,7 @@ document.addEventListener('turbo:load', () => {
                 nome.className = 'text-xs font-bold text-gray-700';
                 nome.style.cssText = `${ELIPSE} min-width: 0;`;
                 nome.textContent = ies;
-                nome.title = ies;
+                // nome.title = ies;
 
                 esquerda.append(selo, nome);
 
@@ -3498,7 +3953,7 @@ document.addEventListener('turbo:load', () => {
                 remover.dataset.ies = ies;
                 remover.dataset.acao = 'remover-ies';
                 remover.className = 'text-gray-300 hover:text-red-500 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 transition-colors shrink-0';
-                remover.title = 'Remover do filtro';
+                // remover.title = 'Remover do filtro';
                 remover.innerHTML = '<i class="fa-solid fa-xmark"></i>';
 
                 item.append(esquerda, remover);

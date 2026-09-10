@@ -29,10 +29,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia.css' %}">
+    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia.css' %}?v=20260903f">
 
     <!-- Camada escura desta tela: o que os arquivos compartilhados não alcançam -->
-    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia-eleitoral.css' %}">
+    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia-eleitoral.css' %}?v=20260903f">
 </head>
 
 <body class="grid-bg bg-[#f8f6fb] text-gray-800 fixed inset-0 p-4 lg:p-6 flex transition-colors duration-500 overflow-hidden">
@@ -66,7 +66,7 @@
                         </div>
                         <div class="min-w-0">
                             <h2 class="menu-header-titulo text-2xl lg:text-3xl font-extrabold text-gray-800 tracking-tight truncate">Documentos IA</h2>
-                            <p class="menu-header-sub text-sm lg:text-md text-gray-500 font-medium mt-1">Acompanhamento de desempenho da IA, volume de processamento e rastreamento de<br>alucinações.</p>
+                            <p class="menu-header-sub text-sm lg:text-md text-gray-500 font-medium mt-1">Controle de Fluxo & Análise comportamental da IA</p>
                         </div>
                     </div>
                 </div>
@@ -125,7 +125,7 @@
                         </div>
                         Filtros
                     </h3>
-                    <button type="button" id="btn-clear-filters" class="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 hover:text-pink-600 hover:bg-pink-50 px-3 py-2 rounded-xl transition-all" title="Restaurar visualização original">
+                    <button type="button" id="btn-clear-filters" class="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 hover:text-pink-600 hover:bg-pink-50 px-3 py-2 rounded-xl transition-all">
                         Restaurar Padrão
                     </button>
                 </div>
@@ -307,7 +307,7 @@
                                     </div>
                                     <div class="flex flex-col items-start overflow-hidden min-w-0">
                                         <span class="text-[10px] text-gray-400 font-semibold uppercase">Filtro de IES</span>
-                                        <span class="text-xs font-bold text-gray-700 uppercase truncate w-full text-left" id="ies-selecionadas-text" title="Todas as Instituições">Todas as Instituições</span>
+                                        <span class="text-xs font-bold text-gray-700 uppercase truncate w-full text-left" id="ies-selecionadas-text">Todas as Instituições</span>
                                     </div>
                                 </div>
                                 <i class="fa-solid fa-chevron-right text-gray-400 text-xs shrink-0 ml-2 pr-2"></i>
@@ -384,7 +384,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
-    <script src="{% static 'dash_documentos_ia/js/dash_documentos_ia.js' %}?v=20260806"></script>
+    <script src="{% static 'dash_documentos_ia/js/dash_documentos_ia.js' %}?v=20260903f"></script>
     <script>
 
             function getDociaColors() {
@@ -712,7 +712,7 @@
                                         <td class="px-3 py-2 border-b border-gray-100">${row['Beneficiário'] || '-'}</td>
                                         <td class="px-3 py-2 border-b border-gray-100">${row['Inscrição'] || '-'}</td>
                                         <td class="px-3 py-2 border-b border-gray-100">${row['tipo_bolsa'] || '-'}</td>
-                                        <td class="px-3 py-2 border-b border-gray-100 truncate max-w-[150px]" title="${row['Faculdade'] || ''}">${row['Faculdade'] || '-'}</td>
+                                        <td class="px-3 py-2 border-b border-gray-100 truncate max-w-[150px]">${row['Faculdade'] || '-'}</td>
                                         <td class="px-3 py-2 border-b border-gray-100">${row['CPF'] || '-'}</td>
                                         <td class="px-3 py-2 border-b border-gray-100">${row['CPF IA'] || '-'}</td>
                                         <td class="px-3 py-2 border-b border-gray-100 text-center">${row['Semestre'] || '-'}</td>
@@ -1131,7 +1131,7 @@
                             <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" class="docia-icone-bg">
                                 <i class="fa-solid fa-building-columns" class="docia-icone-color"></i>
                             </div>
-                            <span class="text-xs font-bold text-gray-700 truncate group-hover:text-[#6B007B] transition-colors" title="${ies}">${ies}</span>
+                            <span class="text-xs font-bold text-gray-700 truncate group-hover:text-[#6B007B] transition-colors">${ies}</span>
                         </div>
                         <button onclick="toggleIES('${ies.replace(/'/g, "\\'")}')" class="text-gray-300 hover:text-red-500 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 transition-colors shrink-0">
                             <i class="fa-solid fa-xmark"></i>
