@@ -69,10 +69,10 @@
         um no outro e viravam "Coleta de DadosValor no Documento". Em três, a linha
         mais larga cai para 15 caracteres e cabe nos dois estados da tela.  */
     const ROTULO_MENSALIDADE = {
-        'Bateu': ['Coleta de Dados', 'conforme', 'Documento'],
-        'Menor': ['Valor no', 'Documento', 'é Menor'],
-        'Maior': ['Valor no', 'Documento', 'é Maior'],
-        'Não localizado': ['Valor não', 'Localizado no', 'Documento'],
+        'Bateu': 'Coleta de Dados conforme Documento',
+        'Menor': 'Valor no Documento é Menor',
+        'Maior': 'Valor no Documento é Maior',
+        'Não localizado': 'Valor não Localizado no Documento',
     };
 
     const temaAtual = () =>
@@ -634,6 +634,91 @@
             };
         };
 
+        const opcoesDeBarraHorizontal = (categorias, valores, cores, maximo, altura, formato, totalParaPct) => {
+            const alturaMinima = maximo * 0.04;
+            const valoresVisuais = valores.map(v => (v > 0 && v < alturaMinima) ? alturaMinima : v);
+
+            return {
+                chart: {
+                    type: 'bar',
+                    height: altura,
+                    fontFamily: 'Poppins, sans-serif',
+                    toolbar: { show: false },
+                    animations: { enabled: false },
+                    background: 'transparent',
+                    parentHeightOffset: 0,
+                },
+                series: [{ name: 'Linhas', data: valoresVisuais }],
+                xaxis: {
+                    max: maximo,
+                    min: 0,
+                    labels: { show: false },
+                    axisBorder: { show: false },
+                    axisTicks: { show: false },
+                    crosshairs: { show: false },
+                    tooltip: { enabled: false },
+                },
+                yaxis: {
+                    categories: categorias,
+                    labels: {
+                        style: { colors: tintaMedia(), fontSize: '10px', fontWeight: 600 },
+                        maxWidth: 160,
+                    },
+                    axisBorder: { show: false },
+                    axisTicks: { show: false },
+                },
+                grid: {
+                    show: false,
+                    padding: { left: 0, right: 25, top: 0, bottom: 0 },
+                },
+                plotOptions: {
+                    bar: {
+                        horizontal: true,
+                        borderRadius: 6,
+                        borderRadiusApplication: 'end',
+                        barHeight: '70%',
+                        distributed: Array.isArray(cores) && cores.length > 1,
+                        dataLabels: { position: 'right' },
+                    },
+                },
+                colors: cores,
+                dataLabels: {
+                    enabled: true,
+                    textAnchor: 'start',
+                    offsetX: 5,
+                    formatter: (valorVis, opcoes) => {
+                        const valorReal = valores[opcoes.dataPointIndex];
+                        let escrito = formatarNumero(valorReal);
+                        if (totalParaPct && totalParaPct > 0) {
+                            const pct = (valorReal / totalParaPct) * 100;
+                            escrito += ' (' + pct.toFixed(1).replace('.', ',') + '%)';
+                        }
+                        return escrito;
+                    },
+                    style: { fontSize: '11px', fontWeight: 700, colors: [tintaMedia()] },
+                    background: { enabled: false },
+                    dropShadow: { enabled: false },
+                },
+                legend: { show: false },
+                tooltip: {
+                    intersect: false,
+                    shared: true,
+                    marker: { show: false },
+                    custom: ({ seriesIndex, dataPointIndex, w }) => {
+                        const valorReal = valores[dataPointIndex];
+                        const soma = totalParaPct || valores.reduce((a, b) => a + b, 0);
+                        const nome = [].concat(w.globals.labels[dataPointIndex]).join(' ');
+                        const cor = w.globals.colors[dataPointIndex] || w.globals.colors[0];
+                        return balao(conteudoDoBalao(cor, nome, valorReal, soma, formato));
+                    },
+                },
+                states: {
+                    hover: { filter: { type: 'lighten', value: 0.16 } },
+                    active: { filter: { type: 'none' } },
+                },
+            };
+        };
+
         /** Troca o gráfico por uma explicação — ver `.docia-grafico-vazio` no CSS. */
         const mostrarVazio = (id, icone, texto) => {
             const alvo = document.getElementById(id);
@@ -861,7 +946,7 @@
             graficos[id].render();
         };
 
-        const desenhar = (id, categorias, valores, cores, base, formato) => {
+        const desenhar = (id, categorias, valores, cores, base, formato, virada = false, totalParaPct = 0) => {
             const alvo = document.getElementById(id);
             if (!alvo || typeof ApexCharts === 'undefined') return;
             /*  A folga sai da BASE quando quem chama informa uma — é o que põe os dois
@@ -869,9 +954,10 @@
                 normalizava pelo próprio máximo, e "Bateu 8.936" desenhava do mesmo
                 tamanho que "Bateu 25.585" no card ao lado: duas barras iguais dizendo
                 números que diferem em três vezes.  */
-            const teto = Math.max(base || 0, ...valores, 1) * 1.12;
-            const opcoes = opcoesDeBarra(categorias, valores, cores, teto, alturaDe(alvo),
-                                         formato);
+            const teto = Math.max(base || 0, ...valores, 1) * (virada ? 1.25 : 1.12);
+            const opcoes = virada 
+                ? opcoesDeBarraHorizontal(categorias, valores, cores, teto, alturaDe(alvo), formato, totalParaPct)
+                : opcoesDeBarra(categorias, valores, cores, teto, alturaDe(alvo), formato);
             if (graficos[id] && graficos[id].__tipo === 'bar') {
                 graficos[id].updateOptions(opcoes, false, false);
                 return;
@@ -1235,9 +1321,57 @@
                 const cats = ordem.map((b) => ROTULO_MENSALIDADE[b] || [b]);
                 const vals = ordem.map((b) => contagem[b] || 0);
                 const colors = CORES_MENSALIDADE(tema);
-                desenhar(idGr, cats, vals, colors, corpo.processados, 'numero');
+                desenhar(idGr, cats, vals, colors, corpo.processados, 'numero', true, corpo.processados);
 
             });
+
+            /* INCONSISTÊNCIAS — Gráfico Vertical ("barra pra cima") */
+            const inconsistencias = corpo.inconsistencias || [];
+            const idGrInc = 'ia-gr-inconsistencias';
+            const idBaseInc = 'ia-base-inconsistencias';
+            const alvoBaseInc = document.getElementById(idBaseInc);
+            
+            if (!corpo.processados) {
+                if (alvoBaseInc) alvoBaseInc.textContent = 'nenhum documento processado';
+                mostrarVazio(idGrInc, 'fa-hourglass-half',
+                             'A IA ainda não leu nenhum documento neste recorte.');
+            } else if (inconsistencias.length === 0) {
+                if (alvoBaseInc) alvoBaseInc.textContent = '';
+                mostrarVazio(idGrInc, 'fa-check-circle',
+                             'Nenhuma inconsistência encontrada neste recorte.');
+            } else {
+                const totalInconsistencias = inconsistencias.reduce((acc, curr) => acc + curr.linhas, 0);
+                if (alvoBaseInc) {
+                    alvoBaseInc.innerHTML = '<span class="text-red-500 font-medium">' + formatarNumero(totalInconsistencias) + ' ocorrências em ' + formatarNumero(corpo.processados) + ' documentos lidos</span>';
+                }
+                
+                // Mostrar as 5 mais frequentes (para não lotar o gráfico vertical)
+                const incsOrdenadas = [...inconsistencias].sort((a, b) => b.linhas - a.linhas).slice(0, 5);
+                const catsInc = incsOrdenadas.map(i => {
+                    // Quebrar frases longas em até 3 linhas de rótulo para o gráfico de barras verticais
+                    const palavras = i.frase.split(' ');
+                    const linhas = [];
+                    let linhaAtual = '';
+                    for (const palavra of palavras) {
+                        if ((linhaAtual + ' ' + palavra).length > 20) {
+                            linhas.push(linhaAtual);
+                            linhaAtual = palavra;
+                        } else {
+                            linhaAtual = linhaAtual ? linhaAtual + ' ' + palavra : palavra;
+                        }
+                    }
+                    if (linhaAtual) linhas.push(linhaAtual);
+                    return linhas.slice(0, 3); // no máximo 3 linhas
+                });
+                const valsInc = incsOrdenadas.map(i => i.linhas);
+                
+                // Usar a mesma cor do "Menor" (Rosa choque) ou a cor padrão de alerta (Vermelho)
+                const corInc = temaAtual() === 'eleitoral' ? '#F94144' : '#D62828';
+                const colorsInc = Array(catsInc.length).fill(corInc);
+                
+                // Como não sabemos qual é a "base" ideal para as inconsistências, passamos max(valsInc)
+                desenhar(idGrInc, catsInc, valsInc, colorsInc, Math.max(...valsInc), 'numero', false, 0);
+            }
         };
 
         /*  Contador de pedidos: filtro clicado em sequência devolve respostas que
