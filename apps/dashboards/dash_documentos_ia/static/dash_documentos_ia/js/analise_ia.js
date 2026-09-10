@@ -925,7 +925,8 @@
         const FRACAO_DO_DESENHO = { 'ia-gr-veredito': 0.90 };
         const alturaDoDesenho = (id, altura, largura) => {
             const fracao = FRACAO_DO_DESENHO[id];
-            return fracao ? Math.round(altura * fracao) : altura;
+            const alturaCalc = fracao ? Math.round(altura * fracao) : altura;
+            return Math.min(alturaCalc, largura);
         };
 
         /* ==================================================================
