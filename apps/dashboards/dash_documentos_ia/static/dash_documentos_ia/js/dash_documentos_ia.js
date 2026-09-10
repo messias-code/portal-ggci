@@ -949,13 +949,23 @@ document.addEventListener('turbo:load', () => {
 
                 Delegado no `document` e registrado UMA VEZ: as caixas são reescritas
                 inteiras a cada pintura, então um ouvinte por botão morreria no primeiro
-                `innerHTML`, e um por caixa se empilharia a cada `turbo:load`.  */
+                `innerHTML`, e um por caixa se empilharia a cada `turbo:load`.
+
+                SÓ AS LEGENDAS COM `data-doc` SÃO DESTA VISTA. A Análise IA veste as
+                legendas dela com as MESMAS classes da casa de propósito (ver o
+                comentário no template), e o ouvinte aqui é delegado no `document`
+                inteiro: sem esta guarda, clicar num chip de lá caía aqui com
+                `dataset.doc` indefinido, empurrava uma chave `undefined|...` para o
+                recorte desta vista, desmarcava as caixas de Documento da barra e ainda
+                repintava as legendas de lá com as SEIS FATIAS daqui, zeradas — que era
+                o embaralhado que se via por um quarto de segundo até a resposta da
+                Análise IA chegar e desfazer.  */
             if (!window.__legendaLigadaDocIA) {
                 window.__legendaLigadaDocIA = true;
                 document.addEventListener('click', (evento) => {
                     const item = evento.target.closest('.docia-legenda__item');
                     if (!item) return;
-                    const caixa = item.closest('.docia-legenda');
+                    const caixa = item.closest('.docia-legenda[data-doc]');
                     if (!caixa) return;
 
                     // O clique é sempre sobre o PAR, mesmo que a linha esteja marcada por
@@ -999,6 +1009,10 @@ document.addEventListener('turbo:load', () => {
              * POR QUÊ AS ROSCAS TAMBÉM: os NÚMEROS delas não mudam com o recorte (elas
              *   são o panorama), mas a aparência sim — as fatias de fora ficam apagadas
              *   e o miolo passa a mostrar quanto está sendo listado.
+             * `[data-doc]` DELIMITA A VISTA: a Análise IA usa as mesmas classes de
+             *   legenda, e sem o atributo no seletor esta função pintava as seis fatias
+             *   daqui por cima dos vereditos e das inconsistências de lá — a cada
+             *   clique em qualquer filtro, porque é daí que ela é chamada.
              */
             const repintarLegendas = () => {
                 const resumo = ultimoResumo() || {};
@@ -1007,7 +1021,7 @@ document.addEventListener('turbo:load', () => {
                     if (grafico) pintarRosca(grafico, resumo[alvo.dataset.doc] || {},
                                              alvo.dataset.doc);
                 });
-                document.querySelectorAll('.docia-legenda').forEach((caixa) => {
+                document.querySelectorAll('.docia-legenda[data-doc]').forEach((caixa) => {
                     const dados = resumo[caixa.dataset.doc] || {};
                     pintarLegenda(caixa, [dados.Processados || 0,
                                           dados.NaoProcessados || 0,

@@ -59,20 +59,22 @@
         PALETA_OVG[tema][0], PALETA_OVG[tema][1], PALETA_OVG[tema][2], PALETA_OVG[tema][4],
     ];
 
-    /*  RÓTULOS EM DUAS LINHAS. Com as colunas em pé o nome fica embaixo de cada
-        uma, e "Coleta de Dados conforme Documento" numa linha só é muito mais largo
-        que a coluna — o Apex então gira o texto em 45°, que é o que faz um eixo
-        virar sopa. Quebrado em duas, ele cabe reto, que é como se lê.  */
-    /*  TRÊS LINHAS, e não duas. Em duas, a linha mais larga ("Valor não Localizado")
-        tem 20 caracteres e passa de 85px — mais que a coluna quando a barra de
-        filtros está ABERTA e os três cards encolhem. Os rótulos vizinhos entravam
-        um no outro e viravam "Coleta de DadosValor no Documento". Em três, a linha
-        mais larga cai para 15 caracteres e cabe nos dois estados da tela.  */
+    /*  UMA PALAVRA POR BALDE, e não a frase inteira da coluna do documento.
+
+        O nome cru ("Coleta de Dados conforme Documento", 34 caracteres) obrigava a
+        faixa dos nomes a 205px — mais da metade de um card de mensalidade, e o que
+        sobrava para as barras era menos que o texto ao lado delas. A frase também
+        não acrescenta nada: as quatro são variações de "o valor do documento contra
+        o do sistema", e o que as distingue são as quatro palavras daqui.
+
+        O TEXTO INTEIRO CONTINUA A UM PALMO: é o que a tabela logo abaixo e a
+        planilha trazem na coluna `msd_doc`/`mcd_doc`, onde ele é o dado, e não um
+        rótulo.  */
     const ROTULO_MENSALIDADE = {
-        'Bateu': 'Coleta de Dados conforme Documento',
-        'Menor': 'Valor no Documento é Menor',
-        'Maior': 'Valor no Documento é Maior',
-        'Não localizado': 'Valor não Localizado no Documento',
+        'Bateu': 'Conforme',
+        'Maior': 'Maior',
+        'Menor': 'Menor',
+        'Não localizado': 'Não loc.',
     };
 
     const temaAtual = () =>
@@ -634,7 +636,119 @@
             };
         };
 
-        const opcoesDeBarraHorizontal = (categorias, valores, cores, maximo, altura, formato, totalParaPct) => {
+        /*  O NÚMERO ESCRITO NA PONTA DA BARRA. Vive fora do gráfico porque quem
+            desenha o rótulo e quem reserva o lugar dele no eixo precisam da MESMA
+            string — duas cópias divergiriam no dia em que o percentual deixasse de
+            sair, e a conta passaria a guardar espaço para um texto que não existe.  */
+        const rotuloDoValor = (valor, totalParaPct) => {
+            let escrito = formatarNumero(valor);
+            if (totalParaPct && totalParaPct > 0) {
+                const pct = (valor / totalParaPct) * 100;
+                escrito += ' (' + pct.toFixed(1).replace('.', ',') + '%)';
+            }
+            return escrito;
+        };
+
+        /*  A LARGURA DO TEXTO MEDIDA, e não estimada por contagem de caracteres: os
+            rótulos de valor misturam dígitos, parênteses, vírgula e espaço, e a média
+            por caractere erra justamente no caso extremo, que é o único que importa
+            aqui. A régua é um canvas solto, fora do documento — `measureText` não
+            provoca layout e o mesmo contexto serve todas as chamadas.  */
+        const reguaDeTexto = document.createElement('canvas').getContext('2d');
+        const larguraDoTexto = (texto, fonte) => {
+            reguaDeTexto.font = fonte;
+            return reguaDeTexto.measureText(texto).width;
+        };
+
+        /*  O RÓTULO NASCE ACIMA DA BARRA, uns 6px. O Apex ancora o texto do eixo Y pela
+            linha de base, e o que sobra é esta diferença constante, medida na bancada.
+            Sem ela o nome encosta no da barra de cima e a lista perde o pareamento
+            entre nome e barra, que é tudo o que ela tem.  */
+        const RECUO_DO_NOME = 6;
+
+        /*  A FAIXA DOS NOMES SAI DOS NOMES, e não de um número escolhido a dedo.
+
+            Os quatro baldes de mensalidade são palavras curtas (ver
+            `ROTULO_MENSALIDADE`) e o card deles é o mais estreito da faixa: cada pixel
+            reservado aqui é um pixel a menos de barra. Enquanto o rótulo era a frase
+            inteira da coluna do documento, a faixa custava 205px fixos — mais da
+            metade do card. Medindo o maior nome, ela custa o que ele ocupa.
+
+            A folga é o ar entre o fim do nome e o começo da barra.  */
+        const FOLGA_DO_NOME = 12;
+        const larguraDaFaixa = (categorias) => FOLGA_DO_NOME + Math.ceil(Math.max(
+            ...categorias.map((t) => larguraDoTexto(t, '600 10px Poppins, sans-serif'))));
+
+        /*  O AR ENTRE A PONTA DA BARRA E O NÚMERO: os 10px do `dataLabels.offsetX`
+            mais 2px de arredondamento — o Apex corta o rótulo na borda da área de
+            plotagem, e chegar exatamente nela é chegar em cima dela.  */
+        const FOLGA_DO_VALOR = 12;
+
+        /*  AS MARGENS DOS DOIS LADOS do gráfico deitado, que o Apex desconta da área
+            de plotagem. Entram na conta abaixo pelo mesmo motivo que a faixa dos
+            nomes: o que sobra para as barras é o card MENOS todas elas.
+
+            Eram 24 à direita e ZERO à esquerda, e o nome ainda levava um `offsetX` de
+            -8 para fora — o texto começava 4px ANTES da área útil do card, encostado
+            na moldura, enquanto sobravam 45px vazios do outro lado. Os dois números
+            agora são próximos de propósito: é o que centra o bloco inteiro (nome,
+            barra e número) na largura do card.
+
+            À DIREITA BASTAM 10. Quem garante que o número cabe não é esta margem, é o
+            `fatorDeitado` logo abaixo, que reserva a largura do texto mais 12px antes
+            de escolher o teto do eixo. Os 24 de antes eram folga sobre folga, e era
+            dela que vinha o vão da direita.  */
+        const AR_DA_ESQUERDA = 24;
+        const AR_DA_DIREITA = 10;
+
+        /*  O VÃO ENTRE O NOME E A BARRA. O Apex encosta um no outro: a faixa que ele
+            reserva para o eixo tem a largura do texto mais longo, e o texto, alinhado
+            à esquerda, termina exatamente onde a barra começa — "Conforme" ficava
+            grudado na barra "Conforme".
+
+            Sai pelo `offsetX` negativo do rótulo, que anda com o texto e não com a
+            área: o afastamento da moldura do card continua sendo o `AR_DA_ESQUERDA`,
+            e é dele que estes 8px são descontados.  */
+        const VAO_ATE_A_BARRA = 8;
+
+        /*  QUANTO O TETO DO EIXO PASSA DA MAIOR BARRA, deitado.
+
+            O rótulo do valor mora depois da ponta da barra, então o vazio à direita
+            do eixo é o lugar dele: a barra mais longa pode ir até onde o texto mais
+            largo da série ainda caiba atrás. Como a faixa das barras muda com a
+            largura do card, a conta é feita a cada desenho, sobre a caixa medida.
+
+            O TETO SAI DA `base`, NÃO DA MAIOR BARRA — é o que mantém os dois gráficos
+            de mensalidade na mesma régua, já que ambos recebem a mesma base. Quando a
+            base é maior que a maior barra, a barra simplesmente termina antes da
+            sobra, e o rótulo ganha ainda mais ar.
+
+            O piso de 30% é para o card estreito demais para o texto: ali nada cabe
+            direito, e uma barra curta ainda diz mais que uma barra invisível.  */
+        const fatorDeitado = (alvo, valores, faixa, totalParaPct) => {
+            const faixaDasBarras = (alvo.clientWidth || 0)
+                - faixa - AR_DA_ESQUERDA - AR_DA_DIREITA;
+            if (faixaDasBarras <= 0) return 1.35;
+
+            const texto = Math.max(...valores.map((valor) => larguraDoTexto(
+                rotuloDoValor(valor, totalParaPct), '700 11px Poppins, sans-serif')));
+            const sobra = Math.max(faixaDasBarras - texto - FOLGA_DO_VALOR,
+                                   faixaDasBarras * 0.3);
+            return faixaDasBarras / sobra;
+        };
+
+        /*  DEITADO, o eixo das CATEGORIAS é o Y e o dos VALORES é o X — e é aí que este
+            gráfico estava quebrado: `max`/`min` estavam no eixo Y (numérico sobre um eixo
+            de categorias) e o `labels: { show: false }` apagava justamente o nome de cada
+            barra, enquanto o eixo X aparecia com a régua de 0 a 20.000 que o desenho não
+            usa. As categorias entram SEMPRE por `xaxis.categories`, mesmo deitado — quem
+            decide onde elas são desenhadas é o `horizontal: true`.  */
+        /*  METADE DA SOBRA QUE O APEX GUARDA NO ALTO. Ver a nota do `grid.padding`
+            logo abaixo: é constante, não acompanha a altura do card, e por isso é uma
+            constante aqui e não uma conta.  */
+        const AR_QUE_O_APEX_GUARDA = 8;
+
+        const opcoesDeBarraHorizontal = (categorias, valores, cores, maximo, altura, faixa, formato, totalParaPct) => {
             const alturaMinima = maximo * 0.04;
             const valoresVisuais = valores.map(v => (v > 0 && v < alturaMinima) ? alturaMinima : v);
 
@@ -651,25 +765,57 @@
                 series: [{ name: 'Linhas', data: valoresVisuais }],
                 xaxis: {
                     categories: categorias,
-                    labels: {
-                        style: { colors: tintaMedia(), fontSize: '10px', fontWeight: 600 },
-                        maxWidth: 160,
-                    },
+                    /*  O EIXO DOS VALORES. O teto com folga é o que reserva o lugar do
+                        número escrito na ponta da barra — sem ele a maior encosta na
+                        borda e o rótulo cai fora do desenho.  */
+                    max: maximo,
+                    min: 0,
+                    //  A régua não aparece: o número está escrito em cada barra.
+                    labels: { show: false },
                     axisBorder: { show: false },
                     axisTicks: { show: false },
                     crosshairs: { show: false },
                     tooltip: { enabled: false },
                 },
                 yaxis: {
-                    max: maximo,
-                    min: 0,
-                    labels: { show: false },
+                    //  O EIXO DAS CATEGORIAS: é aqui que o nome de cada barra é desenhado.
+                    labels: {
+                        show: true,
+                        //  Alinhados à ESQUERDA, um sob o outro: são frases de tamanhos
+                        //  diferentes, e alinhá-las à direita faria cada uma começar num
+                        //  lugar — a lista deixaria de ter uma margem para ler.
+                        align: 'left',
+                        maxWidth: faixa,
+                        offsetX: -VAO_ATE_A_BARRA,
+                        offsetY: RECUO_DO_NOME,
+                        style: { colors: tintaMedia(), fontSize: '10px', fontWeight: 600 },
+                    },
                     axisBorder: { show: false },
                     axisTicks: { show: false },
                 },
                 grid: {
                     show: false,
-                    padding: { left: 0, right: 25, top: 0, bottom: 0 },
+                    /*  À DIREITA o ar do número na ponta da barra; à esquerda o que
+                        separa o nome da moldura do card (ver `AR_DA_ESQUERDA`).
+
+                        EM CIMA E EMBAIXO O MESMO TANTO DE PADDING, repartido de um
+                        jeito torto de propósito. O Apex reserva no alto do desenho um
+                        espaço fixo que era do título e da barra de ferramentas — 23px
+                        medidos, contra 7px embaixo — e não devolve esse espaço quando
+                        os dois estão desligados. As quatro barras ficavam com 25px de
+                        vão em cima e 10px embaixo, sempre os mesmos ~15px de
+                        diferença, em card de 76px ou de 272px.
+
+                        Somando, `top` e `bottom` continuam valendo os -16 de antes,
+                        então a altura da área de plotagem não muda; o que muda é onde
+                        ela começa. Os 8px saem do alto e entram embaixo, que é metade
+                        da diferença medida — é o que centra as barras na caixa.  */
+                    padding: {
+                        left: AR_DA_ESQUERDA,
+                        right: AR_DA_DIREITA,
+                        top: -8 - AR_QUE_O_APEX_GUARDA,
+                        bottom: -8 + AR_QUE_O_APEX_GUARDA,
+                    },
                 },
                 plotOptions: {
                     bar: {
@@ -687,15 +833,8 @@
                     offsetX: 10,
                     offsetY: 2,
                     textAnchor: 'start',
-                    formatter: (valorVis, opcoes) => {
-                        const valorReal = valores[opcoes.dataPointIndex];
-                        let escrito = formatarNumero(valorReal);
-                        if (totalParaPct && totalParaPct > 0) {
-                            const pct = (valorReal / totalParaPct) * 100;
-                            escrito += ' (' + pct.toFixed(1).replace('.', ',') + '%)';
-                        }
-                        return escrito;
-                    },
+                    formatter: (valorVis, opcoes) =>
+                        rotuloDoValor(valores[opcoes.dataPointIndex], totalParaPct),
                     style: { fontSize: '11px', fontWeight: 700, colors: [tintaMedia()] },
                     background: { enabled: false },
                     dropShadow: { enabled: false },
@@ -708,7 +847,11 @@
                     custom: ({ seriesIndex, dataPointIndex, w }) => {
                         const valorReal = valores[dataPointIndex];
                         const soma = totalParaPct || valores.reduce((a, b) => a + b, 0);
-                        const nome = [].concat(w.globals.labels[dataPointIndex]).join(' ');
+                        /*  As linhas de espaço que centram o rótulo no eixo também entram
+                            aqui — no balão a frase é UMA, e sem colar os brancos ela sairia
+                            com buracos no meio.  */
+                        const nome = [].concat(w.globals.labels[dataPointIndex])
+                            .join(' ').replace(/\s+/g, ' ').trim();
                         const cor = w.globals.colors[dataPointIndex] || w.globals.colors[0];
                         return balao(conteudoDoBalao(cor, nome, valorReal, soma, formato));
                     },
@@ -754,6 +897,52 @@
             return Math.max(alvo.clientHeight || 0, 90);
         };
 
+        /*  QUANTO DA CAIXA O DESENHO OCUPA — 100% em quase todos, menos no anel das
+            inconsistências.
+
+            Lá a caixa é alta: a lista ao lado pede a altura inteira do card, e o anel,
+            que divide a mesma linha com ela, herdava essa altura e virava um disco de
+            quase 280px de diâmetro — o dobro do anel do veredito, para um card que não
+            é o dobro de importante. Desenhado em três quartos da caixa ele volta ao
+            tamanho de gráfico e o resto vira respiro em volta.
+
+            É a ALTURA passada ao Apex que muda, e não uma escala aplicada depois: o
+            número do meio ("13.276") e a legenda do centro têm corpo calculado a
+            partir dela, então encolhem junto e continuam cabendo no furo. E como a
+            caixa é `flex ... items-center justify-center`, o desenho menor fica
+            centrado nela sozinho, sem margem escrita em lugar nenhum.
+
+            E O ANEL TAMBÉM CABE DEITADO. Só a altura não basta: o anel é REDONDO, e
+            quando a barra de filtros abre é a LARGURA da caixa que vira o lado curto —
+            a de inconsistências cai de 251px para 182px, porque ela é uma fração do
+            card e o card encolheu 216px. Medido na bancada, com a barra aberta o anel
+            ficava 203px de diâmetro numa caixa de 182px: 10px vazando de cada lado,
+            por cima da lista, e não só durante a animação — ficava assim.
+
+            A CULPA É DO `customScale`, e ele é de propósito (ver `plotOptions.pie`).
+            O Apex desenha o diâmetro em `ESCALA_DO_ANEL × menor lado da grade`, e com
+            escala acima de 1 o desenho é maior do que o lado que o limita: quando quem
+            limita é a largura, o excesso vaza para fora da caixa por definição. Então
+            a largura entra na conta ANTES, virando um teto de altura — é a altura que
+            o Apex aceita, e é dela que ele deduz o resto.
+
+            OS DOIS NÚMEROS SÃO MEDIDOS, não deduzidos da documentação: `1,12` é
+            diâmetro ÷ lado curto da grade nos dois casos acima, e `23` é o que o Apex
+            guarda no alto do desenho (o mesmo espaço morto de `AR_QUE_O_APEX_GUARDA`,
+            aqui inteiro em vez de metade). `0,92` é o respiro que sobra dos lados,
+            para o anel não encostar na linha que separa o desenho da lista.  */
+        const FRACAO_DO_DESENHO = { 'ia-gr-veredito': 0.90, 'ia-gr-inconsistencias': 0.60 };
+        const ESCALA_DO_ANEL = 1.12;
+        const AR_NO_ALTO_DA_ROSCA = 23;
+        const SOBRA_DOS_LADOS = 0.82;
+        const alturaDoDesenho = (id, altura, largura) => {
+            const fracao = FRACAO_DO_DESENHO[id];
+            if (!fracao) return altura;
+            const tetoPelaLargura = (largura || altura) * SOBRA_DOS_LADOS
+                / ESCALA_DO_ANEL + AR_NO_ALTO_DA_ROSCA;
+            return Math.round(Math.min(altura * fracao, tetoPelaLargura));
+        };
+
         /* ==================================================================
            A ROSCA — OS SEIS BALDES, IGUAIS AOS DE ENVIOS & PENDÊNCIAS
            ==================================================================
@@ -774,10 +963,14 @@
            clique recorta a tabela do mesmo jeito.
            ================================================================== */
 
-        const opcoesDeRosca = (nomes, valores, cores, altura, valoresCru) => ({
+        /*  `id` VEM DE FORA porque a tela tem DUAS roscas — veredito e
+            inconsistências. Fixo, as duas nasciam com o mesmo `chart.id`, e o Apex
+            guarda as instâncias por id: a segunda passava a responder pelos eventos
+            da primeira.  */
+        const opcoesDeRosca = (id, nomes, valores, cores, altura, valoresCru, rotuloDoCentro) => ({
             chart: {
                 type: 'donut',
-                id: 'ia-gr-veredito',
+                id: id,
                 height: altura,
                 fontFamily: 'Poppins, sans-serif',
                 toolbar: { show: false },
@@ -836,7 +1029,7 @@
                                 28px e 800, o que desenhava "Documentos" do tamanho do
                                 total e transbordava o furo.  */
                             total: {
-                                show: true, showAlways: true, label: 'Documentos',
+                                show: true, showAlways: true, label: rotuloDoCentro,
                                 fontSize: '12px', fontWeight: 600, color: tintaMedia(),
                                 formatter: (w) => formatarNumero(
                                     valoresCru.reduce((a, b) => a + b, 0)),
@@ -868,6 +1061,24 @@
             },
         });
 
+        /*  A MARCA DO RECORTE — quem está dentro, quem ficou de fora — escrita
+            sozinha, sem passar pelos números.
+
+            É o que deixa o CLIQUE responder na hora: a resposta do servidor leva
+            ~200 ms para voltar, e até ela chegar a lista ficava exatamente como
+            estava, sem sinal nenhum de que o clique foi ouvido. Marcar antes de
+            pedir é a mesma verdade que vai chegar — o recorte já mudou aqui, é ele
+            que está sendo consultado — e ainda serve à repintura, que reaproveita
+            esta função em vez de repetir as duas linhas de classe.  */
+        const marcarRecorteNaLegenda = (caixa, recorteSet) => {
+            const haRecorte = recorteSet.size > 0;
+            Array.from(caixa.children).forEach((linha) => {
+                const ativo = recorteSet.has(linha.dataset.chave);
+                linha.classList.toggle('docia-legenda__item--ativo', ativo);
+                linha.classList.toggle('docia-legenda__item--fora', haRecorte && !ativo);
+            });
+        };
+
         /*  A LEGENDA USA AS CLASSES DA CASA (`docia-legenda__*`), e não classes
             próprias: assim ela herda de uma vez o quadradinho de 10px com o brilho
             interno, o realce do item ativo, o risco no que ficou de fora e os dois
@@ -876,36 +1087,61 @@
             É BOTÃO, não texto: clicar recorta a tabela pela fatia, que é o gesto
             que a outra aba já ensina. Com qualquer fatia escolhida, as demais ficam
             riscadas — escolher uma é, ao mesmo tempo, deixar as outras de fora, e
-            elas passam a dizer isso de si mesmas.  */
+            elas passam a dizer isso de si mesmas.
+
+            A LISTA SÓ É REESCRITA QUANDO OS NOMES MUDAM. Antes cada resposta do
+            servidor jogava um `innerHTML` novo na caixa, e um `innerHTML` não é uma
+            atualização: é destruir treze botões e criar treze outros. O que se via a
+            cada clique era a lista piscar e se re-empilhar, o `:hover` largar o item
+            que estava sob o cursor e o foco do teclado voltar para o começo da página.
+            Nos casos que interessam — clicar numa fatia, trocar de semestre, trocar de
+            tema — os nomes são exatamente os mesmos de antes: o que muda é número,
+            percentual, cor e marca, e isso se escreve por cima do que já está lá.  */
         const pintarLegendaRosca = (idCaixa, nomes, valores, cores, chaves = null, recorteSet = null) => {
             const caixa = document.getElementById(idCaixa);
             if (!caixa) return;
 
             const total = valores.reduce((soma, valor) => soma + valor, 0);
-            const haRecorte = recorteSet ? recorteSet.size > 0 : false;
+            const chaveDe = (i) => (chaves ? chaves[i] : nomes[i]);
 
-            caixa.innerHTML = nomes.map((nome, i) => {
-                const chave = chaves ? chaves[i] : nome;
-                const ativo = recorteSet ? recorteSet.has(chave) : false;
-                const fora = haRecorte && !ativo;
-                const marca = (ativo ? ' docia-legenda__item--ativo' : '')
-                    + (fora ? ' docia-legenda__item--fora' : '');
+            const linhas = Array.from(caixa.children);
+            const mesmaLista = linhas.length === nomes.length
+                && nomes.every((nome, i) => linhas[i].dataset.nome === nome);
+
+            if (!mesmaLista) {
+                caixa.innerHTML = nomes.map((nome, i) => {
+                    /*  SEM `recorteSet` A LINHA NÃO É BOTÃO — e também não se veste de
+                        um: o `--estatico` tira o cursor de mão e o realce do hover, que
+                        prometeriam um clique que não existe.  */
+                    const btnData = recorteSet ? ' data-chave="' + escaparHtml(chaveDe(i)) + '"' : '';
+                    const tag = recorteSet ? 'button type="button"' : 'div';
+                    const tagClose = recorteSet ? 'button' : 'div';
+                    const estatico = recorteSet ? '' : ' docia-legenda__item--estatico';
+
+                    return '<' + tag + ' class="docia-legenda__item' + estatico + '"'
+                        + ' data-nome="' + escaparHtml(nome) + '"' + btnData + '>'
+                        + '<span class="docia-legenda__ponto"></span>'
+                        /*  O NOME INTEIRO NO `title`: as frases da IA passam de 60
+                            caracteres e a coluna as apara com reticências.  */
+                        + '<span class="docia-legenda__nome" title="' + escaparHtml(nome) + '">'
+                        + escaparHtml(nome) + '</span>'
+                        + '<span class="docia-legenda__valor"></span>'
+                        + '<span class="docia-legenda__pct"></span>'
+                        + '</' + tagClose + '>';
+                }).join('');
+            }
+
+            Array.from(caixa.children).forEach((linha, i) => {
                 const pct = total > 0 ? (valores[i] / total) * 100 : 0;
-                
-                // If it's clickable (has a recorte set), we add data-chave.
-                const btnData = recorteSet ? ' data-chave="' + escaparHtml(chave) + '"' : '';
-                const tag = recorteSet ? 'button type="button"' : 'div';
-                const tagClose = recorteSet ? 'button' : 'div';
-                
-                return '<' + tag + ' class="docia-legenda__item' + marca + '"' + btnData + '>'
-                    + '<span class="docia-legenda__ponto" style="background:' + cores[i] + ';"></span>'
-                    + '<span class="docia-legenda__nome">' + escaparHtml(nome) + '</span>'
-                    + '<span class="docia-legenda__valor">' + formatarNumero(valores[i]) + '</span>'
-                    + '<span class="docia-legenda__pct">'
-                    + pct.toFixed(1).replace('.', ',') + '%</span>'
-                    + '</' + tagClose + '>';
-            }).join('');
+                linha.querySelector('.docia-legenda__ponto').style.background = cores[i];
+                linha.querySelector('.docia-legenda__valor').textContent =
+                    formatarNumero(valores[i]);
+                linha.querySelector('.docia-legenda__pct').textContent =
+                    pct.toFixed(1).replace('.', ',') + '%';
+            });
+            if (recorteSet) marcarRecorteNaLegenda(caixa, recorteSet);
         };
+
 
         /*  As chaves CRUAS (`FALSO VÁLIDO`) na ordem em que a legenda as desenha: é o
             que o clique manda ao servidor, enquanto o rótulo é o que se lê. Guardadas
@@ -923,19 +1159,24 @@
                 const chave = item.dataset.chave;
                 if (recorteVereditos.has(chave)) recorteVereditos.delete(chave);
                 else recorteVereditos.add(chave);
+                //  Marcar ANTES de pedir: a resposta demora ~200 ms e o clique não
+                //  pode ficar mudo até lá — ver `marcarRecorteNaLegenda`.
+                marcarRecorteNaLegenda(item.parentElement, recorteVereditos);
                 recarregar();
             });
         }
 
-        const desenharRosca = (id, nomes, valores, cores) => {
+        const desenharRosca = (id, nomes, valores, cores, rotuloDoCentro) => {
             const alvo = document.getElementById(id);
             if (!alvo || typeof ApexCharts === 'undefined') return;
-            
+
             const totalCru = valores.reduce((a, b) => a + b, 0);
             const minVisual = Math.ceil(totalCru * 0.03);
             const inflado = valores.map((v) => (v > 0 && v < minVisual) ? minVisual : v);
-            
-            const opcoes = opcoesDeRosca(nomes, inflado, cores, alturaDe(alvo), valores);
+
+            const opcoes = opcoesDeRosca(id, nomes, inflado, cores,
+                                         alturaDoDesenho(id, alturaDe(alvo), alvo.clientWidth),
+                                         valores, rotuloDoCentro);
             if (graficos[id] && graficos[id].__tipo === 'donut') {
                 graficos[id].updateOptions(opcoes, false, false);
                 return;
@@ -955,9 +1196,18 @@
                 normalizava pelo próprio máximo, e "Bateu 8.936" desenhava do mesmo
                 tamanho que "Bateu 25.585" no card ao lado: duas barras iguais dizendo
                 números que diferem em três vezes.  */
-            const teto = Math.max(base || 0, ...valores, 1) * (virada ? 1.25 : 1.12);
-            const opcoes = virada 
-                ? opcoesDeBarraHorizontal(categorias, valores, cores, teto, alturaDe(alvo), formato, totalParaPct)
+            /*  DEITADO A FOLGA É MEDIDA, não arbitrada. Em pé o rótulo é o número
+                sozinho em cima da coluna e cabe em 12% do eixo. Deitado ele é número E
+                percentual escritos DEPOIS da ponta da barra, e aí a folga não é uma
+                proporção: é a largura de um texto contra a largura do card. Qualquer
+                fator fixo acerta numa janela e erra na outra — 1,35 servia ao card de
+                509px (janela de 1600) e, no de 396px (janela de 1280), desenhava
+                "13.629 (89,5%)" 24px POR CIMA da própria barra.  */
+            const faixa = virada ? larguraDaFaixa(categorias) : 0;
+            const teto = Math.max(base || 0, ...valores, 1)
+                * (virada ? fatorDeitado(alvo, valores, faixa, totalParaPct) : 1.12);
+            const opcoes = virada
+                ? opcoesDeBarraHorizontal(categorias, valores, cores, teto, alturaDe(alvo), faixa, formato, totalParaPct)
                 : opcoesDeBarra(categorias, valores, cores, teto, alturaDe(alvo), formato);
             if (graficos[id] && graficos[id].__tipo === 'bar') {
                 graficos[id].updateOptions(opcoes, false, false);
@@ -971,6 +1221,170 @@
             graficos[id] = new ApexCharts(alvo, opcoes);
             graficos[id].__tipo = 'bar';
             graficos[id].render();
+        };
+
+        /* ==================================================================
+           O GRÁFICO DE INCONSISTÊNCIAS
+           ==================================================================
+           ROSCA, a mesma forma do Veredito da IA — a pergunta aqui também é de
+           REPARTIÇÃO: de tudo o que a IA apontou, quanto é cada apontamento. Em
+           barras, o nome de cada uma era uma frase de até 64 caracteres ("Situação
+           acadêmica do documento diverge da esperada pelo sistema"), e a faixa que
+           essas frases exigiam à esquerda comia metade do card. Na rosca o nome sai
+           do desenho e vai para a legenda, que é uma lista — e lista é onde frase
+           longa se lê, inteira e uma sob a outra.
+
+           "SEM INCONSISTÊNCIAS" NÃO É UMA INCONSISTÊNCIA. A IA escreve essa frase
+           na mesma coluna que as outras e ela é a MAIS frequente de todo documento
+           — 6.738 no RIAF, 7.965 no contrato, 14.511 no histórico. Ela é opção
+           legítima da barra de filtros ("me mostre os limpos") e continua lá, mas
+           num gráfico chamado INCONSISTÊNCIAS ela era a maior fatia e ainda entrava
+           na conta de "ocorrências" da linha de base, inflando o problema com o que
+           não é problema.
+
+           O QUE NÃO VIRA FATIA É SOMADO, e não calado: são até 47 frases distintas
+           num só recorte, e a paleta da casa não tem 47 cores que se distingam duas
+           a duas (ver a nota da rosca do veredito). As mais frequentes ficam com uma
+           fatia cada, e o resto entra como uma última fatia cinza que diz de quantas
+           frases ela é feita. Nenhuma ocorrência fica fora do total do centro.
+           ================================================================== */
+
+        /*  A frase que a IA escreve quando não achou problema nenhum, na forma
+            normalizada da view (`_chave_da_inconsistencia`): sem acento e minúscula,
+            porque ela vem grafada das duas maneiras.  */
+        const SEM_INCONSISTENCIA = 'sem inconsistencias';
+
+        /*  QUANTAS FRASES VIRAM FATIA. Quem manda é a LEGENDA, não o anel: um anel
+            aceita quantas fatias se queira, mas fatia cujo nome não está escrito em
+            lugar nenhum não diz nada. Com a lista ao lado do anel (ver
+            `.docia-legenda--lado`) cabem quatorze linhas de ~20px na altura do card,
+            e treze deixam a última sem encostar na borda de baixo.  */
+        const FATIAS_DE_INCONSISTENCIA = 13;
+
+        /*  A RAMPA DE CORES DAS FATIAS — a paleta da casa não tem treze degraus.
+
+            Ela tem oito, e três deles são cinzas (`#A3A3A3`, `#888888`, `#444444`):
+            de fato são CINCO cores para gastar. Com sete fatias já dava para ver o
+            aperto — as duas últimas saíam cinza, e a de baixo encostava na cinza da
+            cauda, que é justamente a que não podia ser confundida com nenhuma.
+
+            Em vez de inventar cores novas, cada cor da casa rende três fatias: ela
+            mesma, uma mais escura e uma mais clara. São as MESMAS cinco cores, na
+            mesma ordem, percorridas três vezes — o que muda entre as voltas é o tom.
+            Assim duas fatias vizinhas no anel nunca são o mesmo matiz, e as duas que
+            partilham matiz ficam a cinco posições uma da outra.
+
+            A ordem das voltas não é decorativa: base, escuro e só então claro. As
+            fatias vêm da maior para a menor, e é a menor que fica com o tom mais
+            lavado — o pedacinho de anel que ninguém ia distinguir de perto de todo
+            jeito. Os três cinzas ficam de fora da conta: aqui o cinza tem trabalho
+            fixo, que é ser a cauda.  */
+        const MATIZES_DA_CASA = [0, 1, 2, 3, 5];
+        const VOLTAS_DE_TOM = [0, -0.3, 0.42];   /*  < 0 escurece, > 0 clareia  */
+
+        /*  Mistura a cor com preto (alvo 0) ou branco (alvo 255) na proporção pedida,
+            canal a canal. Devolve em hex porque é o que a legenda escreve no
+            `style="background:"` e o que o Apex já recebe do resto do arquivo.  */
+        const puxarTom = (hex, alvo, peso) => {
+            const cru = parseInt(hex.slice(1), 16);
+            const canal = (deslocamento) => {
+                const c = (cru >> deslocamento) & 255;
+                return Math.round(c + (alvo - c) * peso);
+            };
+            return '#' + [16, 8, 0].map((d) => canal(d).toString(16).padStart(2, '0')).join('');
+        };
+
+        const rampaDeInconsistencia = (tema) => {
+            const cores = [];
+            VOLTAS_DE_TOM.forEach((volta) => MATIZES_DA_CASA.forEach((i) => {
+                const cor = PALETA_OVG[tema][i];
+                cores.push(volta === 0
+                    ? cor
+                    : puxarTom(cor, volta > 0 ? 255 : 0, Math.abs(volta)));
+            }));
+            return cores;
+        };
+
+        const pintarInconsistencias = (corpo) => {
+            const id = 'ia-gr-inconsistencias';
+            const alvoBase = document.getElementById('ia-base-inconsistencias');
+            const legenda = document.getElementById('ia-legenda-inconsistencias');
+            const alvo = document.getElementById(id);
+            if (!alvo) return;
+
+            /*  A legenda é o nome das fatias: sem fatia, ela não tem o que dizer — e
+                sem lista, a coluna dela também não tem por que existir. A classe é o
+                que devolve a largura inteira ao anel para o aviso de vazio ficar
+                centrado no card (ver `.docia-anel-e-lista--sozinho`).  */
+            const linha = alvo.parentElement;
+            const soOAnel = (sim) => {
+                if (linha) linha.classList.toggle('docia-anel-e-lista--sozinho', sim);
+            };
+            const limparLegenda = () => {
+                if (legenda) legenda.innerHTML = '';
+                soOAnel(true);
+            };
+
+            if (!corpo.processados) {
+                if (alvoBase) alvoBase.textContent = 'nenhum documento processado';
+                limparLegenda();
+                mostrarVazio(id, 'fa-hourglass-half',
+                             'A IA ainda não leu nenhum documento neste recorte.');
+                return;
+            }
+
+            const todas = (corpo.inconsistencias || [])
+                .filter((i) => semAcento(i.frase) !== SEM_INCONSISTENCIA)
+                .sort((a, b) => b.linhas - a.linhas);
+
+            if (!todas.length) {
+                if (alvoBase) alvoBase.textContent = '';
+                limparLegenda();
+                mostrarVazio(id, 'fa-check-circle',
+                             'Nenhuma inconsistência encontrada neste recorte.');
+                return;
+            }
+
+            /*  A CAUDA OCUPA UMA DAS VAGAS — daí o `- 1`. Sem descontar, ela
+                empurraria para fora a menos frequente das que iam ser mostradas, e o
+                gráfico ficaria uma fatia mais cheio do que a lista comporta.  */
+            soOAnel(false);
+            const mostradas = todas.length > FATIAS_DE_INCONSISTENCIA
+                ? todas.slice(0, FATIAS_DE_INCONSISTENCIA - 1)
+                : todas;
+            const cauda = todas.slice(mostradas.length);
+            const ocorrencias = todas.reduce((soma, i) => soma + i.linhas, 0);
+
+            const nomes = mostradas.map((i) => i.frase);
+            const valores = mostradas.map((i) => i.linhas);
+            if (cauda.length) {
+                nomes.push('Outras ' + formatarNumero(cauda.length) + ' inconsistências');
+                valores.push(cauda.reduce((soma, i) => soma + i.linhas, 0));
+            }
+
+            if (alvoBase) {
+                alvoBase.innerHTML = '<span class="text-red-500 font-medium">'
+                    + formatarNumero(ocorrencias) + ' ocorrências em '
+                    + formatarNumero(corpo.processados) + ' documentos lidos</span>'
+                    + ' &middot; ' + formatarNumero(todas.length) + ' tipos';
+            }
+
+            /*  O CINZA É O DEGRAU QUE A PALETA RESERVA para o que não é um assunto
+                próprio, e a cauda é exatamente isso — o mesmo papel que ele faz em
+                "não localizado". As frases ficam com a rampa, na ordem dela, que é a
+                ordem das cores da casa repetida em três tons.  */
+            const tema = temaAtual();
+            const cinza = PALETA_OVG[tema][4];
+            const degraus = rampaDeInconsistencia(tema);
+            const cores = nomes.map((_, i) => (cauda.length && i === nomes.length - 1)
+                ? cinza : degraus[i % degraus.length]);
+
+            desenharRosca(id, nomes, valores, cores, 'Ocorrências');
+            /*  SEM CLIQUE, ao contrário da legenda do veredito: a última linha é uma
+                SOMA de frases, não uma frase, e não há filtro que ela possa pedir. O
+                recorte por inconsistência continua onde ele é exato, na telinha da
+                barra de filtros, que lista as 47 e aceita várias de uma vez.  */
+            pintarLegendaRosca('ia-legenda-inconsistencias', nomes, valores, cores);
         };
 
         /* ==================================================================
@@ -1220,7 +1634,7 @@
                 chavesDoVeredito = nomes;
                 const rotulos = nomes.map(rotuloDoVeredito);
                 const valores = nomes.map((n) => veredito[n] || 0);
-                desenharRosca('ia-gr-veredito', rotulos, valores, cores);
+                desenharRosca('ia-gr-veredito', rotulos, valores, cores, 'Documentos');
                 pintarLegendaRosca('ia-legenda-veredito', rotulos, valores, cores, chavesDoVeredito, recorteVereditos);
             }
 
@@ -1287,7 +1701,7 @@
             /*  MENSALIDADE — só dos PROCESSADOS. `tem_dado` falso é o documento que
                 não carrega esse valor (o histórico), e ali desenhar uma barra de
                 "não localizado" em 100% acusaria a IA de não achar o que não existe.  */
-            const ordem = corpo.ordem_mensalidade || ['Bateu', 'Menor', 'Maior', 'Não localizado'];
+            const ordem = corpo.ordem_mensalidade || ['Bateu', 'Maior', 'Menor', 'Não localizado'];
 
             [['ia-gr-msd', 'ia-base-msd', 'sem_desconto'],
              ['ia-gr-mcd', 'ia-base-mcd', 'com_desconto']].forEach(([idGr, idBase, chave]) => {
@@ -1319,60 +1733,16 @@
                     lado — a leitura óbvia de dois gráficos vizinhos é comparar as
                     barras, e réguas diferentes fariam essa leitura mentir.  */
                 
-                const cats = ordem.map((b) => ROTULO_MENSALIDADE[b] || [b]);
+                //  Uma palavra por balde (ver `ROTULO_MENSALIDADE`), e a faixa dos
+                //  nomes sai da medida delas.
+                const cats = ordem.map((b) => ROTULO_MENSALIDADE[b] || b);
                 const vals = ordem.map((b) => contagem[b] || 0);
                 const colors = CORES_MENSALIDADE(tema);
                 desenhar(idGr, cats, vals, colors, corpo.processados, 'numero', true, corpo.processados);
 
             });
 
-            /* INCONSISTÊNCIAS — Gráfico Vertical ("barra pra cima") */
-            const inconsistencias = corpo.inconsistencias || [];
-            const idGrInc = 'ia-gr-inconsistencias';
-            const idBaseInc = 'ia-base-inconsistencias';
-            const alvoBaseInc = document.getElementById(idBaseInc);
-            
-            if (!corpo.processados) {
-                if (alvoBaseInc) alvoBaseInc.textContent = 'nenhum documento processado';
-                mostrarVazio(idGrInc, 'fa-hourglass-half',
-                             'A IA ainda não leu nenhum documento neste recorte.');
-            } else if (inconsistencias.length === 0) {
-                if (alvoBaseInc) alvoBaseInc.textContent = '';
-                mostrarVazio(idGrInc, 'fa-check-circle',
-                             'Nenhuma inconsistência encontrada neste recorte.');
-            } else {
-                const totalInconsistencias = inconsistencias.reduce((acc, curr) => acc + curr.linhas, 0);
-                if (alvoBaseInc) {
-                    alvoBaseInc.innerHTML = '<span class="text-red-500 font-medium">' + formatarNumero(totalInconsistencias) + ' ocorrências em ' + formatarNumero(corpo.processados) + ' documentos lidos</span>';
-                }
-                
-                // Mostrar as 5 mais frequentes (para não lotar o gráfico vertical)
-                const incsOrdenadas = [...inconsistencias].sort((a, b) => b.linhas - a.linhas).slice(0, 5);
-                const catsInc = incsOrdenadas.map(i => {
-                    // Quebrar frases longas em até 3 linhas de rótulo para o gráfico de barras verticais
-                    const palavras = i.frase.split(' ');
-                    const linhas = [];
-                    let linhaAtual = '';
-                    for (const palavra of palavras) {
-                        if ((linhaAtual + ' ' + palavra).length > 20) {
-                            linhas.push(linhaAtual);
-                            linhaAtual = palavra;
-                        } else {
-                            linhaAtual = linhaAtual ? linhaAtual + ' ' + palavra : palavra;
-                        }
-                    }
-                    if (linhaAtual) linhas.push(linhaAtual);
-                    return linhas.slice(0, 3); // no máximo 3 linhas
-                });
-                const valsInc = incsOrdenadas.map(i => i.linhas);
-                
-                // Usar a mesma cor do "Menor" (Rosa choque) ou a cor padrão de alerta (Vermelho)
-                const corInc = temaAtual() === 'eleitoral' ? '#F94144' : '#D62828';
-                const colorsInc = Array(catsInc.length).fill(corInc);
-                
-                // Como não sabemos qual é a "base" ideal para as inconsistências, passamos max(valsInc)
-                desenhar(idGrInc, catsInc, valsInc, colorsInc, Math.max(...valsInc), 'numero', false, 0);
-            }
+            pintarInconsistencias(corpo);
         };
 
         /*  Contador de pedidos: filtro clicado em sequência devolve respostas que
@@ -1412,13 +1782,26 @@
                         resposta ao filtro que acabou de ser clicado. A tabela ao lado
                         já marca "falhou" no selo; os gráficos precisavam do mesmo.  */
                     ultimoResumo = null;
-                    ['ia-base-veredito', 'ia-base-msd', 'ia-base-mcd'].forEach((id) => {
+                    ['ia-base-veredito', 'ia-base-msd', 'ia-base-mcd',
+                     'ia-base-inconsistencias'].forEach((id) => {
                         const alvo = document.getElementById(id);
                         if (alvo) alvo.textContent = 'não foi possível atualizar';
                     });
-                    ['ia-gr-veredito', 'ia-gr-msd', 'ia-gr-mcd'].forEach((id) =>
+                    ['ia-gr-veredito', 'ia-gr-msd', 'ia-gr-mcd',
+                     'ia-gr-inconsistencias'].forEach((id) =>
                         mostrarVazio(id, 'fa-triangle-exclamation',
                                      'Erro ao carregar. Refaça o filtro para tentar de novo.'));
+                    /*  As duas legendas nomeiam fatias que já não estão na tela. A
+                        de inconsistências leva junto a coluna dela, para o recado de
+                        erro ficar centrado no card e não na fatia de 28% do anel.  */
+                    ['ia-legenda-veredito', 'ia-legenda-inconsistencias'].forEach((id) => {
+                        const alvo = document.getElementById(id);
+                        if (alvo) alvo.innerHTML = '';
+                    });
+                    const linhaInc = document.getElementById('ia-gr-inconsistencias');
+                    if (linhaInc && linhaInc.parentElement) {
+                        linhaInc.parentElement.classList.add('docia-anel-e-lista--sozinho');
+                    }
                 });
         };
 
@@ -1927,13 +2310,15 @@
               que ela já teve: ela cresce, mas nunca encolhe. Medir sem zerar é
               medir o passado.
 
-           2. SÓ REDESENHAR SE A ALTURA MUDOU. Abrir a barra muda a LARGURA dos
-              cards, não a altura — e largura o Apex acompanha sozinho, pelo
-              `resize` da janela. Sem esta guarda, cada quadro da animação
-              disparava `updateOptions` nos quatro gráficos, e cada chamada
-              redesenha o SVG inteiro. A rosca aparecia oval porque estava sendo
-              redesenhada no meio da transição, medindo uma caixa que ainda
-              estava a caminho.
+           2. SÓ REDESENHAR SE A MEDIDA DO DESENHO MUDOU. Abrir a barra muda a
+              LARGURA dos cards, não a altura — e a largura das BARRAS o Apex
+              acompanha sozinho, pelo `resize` da janela. Sem esta guarda, cada
+              quadro da animação disparava `updateOptions` nos quatro gráficos, e
+              cada chamada redesenha o SVG inteiro. A rosca aparecia oval porque
+              estava sendo redesenhada no meio da transição, medindo uma caixa que
+              ainda estava a caminho. (Nos ANÉIS a largura conta para o tamanho do
+              desenho — ver `alturaDoDesenho` —, e é por isso que a guarda compara o
+              que vai ser desenhado, e não a caixa.)
 
            3. ESPERAR A TRANSIÇÃO TERMINAR. A barra leva 500 ms; medir antes disso
               é medir uma largura intermediária. `requestAnimationFrame`, que era o
@@ -1955,9 +2340,18 @@
                     altura boa, e ela voltaria assim quando a aba abrisse.  */
                 if (!altura) return;
 
-                if (graficos[id].__alturaAplicada === altura) return;
-                graficos[id].__alturaAplicada = altura;
-                graficos[id].updateOptions({ chart: { height: altura } }, false, false);
+                /*  A GUARDA COMPARA A MEDIDA DO DESENHO, e não a da caixa: nos anéis
+                    a largura entra na conta da altura (ver `alturaDoDesenho`), então
+                    comparar só a altura da caixa deixaria passar em branco a barra de
+                    filtros abrindo — que muda a largura e mais nada. Nas barras as
+                    duas medidas são a mesma coisa, e a guarda segue valendo o que
+                    valia: largura sozinha não redesenha.  */
+                const desenho = alturaDoDesenho(id, altura, alvo.clientWidth);
+                if (graficos[id].__alturaAplicada === desenho) return;
+                graficos[id].__alturaAplicada = desenho;
+
+                graficos[id].updateOptions(
+                    { chart: { height: desenho } }, false, false);
             });
         };
 
@@ -1978,7 +2372,7 @@
                 pendente = setTimeout(ajustarAlturasIA, 250);
             });
             if (vistaPerformance) observador.observe(vistaPerformance);
-            ['ia-gr-veredito', 'ia-gr-msd', 'ia-gr-mcd'].forEach((id) => {
+            ['ia-gr-veredito', 'ia-gr-msd', 'ia-gr-mcd', 'ia-gr-inconsistencias'].forEach((id) => {
                 const caixa = document.getElementById(id);
                 if (caixa) observador.observe(caixa);
             });
