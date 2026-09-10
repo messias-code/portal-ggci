@@ -499,6 +499,9 @@
          *   e o nome de cada coluna está debaixo dela.
          */
         const opcoesDeBarra = (categorias, valores, cores, maximo, altura, formato) => {
+            const maximoVisual = Math.pow(maximo, 0.5);
+            const valoresVisuais = valores.map(v => v > 0 ? Math.pow(v, 0.5) : 0);
+
             return {
                 chart: {
                     type: 'bar',
@@ -511,7 +514,7 @@
                         título que aqui não existe — o título é o `<h3>` do card.  */
                     parentHeightOffset: 0,
                 },
-                series: [{ name: 'Linhas', data: valores }],
+                series: [{ name: 'Linhas', data: valoresVisuais }],
                 xaxis: {
                     categories: categorias,
                     labels: {
@@ -535,7 +538,7 @@
                         topo do gráfico e não sobra onde escrever o número — ele cai DENTRO
                         da barra, em tinta de texto sobre fundo saturado. A folga é o lugar
                         do rótulo.  */
-                    max: maximo,
+                    max: maximoVisual,
                     min: 0,
                     labels: { show: false },
                     axisBorder: { show: false },
@@ -712,10 +715,10 @@
             largo da série ainda caiba atrás. Como a faixa das barras muda com a
             largura do card, a conta é feita a cada desenho, sobre a caixa medida.
 
-            O TETO SAI DA `base`, NÃO DA MAIOR BARRA — é o que mantém os dois gráficos
-            de mensalidade na mesma régua, já que ambos recebem a mesma base. Quando a
-            base é maior que a maior barra, a barra simplesmente termina antes da
-            sobra, e o rótulo ganha ainda mais ar.
+            O TETO SAI DA `base`, NÃO DA MAIOR BARRA DESTE CARD — é o que mantém os dois
+            gráficos de mensalidade na mesma régua, já que ambos recebem a mesma base.
+            Quem chama manda o maior balde DOS DOIS, então o card que tem esse balde
+            desenha até o fim e o outro termina antes, na proporção real entre eles.
 
             O piso de 30% é para o card estreito demais para o texto: ali nada cabe
             direito, e uma barra curta ainda diz mais que uma barra invisível.  */
@@ -743,6 +746,14 @@
         const AR_QUE_O_APEX_GUARDA = 8;
 
         const opcoesDeBarraHorizontal = (categorias, valores, cores, maximo, altura, faixa, formato, totalParaPct) => {
+            /*  ESCALA NÃO-LINEAR (Raiz Quadrada) PARA OS DESENHOS DAS BARRAS.
+                Quando há categorias muito desiguais (ex: 12.000 vs 400), a barra de 400
+                ficaria com 2% da largura — uma linha invisível. A raiz quadrada infla as
+                diferenças na base, fazendo a barra de 400 ocupar ~15% do espaço e a de
+                1.000 ocupar ~25%. Os rótulos e balões continuam mostrando o valor real.  */
+            const maximoVisual = Math.pow(maximo, 0.5);
+            const valoresVisuais = valores.map(v => v > 0 ? Math.pow(v, 0.5) : 0);
+
             return {
                 chart: {
                     type: 'bar',
@@ -753,13 +764,13 @@
                     background: 'transparent',
                     parentHeightOffset: 0,
                 },
-                series: [{ name: 'Linhas', data: valores }],
+                series: [{ name: 'Linhas', data: valoresVisuais }],
                 xaxis: {
                     categories: categorias,
                     /*  O EIXO DOS VALORES. O teto com folga é o que reserva o lugar do
                         número escrito na ponta da barra — sem ele a maior encosta na
                         borda e o rótulo cai fora do desenho.  */
-                    max: maximo,
+                    max: maximoVisual,
                     min: 0,
                     //  A régua não aparece: o número está escrito em cada barra.
                     labels: { show: false },
@@ -1709,6 +1720,23 @@
                 "não localizado" em 100% acusaria a IA de não achar o que não existe.  */
             const ordem = corpo.ordem_mensalidade || ['Bateu', 'Maior', 'Menor', 'Não localizado'];
 
+            /*  A RÉGUA É O MAIOR BALDE DOS DOIS CARDS, e não o total de processados.
+
+                Os quatro baldes REPARTEM esse total, então nenhum deles chega perto
+                dele: com a régua no total, a maior barra do "com desconto" media 32%
+                da faixa e as quatro se amontoavam no terço da esquerda, enquanto o
+                "sem desconto" ao lado ia a 82%. O desenho encolhia sem que o dado
+                tivesse encolhido — a régua é que era grande demais para o que mede.
+
+                Continua sendo UMA régua para os dois cards, que é o que mantém a
+                comparação entre eles honesta (ver a nota da `base` em `desenhar`).
+                Só o teto mudou, então todas as barras crescem pelo mesmo fator e as
+                proporções entre elas ficam exatamente como estavam.  */
+            const reguaComum = Math.max(1, ...['sem_desconto', 'com_desconto'].flatMap((k) => {
+                const c = ((corpo.mensalidade || {})[k] || {}).contagem || {};
+                return ordem.map((b) => c[b] || 0);
+            }));
+
             [['ia-gr-msd', 'ia-base-msd', 'sem_desconto'],
              ['ia-gr-mcd', 'ia-base-mcd', 'com_desconto']].forEach(([idGr, idBase, chave]) => {
                 const medida = (corpo.mensalidade || {})[chave] || {};
@@ -1734,17 +1762,18 @@
                         alvoBase.innerHTML = '<span class="text-red-500 font-medium">' + formatarNumero(corpo.processados) + ' lidos de ' + formatarNumero(corpo.total) + ' documentos</span>';
                     }
                 }
-                /*  A régua dos dois é o TOTAL DE PROCESSADOS, que é a mesma base
-                    das duas medidas. É o que deixa os cards comparáveis lado a
-                    lado — a leitura óbvia de dois gráficos vizinhos é comparar as
-                    barras, e réguas diferentes fariam essa leitura mentir.  */
-                
+                /*  A régua dos dois é a `reguaComum` medida acima. É o que deixa os
+                    cards comparáveis lado a lado — a leitura óbvia de dois gráficos
+                    vizinhos é comparar as barras, e réguas diferentes fariam essa
+                    leitura mentir. O percentual do rótulo NÃO sai dela: continua
+                    saindo do total de processados, no último argumento.  */
+
                 //  Uma palavra por balde (ver `ROTULO_MENSALIDADE`), e a faixa dos
                 //  nomes sai da medida delas.
                 const cats = ordem.map((b) => ROTULO_MENSALIDADE[b] || b);
                 const vals = ordem.map((b) => contagem[b] || 0);
                 const colors = CORES_MENSALIDADE(tema);
-                desenhar(idGr, cats, vals, colors, corpo.processados, 'numero', true, corpo.processados);
+                desenhar(idGr, cats, vals, colors, reguaComum, 'numero', true, corpo.processados);
 
             });
 
