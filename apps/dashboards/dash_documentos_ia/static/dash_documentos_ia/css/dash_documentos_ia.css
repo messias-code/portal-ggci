@@ -4090,7 +4090,7 @@ html:not([data-tema="eleitoral"]) #card-detalhamento > div.px-5.py-4,
 html:not([data-tema="eleitoral"]) #card-ies > div.px-5.py-4,
 html:not([data-tema="eleitoral"]) #ia-card-tabela > div.px-5.py-4 {
     background-image: none;
-    background-color: var(--docia-rebaixo);
+    background-color: var(--docia-superficie);
     border-bottom-color: var(--docia-fio);
 }
 
@@ -4113,5 +4113,5 @@ html:not([data-tema="eleitoral"]) #ia-tabela-rolagem thead,
 html:not([data-tema="eleitoral"]) #tabela-detalhamento thead th,
 html:not([data-tema="eleitoral"]) #tabela-ies thead th,
 html:not([data-tema="eleitoral"]) #ia-tabela-rolagem thead th {
-    background-color: var(--docia-rebaixo);
+    background-color: var(--docia-superficie);
 }
