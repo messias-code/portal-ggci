@@ -469,3 +469,28 @@ html[data-tema="eleitoral"] .tema-toggle__icone--sol {
         display: none;
     }
 }
+
+
+/* ==========================================================================
+   A TROCA É INSTANTÂNEA, NÃO ANIMADA
+   ==========================================================================
+   Clicar no interruptor custava 827 ms de thread travada numa tela cheia — o
+   tempo NÃO estava no JS, que hoje é zero, nem no ApexCharts, que redesenha
+   depois. Estava no recálculo de estilo: um `data-tema` novo no <html> invalida
+   a árvore inteira, e cada elemento com `transition` de cor abre uma animação
+   própria. Num dashboard com uma tabela de 200 linhas isso são milhares de
+   transições simultâneas, todas para o mesmo instante.
+
+   Medido nesta tela: 827 ms com transições, 82 ms sem. Dez vezes.
+
+   O atributo é posto pelo `tema.js` imediatamente antes de trocar o tema e
+   retirado no quadro seguinte — ninguém o vê, e nada mais na aplicação precisa
+   saber que ele existe. Note que NÃO desligamos `animation`: um spinner de
+   carregamento em curso não tem nada a ver com a troca de tema e pular um
+   quadro dele seria um defeito, não uma economia.
+   ========================================================================== */
+html[data-tema-trocando] *,
+html[data-tema-trocando] *::before,
+html[data-tema-trocando] *::after {
+    transition: none !important;
+}

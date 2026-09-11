@@ -84,7 +84,24 @@
      * @param {string} tema modo a ser aplicado.
      */
     function aplicar(tema) {
-        document.documentElement.setAttribute('data-tema', tema);
+        var raiz = document.documentElement;
+
+        /*  CONGELA AS TRANSIÇÕES DURANTE A TROCA.
+            Ver o bloco "A TROCA É INSTANTÂNEA" em `static/css/tema.css` para a
+            medida: 827 ms com transições, 82 ms sem. O `offsetWidth` não é
+            supersticioso — ele força o navegador a recalcular o estilo AGORA,
+            ainda com as transições desligadas. Sem essa leitura, pôr e tirar o
+            atributo no mesmo quadro seria como não tê-lo posto.
+
+            Só depois da primeira pintura o atributo sai, e as transições
+            voltam a valer para o resto da vida da página.  */
+        raiz.setAttribute('data-tema-trocando', '');
+        raiz.setAttribute('data-tema', tema);
+        void raiz.offsetWidth;
+        requestAnimationFrame(function () {
+            raiz.removeAttribute('data-tema-trocando');
+        });
+
         sincronizarAcessibilidade(tema);
 
         document.dispatchEvent(new CustomEvent('ggci:tema', {

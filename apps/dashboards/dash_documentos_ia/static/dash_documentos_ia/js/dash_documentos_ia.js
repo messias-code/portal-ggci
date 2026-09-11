@@ -81,10 +81,31 @@ document.addEventListener('turbo:load', () => {
                     /*  DISPAROS PROGRESSIVOS: a transição dura 500ms. Disparar
                         apenas no final faz os gráficos de barras parecerem que
                         esticaram e "pularam" no fim. Disparos intermediários
-                        mantêm a proporção do texto/barras durante a transição. */
-                    for (let t = 80; t <= 560; t += 80) {
-                        setTimeout(forcarResize, t);
-                    }
+                        mantêm a proporção do texto/barras durante a transição.
+
+                        MAS DURANTE A TRANSIÇÃO SÓ A LARGURA MUDA, e largura o
+                        ApexCharts acompanha sozinho com o `resize` da janela. Os
+                        sete `forcarResize` levavam junto o `ajustarAlturas`, que
+                        zera o `min-height` e lê o `clientHeight` das cinco caixas
+                        — trinta e cinco reflows síncronos espremidos nos 500 ms em
+                        que a barra desliza. Era daí a travada de abrir o filtro.
+                        A altura só pode ter mudado no FIM, quando o layout parou;
+                        é lá, e só lá, que ela é medida.  */
+                    /*  E SEIS DISPAROS INTERMEDIÁRIOS AINDA ERAM CINCO DEMAIS.
+                        Medido nesta tela: cada `resize` custa ~230ms de thread
+                        travada, porque o ApexCharts redesenha as cinco roscas
+                        inteiras. Seis deles a cada 80ms dentro de uma transição
+                        de 500ms somavam 1,1s de bloqueio — o navegador nunca
+                        alcançava o disparo seguinte, e o que se via não era o
+                        acompanhamento suave que a intenção prometia: era a barra
+                        deslizando aos trancos. Disparo que não cabe no intervalo
+                        entre ele e o próximo não é acompanhamento, é fila.
+                        Sobra UM no meio do percurso, que é o que impede o salto
+                        de proporção, e o final, que mede a altura com o layout já
+                        parado. A transição também encurtou para 320ms no CSS —
+                        parte do "demora muito" era literalmente a duração.  */
+                    setTimeout(() => window.dispatchEvent(new Event('resize')), 150);
+                    setTimeout(forcarResize, 360);
                 });
             }
 
@@ -331,8 +352,10 @@ document.addEventListener('turbo:load', () => {
                         pie: {
                             expandOnClick: false,
                             customScale: 0.98,
-                            // Arredondamento mais pronunciado das pontas a pedido do usuário
-                            borderRadius: 10,
+                            // Arredondamento mais pronunciado das pontas a pedido do
+                            // usuário. Mesmo valor da Análise IA: as duas abas mostram
+                            // rosca lado a lado na memória de quem troca de aba.
+                            borderRadius: 12,
                             donut: {
                                 /*  Anel mais fino do que era para ficar mais "sleek" e
                                     menos grosseiro visualmente. */
@@ -456,7 +479,22 @@ document.addEventListener('turbo:load', () => {
              * Não há laço: a caixa tem `flex: 1 1 0; min-height: 0`, logo a altura dela
              * não depende do que o gráfico desenha dentro.
              */
+            /*  ELE ACORDA A SI MESMO, E ESSE ERA O TERCEIRO REDESENHO.
+                `ajustarAlturas` zera o `min-height` das cinco caixas e lê o
+                `clientHeight` de cada uma — cinco reflows síncronos da página
+                inteira, ~215ms medidos aqui. Só que mexer na altura das caixas é
+                exatamente o que o `ResizeObserver` abaixo observa: ele acordava
+                250ms depois e mandava rodar tudo de novo, para concluir que nada
+                tinha mudado (a guarda do `__alturaAplicada` segura o
+                `updateOptions`, mas não segura os reflows da medição). Um toque
+                na barra de filtros pagava esse pedágio duas vezes.
+                O selo diz "esta mudança de tamanho fui eu que causei". Vale um
+                tempo maior que o debounce do observador, senão ele expira antes
+                de o eco chegar.  */
+            let ecoDeAltura = 0;
+
             const ajustarAlturas = () => {
+                ecoDeAltura = performance.now() + 400;
                 caixasDeGrafico().forEach((alvo) => {
                     const grafico = graficos[alvo.id];
                     if (!grafico) return;
@@ -541,10 +579,16 @@ document.addEventListener('turbo:load', () => {
                 let pendente = null;
                 window.__observadorDocIA = new ResizeObserver(() => {
                     // Agrupa a rajada de eventos da animação num ajuste só, e espera a
-                    // transição da barra de filtros (500 ms) terminar antes de medir —
-                    // medir no meio dela renderia uma altura intermediária.
+                    // transição da barra de filtros terminar antes de medir — medir no
+                    // meio dela renderia uma altura intermediária.
                     clearTimeout(pendente);
-                    pendente = setTimeout(ajustarAlturas, 250);
+                    pendente = setTimeout(() => {
+                        //  Eco do próprio ajuste: ignora. O F11 e o redimensionamento
+                        //  da janela, que são os casos que este observador existe para
+                        //  cobrir, chegam sem selo e continuam passando.
+                        if (performance.now() < ecoDeAltura) return;
+                        ajustarAlturas();
+                    }, 250);
                 });
                 caixasDeGrafico().forEach((alvo) => window.__observadorDocIA.observe(alvo));
             };
@@ -1037,6 +1081,64 @@ document.addEventListener('turbo:load', () => {
              * `api/dados/` já traz os cinco.
              */
             const pintarResumo = () => {
+                /*  ROSCA ZERADA CONTINUA SENDO ROSCA.
+                    A versão anterior sumia com o gráfico e punha no lugar um
+                    "Nenhum documento" com botão de limpar filtros. Foi recusado,
+                    e com razão: o card sumido quebra a leitura da faixa — cinco
+                    roscas viram três roscas e dois avisos, e o olho perde a
+                    comparação que a faixa existe para dar. Zero é um valor; o
+                    anel pálido com `0` no meio já o comunica.
+
+                    O QUE ENTRA NO LUGAR É CONTEXTO, NÃO ALARME. Duas das cinco
+                    roscas zeram por um motivo que não é filtro nenhum: RIAF e
+                    Histórico simplesmente não existiam antes de um certo
+                    semestre. Dizer "a partir de 2026-1" responde a pergunta que
+                    o zero levanta; "nenhum documento" só a repete.
+
+                    Sem botão. Oferecer "Limpar filtros" num card que zerou por
+                    ser anterior à existência do documento é um clique que não
+                    muda nada.  */
+                const PRIMEIRO_SEMESTRE = {
+                    'RIAF': '2026-1',
+                    'HISTÓRICO': '2025-2',
+                };
+
+                const notaDoCardZerado = (alvo, caixaLegenda, valores) => {
+                    const card = alvo.closest('.docia-card-doc');
+                    if (!card) return;
+
+                    const total = (valores || []).reduce(
+                        (soma, valor) => soma + (Number(valor) || 0), 0);
+                    const anterior = card.querySelector('.docia-nota-doc');
+
+                    //  O gráfico e a legenda NUNCA saem do ar. Se uma versão
+                    //  anterior os escondeu, isto desfaz.
+                    alvo.style.removeProperty('display');
+                    if (caixaLegenda) caixaLegenda.style.removeProperty('display');
+
+                    if (total > 0) {
+                        if (anterior) anterior.remove();
+                        return;
+                    }
+
+                    const desde = PRIMEIRO_SEMESTRE[alvo.dataset.doc];
+                    const texto = desde
+                        ? 'Este documento só existe a partir de ' + desde
+                        : 'Nenhum registro deste tipo no recorte atual';
+
+                    if (anterior) {
+                        if (anterior.textContent !== texto) anterior.textContent = texto;
+                        return;
+                    }
+
+                    const nota = document.createElement('p');
+                    nota.className = 'docia-nota-doc';
+                    nota.textContent = texto;
+                    //  Entre a rosca e a legenda: é onde o olho já está depois de
+                    //  ler o zero no meio do anel.
+                    card.insertBefore(nota, caixaLegenda || null);
+                };
+
                 const estado = window.__ultimoEstadoDocIA;
                 if (!estado) return;
 
@@ -1058,6 +1160,8 @@ document.addEventListener('turbo:load', () => {
                     const caixaLegenda = document.getElementById(
                         alvo.id.replace('chart-doc-', 'legenda-doc-'));
                     if (caixaLegenda) pintarLegenda(caixaLegenda, grafico.valoresCru);
+
+                    notaDoCardZerado(alvo, caixaLegenda, grafico.valoresCru);
                 });
 
                 // A legenda pode mudar de altura entre uma pintura e outra (um valor que
@@ -2941,16 +3045,25 @@ document.addEventListener('turbo:load', () => {
                 });
             }
 
-            // --- Troca de tema: as cores viraram string no render ---------------
-            // O ApexCharts não reavalia `var(--x)`, então o jeito de acompanhar o tema é
-            // reaplicar as opções. Registrado UMA VEZ: `initDashDocumentosIA` roda no
-            // DOMContentLoaded e no turbo:load, e este ouvinte está preso ao `document`,
-            // que sobrevive aos dois. Sem a trava, cada troca redesenharia em dobro.
+            /* --- Troca de tema: as cores viraram string no render ---------------
+               O ApexCharts não reavalia `var(--x)`, então o jeito de acompanhar o
+               tema é reaplicar as opções. Registrado UMA VEZ: `initDashDocumentosIA`
+               roda no DOMContentLoaded e no turbo:load, e este ouvinte está preso ao
+               `document`, que sobrevive aos dois. Sem a trava, cada troca
+               redesenharia em dobro.
+
+               O `requestAnimationFrame` NÃO É ENFEITE. Sem ele, o clique no
+               interruptor rodava o redesenho dos cinco gráficos ANTES do primeiro
+               quadro do tema novo: a tela ficava parada no tema velho durante todo
+               o trabalho e só então virava tudo de uma vez. Com ele, o CSS pinta o
+               tema no quadro seguinte ao clique — fundo, cards, texto e filtros
+               trocam na hora — e os gráficos alcançam logo atrás. O tempo total é o
+               mesmo; o tempo até a primeira resposta cai para um quadro.  */
             if (!window.__temaLigadoDocIA) {
                 window.__temaLigadoDocIA = true;
                 document.addEventListener('ggci:tema', () => {
-                    pintarResumo();
-                    pintarChipsIES();
+                    if (!estaNoAr()) { temaPendente = true; return; }
+                    requestAnimationFrame(repintarPorTema);
                 });
             }
 
@@ -2966,6 +3079,53 @@ document.addEventListener('turbo:load', () => {
                 window.dispatchEvent(new Event('resize'));
                 ajustarAlturas();
             };
+
+            /* ==================================================================
+               VOLTAR PARA ESTA ABA
+               ==================================================================
+               AS CINCO ROSCAS SUMIAM ao voltar da Análise IA. Não era perda de
+               dados — a legenda continuava com os números certos, porque ela é
+               HTML comum. Era o SVG, desenhado com 0 de largura.
+
+               O ApexCharts remede a caixa a cada `resize` da JANELA, e a
+               Análise IA dispara um quando ela própria aparece. Nesse instante
+               os cards desta aba estão em `display: none` e medem zero, então
+               os cinco gráficos se redesenham com largura zero. Ao voltar para
+               cá nenhum `resize` novo acontece — a janela não mudou de tamanho
+               —, e eles ficam invisíveis até o próximo F5 ou até arrastar a
+               borda da janela.
+
+               A cura é a mesma que a Análise IA já usava para o seu lado, e é
+               por simetria que ela mora logo abaixo de `forcarResize`: quando
+               esta aba volta ao ar, reavisa largura e altura. O
+               `requestAnimationFrame` é obrigatório — no mesmo quadro do
+               evento o CSS ainda não trocou o `display` e a caixa ainda mede
+               zero, que é exatamente o estado de onde se está saindo.
+               ================================================================== */
+            /*  REPINTURA DE TEMA ADIADA.
+                Trocar de tema custava 2,5 s de thread travada porque AS DUAS
+                ABAS redesenhavam os gráficos — a que está na tela e a que está
+                em `display: none`. Metade daquele trabalho não tinha
+                espectador. Aqui a aba escondida só anota que ficou devendo, e
+                paga quando aparece.  */
+            let temaPendente = false;
+
+            const repintarPorTema = () => {
+                temaPendente = false;
+                pintarResumo();
+                pintarChipsIES();
+            };
+
+            const estaNoAr = () => !window.dociaAbaAtiva
+                || window.dociaAbaAtiva() === 'envios';
+
+            document.addEventListener('docia:aba', (evento) => {
+                if (!evento.detail || evento.detail.aba !== 'envios') return;
+                requestAnimationFrame(() => {
+                    if (temaPendente) repintarPorTema();
+                    forcarResize();
+                });
+            });
 
             /* ==================================================================
                ESCOPO DA ATUALIZAÇÃO — O MODAL DA ENGRENAGEM
@@ -4069,3 +4229,61 @@ document.addEventListener('turbo:load', () => {
             const modal = elIES('modal-ies');
             if (evento.key === 'Escape' && modal && modal.style.display === 'flex') window.closeModalIES();
         });
+
+
+/* ==========================================================================
+   A LUZ QUE SEGUE O CURSOR NOS CARDS DE DOCUMENTO
+   ==========================================================================
+   Escreve em `--px`/`--py` a posição do mouse dentro do card; quem desenha é o
+   `radial-gradient` de `.docia-card-doc::after`, no CSS. O JS não pinta nada —
+   ele só informa a coordenada, e é essa divisão que mantém o efeito inteiro
+   desligável por `prefers-reduced-motion` sem tocar neste arquivo.
+
+   UM ÚNICO OUVINTE NO DOCUMENTO, delegado. Cinco cards com `mousemove` próprio
+   seriam cinco callbacks disputando a mesma thread durante o movimento.
+
+   rAF COM TRAVA: `mousemove` dispara mais rápido que o navegador pinta — até
+   ~1000Hz em mouse gamer, contra 60 quadros. Sem a trava, escreveríamos a
+   variável dezenas de vezes entre dois quadros e o trabalho extra é
+   integralmente jogado fora. Guardar o último evento e aplicar uma vez por
+   quadro é o que mantém isto em custo zero.
+
+   `passive: true` porque nunca chamamos `preventDefault`: avisa o navegador de
+   antemão que ele não precisa esperar este callback para rolar a página.
+   ========================================================================== */
+(function () {
+    const SELETOR = '.docia-card-doc';
+    if (!document.querySelector(SELETOR)) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    let pendente = null;
+
+    const aplicar = () => {
+        const evento = pendente;
+        pendente = null;
+        if (!evento) return;
+        const card = evento.target.closest(SELETOR);
+        if (!card) return;
+        const caixa = card.getBoundingClientRect();
+        card.style.setProperty('--px', `${evento.clientX - caixa.left}px`);
+        card.style.setProperty('--py', `${evento.clientY - caixa.top}px`);
+    };
+
+    document.addEventListener('mousemove', (evento) => {
+        if (!evento.target.closest || !evento.target.closest(SELETOR)) return;
+        const primeiro = pendente === null;
+        pendente = evento;
+        if (primeiro) requestAnimationFrame(aplicar);
+    }, { passive: true });
+
+    /*  Ao sair, a luz volta ao centro. Sem isto ela fica congelada na última
+        posição e reacende ali no próximo hover, longe de onde o mouse entrou —
+        o efeito passa de "a superfície reflete onde estou" para "um brilho
+        aleatório apareceu", que é o oposto do que se quer.  */
+    document.addEventListener('mouseout', (evento) => {
+        const card = evento.target.closest && evento.target.closest(SELETOR);
+        if (!card || card.contains(evento.relatedTarget)) return;
+        card.style.removeProperty('--px');
+        card.style.removeProperty('--py');
+    }, { passive: true });
+}());

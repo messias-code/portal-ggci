@@ -43,10 +43,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia.css' %}?v=20260909d">
+    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia.css' %}?v=20260911a">
 
     <!-- Camada escura desta tela: o que os arquivos compartilhados não alcançam -->
-    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia-eleitoral.css' %}?v=20260909d">
+    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia-eleitoral.css' %}?v=20260911a">
 </head>
 
 <body class="grid-bg bg-[#f8f6fb] text-gray-800 fixed inset-0 p-4 lg:p-6 flex transition-colors duration-500 overflow-hidden">
@@ -1335,38 +1335,14 @@
                         </section>
 
 
-                        <!--
-                            INSTITUIÇÃO — o mesmo modal da outra aba (`#modal-ies`, que é
-                            uma telinha passageira e não precisa de duas cópias), mas com
-                            SELEÇÃO PRÓPRIA: o modal grava na aba que está aberta. Ver
-                            `dociaIESAtivas` / `dociaTrocarAbaIES` em `dash_documentos_ia.js`.
-                        -->
-                        <section class="docia-filtro-secao">
-                            <div class="docia-filtro-cabecalho">
-                                <h4 class="docia-filtro-titulo">Instituição</h4>
-                                <span class="docia-filtro-contador" id="contador-ies-ia" style="display: none;">0</span>
-                            </div>
-                            <button type="button" onclick="openModalIES()" class="w-full flex items-center justify-between bg-white border border-gray-200 rounded-xl p-2 hover:bg-gray-50 transition-all shadow-sm group">
-                                <div class="flex items-center gap-3 overflow-hidden min-w-0">
-                                    <div class="docia-icone-bg w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-colors">
-                                        <i class="fa-solid fa-building-columns docia-icone-color"></i>
-                                    </div>
-                                    <div class="flex flex-col items-start overflow-hidden min-w-0">
-                                        <span class="text-[10px] text-gray-400 font-semibold uppercase">Filtro de IES</span>
-                                        <span class="text-xs font-bold text-gray-700 uppercase w-full text-left" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="ies-selecionadas-text-ia">Todas as Instituições</span>
-                                    </div>
-                                </div>
-                                <i class="fa-solid fa-chevron-right text-gray-400 text-xs shrink-0 ml-2 pr-2"></i>
-                            </button>
-                        </section>
 
                         <!--
                             A ORDEM DAS SEÇÕES SEGUE O FUNIL, do universo para a pessoa:
-                            Semestre e Documento dizem QUAL RECORTE, Inconsistências e
-                            Instituição dizem ONDE, e as duas últimas dizem QUEM. As de
-                            pessoa ficam no fim de propósito — são as que menos se mexem
-                            no dia a dia, e as que mais empurram as outras para fora da
-                            vista quando ficam no meio.
+                            Semestre e Documento dizem QUAL RECORTE, as três do meio
+                            dizem QUEM, e Instituição fecha dizendo ONDE. A de
+                            instituição fica por último de propósito: é a única que abre
+                            um modal, e no meio da barra ela empurra as outras para fora
+                            da vista toda vez que se mexe nela.
                         -->
                         <section class="docia-filtro-secao">
                             <div class="docia-filtro-cabecalho">
@@ -1403,6 +1379,71 @@
                                         <input type="checkbox" value="Ingresso" class="filter-perfil peer sr-only">
                                         <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
                                             <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">Ingresso</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="docia-filtro-secao">
+                            <div class="docia-filtro-cabecalho">
+                                <h4 class="docia-filtro-titulo">Benefícios &amp; financiamentos</h4>
+                                <span class="docia-filtro-contador" id="contador-benef-finan-ia" style="display: none;">0</span>
+                            </div>
+                            <div class="docia-filtro-linha">
+                                <span class="docia-filtro-rotulo">Benefícios</span>
+                                <div class="docia-grupo-exclusivo docia-grade-seg grid bg-white border border-gray-300 rounded-xl overflow-hidden divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(2, minmax(0, 1fr));">
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="S" class="filter-possui-beneficio peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">Sim</span>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="N" class="filter-possui-beneficio peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">Não</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="docia-filtro-linha">
+                                <span class="docia-filtro-rotulo">Financiamentos</span>
+                                <div class="docia-grupo-exclusivo docia-grade-seg grid bg-white border border-gray-300 rounded-xl overflow-hidden divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(2, minmax(0, 1fr));">
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="S" class="filter-possui-financiamento peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">Sim</span>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="N" class="filter-possui-financiamento peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">Não</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                            <!--
+                                A TERCEIRA DUPLA NÃO É A SOMA DAS OUTRAS DUAS. "Benefício
+                                sim" e "financiamento sim" marcados ao mesmo tempo pedem
+                                quem tem OS DOIS; esta pede quem tem QUALQUER UM — e é o
+                                recorte que mais se usa, porque é ele que separa o aluno
+                                que recebe algo do aluno que não recebe nada.
+                            -->
+                            <div class="docia-filtro-linha">
+                                <span class="docia-filtro-rotulo">Benefícios e/ou financiamentos</span>
+                                <div class="docia-grupo-exclusivo docia-grade-seg grid bg-white border border-gray-300 rounded-xl overflow-hidden divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(2, minmax(0, 1fr));">
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="S" class="filter-possui-qualquer peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">Sim</span>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="N" class="filter-possui-qualquer peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">Não</span>
                                         </div>
                                     </label>
                                 </div>
@@ -1448,6 +1489,31 @@
                                     </label>
                                 </div>
                             </div>
+                        </section>
+
+                        <!--
+                            INSTITUIÇÃO — o mesmo modal da outra aba (`#modal-ies`, que é
+                            uma telinha passageira e não precisa de duas cópias), mas com
+                            SELEÇÃO PRÓPRIA: o modal grava na aba que está aberta. Ver
+                            `dociaIESAtivas` / `dociaTrocarAbaIES` em `dash_documentos_ia.js`.
+                        -->
+                        <section class="docia-filtro-secao">
+                            <div class="docia-filtro-cabecalho">
+                                <h4 class="docia-filtro-titulo">Instituição</h4>
+                                <span class="docia-filtro-contador" id="contador-ies-ia" style="display: none;">0</span>
+                            </div>
+                            <button type="button" onclick="openModalIES()" class="w-full flex items-center justify-between bg-white border border-gray-200 rounded-xl p-2 hover:bg-gray-50 transition-all shadow-sm group">
+                                <div class="flex items-center gap-3 overflow-hidden min-w-0">
+                                    <div class="docia-icone-bg w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-colors">
+                                        <i class="fa-solid fa-building-columns docia-icone-color"></i>
+                                    </div>
+                                    <div class="flex flex-col items-start overflow-hidden min-w-0">
+                                        <span class="text-[10px] text-gray-400 font-semibold uppercase">Filtro de IES</span>
+                                        <span class="text-xs font-bold text-gray-700 uppercase w-full text-left" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="ies-selecionadas-text-ia">Todas as Instituições</span>
+                                    </div>
+                                </div>
+                                <i class="fa-solid fa-chevron-right text-gray-400 text-xs shrink-0 ml-2 pr-2"></i>
+                            </button>
                         </section>
                     </div>
 

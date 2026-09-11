@@ -80,17 +80,29 @@
     const temaAtual = () =>
         document.documentElement.getAttribute('data-tema') === 'eleitoral' ? 'eleitoral' : 'claro';
 
-    /*  Os quatro recortes de PESSOA, no formato que a view espera: o nome do
-        parâmetro na query string e a classe das caixas que o alimentam. A view
-        lê exatamente estes nomes (ver `FILTROS_DE_PESSOA` em `views.py`) —
-        errar um deles é o filtro rodar só na aparência, que é o pior jeito de
-        errar, porque o número não muda e ninguém desconfia do controle.  */
+    /*  Os recortes de PESSOA, no formato que a view espera: o nome do
+        parâmetro na query string, a classe das caixas que o alimentam e o
+        rótulo que vai para a etiqueta. A view lê exatamente estes nomes (ver
+        `FILTROS_DE_PESSOA` em `views.py`) — errar um deles é o filtro rodar só
+        na aparência, que é o pior jeito de errar, porque o número não muda e
+        ninguém desconfia do controle.
+
+        ESTA LISTA É A ÚNICA VERDADE sobre quais caixas são de pessoa: a query
+        string, as etiquetas, a exclusividade S/N e os dois "limpar" saem toda
+        dela. Era assim que `possui_beneficio` e companhia tinham sumido — os
+        controles existiam no HTML e a view já os aceitava, mas nenhuma das
+        listas do JS os citava, então clicar neles não mudava número nenhum.  */
     const FILTROS_DE_PESSOA = [
-        ['vinculo', 'filter-vinculo'],
-        ['perfil', 'filter-perfil'],
-        ['mudou_ies', 'filter-mudou-ies'],
-        ['mudou_bolsa', 'filter-mudou-bolsa'],
+        ['vinculo', 'filter-vinculo', 'Vínculo'],
+        ['perfil', 'filter-perfil', 'Perfil'],
+        ['mudou_ies', 'filter-mudou-ies', 'Mudou IES'],
+        ['mudou_bolsa', 'filter-mudou-bolsa', 'Mudou bolsa'],
+        ['possui_beneficio', 'filter-possui-beneficio', 'Benefícios'],
+        ['possui_financiamento', 'filter-possui-financiamento', 'Financiamentos'],
+        ['possui_qualquer', 'filter-possui-qualquer', 'Benefícios e/ou financiamentos'],
     ];
+
+    const CLASSES_DE_PESSOA = FILTROS_DE_PESSOA.map(([, classe]) => classe);
 
     const iniciar = () => {
         const vistaPerformance = document.getElementById('ia-vista-performance');
@@ -297,6 +309,10 @@
             total += contador('contador-mudancas-ia',
                 marcados(nosFiltros('.filter-mudou-ies')).length
                 + marcados(nosFiltros('.filter-mudou-bolsa')).length);
+            total += contador('contador-benef-finan-ia',
+                marcados(nosFiltros('.filter-possui-beneficio')).length
+                + marcados(nosFiltros('.filter-possui-financiamento')).length
+                + marcados(nosFiltros('.filter-possui-qualquer')).length);
             total += contador('contador-inconsistencias', inconsistenciasEscolhidas.size);
             total += contador('contador-ies-ia', iesDaAba().length);
             contador('contador-filtros', total);
@@ -999,7 +1015,12 @@
                     customScale: id === 'ia-gr-inconsistencias' ? 1.0 : 1.1,
                     //  As pontas das fatias são ARREDONDADAS, como no quantitativo da
                     //  outra aba. Sem isto o anel fica com emendas em esquadro.
-                    borderRadius: 10,
+                    //  12 e não 10: com o anel a 82% o raio 10 ainda lê como
+                    //  chanfro a 1920px, e o pedido foi "arredondar mais um pouco".
+                    //  Comparei em print recortado da mesma rosca — em 12 a ponta
+                    //  vira cápsula de verdade, e a fatia de 1% continua inteira,
+                    //  que era o receio de subir tanto.
+                    borderRadius: 12,
                     donut: {
                         //  Anel fino, o mesmo 82% de lá.
                         size: '82%',
@@ -1941,10 +1962,7 @@
             marcados(caixasDocumento).forEach(
                 (v) => etiquetas.push(chip('Documento', v, 'documento:' + v, true)));
 
-            [['Vínculo', 'filter-vinculo', 'vinculo'],
-             ['Perfil', 'filter-perfil', 'perfil'],
-             ['Mudou IES', 'filter-mudou-ies', 'mudou_ies'],
-             ['Mudou bolsa', 'filter-mudou-bolsa', 'mudou_bolsa']].forEach(([rotulo, classe, acao]) => {
+            FILTROS_DE_PESSOA.forEach(([acao, classe, rotulo]) => {
                 marcados(nosFiltros('.' + classe)).forEach(
                     (v) => etiquetas.push(chip(rotulo, v, acao + ':' + v)));
             });
@@ -1992,10 +2010,9 @@
                 const desmarcar = (classe) => nosFiltros('.' + classe)
                     .forEach((caixa) => { if (caixa.value === valor) caixa.checked = false; });
 
-                if (tipo === 'vinculo') desmarcar('filter-vinculo');
-                else if (tipo === 'perfil') desmarcar('filter-perfil');
-                else if (tipo === 'mudou_ies') desmarcar('filter-mudou-ies');
-                else if (tipo === 'mudou_bolsa') desmarcar('filter-mudou-bolsa');
+                const dePessoa = FILTROS_DE_PESSOA.find(([parametro]) => parametro === tipo);
+
+                if (dePessoa) desmarcar(dePessoa[1]);
                 else if (tipo === 'ies') {
                     if (typeof window.resetFiltroIES === 'function') window.resetFiltroIES();
                 } else if (tipo === 'inconsistencia') {
@@ -2011,7 +2028,7 @@
                     //  TUDO menos o período e o documento: eles são obrigatórios, e
                     //  zerá-los deixaria a tela sem recorte nenhum — que não é um
                     //  estado que ela saiba mostrar.
-                    ['filter-vinculo', 'filter-perfil', 'filter-mudou-ies', 'filter-mudou-bolsa']
+                    CLASSES_DE_PESSOA
                         .forEach((classe) => nosFiltros('.' + classe)
                             .forEach((caixa) => (caixa.checked = false)));
                     if (typeof window.resetFiltroIES === 'function') window.resetFiltroIES();
@@ -2296,8 +2313,7 @@
             }));
         };
 
-        ['filter-vinculo', 'filter-perfil',
-         'filter-mudou-ies', 'filter-mudou-bolsa'].forEach(exclusivo);
+        CLASSES_DE_PESSOA.forEach(exclusivo);
 
         /*  "RESTAURAR PADRÃO" É DA ABA QUE ESTÁ NA TELA. O botão é um só, no
             cabeçalho da barra, e os dois módulos o escutam — sem esta saída, um
@@ -2308,8 +2324,7 @@
             botaoLimpar.addEventListener('click', () => {
                 if (!esteEstaVisivel()) return;
                 nosFiltros(
-                    '.filter-semestre, .filter-vinculo, .filter-perfil,'
-                    + ' .filter-mudou-ies, .filter-mudou-bolsa'
+                    CLASSES_DE_PESSOA.map((classe) => '.' + classe).join(', ')
                 ).forEach((caixa) => (caixa.checked = false));
                 // O documento não zera: volta ao padrão, que é o CONTRATO.
                 caixasDocumento.forEach((caixa) =>
@@ -2327,8 +2342,20 @@
             degraus próprios de cada tema (ver `PALETA_OVG`), não uma inversão
             automática do claro — e os rótulos dos eixos seguem os tokens de
             texto, que também mudam.  */
+        /*  MESMA ECONOMIA DA OUTRA ABA, pelo mesmo motivo: a troca de tema
+            custava 2,5 s de thread travada porque os dois módulos redesenhavam,
+            e metade do trabalho acontecia dentro de um `display: none`. Quem
+            está escondido só anota que ficou devendo; quem está na tela espera
+            um quadro, para o CSS pintar o tema antes de o JS ocupar a thread. */
+        let temaPendenteIA = false;
+
         document.addEventListener('ggci:tema', () => {
-            if (ultimoResumo) pintarGraficos(ultimoResumo);
+            if (!ultimoResumo) return;
+            if (!esteEstaVisivel()) { temaPendenteIA = true; return; }
+            requestAnimationFrame(() => {
+                temaPendenteIA = false;
+                pintarGraficos(ultimoResumo);
+            });
         });
 
         /* ==================================================================
@@ -2437,6 +2464,10 @@
             if (!evento.detail || evento.detail.aba !== 'analise') return;
             requestAnimationFrame(() => {
                 if (pendenteDeRecarga) recarregar();
+                else if (temaPendenteIA && ultimoResumo) {
+                    temaPendenteIA = false;
+                    pintarGraficos(ultimoResumo);
+                }
                 window.dispatchEvent(new Event('resize'));
                 ajustarAlturasIA();
             });

@@ -82,6 +82,19 @@ def capturar(args):
                         "name": "sessionid", "value": cookie,
                         "url": self.live_server_url,
                     }])
+                    if args.console:
+                        #  Erro de JS não aparece no PNG: a tela só fica vazia.
+                        #  Sem isto, "some tudo ao recarregar" vira adivinhação.
+                        pag.on("console", lambda m: print(
+                            f"[console:{m.type}] {m.text}", file=sys.stderr))
+                        pag.on("pageerror", lambda e: print(
+                            f"[pageerror] {e}", file=sys.stderr))
+                    if args.pre_js:
+                        #  Roda ANTES dos scripts da página, a cada navegação. É o
+                        #  único jeito de semear `localStorage` a tempo de o
+                        #  `<head>` síncrono já encontrar o estado — que é
+                        #  exatamente o que acontece num F5 de verdade.
+                        pag.add_init_script(args.pre_js)
                     pag.goto(self.live_server_url + args.url,
                              wait_until="networkidle")
                     if args.tema:
@@ -126,6 +139,10 @@ if __name__ == "__main__":
     ap.add_argument("--clip", default=None, help="seletor a recortar no PNG")
     ap.add_argument("--tema", default=None, choices=["eleitoral"])
     ap.add_argument("--js", default=None, help="JS a executar antes do print")
+    ap.add_argument("--pre-js", dest="pre_js", default=None,
+                    help="JS a executar ANTES dos scripts da pagina (semear localStorage)")
+    ap.add_argument("--console", action="store_true",
+                    help="imprime mensagens de console e erros de JS no stderr")
     ap.add_argument("--largura", type=int, default=1920)
     ap.add_argument("--altura", type=int, default=1080)
     ap.add_argument("--espera", type=int, default=900, help="ms para as animações assentarem")

@@ -3653,50 +3653,35 @@ header.menu-divisoria button:active,
    introduzir uma forma nova seria informação falsa.
    ========================================================================== */
 
-/* --- Anéis concêntricos atrás da rosca ------------------------------------
-   Um alvo levíssimo na cor da marca, centrado exatamente onde a rosca é
-   desenhada. Não é enfeite escolhido ao acaso: é a MESMA forma do gráfico,
-   continuada para fora dele. O anel de dados passa a parecer o traço aceso de
-   uma escala que já estava ali, em vez de um círculo solto no branco.
+/* --- O fundo da rosca fica vazio -----------------------------------------
+   Aqui já moraram anéis concêntricos e depois um eco pulsante; os dois saíram
+   a pedido. O motivo é o mesmo nas duas vezes: o fundo de um gráfico não
+   compete com o gráfico. Anel parado vira desenho e pede significado; anel em
+   movimento puxa o olho para fora do dado justamente quando se está lendo o
+   dado. A Análise IA nunca teve ornamento nenhum atrás das roscas, e é ela o
+   padrão. Não recolocar.  */
 
-   NO PSEUDO-ELEMENTO, E NÃO NO FUNDO DE `.chart-doc`. O desvanecimento nas
-   pontas precisa de `mask-image`, e máscara aplicada em `.chart-doc` valeria
-   também para o SVG do ApexCharts que mora dentro — a rosca sairia recortada
-   junto. O pseudo-elemento é uma caixa só dele.
-
-   A MÁSCARA ABRE UM BURACO NO MEIO (`transparent 0 34%`) porque é lá que fica
-   o total em corpo grande. Anel de 6% atrás de um número é pouco, mas pouco
-   vezes oito anéis, sob um dígito, é o suficiente para o traço da fonte perder
-   o contorno limpo. O anel também morre antes da borda (`96%`): ornamento que
-   encosta na aresta do card vira moldura, e moldura é peso.
-
-   `z-index: -1` pelo mesmo motivo do halo: com `isolation: isolate` no card,
-   negativo pinta depois do fundo e antes do conteúdo. A rosca fica por cima,
-   sempre.  */
-.chart-doc {
-    position: relative;
-}
-
-.chart-doc::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    background-image: repeating-radial-gradient(circle at 50% 50%,
-        transparent 0 15px,
-        color-mix(in srgb, var(--docia-marca) 9%, transparent) 15px 16px);
-    -webkit-mask-image: radial-gradient(circle at 50% 50%,
-        transparent 0 34%, #000 52%, #000 80%, transparent 96%);
-    mask-image: radial-gradient(circle at 50% 50%,
-        transparent 0 34%, #000 52%, #000 80%, transparent 96%);
+/* --- A nota do card zerado ------------------------------------------------
+   Uma linha entre a rosca e a legenda, e nada mais. Ela não pode competir com
+   o número no meio do anel: fica em corpo 10, peso 600 e na tinta fraca — é
+   ressalva, não manchete. Sem ícone e sem caixa, porque qualquer moldura aqui
+   transformaria "zero" em "erro".  */
+.docia-nota-doc {
+    flex-shrink: 0;
+    margin: 2px 8px 6px;
+    text-align: center;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: 0.01em;
+    color: color-mix(in srgb, var(--docia-texto) 52%, transparent);
 }
 
 
 /* --- Trama de pontos na área de trabalho ----------------------------------
    O fundo atrás dos cards era branco liso, e branco liso não tem escala: sem
    nada repetido, o olho não tem como medir distância e a tela inteira lê como
-   uma folha, não como um plano com objetos em cima. Uma trama de 22px devolve
+   uma folha, não como um plano com objetos em cima. Uma trama de 15px devolve
    essa escala — os cards passam a FLUTUAR sobre alguma coisa, e a sombra deles
    ganha função em vez de ser só um efeito.
 
@@ -3709,14 +3694,293 @@ header.menu-divisoria button:active,
    na viewport, rolar a tabela faria os pontos deslizarem por baixo dos cards
    parados, e esse descolamento é o tipo de movimento que ninguém pediu.
 
-   13% DE ALFA em ponto de 1,6px é quase nada por ponto e o bastante somado. É a
+   11% DE ALFA em ponto de 1px é quase nada por ponto e o bastante somado. É a
    mesma aritmética das ondas dos KPIs: o que importa não é a opacidade de cada
    elemento, é a mancha que o conjunto forma.  */
 .docia-tela {
     background-image: radial-gradient(
         circle at 1px 1px,
-        color-mix(in srgb, var(--docia-marca) 13%, transparent) 1.6px,
-        transparent 1.6px);
-    background-size: 22px 22px;
+        color-mix(in srgb, var(--docia-marca) 11%, transparent) 1px,
+        transparent 1px);
+    background-size: 15px 15px;
     background-attachment: local;
+}
+
+
+/* ==========================================================================
+   RECALIBRAÇÃO CREME / NORD
+   ==========================================================================
+   A queixa foi de três coisas que pareciam uma só: "as cores muito fortes",
+   "parece tudo em baixa resolução, linhas muito finas" e "muito arredondado,
+   eu gosto, mas tá exagerado". São três problemas distintos e cada um tem uma
+   causa mecânica diferente. Este bloco trata os três, e fica no FIM do arquivo
+   de propósito: empate de especificidade com utilitária do Tailwind se resolve
+   por ordem de cascata, e esta folha carrega depois do `output.css`.
+
+   O QUE NÃO MUDA — A PALETA DAS SÉRIES.
+   `PALETA_OVG` continua exatamente como estava, nas duas abas e nos dois temas.
+   Isso foi medido, não suposto: qualquer redução uniforme de croma que
+   preservasse matiz e luminância derrubava a menor distância ΔE2000 entre pares
+   sob simulação de protanopia e deuteranopia — de 10,87 para 10,08 no claro e
+   de 8,25 para 7,47 no eleitoral, só para tirar 12% de saturação. Cor de série
+   não é decoração: é o que diz QUAL assunto a fatia mostra, e quem não separa
+   vermelho de verde depende inteiramente dessa distância. O amortecimento
+   pedido acontece onde não custa informação nenhuma — papel, halos, bordas,
+   rótulo, grade. E é de lá que vinha o "forte" mesmo: o halo rosa a 70% e o
+   vidro branco puro gritam muito mais que uma rosca de 8px de espessura.
+   ========================================================================== */
+
+:root {
+    /*  CREME NO PAPEL, NORD NA TINTA. Os dois lados do pedido, que parecem
+        brigar e não brigam: o calor fica nas superfícies (é o que o olho lê
+        como "creme") e o frio fica no texto e nos fios (é o que lê como
+        "nord"). Papel quente com tinta quente vira sépia; papel frio com tinta
+        fria vira o cinza-azulado corporativo que já estava aqui.  */
+    --docia-papel: #F1EDE4;       /* a base da tela, atrás dos halos */
+    --docia-superficie: #FCFAF5;  /* o cartão */
+    --docia-rebaixo: #F5F1E8;     /* o que afunda: área de gráfico, filtros */
+
+    /*  Polar Night do Nord, literal. `#2E3440` é o nord0; `#434C5E` o nord2.
+        O terceiro é o nord3 (`#4C566A`) clareado até passar em 4.5:1 sobre o
+        creme — o nord3 puro sobre papel claro fica no limite e este é rótulo,
+        que é justamente onde a leitura já falhou uma vez.  */
+    --docia-nord-0: #2E3440;
+    --docia-nord-2: #434C5E;
+    --docia-nord-3: #5B667C;
+
+    /*  O FIO. Era `--docia-borda-clara`, branco a 70%, que sobre papel pastel
+        some: o card ficava sem aresta e só a sombra segurava a forma — é
+        exatamente isso que se lê como "baixa resolução". Fio de tinta em alfa
+        baixo desenha uma linha DEFINIDA de 1px, que é o que um monitor Full HD
+        tem para dar.  */
+    --docia-fio: color-mix(in srgb, var(--docia-nord-0) 13%, transparent);
+    --docia-fio-forte: color-mix(in srgb, var(--docia-nord-0) 22%, transparent);
+
+    /*  UMA ESCALA DE RAIO PARA A TELA INTEIRA, e a regra que a governa:
+        quanto maior a peça, maior o raio, e nada foge disso exceto o que é
+        pílula por natureza (avatar, selo, chip — esses continuam `rounded-full`
+        e não são tocados aqui). Antes havia 2rem, 1.5rem, 1rem, 0.75rem e
+        0.5rem convivendo sem critério, e o casco a 32px era o que dava o ar de
+        exagero: num painel de 1920px, 32px de raio come o canto do conteúdo.  */
+    --docia-r-casco: 18px;
+    --docia-r-card: 12px;
+    --docia-r-campo: 8px;
+}
+
+
+/* --------------------------------------------------------------------------
+   1. O FUNDO
+   O `bg-[#f8f6fb]` era lilás frio; os halos por cima dele a 60-75% de alfa é
+   que faziam o conjunto gritar. Baixar o alfa dos quatro e trocar a base por
+   creme resolve o "cores muito fortes" sem tirar um halo sequer da tela — as
+   cores são as mesmas quatro, em tonalidade, que era o que estava liberado.
+   Especificidade 0,1,1 de propósito: `html[data-tema="eleitoral"] body` soma
+   0,1,2 e continua ganhando, o tema escuro não é afetado por nada daqui.
+   -------------------------------------------------------------------------- */
+body.grid-bg {
+    background-color: var(--docia-papel);
+}
+
+.menu-blob--1 { background-color: rgba(206, 137, 170, 0.34); }  /* rosa */
+.menu-blob--2 { background-color: rgba(219, 194, 138, 0.36); }  /* âmbar */
+.menu-blob--3 { background-color: rgba(143, 120, 172, 0.30); }  /* roxo */
+.menu-blob--4 { background-color: rgba(132, 170, 146, 0.28); }  /* verde */
+
+/*  A GRADE. Roxo a 7% em malha de 113x75 — número ímpar de pixel em linha de
+    1px é a receita do serrilhado que se lê como tela de baixa resolução: a
+    linha cai em meio pixel e o navegador a espalha em dois, cada um com metade
+    da cor. Malha par assenta no pixel. A cor vira tinta, não marca: grade é
+    estrutura, não identidade.  */
+.grid-bg {
+    background-image:
+        linear-gradient(color-mix(in srgb, var(--docia-nord-0) 5%, transparent) 1px, transparent 1px),
+        linear-gradient(90deg, color-mix(in srgb, var(--docia-nord-0) 5%, transparent) 1px, transparent 1px);
+    background-size: 112px 76px;
+}
+
+
+/* --------------------------------------------------------------------------
+   2. NITIDEZ: O `backdrop-filter` SAI DE TODA SUPERFÍCIE QUE CARREGA TEXTO
+   Esta é a causa real do "parece baixa resolução, e olha que o monitor é Full
+   HD". `backdrop-filter` promove o elemento a camada de composição própria, e
+   camada composta perde o antialias por subpixel — todo texto em cima dela
+   passa a ser suavizado em escala de cinza, que a 90% de font-size em Poppins
+   é visivelmente mais fino e mais lavado. O casco, a barra de filtros e os
+   KPIs somavam quase a tela inteira nessa condição.
+   E o desfoque não estava entregando nada em troca: o que está atrás são halos
+   já borrados em 140px. Desfocar de novo um fundo borrado é custo de GPU por
+   diferença nenhuma. Some o filtro, sobe o alfa do fundo, o texto volta a ter
+   subpixel — e o `resize` da barra lateral deixa de repintar camada composta.
+   -------------------------------------------------------------------------- */
+.menu-shell,
+#filter-sidebar,
+#toggle-sidebar-btn,
+.docia-kpi-card {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+}
+
+.menu-shell {
+    background-color: color-mix(in srgb, var(--docia-superficie) 94%, transparent);
+    border-color: var(--docia-fio);
+    border-radius: var(--docia-r-casco);
+}
+
+#filter-sidebar {
+    background-color: color-mix(in srgb, var(--docia-superficie) 97%, transparent);
+    border-right-color: var(--docia-fio);
+}
+
+
+/* --------------------------------------------------------------------------
+   3. A ESCALA DE RAIO APLICADA
+   As utilitárias são reapontadas em vez de trocadas no HTML: são 88 ocorrências
+   em cinco templates, e o bundle do Tailwind é purgado sem build no repo — uma
+   classe nova não existiria no `output.css` e falharia calada. `html` na frente
+   para somar 0,1,1 e vencer a utilitária por especificidade, não por ordem.
+   `rounded-full` NÃO aparece aqui: pílula continua pílula, que é a exceção
+   documentada da regra.
+   -------------------------------------------------------------------------- */
+html .rounded-\[2rem\]   { border-radius: var(--docia-r-casco); }
+html .rounded-\[1\.5rem\] { border-radius: var(--docia-r-casco); }
+html .rounded-3xl        { border-radius: var(--docia-r-card); }
+html .rounded-2xl        { border-radius: var(--docia-r-card); }
+html .rounded-xl         { border-radius: var(--docia-r-campo); }
+html .rounded-lg         { border-radius: var(--docia-r-campo); }
+html .rounded-md         { border-radius: 6px; }
+html .rounded-r-xl       { border-radius: 0 var(--docia-r-campo) var(--docia-r-campo) 0; }
+
+
+/* --------------------------------------------------------------------------
+   4. OS CARTÕES
+   Creme em vez de branco puro, e fio de tinta em vez de fio de luz. O
+   `border-gray-200` das utilitárias é um cinza frio sólido que sobre papel
+   quente lê como sujeira; o alfa de tinta acompanha o que estiver atrás.
+   -------------------------------------------------------------------------- */
+.docia-card-doc,
+.docia-kpi-card {
+    background-color: var(--docia-superficie);
+    border-color: var(--docia-fio);
+}
+
+/*  A ÁREA DO GRÁFICO AFUNDA MEIO TOM em relação ao cartão. É o que separa
+    "cartão com desenho impresso" de "cartão com uma janela": sem o degrau, a
+    rosca flutua sobre o mesmo branco da borda e o olho não acha onde o gráfico
+    começa. Meio tom só — o pedido foi creme, não bandeja cinza.  */
+.docia-tela {
+    background-color: var(--docia-rebaixo);
+    background-image: radial-gradient(
+        circle at 1px 1px,
+        color-mix(in srgb, var(--docia-nord-0) 7%, transparent) 1px,
+        transparent 1px);
+    background-size: 16px 16px;
+}
+
+
+/* --------------------------------------------------------------------------
+   5. OS KPIs
+   O rótulo estava em 9px e 10px num cinza `#9CA3AF` que rende 2.5:1 sobre
+   branco — abaixo do mínimo de 4.5:1, e é disso que vem a sensação de linha
+   fina e apagada. Sobe um degrau de tamanho, o peso vira 700 e a cor passa
+   para o nord3 clareado, que passa em 4.5:1 sobre o creme. Esticamento de
+   letra cai de 0.06em para 0.04em: `letter-spacing` alto em corpo pequeno
+   afina o traço aparente, que é o contrário do que se quer aqui.
+   -------------------------------------------------------------------------- */
+.docia-kpi-card p {
+    color: var(--docia-nord-2) !important;
+    font-size: 11px !important;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.docia-kpi-rotulo,
+.docia-kpi-base {
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    color: var(--docia-nord-3);
+}
+
+/*  A TINTA DO NÚMERO. Só a cor: `tabular-nums` este arquivo já declara duas
+    vezes acima, e repetir aqui seria criar um terceiro lugar para manter.
+    `#2E3440` no lugar do `#111827` é a mesma escuridão medida em luminância,
+    com o azul-ardósia trocado pelo Polar Night — sobre papel creme, o cinza
+    frio do Tailwind aparece como uma tinta de outra impressão.  */
+.docia-kpi-valor {
+    color: var(--docia-nord-0);
+}
+
+
+/* --------------------------------------------------------------------------
+   6. OS FILTROS
+   Mesmo problema do rótulo do KPI, mesma correção. O trilho e o campo passam a
+   sentar sobre o rebaixo creme, e a linha divisória vira fio de tinta: era
+   `border-white/60`, que sobre um painel agora quase opaco simplesmente
+   desaparece.
+   -------------------------------------------------------------------------- */
+.docia-filtro-rotulo {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--docia-nord-2);
+}
+
+#filtros-analise hr,
+#filter-sidebar hr,
+#filtros-analise .border-white\/60,
+#filter-sidebar .border-white\/60 {
+    border-color: var(--docia-fio);
+}
+
+
+/* --------------------------------------------------------------------------
+   7. O HALO DE TRÁS DA ROSCA
+   Este era o "fundo dos gráficos" da queixa. Um radial de 340px na cor da
+   marca a 13% é, na prática, uma nuvem rosa de meio card — sobre papel branco
+   passava por luz, sobre papel creme vira mancha, e mancha de baixa opacidade
+   sem aresta é literalmente o que o olho classifica como imagem mal
+   renderizada. Cai para 6% e encolhe para 260px: continua havendo uma fonte de
+   luz difusa atrás do gráfico, que era a intenção, mas ela para de competir com
+   as fatias — que são dado, e são as únicas coisas nesta tela que têm direito
+   de ser saturadas.
+   -------------------------------------------------------------------------- */
+.docia-card-doc::after {
+    background: radial-gradient(260px circle at 50% 46%,
+                color-mix(in srgb, var(--docia-marca) 6%, transparent),
+                transparent 66%);
+}
+
+
+/* --------------------------------------------------------------------------
+   8. A LINHA DE BASE DOS GRÁFICOS DA ANÁLISE IA
+   "14.766 lidos de 15.611 documentos" sai do JS com `text-red-500`, que é
+   `#EF4444`: 3.61:1 sobre o papel, abaixo do mínimo de 4.5:1 para corpo
+   pequeno. É uma ressalva sobre o RECORTE do dado — quem não a lê interpreta
+   o gráfico inteiro errado, achando que ele fala das 15.611 linhas. Vermelho
+   um degrau mais fundo resolve sem trocar a cor: `#DC2626` dá 4.63:1, e é o
+   vermelho que esta tela já usa nos avisos.
+   -------------------------------------------------------------------------- */
+.docia-card-doc .text-red-500,
+#ia-vista-performance .text-red-500 {
+    color: #DC2626;
+}
+
+
+/* --------------------------------------------------------------------------
+   9. A BARRA DE FILTROS DESLIZA EM 320ms, E SÓ O QUE PRECISA TRANSICIONA
+   Duas coisas faziam "expandir e voltar os filtros" demorar. A primeira era o
+   JS, e está corrigida lá. A segunda é esta: 500ms é longo para um painel que
+   se abre e fecha o tempo todo — a faixa confortável para um deslize desse
+   tamanho fica entre 250 e 350ms, e acima disso o olho já terminou de ler a
+   tela nova antes de a animação acabar.
+   E `transition-all` no `#main-content` é a outra metade: ele põe TODAS as
+   propriedades animáveis do container em transição, e o container é o pai de
+   tudo que há na tela. O que muda ali é `padding-left`; declarar só isso tira
+   o resto do caminho do compositor.
+   -------------------------------------------------------------------------- */
+#filter-sidebar {
+    transition-duration: 320ms;
+}
+
+#main-content {
+    transition-property: padding-left;
+    transition-duration: 320ms;
 }
