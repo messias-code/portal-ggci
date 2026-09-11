@@ -3793,8 +3793,8 @@ header.menu-divisoria button:active,
         fundo só aumenta o contraste dela. Todos os números de legibilidade
         anotados neste arquivo foram medidos contra o creme antigo e continuam
         valendo por folga.  */
-    --docia-superficie: #F9F4E9;  /* o cartão */
-    --docia-rebaixo: #F1EBDC;     /* o que afunda: área de gráfico, filtros */
+    --docia-superficie: #FCFAF5;  /* o cartão, quase branco */
+    --docia-rebaixo: #F2EDE1;     /* o que afunda: área de gráfico, um pouco mais escuro */
 
     /*  Polar Night do Nord, literal. `#2E3440` é o nord0; `#434C5E` o nord2.
         O terceiro é o nord3 (`#4C566A`) clareado até passar em 4.5:1 sobre o
@@ -3921,6 +3921,7 @@ html .rounded-r-xl       { border-radius: 0 var(--docia-r-campo) var(--docia-r-c
 .docia-kpi-card {
     background-color: var(--docia-superficie);
     border-color: var(--docia-fio);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
 }
 
 /*  A ÁREA DO GRÁFICO AFUNDA MEIO TOM em relação ao cartão. É o que separa
