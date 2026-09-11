@@ -3795,8 +3795,8 @@ header.menu-divisoria button:active,
         fundo só aumenta o contraste dela. Todos os números de legibilidade
         anotados neste arquivo foram medidos contra o creme antigo e continuam
         valendo por folga.  */
-    --docia-superficie: #FCFAF5;  /* o cartão, quase branco */
-    --docia-rebaixo: #F2EDE1;     /* o que afunda: área de gráfico, um pouco mais escuro */
+    --docia-superficie: #FFFFFF;  /* o cartão, branco puro */
+    --docia-rebaixo: #F4F1EA;     /* o fundo pontilhado, um creme bem suave */
 
     /*  Polar Night do Nord, literal. `#2E3440` é o nord0; `#434C5E` o nord2.
         O terceiro é o nord3 (`#4C566A`) clareado até passar em 4.5:1 sobre o
