@@ -1037,67 +1037,6 @@ document.addEventListener('turbo:load', () => {
              * `api/dados/` já traz os cinco.
              */
             const pintarResumo = () => {
-                /*  ROSCA ZERADA NÃO É ROSCA CINZA.
-                    Com todos os valores em 0 o Apex desenha o anel inteiro no tom
-                    do "vazio", e um anel FECHADO é a forma de 100% — por um
-                    instante o card afirma que tudo caiu numa categoria só. Some
-                    com o gráfico e entra uma explicação.
-
-                    A EXPLICAÇÃO SEPARA DUAS COISAS que o zero confunde: não haver
-                    este documento no recorte (informação sobre os dados) e os
-                    filtros não terem deixado nada passar (consequência de uma
-                    escolha de quem está olhando). Só a segunda ganha botão;
-                    oferecer "Limpar filtros" sem filtro ativo é um clique que não
-                    muda nada.
-
-                    O botão não duplica a lógica de limpeza: ele encaminha o
-                    clique para o chip `data-acao="tudo"` que já existe na faixa
-                    de filtros. Uma única implementação de "limpar tudo", que
-                    continua sendo a que já estava testada.  */
-                const marcarCardVazio = (alvo, caixaLegenda, valores) => {
-                    const card = alvo.closest('.docia-card-doc');
-                    if (!card) return;
-
-                    const total = (valores || []).reduce(
-                        (soma, valor) => soma + (Number(valor) || 0), 0);
-                    const anterior = card.querySelector('.docia-vazio');
-
-                    if (total > 0) {
-                        if (anterior) anterior.remove();
-                        alvo.style.removeProperty('display');
-                        if (caixaLegenda) caixaLegenda.style.removeProperty('display');
-                        return;
-                    }
-
-                    alvo.style.display = 'none';
-                    if (caixaLegenda) caixaLegenda.style.display = 'none';
-                    if (anterior) return;  // já montado: não repinta a cada filtro
-
-                    const chipLimpar = document.querySelector(
-                        '#tabela-filtros .docia-chip--acao[data-acao="tudo"]');
-                    const caixa = document.createElement('div');
-                    caixa.className = 'docia-vazio';
-                    caixa.innerHTML =
-                        '<i class="fa-regular fa-folder-open docia-vazio__icone" aria-hidden="true"></i>'
-                        + '<span class="docia-vazio__titulo">Nenhum documento</span>'
-                        + '<span class="docia-vazio__texto">'
-                        + (chipLimpar
-                            ? 'Os filtros aplicados não deixaram nenhum registro deste tipo.'
-                            : 'Não há registros deste tipo no recorte atual.')
-                        + '</span>';
-
-                    if (chipLimpar) {
-                        const acao = document.createElement('button');
-                        acao.type = 'button';
-                        acao.className = 'docia-vazio__acao';
-                        acao.textContent = 'Limpar filtros';
-                        acao.addEventListener('click', () => chipLimpar.click());
-                        caixa.appendChild(acao);
-                    }
-
-                    card.appendChild(caixa);
-                };
-
                 const estado = window.__ultimoEstadoDocIA;
                 if (!estado) return;
 
@@ -1119,8 +1058,6 @@ document.addEventListener('turbo:load', () => {
                     const caixaLegenda = document.getElementById(
                         alvo.id.replace('chart-doc-', 'legenda-doc-'));
                     if (caixaLegenda) pintarLegenda(caixaLegenda, grafico.valoresCru);
-
-                    marcarCardVazio(alvo, caixaLegenda, grafico.valoresCru);
                 });
 
                 // A legenda pode mudar de altura entre uma pintura e outra (um valor que
@@ -4132,61 +4069,3 @@ document.addEventListener('turbo:load', () => {
             const modal = elIES('modal-ies');
             if (evento.key === 'Escape' && modal && modal.style.display === 'flex') window.closeModalIES();
         });
-
-
-/* ==========================================================================
-   A LUZ QUE SEGUE O CURSOR NOS CARDS DE DOCUMENTO
-   ==========================================================================
-   Escreve em `--px`/`--py` a posição do mouse dentro do card; quem desenha é o
-   `radial-gradient` de `.docia-card-doc::after`, no CSS. O JS não pinta nada —
-   ele só informa a coordenada, e é essa divisão que mantém o efeito inteiro
-   desligável por `prefers-reduced-motion` sem tocar neste arquivo.
-
-   UM ÚNICO OUVINTE NO DOCUMENTO, delegado. Cinco cards com `mousemove` próprio
-   seriam cinco callbacks disputando a mesma thread durante o movimento.
-
-   rAF COM TRAVA: `mousemove` dispara mais rápido que o navegador pinta — até
-   ~1000Hz em mouse gamer, contra 60 quadros. Sem a trava, escreveríamos a
-   variável dezenas de vezes entre dois quadros e o trabalho extra é
-   integralmente jogado fora. Guardar o último evento e aplicar uma vez por
-   quadro é o que mantém isto em custo zero.
-
-   `passive: true` porque nunca chamamos `preventDefault`: avisa o navegador de
-   antemão que ele não precisa esperar este callback para rolar a página.
-   ========================================================================== */
-(function () {
-    const SELETOR = '.docia-card-doc';
-    if (!document.querySelector(SELETOR)) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-    let pendente = null;
-
-    const aplicar = () => {
-        const evento = pendente;
-        pendente = null;
-        if (!evento) return;
-        const card = evento.target.closest(SELETOR);
-        if (!card) return;
-        const caixa = card.getBoundingClientRect();
-        card.style.setProperty('--px', `${evento.clientX - caixa.left}px`);
-        card.style.setProperty('--py', `${evento.clientY - caixa.top}px`);
-    };
-
-    document.addEventListener('mousemove', (evento) => {
-        if (!evento.target.closest || !evento.target.closest(SELETOR)) return;
-        const primeiro = pendente === null;
-        pendente = evento;
-        if (primeiro) requestAnimationFrame(aplicar);
-    }, { passive: true });
-
-    /*  Ao sair, a luz volta ao centro. Sem isto ela fica congelada na última
-        posição e reacende ali no próximo hover, longe de onde o mouse entrou —
-        o efeito passa de "a superfície reflete onde estou" para "um brilho
-        aleatório apareceu", que é o oposto do que se quer.  */
-    document.addEventListener('mouseout', (evento) => {
-        const card = evento.target.closest && evento.target.closest(SELETOR);
-        if (!card || card.contains(evento.relatedTarget)) return;
-        card.style.removeProperty('--px');
-        card.style.removeProperty('--py');
-    }, { passive: true });
-}());

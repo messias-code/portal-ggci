@@ -546,10 +546,24 @@ html[data-tema="eleitoral"] .docia-card-doc:hover {
                 0 9px 20px -6px rgba(0, 0, 0, 0.55),
                 inset 0 1px 0 rgba(255, 255, 255, 0.09);
 }
+/*  A aresta de cor do KPI precisa ser repetida aqui, e não por descuido: esta
+    regra sobrescreve a `box-shadow` inteira do arquivo claro, e `box-shadow`
+    não se acumula entre regras — quem vence leva a lista toda. Sem repetir o
+    `inset 3px`, o fio de `--kpi-cor` simplesmente some no escuro. Ele fica um
+    ponto mais grosso (4px) porque menta clara sobre superfície escura tem a
+    borda mais macia que roxo sobre branco.  */
 html[data-tema="eleitoral"] .docia-kpi-card {
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35),
+    box-shadow: inset 4px 0 0 var(--kpi-cor, #6FD3BF),
+                0 1px 2px rgba(0, 0, 0, 0.35),
                 0 4px 10px -3px rgba(0, 0, 0, 0.42),
                 inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+html[data-tema="eleitoral"] .docia-kpi-card:hover {
+    box-shadow: inset 4px 0 0 var(--kpi-cor, #6FD3BF),
+                0 2px 4px rgba(0, 0, 0, 0.40),
+                0 10px 22px -8px rgba(0, 0, 0, 0.55),
+                inset 0 1px 0 rgba(255, 255, 255, 0.09);
+    border-color: color-mix(in srgb, var(--docia-luz) 14%, transparent);
 }
 html[data-tema="eleitoral"] .docia-grade-seg,
 html[data-tema="eleitoral"] .docia-grade-doc {
@@ -901,25 +915,22 @@ html[data-tema="eleitoral"] .docia-esqueleto {
         color-mix(in srgb, var(--docia-luz) 6%, transparent) 100%);
 }
 
-/*  O CTA do vazio: no claro ele é roxo com texto branco. Aqui a primária é
-    CLARA, então o texto tem de escurecer — é a mesma inversão do chip dos KPIs,
-    e pela mesma razão: branco sobre menta não se lê.  */
-html[data-tema="eleitoral"] .docia-vazio__acao {
-    color: var(--tema-superficie, #1E293B);
+
+/*  O ORNAMENTO FIXO NO ESCURO.
+    Os anéis e a trama de pontos saem de `--docia-marca`, que este arquivo já
+    reaponta para a primária do tema — então a COR chega certa sozinha. O que
+    não chega é a intensidade: 5% e 6% de um verde-menta claro sobre superfície
+    escura rendem mais contraste que os mesmos 5% de roxo sobre branco, e o que
+    era textura vira constelação. As duas caem para pouco mais da metade.  */
+html[data-tema="eleitoral"] .chart-doc::before {
+    background-image: repeating-radial-gradient(circle at 50% 50%,
+        transparent 0 15px,
+        color-mix(in srgb, var(--docia-marca) 6%, transparent) 15px 16px);
 }
 
-html[data-tema="eleitoral"] .docia-vazio__icone {
-    color: color-mix(in srgb, var(--docia-marca) 45%, transparent);
-}
-
-/*  Alfa não se traduz entre temas. Tinta escura a 38% sobre papel branco dá uns
-    aceitáveis 6:1; tinta clara a 38% sobre superfície escura dá 2,1:1 e o texto
-    de apoio do estado vazio some. As porcentagens sobem para devolver o MESMO
-    contraste percebido, não o mesmo número.  */
-html[data-tema="eleitoral"] .docia-vazio__titulo {
-    color: color-mix(in srgb, var(--docia-texto) 82%, transparent);
-}
-
-html[data-tema="eleitoral"] .docia-vazio__texto {
-    color: color-mix(in srgb, var(--docia-texto) 58%, transparent);
+html[data-tema="eleitoral"] .docia-tela {
+    background-image: radial-gradient(
+        circle at 1px 1px,
+        color-mix(in srgb, var(--docia-marca) 8%, transparent) 1.6px,
+        transparent 1.6px);
 }
