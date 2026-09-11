@@ -1038,11 +1038,11 @@
                             value: {
                                 show: true,
                                 fontSize: Math.max(
-                                    id === 'ia-gr-veredito' ? 14 : 17,
-                                    Math.round(altura * (id === 'ia-gr-veredito' ? 0.11 : 0.135))
+                                    14,
+                                    Math.round(altura * (0.11))
                                 ) + 'px',
                                 fontWeight: 800,
-                                color: tintaForte(), offsetY: id === 'ia-gr-veredito' ? -15 : -18,
+                                color: tintaForte(), offsetY: -15,
                                 formatter: (valor) => formatarNumero(valor),
                             },
                             /*  `total` é o par NÚMERO + RÓTULO, e o `fontSize` daqui é

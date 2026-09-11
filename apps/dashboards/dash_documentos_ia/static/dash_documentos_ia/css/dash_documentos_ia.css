@@ -2543,8 +2543,8 @@ html[data-tela-cheia="1"] .docia-legenda__pct { width: 44px; }
 .docia-kpi-card::after {
     content: '';
     position: absolute;
-    left: -18px;
-    right: -18px;
+    left: -34px;
+    right: -34px;
     bottom: -1px;
     z-index: -1;
     pointer-events: none;
@@ -2558,8 +2558,8 @@ html[data-tela-cheia="1"] .docia-legenda__pct { width: 44px; }
                 scale 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/*  `-18px` NAS LATERAIS, e não `-1px` como embaixo: é a folga que permite a
-    deriva do hover. A onda desliza até 10px para o lado, e sem material
+/*  `-34px` NAS LATERAIS, e não `-1px` como embaixo: é a folga que permite a
+    deriva. A onda de trás desliza até 26px para o lado, e sem material
     sobrando o lado de onde ela saiu mostraria o fundo cru do card por uma
     fresta. O `overflow: hidden` do card corta o excesso, então nada disso
     aparece parado. Embaixo continua `-1px` pelo motivo original:
@@ -2568,14 +2568,14 @@ html[data-tela-cheia="1"] .docia-legenda__pct { width: 44px; }
     mesmo tipo de emenda visível que derrubou o trilho.  */
 .docia-kpi-card::before {
     height: 82%;
-    opacity: 0.17;
+    opacity: 0.22;
     -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 70' preserveAspectRatio='none'%3E%3Cpath d='M0,42 C34,20 60,58 104,38 C148,18 172,50 200,30 L200,70 L0,70 Z' fill='black'/%3E%3C/svg%3E");
     mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 70' preserveAspectRatio='none'%3E%3Cpath d='M0,42 C34,20 60,58 104,38 C148,18 172,50 200,30 L200,70 L0,70 Z' fill='black'/%3E%3C/svg%3E");
 }
 
 .docia-kpi-card::after {
     height: 60%;
-    opacity: 0.12;
+    opacity: 0.16;
     -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 70' preserveAspectRatio='none'%3E%3Cpath d='M0,56 C46,34 68,68 114,50 C158,33 178,58 200,44 L200,70 L0,70 Z' fill='black'/%3E%3C/svg%3E");
     mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 70' preserveAspectRatio='none'%3E%3Cpath d='M0,56 C46,34 68,68 114,50 C158,33 178,58 200,44 L200,70 L0,70 Z' fill='black'/%3E%3C/svg%3E");
 }
@@ -2607,26 +2607,71 @@ html[data-tela-cheia="1"] .docia-legenda__pct { width: 44px; }
     A COMPONENTE VERTICAL DESCE, NUNCA SOBE. As ondas estão ancoradas em
     `bottom: -1px` e o card tem `overflow: hidden`: descer é material saindo
     por baixo, que o card corta; subir abriria uma fresta do fundo cru entre a
-    onda e a borda inferior. 3 e 4px, que é respiração, não ondulação.
+    onda e a borda inferior. Por isso o eixo Y vai de 0 para baixo e volta,
+    nunca para valor negativo.
+
+    ---------------------------------------------------------------------------
+    POR QUE OITO QUADROS E `linear`, E NÃO TRÊS QUADROS E `ease-in-out`
+
+    A versão anterior era `-9px → 9px → -9px` em `ease-in-out`, e tinha os dois
+    defeitos que se lia como "quase parada". O primeiro é a amplitude: 18px de
+    percurso em 9 segundos dá 2px por segundo, abaixo do limiar em que o olho
+    registra deslocamento sem ter um referencial ao lado — e onda borrada a 17%
+    não tem referencial nenhum. O segundo, e o pior, é o `ease-in-out` num
+    percurso de vaivém: ele desacelera até ZERO nas duas pontas, então a cada
+    meio ciclo a onda para de verdade por uma fração de segundo. Quem olha de
+    relance pega justamente a parada, não a travessia. Movimento fluido é o que
+    nunca tem velocidade zero.
+
+    A correção é descrever a senoide nos próprios quadros e deixar a
+    interpolação `linear`. Oito amostras a cada 45° erram no máximo 3,7% da
+    amplitude contra a senoide real — invisível — e em troca a velocidade nunca
+    zera, porque `linear` não impõe curva nenhuma por cima do que os quadros já
+    dizem. É o inverso do reflexo comum de "suavizar com easing": aqui o easing
+    era a fonte da dureza.
+
+    E O EIXO Y CORRE NO DOBRO DA FREQUÊNCIA DO EIXO X. Se os dois batessem
+    juntos, a onda andaria numa diagonal — uma reta inclinada, que o olho lê
+    como peça deslizando. Com Y em 2x, o caminho vira um oito deitado
+    (Lissajous 1:2): a onda desce ao ir para a direita, sobe no meio, desce de
+    novo ao ir para a esquerda. Duas curvas fechadas em vez de uma reta, que é
+    a diferença entre "arrastar" e "ondular".
+
+    AMPLITUDE E PERÍODO: 20px e 7s na frente, 26px e 9,5s no fundo — contra 9px
+    e 12px em 9s e 11s. Mais que o dobro de percurso e um terço a menos de
+    tempo. Os períodos continuam sem fechar conta (7 e 9,5 só se reencontram a
+    cada 133 segundos), que é a regra que impede o laço de ficar visível.
 
     DELAYS NEGATIVOS, e não positivos. Delay positivo prende a onda parada até
     a sua vez chegar — os quatro cards nasceriam congelados em fila. Negativo
     começa a animação já adiantada: a página abre com as oito ondas em oito
     fases diferentes, que é o que tira a faixa do aspecto de coreografia.  */
 @keyframes docia-mare-frente {
-    0%   { translate: -9px 3px; }
-    50%  { translate:  9px 0;   }
-    100% { translate: -9px 3px; }
+    0%     { translate:   0     0;   }
+    12.5%  { translate:  14px   3px; }
+    25%    { translate:  20px   6px; }
+    37.5%  { translate:  14px   3px; }
+    50%    { translate:   0     0;   }
+    62.5%  { translate: -14px   3px; }
+    75%    { translate: -20px   6px; }
+    87.5%  { translate: -14px   3px; }
+    100%   { translate:   0     0;   }
 }
 
 @keyframes docia-mare-fundo {
-    0%   { translate:  12px 0;   }
-    50%  { translate: -12px 4px; }
-    100% { translate:  12px 0;   }
+    0%     { translate:   0     8px; }
+    12.5%  { translate: -18px   4px; }
+    25%    { translate: -26px   0;   }
+    37.5%  { translate: -18px   4px; }
+    50%    { translate:   0     8px; }
+    62.5%  { translate:  18px   4px; }
+    75%    { translate:  26px   0;   }
+    87.5%  { translate:  18px   4px; }
+    100%   { translate:   0     8px; }
 }
 
-.docia-kpi-card::before { animation: docia-mare-frente 9s ease-in-out infinite; }
-.docia-kpi-card::after  { animation: docia-mare-fundo  11s ease-in-out infinite; }
+.docia-kpi-card::before { animation: docia-mare-frente 7s linear infinite; }
+.docia-kpi-card::after  { animation: docia-mare-fundo  9.5s linear infinite; }
 
 .docia-kpi-card:nth-child(2)::before { animation-delay: -2.2s; }
 .docia-kpi-card:nth-child(2)::after  { animation-delay: -3.0s; }
@@ -3735,10 +3780,21 @@ header.menu-divisoria button:active,
         brigar e não brigam: o calor fica nas superfícies (é o que o olho lê
         como "creme") e o frio fica no texto e nos fios (é o que lê como
         "nord"). Papel quente com tinta quente vira sépia; papel frio com tinta
-        fria vira o cinza-azulado corporativo que já estava aqui.  */
-    --docia-papel: #F1EDE4;       /* a base da tela, atrás dos halos */
-    --docia-superficie: #FCFAF5;  /* o cartão */
-    --docia-rebaixo: #F5F1E8;     /* o que afunda: área de gráfico, filtros */
+        fria vira o cinza-azulado corporativo que já estava aqui.
+
+        OS DOIS DESCERAM UM DEGRAU DE VERDADE. Estavam em `#FCFAF5` e `#F5F1E8`
+        — L* 98,2 e 95,4, contra L* 100 do branco puro. Menos de dois pontos de
+        luminância abaixo do branco é uma diferença que só existe em conta: com
+        a tela inteira nesse tom, não há nada ao lado servindo de referência, e
+        creme sem referência é lido como branco. Foi exatamente essa a queixa.
+        Agora são L* 96,0 e 93,0 — quatro e sete pontos abaixo do branco, que é
+        onde o creme para de precisar ser explicado.
+        A tinta NÃO muda junto, e não precisa: ela é escura, então papel mais
+        fundo só aumenta o contraste dela. Todos os números de legibilidade
+        anotados neste arquivo foram medidos contra o creme antigo e continuam
+        valendo por folga.  */
+    --docia-superficie: #F9F4E9;  /* o cartão */
+    --docia-rebaixo: #F1EBDC;     /* o que afunda: área de gráfico, filtros */
 
     /*  Polar Night do Nord, literal. `#2E3440` é o nord0; `#434C5E` o nord2.
         O terceiro é o nord3 (`#4C566A`) clareado até passar em 4.5:1 sobre o
@@ -3769,22 +3825,26 @@ header.menu-divisoria button:active,
 
 
 /* --------------------------------------------------------------------------
-   1. O FUNDO
-   O `bg-[#f8f6fb]` era lilás frio; os halos por cima dele a 60-75% de alfa é
-   que faziam o conjunto gritar. Baixar o alfa dos quatro e trocar a base por
-   creme resolve o "cores muito fortes" sem tirar um halo sequer da tela — as
-   cores são as mesmas quatro, em tonalidade, que era o que estava liberado.
-   Especificidade 0,1,1 de propósito: `html[data-tema="eleitoral"] body` soma
-   0,1,2 e continua ganhando, o tema escuro não é afetado por nada daqui.
+   1. O FUNDO É O DO PORTAL, E NÃO UM FUNDO DESTA TELA
+   Aqui havia um `body.grid-bg` creme e quatro `.menu-blob--*` reescritos em
+   pastel a 28-36% de alfa. A intenção era abaixar o volume das cores; o efeito
+   medido foi outro — o halo pastel sobre papel creme não lê como "halo mais
+   suave", lê como halo AUSENTE, e a tela passou a ser a única do portal sem a
+   moldura de cor da OVG. Rosa, âmbar, roxo e verde nos cantos não são
+   decoração desta tela: são a identidade que todas as outras vinte e poucas
+   telas mostram, e quebrar isso em uma só faz a tela parecer de outro sistema.
+   Os quatro halos voltam a ser os do `menu-blob` de origem — `bg-pink-500/70`,
+   `bg-yellow-400/75`, `bg-purple-700/60` e `bg-green-600/65`, declarados nas
+   utilitárias do próprio HTML — e a base volta ao `bg-[#f8f6fb]` do template.
+   Não há nada a declarar aqui: o jeito de a tela ter o fundo do portal é NÃO
+   sobrescrever o fundo do portal.
+   O creme não some por causa disso, porque creme nunca foi o fundo: ele é
+   `--docia-superficie` e `--docia-rebaixo`, que é o que a seção 4 veste. O
+   fundo é uma moldura de ~20px em volta do casco mais os quatro cantos — todo
+   o resto da tela é superfície, e é lá que a recalibração vive.
+   O tema escuro continua com os halos frios do `tema-menu.css`, que sempre
+   vieram de lá e nunca passaram por aqui.
    -------------------------------------------------------------------------- */
-body.grid-bg {
-    background-color: var(--docia-papel);
-}
-
-.menu-blob--1 { background-color: rgba(206, 137, 170, 0.34); }  /* rosa */
-.menu-blob--2 { background-color: rgba(219, 194, 138, 0.36); }  /* âmbar */
-.menu-blob--3 { background-color: rgba(143, 120, 172, 0.30); }  /* roxo */
-.menu-blob--4 { background-color: rgba(132, 170, 146, 0.28); }  /* verde */
 
 /*  A GRADE. Roxo a 7% em malha de 113x75 — número ímpar de pixel em linha de
     1px é a receita do serrilhado que se lê como tela de baixa resolução: a
@@ -3983,4 +4043,82 @@ html .rounded-r-xl       { border-radius: 0 var(--docia-r-campo) var(--docia-r-c
 #main-content {
     transition-property: padding-left;
     transition-duration: 320ms;
+}
+
+
+/* --------------------------------------------------------------------------
+   10. OS PAINÉIS DE TABELA ENTRAM NA ESCALA DE CREME
+   A recalibração da seção 4 vestiu `.docia-card-doc` e `.docia-kpi-card`, que
+   são os cartões pequenos. Os TRÊS PAINÉIS GRANDES ficaram de fora e
+   continuaram no `bg-white/80` das utilitárias — e eles são, juntos, a maior
+   área contínua da tela: a tabela de detalhamento ocupa metade da altura
+   sozinha. O resultado era uma tela creme com um bloco branco no meio, que é
+   pior do que a tela toda branca: sem o vizinho creme ao lado, ninguém repara
+   num branco; com ele ao lado, o branco vira a única coisa que se vê.
+
+   VÃO OS TRÊS JUNTOS, cada um com o papel que já tem na hierarquia:
+   o casco do painel recebe a SUPERFÍCIE (é cartão, mesmo nível dos outros), e
+   a faixa do cabeçalho e a do `<thead>` recebem o REBAIXO (são trilhos, e o
+   degrau é o que separa rótulo de dado — a mesma lógica de `.docia-tela`).
+
+   `background-image: none` no cabeçalho não é zelo: `bg-gradient-to-r
+   from-gray-50/50 to-white/50` é `background-image`, propriedade diferente de
+   `background-color`, e sem apagá-la o gradiente branco continuaria por cima
+   do creme que a linha de baixo declara.
+
+   O `backdrop-filter` sai pelo motivo já detalhado na seção 2: camada composta
+   perde antialias por subpixel, e destes três painéis o que se faz é LER.
+
+   ---------------------------------------------------------------------------
+   `html:not([data-tema="eleitoral"])` NA FRENTE DE TUDO, E NÃO É ESTILO DE
+   ESCRITA: é a única forma de esta seção não derrubar o tema escuro.
+
+   O resto deste arquivo pinta por CLASSE, e o escuro ganha desses seletores com
+   `html[data-tema="eleitoral"] .area-trabalho .bg-white\/80` — três classes
+   contra uma. Aqui os ganchos são `id`, porque é o que o template oferece
+   nestes três painéis, e um `id` sozinho vence QUALQUER quantidade de classes:
+   sem o recorte, o creme vazaria para o tema eleitoral e a tabela apareceria em
+   papel claro com a tinta clara do escuro por cima — foi o que aconteceu, e o
+   texto some por completo.
+   Negar o tema em vez de somar especificidade do lado escuro é o caminho certo
+   porque este é o arquivo do tema CLARO: quem mora aqui não deveria ter
+   opinião sobre a tela escura, e `:not()` é como se diz isso.
+   -------------------------------------------------------------------------- */
+html:not([data-tema="eleitoral"]) #card-detalhamento,
+html:not([data-tema="eleitoral"]) #card-ies,
+html:not([data-tema="eleitoral"]) #ia-card-tabela {
+    background-color: var(--docia-superficie);
+    border-color: var(--docia-fio);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+}
+
+html:not([data-tema="eleitoral"]) #card-detalhamento > div.px-5.py-4,
+html:not([data-tema="eleitoral"]) #card-ies > div.px-5.py-4,
+html:not([data-tema="eleitoral"]) #ia-card-tabela > div.px-5.py-4 {
+    background-image: none;
+    background-color: var(--docia-rebaixo);
+    border-bottom-color: var(--docia-fio);
+}
+
+/*  O `<thead>` estava em `#F6F3F9`, um lilás frio escolhido quando o fundo da
+    página era lilás. Sobre creme ele não lê como "faixa da tela": lê como
+    faixa cinza, que é a mesma queixa de pedaço-de-outro-produto que aquela cor
+    tinha vindo resolver. Vira o rebaixo, e aí a faixa pertence à mesma
+    impressão que o resto. A tinta continua a que já estava — ela mede 5,7:1
+    sobre o creme novo, acima do mínimo, e cor de rótulo não era o pedido.  */
+/*  A tabela da Análise IA não tem `id` no `<table>` — o gancho é o `id` do
+    contêiner de rolagem. E o `bg-white` mora no `<thead>`, não no `<th>`: os
+    dois precisam do creme, porque a linha grudada no topo é a que fica por
+    cima de tudo quando a rolagem anda, e um fio de branco escapando entre
+    células é justamente o que se enxerga em movimento.
+    Mesmo recorte de tema da regra acima, pelo mesmo motivo: o escuro tem a sua
+    própria faixa de cabeçalho, já escrita e já medida.  */
+html:not([data-tema="eleitoral"]) #tabela-detalhamento thead,
+html:not([data-tema="eleitoral"]) #tabela-ies thead,
+html:not([data-tema="eleitoral"]) #ia-tabela-rolagem thead,
+html:not([data-tema="eleitoral"]) #tabela-detalhamento thead th,
+html:not([data-tema="eleitoral"]) #tabela-ies thead th,
+html:not([data-tema="eleitoral"]) #ia-tabela-rolagem thead th {
+    background-color: var(--docia-rebaixo);
 }
