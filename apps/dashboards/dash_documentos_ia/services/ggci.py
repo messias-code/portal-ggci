@@ -2293,7 +2293,10 @@ def calcular_auditoria_ia(df):
     qtd_retroativos = pd.to_numeric(df.get('qtd_pagtos_retroativos', pd.Series([0]*len(df), index=df.index)), errors='coerce').fillna(0)
     cond_inadimplente = ((qtd_pagtos - qtd_retroativos) <= 0) | (total_bolsa <= 0)
 
-    matematica_invalida_geral = (ia_cpf == '') | (sys_cpf != ia_cpf) | (ia_semestre == '') | (sys_semestre != ia_semestre)
+    sys_curso = df.get('Curso', pd.Series(['']*len(df), index=df.index)).astype(object).fillna('').astype(str).str.strip().str.upper().replace(['NAN', 'NONE', '<NA>'], '')
+    ia_curso = df.get('Gemini Curso', pd.Series(['']*len(df), index=df.index)).astype(object).fillna('').astype(str).str.strip().str.upper().replace(['NAN', 'NONE', '<NA>'], '')
+
+    matematica_invalida_geral = (ia_cpf == '') | (sys_cpf != ia_cpf) | (ia_semestre == '') | (sys_semestre != ia_semestre) | (ia_curso == '') | (sys_curso != ia_curso)
     matematica_invalida_financeiro = (inc_original.str.contains('Valor da mensalidade integral não localizado', na=False)) | (dif_s != 0)
 
     is_riaf = doc_tipo.str.contains('RIAF', case=False, na=False)
@@ -4985,7 +4988,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             'Status_IA', 'Status_Vínculo', 'Situação do Motivo', 'Observação da Situação', 'Mudou IES?',
             'IES Anterior', 'IES Posterior', 'Mudou Bolsa?', 'Bolsa Anterior', 'Bolsa Posterior',
             'Semestre', 'Gemini Semestre', 'Inscrição', 'Inscrição Anterior', 'Inscrição Posterior',
-            'Bolsista', 'CPF', 'Gemini CPF', 'Gemini Inconsistencias', 'Faculdade', 'Curso',
+            'Bolsista', 'CPF', 'Gemini CPF', 'Gemini Inconsistencias', 'Faculdade', 'Curso', 'Gemini Curso',
             'tipo_bolsa_final', 'qtd_pagtos', 'qtd_pagtos_retroativos', 'último_valor_pago_referencia',
             'total bolsa paga', 'Mensalidade S/ Desconto', 'Gemini Mensalidade S/ Desconto', 'Dif. s/Desc.',
             '% Dif. s/Desc.', 'Total Dif. s/Desc.', 'MSD_SOMA', 'G_MSD_SOMA', 'MSD_DOC',
@@ -4998,7 +5001,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             'Economia da OVG (R$)', 'Diagnóstico Financeiro Final', 'valor_beneficio',
             'Soma Valor Beneficio', 'qual_beneficio', 'valor_financiamento', 'Soma Valor Financiamento',
             'qual_financiamento', 'data_coleta', 'Documento Tipo', 'Data Processamento', 'uni_deficiencia',
-            'uni_sexo', 'Gemini Matricula', 'Gemini Nome Faculdade', 'Gemini Curso', 'Gemini Razao Social',
+            'uni_sexo', 'Gemini Matricula', 'Gemini Nome Faculdade', 'Gemini Razao Social',
             'Gemini Cnpj Faculdade', 'Gemini Nome Mantenedora', 'Gemini Assinatura Aluno', 'Gemini Assinatura Ies',
             'Gemini Beneficio Nome', 'Gemini Valor Beneficio', 'Gemini Valor Financiado', 'Gemini Nome Financiamento',
             'Gemini Modalidade', 'Gemini Email', 'Gemini Telefone', 'Gemini Periodo', 'Gemini Quantidade Periodos',
