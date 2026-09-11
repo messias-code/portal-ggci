@@ -17,7 +17,7 @@
 #   ./scripts/setup-agentes.sh                 # tudo
 #   ./scripts/setup-agentes.sh --dry-run       # mostra sem executar
 #   ./scripts/setup-agentes.sh --only skills   # uma seção só
-#   Seções: path | regras | skills | mcp | hooks | omniroute | plugins
+#   Seções: path | regras | skills | captura | mcp | hooks | omniroute | plugins
 #
 # IDEMPOTÊNCIA
 #   Rodar duas vezes não duplica nada. Todo arquivo sobrescrito ganha backup
@@ -157,6 +157,47 @@ secao_skills() {
   else
     rodar "npm install -g @playwright/cli@latest >/dev/null 2>&1 || true"
     ok "playwright-cli instalado"
+  fi
+}
+
+# -------------------------------------------------------------- 3b. CAPTURA ---
+# O harness de screenshot headless. Mesmo arranjo das regras: a fonte é
+# versionada em .claude/tools/ e o script só propaga para ~/.claude/tools/, onde
+# o agente a encontra sem depender de estar dentro do repo.
+#
+# POR QUE EXISTE: mudança de CSS não se confere lendo CSS. Especificidade e
+# Tailwind purgado são exatamente o que escapa da leitura, e já apagaram o botão
+# de filtros da tela sem que nada no arquivo parecesse errado.
+secao_captura() {
+  titulo "Harness de captura headless (~/.claude/tools)"
+  if [ ! -d "$REPO/.claude/tools" ]; then
+    aviso ".claude/tools/ ausente no repo; pulando"; return 0
+  fi
+  rodar "mkdir -p '$HOME/.claude/tools'"
+  local f
+  for f in "$REPO"/.claude/tools/*.py; do
+    backup "$HOME/.claude/tools/$(basename "$f")"
+    rodar "cp '$f' '$HOME/.claude/tools/'"
+    ok "$(basename "$f") propagado"
+  done
+
+  # O Chromium do Playwright é baixado no cache do usuário, sem sudo. Se as libs
+  # de sistema faltarem, o navegador instala e não abre — por isso o teste de
+  # fumaça abaixo, que falha alto em vez de deixar a descoberta para depois.
+  if [ -x "$REPO/venv/bin/python" ]; then
+    rodar "'$REPO/venv/bin/python' -m playwright install chromium >/dev/null 2>&1 || true"
+    if [ "$DRY" = 1 ]; then
+      printf '  [dry-run] teste de fumaça do chromium\n'
+    elif "$REPO/venv/bin/python" -c "
+from playwright.sync_api import sync_playwright
+with sync_playwright() as p: p.chromium.launch().close()
+" >/dev/null 2>&1; then
+      ok "chromium headless abre"
+    else
+      aviso "chromium não abriu; rode: venv/bin/python -m playwright install --with-deps chromium"
+    fi
+  else
+    aviso "venv do repo ausente; instale o Chromium depois com 'python -m playwright install chromium'"
   fi
 }
 
@@ -321,6 +362,7 @@ printf '%ssetup-agentes.sh%s — repo: %s%s\n' "$C_INFO" "$C_OFF" "$REPO" \
 quero path      && secao_path
 quero regras    && secao_regras
 quero skills    && secao_skills
+quero captura   && secao_captura
 quero mcp       && secao_mcp
 quero hooks     && secao_hooks
 quero omniroute && secao_omniroute

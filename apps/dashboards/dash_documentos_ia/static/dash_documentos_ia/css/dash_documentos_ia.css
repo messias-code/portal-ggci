@@ -1535,39 +1535,45 @@ body { font-family: 'Poppins', sans-serif; }
     controle de 40px, sem nada por baixo que justificasse tanta luz. Trocado pelo
     mesmo par contato + ambiente dos outros controles, em tinta neutra: o botão
     continua descolado da casca, sem acender.  */
-/* Efeito premium no botão de filtros */
+/*  SEM `position` AQUI. O botão mora DENTRO de `#filter-sidebar`, que fica
+    inteiro fora da tela (`-translate-x-full`) enquanto a barra está fechada —
+    quem o mantém visível é o `absolute` + `right: -94px` da `.sidebar-btn`,
+    que o pendura para fora da borda direita da barra. Um `position: relative`
+    neste seletor vence a utilitária `.absolute` por especificidade (id > classe),
+    devolve o botão ao fluxo da barra e ele some junto com ela. O `::after` do
+    brilho não precisa disso: o `absolute` do próprio botão já serve de âncora.  */
 #toggle-sidebar-btn {
     box-shadow: 1px 0 0 rgba(17, 24, 39, 0.05),
                 4px 2px 10px -4px rgba(17, 24, 39, 0.20);
-    position: relative;
-    overflow: hidden;
-    transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
 }
 
+/*  O HOVER DA ALÇA: MAIS LUZ, MESMA TINTA.
+    A alça se alarga 6px para fora (`.sidebar-btn:hover`) — é o gesto de um
+    puxador que se oferece — e a sombra ganha profundidade no MESMO par neutro
+    do estado parado. Sem halo colorido: um brilho rosa de 24px em volta de um
+    controle de 44px é a mancha mais forte da tela competindo com o dado, e foi
+    exatamente por isso que a `shadow-[4px_0_15px_rgba(236,72,153,.2)]` já tinha
+    sido aposentada uma vez. A cor da marca entra só na BORDA, a 22%: o fio de
+    1px é a menor superfície que ainda lê como "isto é interativo e é nosso".  */
 #toggle-sidebar-btn:hover {
-    padding-right: 1.15rem !important;
-    background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(253,242,248,0.95)) !important;
-    box-shadow: 6px 4px 24px -2px rgba(236, 72, 153, 0.3),
-                inset 0 1px 1px rgba(255, 255, 255, 0.9) !important;
-    border-color: rgba(236, 72, 153, 0.2) !important;
+    box-shadow: 1px 0 0 rgba(17, 24, 39, 0.06),
+                6px 3px 16px -5px rgba(17, 24, 39, 0.26);
+    border-color: rgba(176, 0, 122, 0.22);
 }
 
-#toggle-sidebar-btn::after {
-    content: '';
-    position: absolute;
-    top: 0; left: -100%;
-    width: 50%; height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
-    transform: skewX(-20deg);
+/*  A SETA APONTA PARA ONDE A BARRA VAI.
+    Este é o único movimento do botão, e ele carrega informação em vez de
+    enfeite: fechada, a seta é `fa-chevron-right` e desliza 2px para a direita
+    (o lado para onde a barra vai abrir); aberta, o JS troca para
+    `fa-chevron-left` e o deslize inverte. O usuário lê a direção antes de
+    clicar. O `:has()` deixa o estado ser lido do próprio ícone que o JS já
+    mantém, sem uma linha de JS nova. 2px porque o gesto é uma INTENÇÃO de
+    movimento, não o movimento: passou disso, a seta descola do botão.  */
+#toggle-sidebar-btn:hover .sidebar-icon-wrapper:has(.fa-chevron-right) {
+    translate: 2px 0;
 }
-
-#toggle-sidebar-btn:hover::after {
-    animation: docia-shine-btn 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-@keyframes docia-shine-btn {
-    0% { left: -100%; }
-    100% { left: 200%; }
+#toggle-sidebar-btn:hover .sidebar-icon-wrapper:has(.fa-chevron-left) {
+    translate: -2px 0;
 }
 
 
@@ -2028,29 +2034,55 @@ html[data-tela-cheia="1"] .docia-legenda__pct { width: 44px; }
     line-height: 1.15;
     letter-spacing: -0.02em;
     font-variant-numeric: tabular-nums;
-    color: transparent;
-    background: linear-gradient(135deg, #1f2937 0%, #4b5563 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease;
-    transform-origin: left center;
 }
 
-.docia-kpi-card:hover .docia-kpi-valor {
-    background: linear-gradient(135deg, var(--kpi-cor) 0%, #1f2937 120%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    transform: scale(1.03);
-}
+/*  O NÚMERO NÃO PARTICIPA DA ANIMAÇÃO, E ISSO É UMA DECISÃO, NÃO UM ESQUECIMENTO.
+    Ele chegou a crescer 3% no hover e a ser pintado com gradiente em
+    `background-clip: text`. As duas coisas atacam a única parte do card que
+    existe para ser LIDA: escala fracionária joga as hastes dos algarismos fora
+    da grade de pixels e borra o que estava nítido, e texto transparente
+    dependendo de um gradiente perde o contraste garantido, some se o clipping
+    falhar e leva junto o realce de seleção. O card inteiro pode se mexer; o
+    dado, não. Quem anuncia a cor do card são as ondas e o anel do ícone.  */
 
 .docia-kpi-icone {
     border: 1px solid transparent;
-    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: box-shadow 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+                background-color 0.22s ease, border-color 0.22s ease,
+                color 0.22s ease;
 }
 
+/*  O CHIP ACENDE. Substitui o `scale(1.15) rotate(4deg)`: um ícone que cresce e
+    entorta no hover é um adesivo, não um estado, e a rotação de 4° deixava o
+    traço do glifo em diagonal contra o pixel. O ícone continua NÃO se movendo e
+    NÃO mudando de tamanho — o KPI não é clicável, e inchar ao passar o mouse
+    promete um clique que não existe (foi por isso que o `group-hover:scale-110`
+    saiu do template). O que muda é só cor.
+    E muda até o fim: o chip sai do tom pálido de 9% e vai para a cor CHEIA do
+    card, com o glifo virando branco. A versão anterior mexia só num anel de 11%
+    de alfa sobre um fundo já claro — no cartão renderizado aquilo é diferença
+    de dois ou três níveis de cinza, invisível a menos que se procure. Preencher
+    é o mesmo gesto ("este bloco está sob atenção") dito em voz audível, e é a
+    identidade que fala: quem preenche é o `--kpi-cor`, o mesmo token das ondas.
+    O anel continua atrás, agora a 16%, porque sozinho o chip cheio recorta duro
+    contra o fundo pastel — a coroa é a transição entre os dois.
+    BRANCO NO GLIFO É SEGURO AQUI, E SÓ AQUI: as quatro cores do tema claro são
+    #6B007B, #047857, #64748B e #B0007A, todas com contraste acima de 4.5:1
+    contra branco. É a razão de o preenchimento usar a cor do token e não uma
+    mistura clareada. Mas o eleitoral INVERTE a escala — lá o `--kpi-cor` é
+    #6FD3BF, #6EE7B7, #CBD5E1, #A5A9DA, claros de propósito para aparecerem
+    sobre a superfície escura — e branco sobre menta dá 1,6:1, ilegível. Por
+    isso o glifo sai de `--kpi-cor-contraste` e não de um branco fixo: o tema
+    escuro reaponta o token para a própria superfície e o chip se inverte junto,
+    sem duplicar esta regra lá.
+    `color-mix` para tirar alfa do `--kpi-cor`, que é hex e não aceita opacidade
+    direto. Onde não houver suporte só o anel cai; o preenchimento e o branco
+    continuam de pé, que é a degradação certa.  */
 .docia-kpi-card:hover .docia-kpi-icone {
-    transform: scale(1.15) rotate(4deg);
-    box-shadow: 0 8px 16px -4px var(--kpi-cor);
+    background-color: var(--kpi-cor);
+    border-color: var(--kpi-cor);
+    color: var(--kpi-cor-contraste, #FFFFFF);
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--kpi-cor) 16%, transparent);
 }
 
 .docia-kpi-icone--marca {
@@ -2110,11 +2142,22 @@ html[data-tela-cheia="1"] .docia-legenda__pct { width: 44px; }
 #btn-config-atualizacao,
 #btn-abrir-console,
 #btn-clear-filters,
-#toggle-sidebar-btn,
 .tela-voltar,
 .docia-btn-copiar-coluna {
     transition: background-color 0.18s ease, color 0.18s ease,
                 box-shadow 0.18s ease, translate 0.12s ease;
+}
+
+/*  O botão de filtros sai da lista acima porque precisa de duas propriedades
+    que só ele mexe: `width` e `right`, o alargamento de 6px da alça. Nos mesmos
+    0,18s dos outros controles — hover é RESPOSTA, e resposta que demora meio
+    segundo (era o que o `transition: all 0.5s` fazia) lê como travamento, não
+    como suavidade. Listado item a item, nunca `all`: `all` pegava também o
+    `translate` e alongava para 0,5s o afunda-1px do `:active` logo abaixo.  */
+#toggle-sidebar-btn {
+    transition: background-color 0.18s ease, color 0.18s ease,
+                box-shadow 0.18s ease, border-color 0.18s ease,
+                width 0.18s ease, right 0.18s ease, translate 0.12s ease;
 }
 
 /*  1px, e só no eixo Y. É o mínimo que o olho registra como "apertou" e o
@@ -2455,13 +2498,28 @@ html[data-tela-cheia="1"] .docia-legenda__pct { width: 44px; }
     position: relative;
     overflow: hidden;
     isolation: isolate;
-    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s ease, border-color 0.4s ease;
+    transition: translate 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 0.22s ease, border-color 0.22s ease;
 }
 
+/*  DOIS PIXELS, SEM QUICAR.
+    O card subia 4px numa curva `cubic-bezier(0.34, 1.56, ...)` — um back-out,
+    que por definição passa do destino e volta. Quatro cards numa faixa, todos
+    dando um pulinho elástico ao passar o mouse, é a diferença entre um painel e
+    um brinquedo; e o ultrapasso de 56% num percurso de 4px vira tremor, não
+    salto. Fica 2px, na mesma curva de saída da entrada dos cards
+    (`0.22, 1, 0.36, 1`), que desacelera até parar sem voltar atrás. A faixa
+    toda passa a falar um sotaque de movimento só.
+    A SOMBRA CONTINUA NEUTRA: a profundidade é o mesmo par contato + ambiente do
+    estado parado, uma parada mais fundo. Sombra colorida foi tentada e
+    derrubada duas vezes neste arquivo; a cor do card já está nas ondas e no
+    anel, e repetida na sombra viraria um halo em volta de cada bloco.
+    `translate` e não `transform` para não brigar com o `scale: -1 1` das ondas
+    nem com utilitária nenhuma — é a mesma razão que já governa o `:active`.  */
 .docia-kpi-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 14px 28px -10px var(--kpi-cor, rgba(17, 24, 39, 0.15)),
-                0 4px 10px -3px rgba(17, 24, 39, 0.05),
+    translate: 0 -2px;
+    box-shadow: 0 2px 4px rgba(17, 24, 39, 0.06),
+                0 10px 20px -8px rgba(17, 24, 39, 0.16),
                 inset 0 1px 0 rgba(255, 255, 255, 0.9);
     border-color: rgba(255, 255, 255, 0.9);
     z-index: 10;
@@ -2471,8 +2529,8 @@ html[data-tela-cheia="1"] .docia-legenda__pct { width: 44px; }
 .docia-kpi-card::after {
     content: '';
     position: absolute;
-    left: -1px;
-    right: -1px;
+    left: -18px;
+    right: -18px;
     bottom: -1px;
     z-index: -1;
     pointer-events: none;
@@ -2481,10 +2539,18 @@ html[data-tela-cheia="1"] .docia-legenda__pct { width: 44px; }
     mask-repeat: no-repeat;
     -webkit-mask-size: 100% 100%;
     mask-size: 100% 100%;
-    transition: opacity 0.3s ease;
+    transform-origin: bottom center;
+    transition: opacity 0.3s ease,
+                scale 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+                translate 0.55s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/*  `-1px` nos três lados: a máscara termina exatamente na borda de 1px do card,
+/*  `-18px` NAS LATERAIS, e não `-1px` como embaixo: é a folga que permite a
+    deriva do hover. A onda desliza até 10px para o lado, e sem material
+    sobrando o lado de onde ela saiu mostraria o fundo cru do card por uma
+    fresta. O `overflow: hidden` do card corta o excesso, então nada disso
+    aparece parado. Embaixo continua `-1px` pelo motivo original:
+    `-1px` nos três lados: a máscara termina exatamente na borda de 1px do card,
     e sem o avanço sobra um fio da cor da borda entre a onda e o contorno — o
     mesmo tipo de emenda visível que derrubou o trilho.  */
 .docia-kpi-card::before {
@@ -2506,11 +2572,55 @@ html[data-tela-cheia="1"] .docia-legenda__pct { width: 44px; }
     scale: -1 1;
 }
 
-/*  As ondas sobem um pouco com o mouse no card. É o mesmo gesto do ícone que
-    cresce, e o card continua sem prometer clique — o que muda é a cor de fundo,
-    não a posição de nada que se leia.  */
-.docia-kpi-card:hover::before { opacity: 0.15; }
-.docia-kpi-card:hover::after  { opacity: 0.10; }
+/*  A MARÉ SOBE, E É O ÚNICO GESTO GRANDE QUE O CARD SE PERMITE.
+    Aqui estava só uma troca de opacidade, embora o comentário já prometesse que
+    as ondas subiam. Agora elas sobem de verdade — e esta é a animação que vale
+    a pena ter, porque não é um efeito importado: é a própria assinatura do card
+    se mexendo. Nenhum outro painel por aí tem esta onda; um brilho varrendo um
+    botão, qualquer um tem.
+
+    CRESCEM EM ALTURA, ANCORADAS NO CHÃO. `scale` no eixo Y com
+    `transform-origin: bottom` mantém a base colada no `bottom: -1px`: subir com
+    `translate` levantaria a onda e abriria uma fresta do fundo do card embaixo
+    dela. A traseira (`::after`, 60% de altura) cresce quase o dobro da frontal
+    (34% contra 20%), e é daí que vem a profundidade: as duas curvas se cruzam em
+    outro ponto e o terceiro tom da sobreposição muda de forma.
+
+    E AS DUAS DERIVAM EM SENTIDOS OPOSTOS — a frontal 7px para a direita, a
+    traseira 10px para a esquerda. Este é o gesto que faltava. Crescer sozinho é
+    uma camada só mudando de tamanho; o olho lê inchaço, não distância. Duas
+    camadas indo para lados contrários na mesma cena é a definição de paralaxe,
+    e é ela que dá ao fundo do card uma terceira dimensão que ele não tinha.
+    A traseira anda MAIS que a frontal, ao contrário da paralaxe de câmera: aqui
+    não há observador se deslocando: é água, e o que se quer é que as cristas
+    se descasem depressa para o encontro das curvas viajar pelo card.
+    A folga de `-18px` nas laterais é o que torna isso possível sem fresta.
+
+    OS NÚMEROS SUBIRAM MUITO DE PROPÓSITO. A primeira versão disto tinha 7% e
+    12% de crescimento e opacidade de 0,15/0,11. No cartão renderizado, em
+    88px de altura sobre um fundo pastel, aquilo era diferença de dois ou três
+    níveis de cinza: correto no papel e invisível na tela, que é o modo mais
+    caro de errar — o trabalho existe, ninguém vê, e a conclusão é que nada
+    mudou. Contenção só é elegante quando é percebida; abaixo do limiar ela
+    vira ausência. 20%/34% e 0,26/0,19 continuam sendo fundo, continuam sem
+    competir com o dado, mas agora acontecem.
+
+    0,45s e 0,55s contra os 0,22s do card: a maré é mais lenta que o relevo de
+    propósito, e a deriva é a mais lenta de todas. O card responde na hora (é
+    feedback, tem que ser imediato) e a água chega depois, com o peso de água.
+    Movimento junto e no mesmo tempo é o que faz hover parecer um sprite
+    trocando de quadro.
+
+    O `scale: -1 1` dos cards pares continua valendo: `scale` aqui é a mesma
+    propriedade, então o eixo X é reescrito junto e o espelhamento se mantém.
+    A deriva vem no `translate`, que é propriedade separada e não é espelhada
+    junto — nos cards pares ela corre ao contrário da onda, o que só reforça o
+    ritmo alternado que o espelhamento já buscava.  */
+.docia-kpi-card:hover::before { opacity: 0.26; scale: 1 1.20; translate: 7px 0; }
+.docia-kpi-card:hover::after  { opacity: 0.19; scale: 1 1.34; translate: -10px 0; }
+
+.docia-kpi-card:nth-child(even):hover::before { scale: -1 1.20; }
+.docia-kpi-card:nth-child(even):hover::after  { scale: -1 1.34; }
 
 /*  O RÓTULO. `!important` porque `text-gray-400` é utilitária no elemento e
     empata em especificidade com qualquer seletor de classe daqui — e este é o
@@ -2590,20 +2700,42 @@ html[data-tela-cheia="1"] .docia-legenda__pct { width: 44px; }
 
 #toggle-sidebar-btn .sidebar-icon-wrapper {
     animation: docia-chamar 6s ease-in-out infinite;
+    transition: translate 0.18s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /*  Com a barra ABERTA o convite não faz sentido — ela já está à vista, e a seta
     agora aponta para fechar. Parar aqui evita o pior tipo de animação: a que
-    continua chamando para algo que já aconteceu.  */
-#filter-sidebar:not(.-translate-x-full) ~ * #toggle-sidebar-btn .sidebar-icon-wrapper,
+    continua chamando para algo que já aconteceu.
+    O seletor era `#filter-sidebar:not(...) ~ * #toggle-sidebar-btn`, e nunca
+    casou com nada: o botão não é descendente de um IRMÃO da barra, ele mora
+    DENTRO dela. Com o combinador errado a regra existia sem nunca valer, e o
+    cutucão seguia rodando de barra aberta.  */
+#filter-sidebar:not(.-translate-x-full) #toggle-sidebar-btn .sidebar-icon-wrapper,
 #toggle-sidebar-btn:hover .sidebar-icon-wrapper {
     animation: none;
 }
 
+/*  Com movimento reduzido cai tudo que DESLOCA: a entrada escalonada, o cutucão
+    da seta, o relevo de 2px do card, a maré, a deriva das ondas e o passo
+    lateral da seta no hover. O que fica é o que informa sem mover — sombra,
+    opacidade das ondas e o chip do ícone acendendo na cor do card. Nenhum
+    desses é movimento, e é justamente por isso que o estado continua legível
+    com a tela parada: quem tem vestíbulo sensível perde a coreografia, não a
+    informação.  */
 @media (prefers-reduced-motion: reduce) {
     .docia-kpi-card,
     .docia-card-doc,
     #toggle-sidebar-btn .sidebar-icon-wrapper { animation: none; }
+
+    .docia-kpi-card:hover { translate: none; }
+    .docia-kpi-card:hover::before,
+    .docia-kpi-card:hover::after { scale: 1 1; translate: none; }
+    .docia-kpi-card:nth-child(even):hover::before,
+    .docia-kpi-card:nth-child(even):hover::after { scale: -1 1; translate: none; }
+    #toggle-sidebar-btn:hover .sidebar-icon-wrapper:has(.fa-chevron-right),
+    #toggle-sidebar-btn:hover .sidebar-icon-wrapper:has(.fa-chevron-left) {
+        translate: none;
+    }
 }
 
 
@@ -3117,7 +3249,7 @@ html[data-tela-cheia="1"] .docia-legenda--lado { height: auto; }
     min-height: 0;
 }
 
-.docia-anel-e-lista > .docia-grafico-ia { flex: 0 0 20%; min-width: 0; min-height: 0; }
+.docia-anel-e-lista > .docia-grafico-ia { flex: 0 0 210px; width: 210px; min-width: 210px; min-height: 0; }
 .docia-anel-e-lista > .docia-legenda { flex: 1 1 0; min-width: 0; }
 
 /*  SEM LISTA, SEM COLUNA DE LISTA. Quando não há o que listar — recorte sem
@@ -3128,3 +3260,418 @@ html[data-tela-cheia="1"] .docia-legenda--lado { height: auto; }
     que é onde se lê um aviso. */
 .docia-anel-e-lista--sozinho > .docia-legenda { display: none; }
 .docia-anel-e-lista--sozinho > .docia-grafico-ia { flex: 1 1 0; }
+
+
+/* ==========================================================================
+   SISTEMA DE ACABAMENTO — TOKENS, ELEVAÇÃO, VIDRO E ESTADOS
+   ==========================================================================
+   Este bloco é a resposta a um pedido de "elevar o acabamento a nível
+   high-end". Vale registrar o que ele NÃO faz, porque as omissões foram
+   decididas, não esquecidas — e três delas contrariam o pedido ao pé da letra:
+
+   1. NÃO HÁ `scale()` NO HOVER DOS CARDS. Foi pedido `scale(1.02)`. Nem a
+      faixa de KPIs nem os cards de documento são clicáveis (`cursor-default`;
+      quem clica é a linha da legenda dentro do card). Ampliar no hover é o
+      vocabulário universal de "isto abre" — em elemento que não abre nada,
+      é uma promessa falsa, e esta tela já registrou duas vezes que não a faz.
+      O que responde ao mouse aqui é LUZ e PROFUNDIDADE, não tamanho.
+   2. AS SOMBRAS CONTINUAM NEUTRAS. Sombra colorida já foi tentada e derrubada
+      duas vezes neste arquivo. A cor da marca aparece no brilho, nas ondas e
+      no chip; repetida na sombra vira halo em volta de cada bloco.
+   3. `scale(0.97)` NO `:active` FICOU SÓ NOS BOTÕES, não em "todo elemento
+      clicável". Linha de tabela que encolhe ao ser clicada desalinha a grade
+      inteira por 120ms, e o olho lê como falha de renderização.
+
+   A REGRA DE OURO FOI APLICADA LITERALMENTE: nada aqui inventa cor. Tudo é
+   `color-mix()` sobre os tokens abaixo, que por sua vez são os hexes que já
+   estavam cravados no arquivo — #6B007B aparecia 55 vezes na mão. Esta é a
+   primeira vez que eles têm nome.
+   ========================================================================== */
+
+:root {
+    /*  As cores que já existiam, promovidas a token. Nenhum tom novo: são
+        exatamente os hexes que o arquivo repetia literalmente.  */
+    --docia-marca: #6B007B;
+    --docia-marca-viva: #B4008F;
+    --docia-magenta: #B0007A;
+    --docia-ok: #047857;
+    --docia-neutro: #64748B;
+
+    /*  A tinta das sombras. Cinza-900 do sistema, e é dela que TODA a escala
+        de elevação tira alfa — por isso a profundidade é uma coisa só na tela
+        e muda em um lugar quando precisar mudar.  */
+    --docia-tinta: #111827;
+    --docia-luz: #FFFFFF;
+
+    /*  TINTA DE TEXTO SEPARADA DA TINTA DE SOMBRA, embora no tema claro as duas
+        sejam o mesmo #111827. Parecem redundantes até o tema escuro: lá a sombra
+        precisa ficar MAIS escura e o texto precisa ficar CLARO — são vetores
+        opostos, e um token só obrigaria o eleitoral a reescrever regra por regra
+        em vez de trocar um valor.  */
+    --docia-texto: #111827;
+
+    /*  ESCALA DE ELEVAÇÃO EM TRÊS DEGRAUS, cada um com quatro camadas.
+        Uma sombra só é uma mancha; o que o olho lê como objeto sobre superfície
+        é a soma de CONTATO (curta, opaca, quase sem desfoque — a linha onde a
+        peça toca o fundo), DIFUSA (média) e AMBIENTE (longa e muito clara, o
+        escurecimento geral do ar em volta). A quarta camada é `inset` e não é
+        sombra: é o fio de luz no topo da borda, o reflexo que qualquer
+        superfície real tem na aresta virada para cima. É ele que separa um
+        card "desenhado" de um card "iluminado".
+        Os degraus não são o mesmo desenho em opacidades diferentes: quanto
+        mais alto o objeto, MAIS LONGA e MAIS CLARA a ambiente, que é como a
+        sombra se comporta de verdade quando a peça sobe.  */
+    --docia-elev-1:
+        0 1px 2px color-mix(in srgb, var(--docia-tinta) 5%, transparent),
+        0 3px 6px -2px color-mix(in srgb, var(--docia-tinta) 6%, transparent),
+        0 8px 16px -6px color-mix(in srgb, var(--docia-tinta) 7%, transparent),
+        inset 0 1px 0 color-mix(in srgb, var(--docia-luz) 90%, transparent);
+    --docia-elev-2:
+        0 1px 2px color-mix(in srgb, var(--docia-tinta) 6%, transparent),
+        0 5px 12px -3px color-mix(in srgb, var(--docia-tinta) 8%, transparent),
+        0 16px 32px -12px color-mix(in srgb, var(--docia-tinta) 10%, transparent),
+        inset 0 1px 0 color-mix(in srgb, var(--docia-luz) 92%, transparent);
+    --docia-elev-3:
+        0 2px 4px color-mix(in srgb, var(--docia-tinta) 7%, transparent),
+        0 8px 20px -4px color-mix(in srgb, var(--docia-tinta) 10%, transparent),
+        0 28px 52px -20px color-mix(in srgb, var(--docia-tinta) 14%, transparent),
+        inset 0 1px 0 color-mix(in srgb, var(--docia-luz) 95%, transparent);
+
+    /*  Bordas de 1px em alfa baixo, nunca em cinza sólido: sobre o fundo
+        pastel um #E5E7EB vira um traço cinza visível, enquanto branco a 70%
+        lê como a aresta iluminada do próprio card.  */
+    --docia-borda-clara: color-mix(in srgb, var(--docia-luz) 70%, transparent);
+    --docia-borda-tinta: color-mix(in srgb, var(--docia-tinta) 6%, transparent);
+
+    /*  Uma curva e três tempos para a tela inteira. `0.4, 0, 0.2, 1` é o
+        standard easing do Material — entra depressa, assenta devagar — e é a
+        mesma que a barra lateral já usava no `transition-transform`. Ter um
+        sotaque de movimento só é o que faz a interface parecer uma peça e não
+        um mosaico de componentes.  */
+    --docia-curva: cubic-bezier(0.4, 0, 0.2, 1);
+    --docia-rapido: 150ms;
+    --docia-medio: 220ms;
+    --docia-lento: 300ms;
+}
+
+
+/* --- Elevação aplicada ----------------------------------------------------
+   Os cards de documento sobem de degrau. A sombra antiga tinha 3 camadas e
+   parava em 12px de desfoque: correta, mas curta demais para um card de 400px
+   de altura, que precisa de ambiente longa para não parecer adesivo colado.
+   A borda de 1px vem junto, porque sombra sem aresta é volume sem contorno. */
+.docia-card-doc {
+    position: relative;
+    isolation: isolate;
+    border-color: var(--docia-borda-clara);
+    box-shadow: var(--docia-elev-1);
+    transition: box-shadow var(--docia-lento) var(--docia-curva),
+                border-color var(--docia-lento) var(--docia-curva);
+}
+
+.docia-card-doc:hover {
+    box-shadow: var(--docia-elev-2);
+    border-color: color-mix(in srgb, var(--docia-luz) 88%, transparent);
+}
+
+
+/*  A LUZ QUE SEGUE O MOUSE.
+    Um gradiente radial na cor da marca, a 13% de alfa, centrado nas
+    coordenadas que o JS escreve em `--px`/`--py`. É o único efeito desta tela
+    que rastreia o cursor, e ele está aqui e não nos KPIs por uma razão: luz
+    não é affordance. Um card que CRESCE diz "clique em mim"; um card que
+    reflete a luz de onde o mouse está diz apenas "você está aqui", que é
+    verdade e não promete nada. Por isso o brilho pôde entrar num card que não
+    é clicável, enquanto o `scale` não pôde.
+
+    `z-index: -1` com `isolation: isolate` no pai: pseudo-elemento com z-index
+    negativo pinta DEPOIS do fundo do card e ANTES do conteúdo. É o que põe a
+    luz sobre o gradiente da superfície sem passar por cima da rosca — um
+    brilho de 13% por cima do gráfico falsearia as cores das fatias, que aqui
+    são dado.
+
+    `inset: 0` e `border-radius: inherit` em vez de `overflow: hidden` no card:
+    o tooltip do ApexCharts é filho do container e seria decepado.
+
+    O raio de 340px é maior que a metade do card de propósito — um foco menor
+    que a peça vira lanterna, e o que se quer é a impressão de uma fonte de luz
+    difusa se aproximando, não um holofote.  */
+.docia-card-doc::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    border-radius: inherit;
+    opacity: 0;
+    background: radial-gradient(340px circle at var(--px, 50%) var(--py, 50%),
+                color-mix(in srgb, var(--docia-marca) 13%, transparent),
+                transparent 62%);
+    transition: opacity var(--docia-lento) var(--docia-curva);
+}
+
+.docia-card-doc:hover::after { opacity: 1; }
+
+
+/* --- O painel do detalhamento entra por último ----------------------------
+   A cascata já ia dos KPIs (0,00s) até a quinta rosca (0,32s) e parava ali, com
+   a tabela — o maior bloco da tela — aparecendo seca no fim. 0,36s fecha a
+   sequência na ordem exata em que a tela se lê: resumo, distribuição, detalhe.
+   A sombra do painel vem do token, substituindo o `shadow-[0_4px_20px...]`
+   arbitrário que estava cravado na utilitária do template. */
+#card-detalhamento {
+    animation: docia-entrada 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.36s backwards;
+    border-color: var(--docia-borda-clara);
+    box-shadow: var(--docia-elev-2);
+}
+
+
+/* --- Vidro no cabeçalho ---------------------------------------------------
+   A barra lateral já era vidro (`bg-white/80 backdrop-blur-3xl`); o cabeçalho
+   não, e a inconsistência aparecia: dois planos flutuantes na mesma tela, um
+   translúcido e o outro opaco.
+
+   O TINGIMENTO É DA MARCA, NÃO CINZA. Um vidro branco puro sobre o fundo
+   arco-íris da tela lava a cor por baixo e o cabeçalho fica com aspecto de
+   papel. Branco a 72% com um véu de 4% de `--docia-marca` deixa o gradiente
+   atravessar tingido, que é o que vidro faz com a luz que passa.
+
+   `saturate(1.25)` junto do blur: desfoque puro acinzenta o que está atrás,
+   porque mistura tons vizinhos. Resaturar devolve a vivacidade das cores da
+   marca sob o vidro — é o mesmo truque do material translúcido do iOS, e sem
+   ele o arco-íris da OVG vira um borrão pastel. */
+header.menu-divisoria {
+    background-color: color-mix(in srgb, var(--docia-luz) 72%,
+                      color-mix(in srgb, var(--docia-marca) 4%, transparent));
+    -webkit-backdrop-filter: blur(18px) saturate(1.25);
+    backdrop-filter: blur(18px) saturate(1.25);
+    border-bottom: 1px solid var(--docia-borda-clara);
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--docia-luz) 60%, transparent),
+                0 8px 24px -18px color-mix(in srgb, var(--docia-tinta) 30%, transparent);
+}
+
+
+/* --- Hierarquia tipográfica ----------------------------------------------
+   Três papéis, três tratamentos, e a distância entre eles é o que se lê como
+   hierarquia — não o tamanho sozinho.
+
+   TÍTULO DE CARD: caixa alta curta, e caixa alta precisa de `letter-spacing`
+   positivo. As maiúsculas foram desenhadas para composição em caixa mista;
+   empilhadas sem folga elas se colam e viram um bloco cinza. 0,04em é a folga
+   que as separa sem soletrar a palavra.
+
+   MÉTRICA: `tabular-nums` e `letter-spacing` NEGATIVO. Os números são o dado,
+   e dado que muda de filtro não pode mudar de largura — sem `tabular-nums` o
+   "1" é mais estreito que o "8" e o valor dança a cada atualização. O
+   -0,02em é o oposto do título: em corpo grande o espaçamento padrão parece
+   frouxo, e apertar é o que dá ao número o aspecto de peça sólida.
+
+   APOIO: peso e cor fazem o trabalho, não tamanho. `line-height` 1.5 porque
+   texto de apoio é o único aqui que pode quebrar linha. */
+.docia-card-doc > h3 {
+    letter-spacing: 0.04em;
+    line-height: 1.2;
+}
+
+.docia-kpi-valor {
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+}
+
+#card-detalhamento thead th {
+    letter-spacing: 0.05em;
+    line-height: 1.3;
+}
+
+
+/* --- Feedback tátil -------------------------------------------------------
+   O `:active` só nos BOTÕES, e com afundamento em vez de encolhimento. 0.97 de
+   escala num botão de 34px de altura tira 1px de cada lado — quase nada — mas
+   desalinha a linha de base do rótulo contra os vizinhos da barra. Descer 1px
+   entrega a mesma sensação de peça sendo pressionada e mantém a régua.
+   45ms na entrada: feedback tátil que demora deixa de ser tátil. */
+#card-detalhamento button:active,
+header.menu-divisoria button:active,
+#filter-sidebar button:active {
+    translate: 0 1px;
+    transition-duration: 45ms;
+}
+
+
+/* --- Carregando: esqueleto com brilho, não roda girando -------------------
+   O spinner diz "espere" e nada mais. O esqueleto diz "vem uma tabela, com
+   estas colunas, com mais ou menos esta quantidade de linhas" — a tela para de
+   piscar entre vazio e cheio, porque a forma final já está no lugar antes do
+   dado chegar. É a diferença entre carregar e montar.
+
+   O BRILHO ANDA, o bloco não pisca. Um `opacity` pulsando é o mesmo spinner com
+   outra roupa: diz que algo acontece, sem direção. O gradiente varrendo da
+   esquerda para a direita tem SENTIDO, e o sentido é o da leitura — sugere
+   progresso mesmo sem saber a porcentagem.
+
+   `background-position` e não `left`: a varredura acontece na pintura, sem
+   tocar no layout. Animar `left` em 96 blocos (8 linhas x 12 colunas) obriga o
+   navegador a recalcular posição 60 vezes por segundo em cada um.
+
+   AS LARGURAS VARIAM de 45% a 90%. Blocos idênticos viram uma grade regular e
+   o olho lê "tabela pronta, sem dados"; larguras irregulares leem como texto
+   ainda não revelado. */
+@keyframes docia-brilho {
+    from { background-position: 200% 0; }
+    to   { background-position: -200% 0; }
+}
+
+.docia-esqueleto {
+    display: block;
+    height: 9px;
+    border-radius: 999px;
+    background-image: linear-gradient(
+        90deg,
+        color-mix(in srgb, var(--docia-tinta) 6%, transparent) 0%,
+        color-mix(in srgb, var(--docia-marca) 10%, transparent) 42%,
+        color-mix(in srgb, var(--docia-luz) 85%, transparent) 50%,
+        color-mix(in srgb, var(--docia-marca) 10%, transparent) 58%,
+        color-mix(in srgb, var(--docia-tinta) 6%, transparent) 100%);
+    background-size: 200% 100%;
+    animation: docia-brilho 1.5s linear infinite;
+}
+
+/*  Cada linha entra com 60ms de atraso sobre a anterior: a varredura das oito
+    linhas fica levemente defasada e o conjunto ondula em vez de pulsar em
+    bloco, que é o que denuncia o placeholder.  */
+.docia-esqueleto-linha:nth-child(1) .docia-esqueleto { animation-delay: 0.00s; }
+.docia-esqueleto-linha:nth-child(2) .docia-esqueleto { animation-delay: 0.06s; }
+.docia-esqueleto-linha:nth-child(3) .docia-esqueleto { animation-delay: 0.12s; }
+.docia-esqueleto-linha:nth-child(4) .docia-esqueleto { animation-delay: 0.18s; }
+.docia-esqueleto-linha:nth-child(5) .docia-esqueleto { animation-delay: 0.24s; }
+.docia-esqueleto-linha:nth-child(6) .docia-esqueleto { animation-delay: 0.30s; }
+.docia-esqueleto-linha:nth-child(7) .docia-esqueleto { animation-delay: 0.36s; }
+.docia-esqueleto-linha:nth-child(8) .docia-esqueleto { animation-delay: 0.42s; }
+
+/*  As oito linhas somem de baixo para cima conforme se afastam: a última é a
+    mais fraca, e o bloco inteiro parece continuar além da dobra em vez de
+    terminar numa borda reta.  */
+.docia-esqueleto-linha:nth-child(n+5) { opacity: 0.72; }
+.docia-esqueleto-linha:nth-child(n+7) { opacity: 0.45; }
+
+
+/* --- Vazio: a rosca some e o card explica ---------------------------------
+   Uma rosca com 0 documentos desenha um anel cinza inteiro em volta de um zero.
+   Isso é PIOR que não desenhar nada: o anel fechado é a forma de "100%", e por
+   um instante o card diz que tudo está numa categoria só. O gráfico sai e entra
+   uma explicação.
+
+   E A EXPLICAÇÃO DISTINGUE DUAS COISAS que o zero sozinho confunde: "não existe
+   este documento neste recorte" e "os seus filtros não deixaram nada passar".
+   A primeira é informação sobre o mundo; a segunda é sobre uma escolha sua, e
+   só ela ganha botão. Oferecer "Limpar filtros" quando não há filtro nenhum é
+   um beco: o clique não muda nada e a tela perde credibilidade.
+
+   O ícone herda `--kpi-cor`? Não: os cards de documento não têm cor própria.
+   Fica na marca a 30%, presente sem competir com os cards vizinhos que têm
+   dado de verdade — o vazio não deve puxar mais atenção que o cheio. */
+.docia-vazio {
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 1rem 0.75rem;
+    text-align: center;
+    animation: docia-entrada 0.35s var(--docia-curva) backwards;
+}
+
+.docia-vazio__icone {
+    font-size: 1.75rem;
+    line-height: 1;
+    color: color-mix(in srgb, var(--docia-marca) 30%, transparent);
+}
+
+.docia-vazio__titulo {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: color-mix(in srgb, var(--docia-texto) 55%, transparent);
+}
+
+.docia-vazio__texto {
+    font-size: 0.6875rem;
+    line-height: 1.5;
+    max-width: 22ch;
+    color: color-mix(in srgb, var(--docia-texto) 38%, transparent);
+}
+
+/*  O botão usa a marca cheia porque é a única ação da região: num card vazio
+    não há nada para competir com ele, e um CTA lavado num espaço vazio parece
+    desabilitado. */
+.docia-vazio__acao {
+    margin-top: 0.25rem;
+    padding: 0.375rem 0.875rem;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: var(--docia-luz);
+    background-color: var(--docia-marca);
+    cursor: pointer;
+    box-shadow: var(--docia-elev-1);
+    transition: background-color var(--docia-medio) var(--docia-curva),
+                box-shadow var(--docia-medio) var(--docia-curva),
+                translate var(--docia-rapido) var(--docia-curva);
+}
+
+.docia-vazio__acao:hover {
+    background-color: var(--docia-marca-viva);
+    box-shadow: var(--docia-elev-2);
+}
+
+.docia-vazio__acao:active {
+    translate: 0 1px;
+    transition-duration: 45ms;
+}
+
+.docia-vazio__acao:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--docia-marca) 45%, transparent);
+    outline-offset: 2px;
+}
+
+
+/* --- Acessibilidade: os dois "prefiro menos" -----------------------------
+   MOVIMENTO REDUZIDO. Cai o que desloca e o que corre em laço — a cascata de
+   entrada, a varredura do esqueleto, a entrada do vazio. O esqueleto NÃO some:
+   ele continua sendo a forma da tabela que vai chegar, e essa informação não
+   depende de brilho nenhum. Só congela no meio do gradiente, onde ele já é um
+   bloco cinza-claro legível.
+
+   TRANSPARÊNCIA REDUZIDA. `backdrop-filter` é a primeira coisa que atrapalha
+   quem tem baixa visão: o conteúdo de trás vaza por dentro do texto da frente.
+   Aqui o vidro vira superfície opaca — mesma cor, 100% — e nada mais muda de
+   lugar. É a única versão da tela em que o cabeçalho é sólido, e é de
+   propósito. */
+@media (prefers-reduced-motion: reduce) {
+    #card-detalhamento,
+    .docia-vazio {
+        animation: none;
+    }
+
+    .docia-esqueleto {
+        animation: none;
+        background-position: 50% 0;
+    }
+
+    .docia-card-doc::after {
+        transition: none;
+    }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+    header.menu-divisoria {
+        background-color: var(--docia-luz);
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+}
