@@ -2512,6 +2512,7 @@ html[data-tela-cheia="1"] .docia-legenda__pct { width: 44px; }
     overflow: hidden;
     isolation: isolate;
     transition: translate 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+                scale 0.22s cubic-bezier(0.22, 1, 0.36, 1),
                 box-shadow 0.22s ease, border-color 0.22s ease;
 }
 
@@ -2530,10 +2531,11 @@ html[data-tela-cheia="1"] .docia-legenda__pct { width: 44px; }
     `translate` e não `transform` para não brigar com o `scale: -1 1` das ondas
     nem com utilitária nenhuma — é a mesma razão que já governa o `:active`.  */
 .docia-kpi-card:hover {
-    translate: 0 -2px;
+    translate: 0 -4px;
+    scale: 1.025;
     box-shadow: inset 3px 0 0 var(--kpi-cor, #6B007B),
-                0 2px 4px rgba(17, 24, 39, 0.06),
-                0 10px 20px -8px rgba(17, 24, 39, 0.16),
+                0 4px 8px rgba(17, 24, 39, 0.05),
+                0 16px 24px -6px rgba(17, 24, 39, 0.12),
                 inset 0 1px 0 rgba(255, 255, 255, 0.9);
     border-color: rgba(255, 255, 255, 0.9);
     z-index: 10;
