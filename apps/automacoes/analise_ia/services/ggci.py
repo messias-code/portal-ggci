@@ -2279,8 +2279,14 @@ def calcular_auditoria_ia(df):
         ia_assinatura_ies.str.contains('NÃO LOCALIZADO|NAO LOCALIZADO', regex=True)
     )
     
+    sys_beneficio = pd.to_numeric(df.get('valor_beneficio', pd.Series([0]*len(df), index=df.index)), errors='coerce').fillna(0)
+    ia_beneficio = pd.to_numeric(df.get('Gemini Valor Beneficio', pd.Series([0]*len(df), index=df.index)), errors='coerce').fillna(0)
+    sys_financiamento = pd.to_numeric(df.get('valor_financiamento', pd.Series([0]*len(df), index=df.index)), errors='coerce').fillna(0)
+    ia_financiamento = pd.to_numeric(df.get('Gemini Valor Financiamento', pd.Series([0]*len(df), index=df.index)), errors='coerce').fillna(0)
+    matematica_invalida_riaf_extra = is_riaf & ((sys_beneficio != ia_beneficio) | (sys_financiamento != ia_financiamento))
+    
     # Para Histórico, ignorar regras financeiras (pois as colunas não fazem parte de sua verificação)
-    matematica_invalida = np.where(is_historico, matematica_invalida_geral, matematica_invalida_geral | matematica_invalida_financeiro | matematica_invalida_assinatura)
+    matematica_invalida = np.where(is_historico, matematica_invalida_geral, matematica_invalida_geral | matematica_invalida_financeiro | matematica_invalida_assinatura | matematica_invalida_riaf_extra)
     
     matematica_diz = np.where(matematica_invalida, 'Inválido', 'Válido')
     
