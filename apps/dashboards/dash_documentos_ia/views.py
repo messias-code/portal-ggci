@@ -660,6 +660,28 @@ def _aplicar_filtros(df, request):
         alvo = {valor.upper() for valor in escolhidos}
         df = df[df[coluna].astype('string').str.upper().isin(alvo)]
 
+    possui_benef = _lista_do_parametro(request, 'possui_beneficio')
+    if possui_benef and 'beneficio' in df.columns:
+        alvo = {v.upper() for v in possui_benef}
+        if alvo == {'S'}: df = df[df['beneficio'].fillna('Sem Benefícios').str.upper() != 'SEM BENEFÍCIOS']
+        elif alvo == {'N'}: df = df[df['beneficio'].fillna('Sem Benefícios').str.upper() == 'SEM BENEFÍCIOS']
+
+    possui_finan = _lista_do_parametro(request, 'possui_financiamento')
+    if possui_finan and 'financiamento' in df.columns:
+        alvo = {v.upper() for v in possui_finan}
+        if alvo == {'S'}: df = df[df['financiamento'].fillna('Sem Financiamento').str.upper() != 'SEM FINANCIAMENTO']
+        elif alvo == {'N'}: df = df[df['financiamento'].fillna('Sem Financiamento').str.upper() == 'SEM FINANCIAMENTO']
+    possui_qualquer = _lista_do_parametro(request, 'possui_qualquer')
+    if possui_qualquer and 'beneficio' in df.columns and 'financiamento' in df.columns:
+        alvo = {v.upper() for v in possui_qualquer}
+        mask_benef = df['beneficio'].fillna('Sem Benefícios').str.upper() != 'SEM BENEFÍCIOS'
+        mask_finan = df['financiamento'].fillna('Sem Financiamento').str.upper() != 'SEM FINANCIAMENTO'
+        if alvo == {'S'}:
+            df = df[mask_benef | mask_finan]
+        elif alvo == {'N'}:
+            df = df[~(mask_benef | mask_finan)]
+
+
     return df
 
 

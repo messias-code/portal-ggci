@@ -3010,7 +3010,6 @@ document.addEventListener('turbo:load', () => {
             const btnLimparFiltros = document.getElementById('btn-clear-filters');
             if (btnLimparFiltros) {
                 btnLimparFiltros.addEventListener('click', () => {
-                    checkboxesSemestre.forEach((caixa) => (caixa.checked = false));
                     checkboxesMudouIES.forEach((caixa) => (caixa.checked = false));
                     checkboxesMudouBolsa.forEach((caixa) => (caixa.checked = false));
                     checkboxesVinculo.forEach((caixa) => (caixa.checked = false));
