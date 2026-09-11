@@ -2270,8 +2270,17 @@ def calcular_auditoria_ia(df):
     matematica_invalida_geral = (ia_cpf == '') | (sys_cpf != ia_cpf) | (ia_semestre == '') | (sys_semestre != ia_semestre)
     matematica_invalida_financeiro = (inc_original.str.contains('Valor da mensalidade integral não localizado', na=False)) | (dif_s != 0)
     
+    is_riaf = doc_tipo.str.contains('RIAF', case=False, na=False)
+    ia_assinatura_aluno = df.get('Gemini Assinatura Aluno', pd.Series(['']*len(df), index=df.index)).astype(object).fillna('').astype(str).str.strip().str.upper()
+    ia_assinatura_ies = df.get('Gemini Assinatura Ies', pd.Series(['']*len(df), index=df.index)).astype(object).fillna('').astype(str).str.strip().str.upper()
+    matematica_invalida_assinatura = is_riaf & (
+        inc_original.str.contains('Assinatura', case=False, na=False) |
+        ia_assinatura_aluno.str.contains('NÃO LOCALIZADO|NAO LOCALIZADO', regex=True) |
+        ia_assinatura_ies.str.contains('NÃO LOCALIZADO|NAO LOCALIZADO', regex=True)
+    )
+    
     # Para Histórico, ignorar regras financeiras (pois as colunas não fazem parte de sua verificação)
-    matematica_invalida = np.where(is_historico, matematica_invalida_geral, matematica_invalida_geral | matematica_invalida_financeiro)
+    matematica_invalida = np.where(is_historico, matematica_invalida_geral, matematica_invalida_geral | matematica_invalida_financeiro | matematica_invalida_assinatura)
     
     matematica_diz = np.where(matematica_invalida, 'Inválido', 'Válido')
     
@@ -3827,6 +3836,57 @@ def recalcular_bolsas_ia(df, is_riaf=False):
     df['soma_ovg_devia_pagar_ia'] = soma
     return df
 
+def _ler_espelhos_do_banco(prefixo, anos, sems_alvo, rotulo, ausentes):
+    """
+    O QUE FAZ: Lê os Parquets de espelho de um documento e devolve a lista de DataFrames,
+    anotando em `ausentes` todo arquivo esperado que não estava em disco.
+    POR QUÊ EXISTE: O que faltava aqui nunca foi a leitura, era o aviso. O `os.path.exists`
+    pulava o arquivo em silêncio e a execução seguia até imprimir "Salvo com sucesso" —
+    foi assim que o proc_23 saiu sem o espelho de contrato e sem o de riaf (52.713 e 16.965
+    linhas a menos) sem nada na tela sugerindo que faltava algo. Um espelho só é procurado
+    quando o ano dele aparece em `sems_alvo`, então não achar o arquivo nunca é normal:
+    significa que a extração não regerou aquela tabela.
+    PARÂMETROS:
+        prefixo: nome da tabela sem o ano e sem o sufixo de ambiente.
+        anos: anos possíveis; só é lido o ano presente em `sems_alvo`.
+        sems_alvo: semestres pedidos nesta execução.
+        rotulo: etiqueta curta usada nos prints (ex.: "CONT BD ").
+        ausentes: lista acumuladora da execução, alterada no lugar.
+    RETORNO: list[pandas.DataFrame]
+    """
+    dfs = []
+    for ano in anos:
+        if not any(ano in str(s) for s in sems_alvo):
+            continue
+        caminho = os.path.join(PROJECT_ROOT, f"apps/automacoes/analise_ia/dados/tabelas_sql/{prefixo}_{ano}{SUFIXO_TABELAS}.parquet")
+        if os.path.exists(caminho):
+            dfs.append(pl.read_parquet(caminho).filter(pl.col("semestre").is_in(sems_alvo)).to_pandas())
+        else:
+            ausentes.append(os.path.basename(caminho))
+            print(f"[GGCI       | AUSENTE       | {rotulo}] {os.path.basename(caminho)} não existe — o relatório vai sair SEM esses dados.")
+    return dfs
+
+
+def _avisar_espelhos_ausentes(ausentes):
+    """
+    O QUE FAZ: Repete, em bloco e no fim da execução, quais espelhos faltaram.
+    POR QUÊ EXISTE: O aviso individual sai no meio de centenas de linhas de log e some.
+    Quem lê só o rodapé precisa enxergar que o "Salvo com sucesso" logo abaixo se refere a
+    um relatório incompleto — o relatório continua sendo gravado de propósito, porque
+    descartar 12 minutos de extração por causa de uma tabela seria pior que entregar o
+    resto avisando o que falta.
+    PARÂMETROS: ausentes: lista de nomes de arquivo acumulada por `_ler_espelhos_do_banco`.
+    RETORNO: None
+    """
+    if not ausentes:
+        return
+    faltantes = sorted(set(ausentes))
+    print(f"[GGCI       | INCOMPLETO    | FINAL ] {len(faltantes)} espelho(s) do banco não foram encontrados em dados/tabelas_sql:")
+    for nome in faltantes:
+        print(f"[GGCI       | INCOMPLETO    | FINAL ]   - {nome}")
+    print(f"[GGCI       | INCOMPLETO    | FINAL ] O relatório abaixo está SEM esses dados. Rode a extração de novo para regerar as tabelas.")
+
+
 def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_relatorio=False, gerar_relatorio_riaf=False, gerar_quantitativo=True, gerar_pagamentos=True, sems_riaf=None, sems_contratos=None, processo_id=None, formato="EXCEL"):
     """
     O QUE FAZ: Ponto de entrada final do fluxo de transformação (ETAPA 3). Lê os CSVs temporários, aplica regras, cria o Excel Final.
@@ -3892,6 +3952,8 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
     df_docs = pd.DataFrame()
     df_riaf = pd.DataFrame()
     df_pag = pd.DataFrame()
+    # Espelhos do banco que esta execução procurou e não achou. Ver `_avisar_espelhos_ausentes`.
+    espelhos_ausentes = []
 
     if os.path.exists(arq_processados):
         df_docs = converter_colunas_para_salvamento(pd.read_parquet(arq_processados))
@@ -3910,13 +3972,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
     try:
         if check_historico and sems_alvo:
             
-            dfs = []
-            for ano in ['2025', '2026']:
-                if any(ano in str(s) for s in sems_alvo):
-                    p = os.path.join(PROJECT_ROOT, f"apps/automacoes/analise_ia/dados/tabelas_sql/PY_ggci_espelho_historico_d1_{ano}{SUFIXO_TABELAS}.parquet")
-                    if os.path.exists(p):
-                        df_ano = pl.read_parquet(p).filter(pl.col("semestre").is_in(sems_alvo)).to_pandas()
-                        dfs.append(df_ano)
+            dfs = _ler_espelhos_do_banco("PY_ggci_espelho_historico_d1", ['2025', '2026'], sems_alvo, "HIST BD", espelhos_ausentes)
             
             if dfs:
                 df_espelho_hist_pd = pd.concat(dfs, ignore_index=True)
@@ -3950,13 +4006,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
 
     try:
         if check_contrato and sems_alvo:
-            dfs = []
-            for ano in ['2025', '2026']:
-                if any(ano in str(s) for s in sems_alvo):
-                    p = os.path.join(PROJECT_ROOT, f"apps/automacoes/analise_ia/dados/tabelas_sql/PY_ggci_espelho_contrato_temp_d1_{ano}{SUFIXO_TABELAS}.parquet")
-                    if os.path.exists(p):
-                        df_ano = pl.read_parquet(p).filter(pl.col("semestre").is_in(sems_alvo)).to_pandas()
-                        dfs.append(df_ano)
+            dfs = _ler_espelhos_do_banco("PY_ggci_espelho_contrato_temp_d1", ['2025', '2026'], sems_alvo, "CONT BD ", espelhos_ausentes)
 
             if dfs:
                 df_esp_cont_pd = pd.concat(dfs, ignore_index=True)
@@ -3991,13 +4041,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
     # OTIMIZAÇÃO: Injeção direta dos dados históricos de FINANCIAMENTO
     try:
         if check_financ and sems_alvo:
-            dfs_fin = []
-            for ano in ['2025', '2026']:
-                if any(ano in str(s) for s in sems_alvo):
-                    p = os.path.join(PROJECT_ROOT, f"apps/automacoes/analise_ia/dados/tabelas_sql/PY_ggci_espelho_financiamento_d1_{ano}{SUFIXO_TABELAS}.parquet")
-                    if os.path.exists(p):
-                        df_ano = pl.read_parquet(p).filter(pl.col("semestre").is_in(sems_alvo)).to_pandas()
-                        dfs_fin.append(df_ano)
+            dfs_fin = _ler_espelhos_do_banco("PY_ggci_espelho_financiamento_d1", ['2025', '2026'], sems_alvo, "FIN  BD ", espelhos_ausentes)
 
             if dfs_fin:
                 df_esp_fin_pd = pd.concat(dfs_fin, ignore_index=True)
@@ -4035,13 +4079,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
     # OTIMIZAÇÃO: Injeção direta dos dados históricos de BENEFICIOS
     try:
         if check_benef and sems_alvo:
-            dfs_ben = []
-            for ano in ['2025', '2026']:
-                if any(ano in str(s) for s in sems_alvo):
-                    p = os.path.join(PROJECT_ROOT, f"apps/automacoes/analise_ia/dados/tabelas_sql/PY_ggci_espelho_beneficio_temp_d1_{ano}{SUFIXO_TABELAS}.parquet")
-                    if os.path.exists(p):
-                        df_ano = pl.read_parquet(p).filter(pl.col("semestre").is_in(sems_alvo)).to_pandas()
-                        dfs_ben.append(df_ano)
+            dfs_ben = _ler_espelhos_do_banco("PY_ggci_espelho_beneficio_temp_d1", ['2025', '2026'], sems_alvo, "BEN  BD ", espelhos_ausentes)
 
             if dfs_ben:
                 df_esp_ben_pd = pd.concat(dfs_ben, ignore_index=True)
@@ -4084,13 +4122,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
     # OTIMIZAÇÃO: Injeção direta dos dados históricos do RIAF usando Parquets locais
     try:
         if check_riaf and sems_alvo:
-            dfs = []
-            for ano in ['2026']:
-                if any(ano in str(s) for s in sems_alvo):
-                    p = os.path.join(PROJECT_ROOT, f"apps/automacoes/analise_ia/dados/tabelas_sql/PY_ggci_espelho_riaf_d1_{ano}{SUFIXO_TABELAS}.parquet")
-                    if os.path.exists(p):
-                        df_ano = pl.read_parquet(p).filter(pl.col("semestre").is_in(sems_alvo)).to_pandas()
-                        dfs.append(df_ano)
+            dfs = _ler_espelhos_do_banco("PY_ggci_espelho_riaf_d1", ['2026'], sems_alvo, "RIAF BD", espelhos_ausentes)
             
             if dfs:
                 df_espelho_pd = pd.concat(dfs, ignore_index=True)
@@ -5198,6 +5230,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                     csv_str = df_aba.to_csv(index=False, sep=';')
                     # BOM na frente para o Excel abrir o UTF-8 com acento certo.
                     zipf.writestr(f'{nome_arquivo}.csv', '﻿'.encode('utf8') + csv_str.encode('utf8'))
+            _avisar_espelhos_ausentes(espelhos_ausentes)
             print(f"[GGCI       | CONCLUIDO     | FINAL ] Salvo com sucesso.")
             t_total = time.time() - t_inicio_ggci
             print(f"🎉 Regras aplicadas: Relatório gerado em {int(t_total // 60)}m e {int(t_total % 60)}s.")
@@ -5241,6 +5274,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             finally:
                 stop_save_event.set()
                 t_monitor.join()
+            _avisar_espelhos_ausentes(espelhos_ausentes)
             # print(f"[GGCI       | CONCLUIDO     | FINAL ] Salvo com sucesso.")
             t_total = time.time() - t_inicio_ggci
             minutos = int(t_total // 60)
