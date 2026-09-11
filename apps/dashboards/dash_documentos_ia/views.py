@@ -1744,14 +1744,17 @@ def api_resumo_ia(request):
         df = _aplicar_filtros(df, request)
         df = _aplicar_busca(df, (request.GET.get('busca') or '').strip())
 
-    inconsistencias = (_frases_de_inconsistencia(df['gemini_inconsistencia'])
-                       if len(df) and 'gemini_inconsistencia' in df.columns else [])
+    # Para os gráficos não apagarem as outras opções quando clicados (faceted search):
+    # 1. Inconsistências respeitam a rosca (Vereditos), mas ignoram o próprio filtro.
+    df_para_inconsistencias = _recorte_da_rosca(df, request) if len(df) else df
+    inconsistencias = (_frases_de_inconsistencia(df_para_inconsistencias['gemini_inconsistencia'])
+                       if len(df_para_inconsistencias) and 'gemini_inconsistencia' in df_para_inconsistencias.columns else [])
 
-    recorte = _aplicar_inconsistencias(df, request) if len(df) else df
-    recorte = _recorte_da_rosca(recorte, request) if len(recorte) else recorte
+    # 2. A Rosca (Vereditos/Baldes) respeita inconsistências, mas ignora o próprio filtro.
+    df_para_rosca = _aplicar_inconsistencias(df, request) if len(df) else df
 
-    if len(recorte):
-        contagem_ia = recorte['status_ia'].value_counts()
+    if len(df_para_rosca):
+        contagem_ia = df_para_rosca['status_ia'].value_counts()
         veredito = {nome: int(contagem_ia.get(nome, 0)) for nome in VEREDITOS_DO_GRAFICO}
         if 'PENDENTE' in VEREDITOS_DO_GRAFICO:
             veredito['PENDENTE'] = int(contagem_ia.get('AUSENTE', 0)) + int(contagem_ia.get('INADIMPLENTE', 0))
@@ -1759,12 +1762,18 @@ def api_resumo_ia(request):
         #  fatia "Inadimplentes Proc." daqui ser o mesmo de lá — inclusive os dois
         #  desempates (`documento_ausente` e `veredito_documento`), que são a única
         #  forma de separar cobrança sem lastro de documento lido.
-        contagem_balde = _balde_do_documento(recorte).value_counts()
+        contagem_balde = _balde_do_documento(df_para_rosca).value_counts()
         baldes = {nome: int(contagem_balde.get(nome, 0)) for nome in BALDES_DA_ROSCA}
-        processados = recorte[recorte['status_ia'].isin(STATUS_PROCESSADO)]
     else:
         veredito = {nome: 0 for nome in VEREDITOS_DO_GRAFICO}
         baldes = {nome: 0 for nome in BALDES_DA_ROSCA}
+
+    # Recorte final (interseção de tudo) para as métricas seguintes (mensalidades, etc)
+    recorte = _recorte_da_rosca(df_para_rosca, request) if len(df_para_rosca) else df_para_rosca
+
+    if len(recorte):
+        processados = recorte[recorte['status_ia'].isin(STATUS_PROCESSADO)]
+    else:
         processados = recorte
 
     sem_desconto, tem_sem = _contagem_de_mensalidade(processados, 'msd_doc')
