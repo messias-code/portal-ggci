@@ -3745,11 +3745,6 @@ header.menu-divisoria button:active,
    mesma aritmética das ondas dos KPIs: o que importa não é a opacidade de cada
    elemento, é a mancha que o conjunto forma.  */
 .docia-tela {
-    background-image: radial-gradient(
-        circle at 1px 1px,
-        color-mix(in srgb, var(--docia-marca) 11%, transparent) 1px,
-        transparent 1px);
-    background-size: 15px 15px;
     background-attachment: local;
 }
 
@@ -3932,11 +3927,6 @@ html .rounded-r-xl       { border-radius: 0 var(--docia-r-campo) var(--docia-r-c
     começa. Meio tom só — o pedido foi creme, não bandeja cinza.  */
 .docia-tela {
     background-color: var(--docia-rebaixo);
-    background-image: radial-gradient(
-        circle at 1px 1px,
-        color-mix(in srgb, var(--docia-nord-0) 7%, transparent) 1px,
-        transparent 1px);
-    background-size: 16px 16px;
 }
 
 
