@@ -2267,7 +2267,10 @@ def calcular_auditoria_ia(df):
     qtd_retroativos = pd.to_numeric(df.get('qtd_pagtos_retroativos', pd.Series([0]*len(df), index=df.index)), errors='coerce').fillna(0)
     cond_inadimplente = ((qtd_pagtos - qtd_retroativos) <= 0) | (total_bolsa <= 0)
     
-    matematica_invalida_geral = (ia_cpf == '') | (sys_cpf != ia_cpf) | (ia_semestre == '') | (sys_semestre != ia_semestre)
+    sys_curso = df.get('Curso', pd.Series(['']*len(df), index=df.index)).astype(object).fillna('').astype(str).str.strip().str.upper().replace(['NAN', 'NONE', '<NA>'], '')
+    ia_curso = df.get('Gemini Curso', pd.Series(['']*len(df), index=df.index)).astype(object).fillna('').astype(str).str.strip().str.upper().replace(['NAN', 'NONE', '<NA>'], '')
+    
+    matematica_invalida_geral = (ia_cpf == '') | (sys_cpf != ia_cpf) | (ia_semestre == '') | (sys_semestre != ia_semestre) | (ia_curso == '') | (sys_curso != ia_curso)
     matematica_invalida_financeiro = (inc_original.str.contains('Valor da mensalidade integral não localizado', na=False)) | (dif_s != 0)
     
     is_riaf = doc_tipo.str.contains('RIAF', case=False, na=False)
