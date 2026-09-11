@@ -5203,7 +5203,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                 'inscricao', 'inscricao_anterior', 'inscricao_posterior', 'cpf', 'gemini_cpf', 
                 'tipo_bolsa_final', 'gemini_tipo_bolsa_final', 'mudou_bolsa', 'bolsa_anterior', 
                 'bolsa_posterior', 'faculdade', 'cnpj_ies', 'mudou_ies', 'ies_anterior', 'ies_posterior', 
-                'curso', 'gemini_assinatura_aluno', 'gemini_assinatura_ies', 'ultimo_valor_pago_ref', 
+                'curso', 'gemini_curso', 'gemini_assinatura_aluno', 'gemini_assinatura_ies', 'ultimo_valor_pago_ref', 
                 'total_bolsa_paga', 'qtd_pagtos', 'qtd_pagtos_retroativos', 'matricula_sem_desc', 
                 'gemini_matricula_sem_desc', 'matricula_sd_doc', 'matricula_com_desc', 
                 'gemini_matricula_com_desc', 'matricula_cd_doc', 'mensalidade_sem_desc', 
