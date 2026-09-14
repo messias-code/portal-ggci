@@ -3,11 +3,15 @@ CREATE OR REPLACE VIEW sibu.PY_ggci_espelho_historico_d1_2025_analise_ia AS
 WITH UltimaTentativa AS (
     SELECT 
         *,
+        (SELECT l_ies.ins_codigo FROM lancamento l_ies
+          WHERE l_ies.uni_codigo = df.uni_codigo
+            AND l_ies.lan_anomes <= CAST(CONCAT(LEFT(df.semestre, 4), IF(RIGHT(df.semestre, 1) = '1', '06', '12')) AS UNSIGNED)
+          ORDER BY l_ies.lan_anomes DESC LIMIT 1) AS ins_codigo_semestre,
         ROW_NUMBER() OVER(
             PARTITION BY uni_codigo, semestre 
             ORDER BY data_create DESC, id DESC
         ) as ordem_tentativa
-    FROM documentos_faculdades
+    FROM documentos_faculdades df
     WHERE documentos_id = 9
       AND semestre LIKE '2025%'
 )
@@ -38,7 +42,10 @@ FROM UltimaTentativa u
 LEFT JOIN universitarios uni ON u.uni_codigo = uni.uni_codigo
 /* A LINHA ABAIXO FOI REMOVIDA PARA EVITAR A MULTIPLICAÇÃO POR 6 */
 -- LEFT JOIN lancamento l ON u.coleta_dados_id = l.coleta_id
-LEFT JOIN instituicao i ON uni.ins_codigo = i.ins_codigo
+-- IES DO SEMESTRE: a instituição vem do último lançamento até o fim do semestre do
+-- documento (subquery `ins_codigo_semestre` na CTE), caindo no cadastro quando não há
+-- lançamento. Sem isso quem transfere fica com a IES nova em todos os semestres.
+LEFT JOIN instituicao i ON i.ins_codigo = COALESCE(u.ins_codigo_semestre, uni.ins_codigo)
 LEFT JOIN cursos c ON uni.cur_codigo = c.cur_codigo
 LEFT JOIN coleta_dados cd ON u.coleta_dados_id = cd.id
 

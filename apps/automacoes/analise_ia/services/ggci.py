@@ -552,6 +552,9 @@ def aplicar_formatacao_visual(writer, nome_aba, df):
     f_st_f_valido = workbook.add_format({'bg_color': '#CCC0DA', 'font_color': '#000000', 'valign': 'vcenter', 'align': 'center'})
     f_st_f_invalido = workbook.add_format({'bg_color': '#FFC7CE', 'font_color': '#000000', 'valign': 'vcenter', 'align': 'center'})
     f_st_nao_proc = workbook.add_format({'bg_color': '#B8CCE4', 'font_color': '#000000', 'valign': 'vcenter', 'align': 'center'})
+    # Documento válido, frase da inconsistência errada. Fica no amarelo-claro para não se
+    # confundir nem com o verde do válido puro nem com o lilás do falso válido.
+    f_st_erro_inc = workbook.add_format({'bg_color': '#FFEB9C', 'font_color': '#000000', 'valign': 'vcenter', 'align': 'center'})
 
     max_row = len(df)
     max_col = len(df.columns) - 1
@@ -766,6 +769,7 @@ def aplicar_formatacao_visual(writer, nome_aba, df):
             worksheet.conditional_format(1, i, max_row, i, {'type': 'cell', 'criteria': '==', 'value': '"Falso Inválido"', 'format': f_st_f_invalido})
             worksheet.conditional_format(1, i, max_row, i, {'type': 'cell', 'criteria': '==', 'value': '"Não Processado"', 'format': f_st_nao_proc})
             worksheet.conditional_format(1, i, max_row, i, {'type': 'cell', 'criteria': '==', 'value': '"Corrompido"', 'format': f_laranja})
+            worksheet.conditional_format(1, i, max_row, i, {'type': 'cell', 'criteria': '==', 'value': '"Erro na Inconsistência"', 'format': f_st_erro_inc})
 
         elif col in ['Diagnóstico Financeiro Final', 'diagnostico_financeiro_final']:
             worksheet.conditional_format(1, i, max_row, i, {'type': 'cell', 'criteria': '==', 'value': '"Pagamento correto"', 'format': f_verde})
@@ -844,11 +848,17 @@ def get_engine():
         DB_PASS = os.getenv('SIBU_BANCO_DADOS_PASS')
         DB_NAME = os.getenv('SIBU_BANCO_DADOS_NAME')
         
+        # `pool_pre_ping` porque este engine é cache de módulo: vive enquanto o processo
+        # viver e as conexões ficam paradas entre uma execução e outra. O `pool_recycle`
+        # cobre a conexão velha, mas não a que morreu antes da hora (timeout de leitura,
+        # queda de rede) — essa volta do pool aparentemente viva e falha na primeira query.
+        # O ping descarta e recria, ao custo de um SELECT 1 por checkout.
         _ENGINE_CACHE = create_engine(
             f'mysql+mysqlconnector://{DB_USER}:{quote_plus(DB_PASS)}@{DB_HOST}/{DB_NAME}',
             pool_size=5,
             max_overflow=10,
             pool_recycle=3600,
+            pool_pre_ping=True,
             connect_args={'connect_timeout': 30}
         )
     return _ENGINE_CACHE
@@ -1741,6 +1751,27 @@ def aplicar_transicoes(df, df_pag):
     return df
 
 
+def so_digitos(serie):
+    """
+    O QUE FAZ: Devolve a coluna como TEXTO de dígitos, sem pontuação e sem `.0`.
+    POR QUÊ EXISTE: CPF, CNPJ e telefone são identificadores, não quantidades, e o zero à
+    esquerda faz parte deles — o CPF 05957547166 vira 5957547166 assim que alguém o guarda
+    como número. Também precisa ser UM tipo só: o cache é gravado em parquet, e o pyarrow
+    recusa uma coluna `object` que misture `str` com `np.int64` ("Could not convert
+    '98216570287' with type str: tried to convert to int64"), que é como a geração morria
+    quando a normalização de CPF aqui embaixo encontrava um cache antigo gravado em Int64.
+    COMO FUNCIONA: tudo para texto, apara, apaga os nulos escritos por extenso e o `.0` que
+    o float deixa, e por fim descarta o que não for dígito.
+    PARÂMETROS: serie (Series)
+    RETORNO: Series de str.
+    """
+    return (serie.astype(object).fillna('')
+            .astype(str).str.strip()
+            .replace(['nan', 'None', '<NA>', 'NaN'], '')
+            .str.replace(r'\.0$', '', regex=True)
+            .str.replace(r'[^\d]', '', regex=True))
+
+
 def calcular_auditoria_ia(df):
     """
     O QUE FAZ: Processa o cálculo matemático final e atualiza a coluna Status_IA (Válido, Inválido, Falso Ausente, Falso Válido, etc).
@@ -1748,6 +1779,10 @@ def calcular_auditoria_ia(df):
     COMO FUNCIONA: Cruza o valor da Mensalidade S/ Desconto com a IA. Compara o total pago com o total que deveria ser pago. Produz a métrica Prejuízo e Economia.
     """
     if df.empty: return df
+
+    for col_cpf in ['Gemini CPF', 'CPF']:
+        if col_cpf in df.columns:
+            df[col_cpf] = so_digitos(df[col_cpf])
 
     def atualizar_e_aplicar_cache_local(df_documentos):
         def get_d_proc(df_alvo):
@@ -1822,6 +1857,16 @@ def calcular_auditoria_ia(df):
         try:
             if os.path.exists(cache_path):
                 df_cache = pd.read_parquet(cache_path)
+                #  O CACHE VELHO NÃO SABE DO TIPO NOVO. `Gemini CPF` já chega aqui como
+                #  texto de dígitos (o `so_digitos` no topo desta função), mas o arquivo
+                #  no disco foi gravado por uma execução anterior, quando a coluna ainda
+                #  era Int64 — `COLS_NUM` a converte para inteiro na hora de salvar. O
+                #  `concat` dos dois devolvia uma coluna `object` com `np.int64` e `str`
+                #  na mesma lista, e o parquet morria na conversão. Normalizar o lado do
+                #  disco alinha os dois num tipo só, e de quebra o CPF deixa de perder o
+                #  zero à esquerda quando volta do cache.
+                if 'Gemini CPF' in df_cache.columns:
+                    df_cache['Gemini CPF'] = so_digitos(df_cache['Gemini CPF'])
                 if not df_novos.empty:
                     df_cache = pd.concat([df_cache, df_novos], ignore_index=True)
                     if 'Documento Tipo' not in df_cache.columns:
@@ -2261,11 +2306,81 @@ def calcular_auditoria_ia(df):
     qtd_retroativos = pd.to_numeric(df.get('qtd_pagtos_retroativos', pd.Series([0]*len(df), index=df.index)), errors='coerce').fillna(0)
     cond_inadimplente = ((qtd_pagtos - qtd_retroativos) <= 0) | (total_bolsa <= 0)
     
-    matematica_invalida_geral = (ia_cpf == '') | (sys_cpf != ia_cpf) | (ia_semestre == '') | (sys_semestre != ia_semestre)
+    sys_curso = df.get('Curso', pd.Series(['']*len(df), index=df.index)).astype(object).fillna('').astype(str).str.strip().str.upper().replace(['NAN', 'NONE', '<NA>'], '')
+    ia_curso = df.get('Gemini Curso', pd.Series(['']*len(df), index=df.index)).astype(object).fillna('').astype(str).str.strip().str.upper().replace(['NAN', 'NONE', '<NA>'], '')
+    
+    # O CURSO SÓ É COBRADO DE QUEM O CARREGA — Histórico e RIAF.
+    #
+    # A regra chegou em e6a0275 valendo para toda aba, e `ia_curso == ''` invalida. Só que o
+    # prompt do CONTRATO nunca pediu o curso: `gemini_curso` vem vazio em 53.232 dos 53.453
+    # contratos do espelho (100% de 2026, 99,3% de 2025), e os 221 preenchidos são refugo do
+    # prompt desalinhado — treze deles dizem literalmente "(Item válido)". Medir um campo que
+    # o documento não traz é medir ruído.
+    #
+    # O ESTRAGO ERA MUDO E TOTAL: com o curso vazio, todo contrato que a IA deu por válido
+    # caía em `Falso Válido`. No Parquet de 14/09/2026 (proc_37) são 24.349 `Falso Válido`
+    # contra 146 `Válido` — e 147 é exatamente o número de contratos em que `gemini_curso`
+    # bate com `curso`. Não era a matemática discordando da IA: era a aba inteira reprovada
+    # por um campo em branco. Foi isso que zerou `Erro na Inconsistência`, que só é alcançado
+    # depois de `Falso Válido` não ter disparado.
+    #
+    # Histórico (1,3% vazio) e RIAF (11,2%) extraem o curso de verdade, e para eles o vazio
+    # continua invalidando: ali é a IA não tendo achado o que está no arquivo. Mesma razão
+    # pela qual `is_historico` já dispensa o histórico das regras financeiras — coluna que
+    # não faz parte da verificação daquele documento não entra na conta dele.
+    documento_traz_curso = is_historico | doc_tipo.str.contains('RIAF', case=False, na=False)
+    curso_invalido = documento_traz_curso & ((ia_curso == '') | (sys_curso != ia_curso))
+
+    matematica_invalida_geral = (ia_cpf == '') | (sys_cpf != ia_cpf) | (ia_semestre == '') | (sys_semestre != ia_semestre) | curso_invalido
     matematica_invalida_financeiro = (inc_original.str.contains('Valor da mensalidade integral não localizado', na=False)) | (dif_s != 0)
     
+    is_riaf = doc_tipo.str.contains('RIAF', case=False, na=False)
+    ia_assinatura_aluno = df.get('Gemini Assinatura Aluno', pd.Series(['']*len(df), index=df.index)).astype(object).fillna('').astype(str).str.strip().str.upper()
+    ia_assinatura_ies = df.get('Gemini Assinatura Ies', pd.Series(['']*len(df), index=df.index)).astype(object).fillna('').astype(str).str.strip().str.upper()
+    matematica_invalida_assinatura = is_riaf & (
+        inc_original.str.contains('Assinatura', case=False, na=False) |
+        ia_assinatura_aluno.str.contains('NÃO LOCALIZADO|NAO LOCALIZADO', regex=True) |
+        ia_assinatura_ies.str.contains('NÃO LOCALIZADO|NAO LOCALIZADO', regex=True)
+    )
+    
+    sys_beneficio = pd.to_numeric(df.get('valor_beneficio', pd.Series([0]*len(df), index=df.index)), errors='coerce').fillna(0)
+    ia_beneficio = pd.to_numeric(df.get('Gemini Valor Beneficio', pd.Series([0]*len(df), index=df.index)), errors='coerce').fillna(0)
+    sys_financiamento = pd.to_numeric(df.get('valor_financiamento', pd.Series([0]*len(df), index=df.index)), errors='coerce').fillna(0)
+    ia_financiamento = pd.to_numeric(df.get('Gemini Valor Financiamento', pd.Series([0]*len(df), index=df.index)), errors='coerce').fillna(0)
+    matematica_invalida_riaf_extra = is_riaf & ((sys_beneficio != ia_beneficio) | (sys_financiamento != ia_financiamento))
+
+    # ERRO NA INCONSISTÊNCIA — a frase do Gemini não bate com o valor que ele mesmo extraiu.
+    #
+    # NO CONTRATO, MENSALIDADE COM DESCONTO NUNCA INVALIDA. Não achar o valor, ou achar um
+    # menor/maior que o do sistema, é divergência de desconto — não é erro de documento. Quem
+    # invalida contrato é semestre, CPF e mensalidade INTEGRAL; por isso as três frases de
+    # "mensalidade com desconto" não entram em `matematica_invalida_financeiro`, e não devem
+    # entrar. Só o desconto divergindo, o contrato é Válido — não "Falso Válido".
+    #
+    # O QUE ESTE BLOCO PEGA É OUTRA COISA: a frase estar errada sobre o próprio dado da IA.
+    # "não localizado" com `Gemini Mensalidade C/ Desconto` > 0, "é menor" com o valor maior ou
+    # igual, "é maior" com o valor menor ou igual. O contrato continua válido — o que falhou foi
+    # a CATALOGAÇÃO, e ela precisa ser visível para poder ser revista no prompt.
+    #
+    # Medido no Parquet de 13/09/2026 (contrato, 80.488 linhas): 2.080 casos de "não localizado"
+    # com valor lido e 39 de "é maior" com valor menor ou igual, contra 0 em "é menor". São
+    # 2.119 linhas que saem de `Válido` para cá — 8,7% dos 24.277 válidos do contrato.
+    inc_mcd_nao_loc = inc_original.str.contains('mensalidade com desconto não localizado', case=False, na=False)
+    inc_mcd_menor = inc_original.str.contains('Mensalidade com desconto no contrato é menor', case=False, na=False)
+    inc_mcd_maior = inc_original.str.contains('Mensalidade com desconto no contrato é maior', case=False, na=False)
+
+    # `is_contrato` NÃO serve aqui: ela casa CONTRATO, RIAF e RELATÓRIO juntos, porque existe
+    # para ligar o cálculo de bolsa. Esta regra é só do contrato, então a máscara é própria.
+    so_contrato = doc_tipo.str.contains('CONTRATO', case=False, na=False)
+
+    cond_erro_inconsistencia = so_contrato & (~mask_ignorar_math) & (
+        (inc_mcd_nao_loc & (mcd_ia > 0)) |
+        (inc_mcd_menor & (mcd_ia >= mcd_sys)) |
+        (inc_mcd_maior & (mcd_ia <= mcd_sys))
+    )
+
     # Para Histórico, ignorar regras financeiras (pois as colunas não fazem parte de sua verificação)
-    matematica_invalida = np.where(is_historico, matematica_invalida_geral, matematica_invalida_geral | matematica_invalida_financeiro)
+    matematica_invalida = np.where(is_historico, matematica_invalida_geral, matematica_invalida_geral | matematica_invalida_financeiro | matematica_invalida_assinatura | matematica_invalida_riaf_extra)
     
     matematica_diz = np.where(matematica_invalida, 'Inválido', 'Válido')
     
@@ -2274,7 +2389,13 @@ def calcular_auditoria_ia(df):
     cond_falso_invalido = (matematica_diz == 'Válido') & (ia_resultado == 'Inválido')
     cond_falso_valido = (matematica_diz == 'Inválido') & (ia_resultado == 'Válido')
 
-    base_resultado = np.where(cond_falso_invalido, 'Falso Inválido', np.where(cond_falso_valido, 'Falso Válido', ia_resultado))
+    # `Erro na Inconsistência` entra DEPOIS dos dois falsos, e por isso só alcança a linha em
+    # que matemática e IA já concordaram em `Válido`: se houver qualquer outra divergência que
+    # invalide de verdade (semestre, CPF, mensalidade integral), o `Falso Válido` vem antes e
+    # prevalece. O erro de catalogação nunca esconde um documento inválido.
+    base_resultado = np.where(cond_falso_invalido, 'Falso Inválido',
+                     np.where(cond_falso_valido, 'Falso Válido',
+                     np.where(cond_erro_inconsistencia & (ia_resultado == 'Válido'), 'Erro na Inconsistência', ia_resultado)))
 
     # O veredito da IA sobre o ARQUIVO, isolado. Não vira coluna: serve para separar, logo
     # abaixo, o inadimplente que entregou do que não entregou — dois casos opostos para quem
@@ -2439,8 +2560,12 @@ def gerar_resumo_quantitativo(df_target, tipos_documentos):
     tem_ben = 'valor_beneficio' in df_target.columns
     s_ben = pd.to_numeric(df_target['valor_beneficio'], errors='coerce').fillna(0.0) if tem_ben else None
 
+    #  `erro na inconsistência` conta como PROCESSADO: o documento foi lido e é válido — o
+    #  que falhou foi a frase que a IA escreveu sobre a mensalidade com desconto. Fora daqui,
+    #  ele viraria "não entregue" na volumetria de envios da IES.
     STATUS_PROCESSADOS = {'inválido', 'válido', 'falso inválido', 'falso válido',
-                          'invalido', 'valido', 'falso invalido', 'falso valido'}
+                          'invalido', 'valido', 'falso invalido', 'falso valido',
+                          'erro na inconsistência', 'erro na inconsistencia'}
 
     #  INADIMPLENTE NÃO É BENEFICIÁRIO, e é daqui que sai a correção de 02/09/2026.
     #
@@ -2608,6 +2733,7 @@ def gerar_resumo_quantitativo(df_target, tipos_documentos):
 def gerar_aba_relatorio_contratos(writer, df_docs, sems_contratos):
     """
     O QUE FAZ: Monta a aba "Relatório Contratos", o painel gerencial por IES e semestre.
+
     POR QUÊ EXISTE: É a leitura executiva do relatório — quem abre o arquivo começa por ela,
     não pelas abas analíticas linha a linha.
     COMO FUNCIONA: Escreve o bloco de cada semestre em colunas de 6 e monta as linhas de
@@ -3821,6 +3947,98 @@ def recalcular_bolsas_ia(df, is_riaf=False):
     df['soma_ovg_devia_pagar_ia'] = soma
     return df
 
+def _ler_espelhos_do_banco(prefixo, anos, sems_alvo, rotulo, ausentes):
+    """
+    O QUE FAZ: Lê os Parquets de espelho de um documento e devolve a lista de DataFrames,
+    anotando em `ausentes` todo arquivo esperado que não estava em disco.
+    POR QUÊ EXISTE: O que faltava aqui nunca foi a leitura, era o aviso. O `os.path.exists`
+    pulava o arquivo em silêncio e a execução seguia até imprimir "Salvo com sucesso" —
+    foi assim que o proc_23 saiu sem o espelho de contrato e sem o de riaf (52.713 e 16.965
+    linhas a menos) sem nada na tela sugerindo que faltava algo. Um espelho só é procurado
+    quando o ano dele aparece em `sems_alvo`, então não achar o arquivo nunca é normal:
+    significa que a extração não regerou aquela tabela.
+    PARÂMETROS:
+        prefixo: nome da tabela sem o ano e sem o sufixo de ambiente.
+        anos: anos possíveis; só é lido o ano presente em `sems_alvo`.
+        sems_alvo: semestres pedidos nesta execução.
+        rotulo: etiqueta curta usada nos prints (ex.: "CONT BD ").
+        ausentes: lista acumuladora da execução, alterada no lugar.
+    RETORNO: list[pandas.DataFrame]
+    """
+    dfs = []
+    for ano in anos:
+        if not any(ano in str(s) for s in sems_alvo):
+            continue
+        caminho = os.path.join(PROJECT_ROOT, f"apps/automacoes/analise_ia/dados/tabelas_sql/{prefixo}_{ano}{SUFIXO_TABELAS}.parquet")
+        if os.path.exists(caminho):
+            dfs.append(pl.read_parquet(caminho).filter(pl.col("semestre").is_in(sems_alvo)).to_pandas())
+        else:
+            ausentes.append(os.path.basename(caminho))
+            print(f"[GGCI       | AUSENTE       | {rotulo}] {os.path.basename(caminho)} não existe — o relatório vai sair SEM esses dados.")
+    return dfs
+
+
+def _avisar_espelhos_ausentes(ausentes):
+    """
+    O QUE FAZ: Repete, em bloco e no fim da execução, quais espelhos faltaram.
+    POR QUÊ EXISTE: O aviso individual sai no meio de centenas de linhas de log e some.
+    Quem lê só o rodapé precisa enxergar que o "Salvo com sucesso" logo abaixo se refere a
+    um relatório incompleto — o relatório continua sendo gravado de propósito, porque
+    descartar 12 minutos de extração por causa de uma tabela seria pior que entregar o
+    resto avisando o que falta.
+    PARÂMETROS: ausentes: lista de nomes de arquivo acumulada por `_ler_espelhos_do_banco`.
+    RETORNO: None
+    """
+    if not ausentes:
+        return
+    faltantes = sorted(set(ausentes))
+    print(f"[GGCI       | INCOMPLETO    | FINAL ] {len(faltantes)} espelho(s) do banco não foram encontrados em dados/tabelas_sql:")
+    for nome in faltantes:
+        print(f"[GGCI       | INCOMPLETO    | FINAL ]   - {nome}")
+    print(f"[GGCI       | INCOMPLETO    | FINAL ] O relatório abaixo está SEM esses dados. Rode a extração de novo para regerar as tabelas.")
+
+
+def completar_ies_pelo_espelho(df, ies_series, codigo_col, caminho_espelho=None):
+    """
+    O QUE FAZ: Preenche o nome da IES das linhas de pagamento que ficaram sem ele, lendo o
+    espelho de beneficiários por (codigo_aluno, semestre).
+    POR QUÊ EXISTE: a IES da aba Pagamentos vinha só do universo dos DOCUMENTOS, e quem teve
+    o repasse inteiro estornado não entra nesse universo (a regra é a de sempre: sem repasse
+    líquido não se cobra documento). O pagamento continua na aba, com `bolsa_paga = 0` e
+    `lan_valor_cancelamento` igual à bolsa, mas o aluno sumia do mapa: a IES ficava vazia e a
+    MANTENEDORA virava "Não Encontrada". Na geração de 14/09/2026 eram 351 linhas de 326.038
+    (194 alunos, R$ 264.651,18 cancelados) e TODAS tinham `bolsa_paga = 0` — nenhuma linha
+    com repasse ficou sem IES. O cadastro existia, só não estava sendo lido: o espelho de
+    beneficiários cobre 100% dessas linhas e as 47 IES que ele devolve resolvem todas no
+    catálogo de mantenedoras.
+    COMO FUNCIONA: cruza COM o semestre, porque o cadastro do SIBU é sempre o estado atual —
+    a faculdade de hoje não pode ser jogada em cima do pagamento de um semestre antigo. Só
+    mexe nas linhas sem nome; o que já veio do documento fica como está.
+    PARÂMETROS: df (DataFrame de pagamentos), ies_series (Series de IES, com buracos),
+                codigo_col (nome da coluna de inscrição em `df`),
+                caminho_espelho (str, opcional — o padrão é o Parquet do próprio app)
+    RETORNO: Series de IES com os buracos preenchidos onde o espelho soube responder.
+    """
+    faltando = ies_series.isna() | (ies_series.astype(str).str.strip() == '')
+    if not faltando.any() or 'semestre_referencia_analise' not in df.columns:
+        return ies_series
+
+    if caminho_espelho is None:
+        caminho_espelho = os.path.join(PROJECT_ROOT, f"apps/automacoes/analise_ia/dados/tabelas_sql/PY_ggci_coleta_de_dados_beneficiarios_temp_d1{SUFIXO_TABELAS}.parquet")
+    if not os.path.exists(caminho_espelho):
+        return ies_series
+
+    espelho = pd.read_parquet(caminho_espelho, columns=['codigo_aluno', 'semestre', 'nome_faculdade_sql'])
+    espelho = espelho.dropna(subset=['nome_faculdade_sql'])
+    chave_espelho = (pd.to_numeric(espelho['codigo_aluno'], errors='coerce').astype('Int64').astype(str)
+                     + '|' + espelho['semestre'].astype(str).str.strip())
+    mapa = pd.Series(espelho['nome_faculdade_sql'].values, index=chave_espelho)
+    mapa = mapa[~mapa.index.duplicated(keep='first')]
+
+    chave_df = (pd.to_numeric(df[codigo_col], errors='coerce').astype('Int64').astype(str)
+                + '|' + df['semestre_referencia_analise'].astype(str).str.strip())
+    return ies_series.where(~faltando, chave_df.map(mapa))
+
 def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_relatorio=False, gerar_relatorio_riaf=False, gerar_quantitativo=True, gerar_pagamentos=True, sems_riaf=None, sems_contratos=None, processo_id=None, formato="EXCEL"):
     """
     O QUE FAZ: Ponto de entrada final do fluxo de transformação (ETAPA 3). Lê os CSVs temporários, aplica regras, cria o Excel Final.
@@ -3886,6 +4104,8 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
     df_docs = pd.DataFrame()
     df_riaf = pd.DataFrame()
     df_pag = pd.DataFrame()
+    # Espelhos do banco que esta execução procurou e não achou. Ver `_avisar_espelhos_ausentes`.
+    espelhos_ausentes = []
 
     if os.path.exists(arq_processados):
         df_docs = converter_colunas_para_salvamento(pd.read_parquet(arq_processados))
@@ -3904,13 +4124,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
     try:
         if check_historico and sems_alvo:
             
-            dfs = []
-            for ano in ['2025', '2026']:
-                if any(ano in str(s) for s in sems_alvo):
-                    p = os.path.join(PROJECT_ROOT, f"apps/automacoes/analise_ia/dados/tabelas_sql/PY_ggci_espelho_historico_d1_{ano}{SUFIXO_TABELAS}.parquet")
-                    if os.path.exists(p):
-                        df_ano = pl.read_parquet(p).filter(pl.col("semestre").is_in(sems_alvo)).to_pandas()
-                        dfs.append(df_ano)
+            dfs = _ler_espelhos_do_banco("PY_ggci_espelho_historico_d1", ['2025', '2026'], sems_alvo, "HIST BD", espelhos_ausentes)
             
             if dfs:
                 df_espelho_hist_pd = pd.concat(dfs, ignore_index=True)
@@ -3944,13 +4158,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
 
     try:
         if check_contrato and sems_alvo:
-            dfs = []
-            for ano in ['2025', '2026']:
-                if any(ano in str(s) for s in sems_alvo):
-                    p = os.path.join(PROJECT_ROOT, f"apps/automacoes/analise_ia/dados/tabelas_sql/PY_ggci_espelho_contrato_temp_d1_{ano}{SUFIXO_TABELAS}.parquet")
-                    if os.path.exists(p):
-                        df_ano = pl.read_parquet(p).filter(pl.col("semestre").is_in(sems_alvo)).to_pandas()
-                        dfs.append(df_ano)
+            dfs = _ler_espelhos_do_banco("PY_ggci_espelho_contrato_temp_d1", ['2025', '2026'], sems_alvo, "CONT BD ", espelhos_ausentes)
 
             if dfs:
                 df_esp_cont_pd = pd.concat(dfs, ignore_index=True)
@@ -3985,13 +4193,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
     # OTIMIZAÇÃO: Injeção direta dos dados históricos de FINANCIAMENTO
     try:
         if check_financ and sems_alvo:
-            dfs_fin = []
-            for ano in ['2025', '2026']:
-                if any(ano in str(s) for s in sems_alvo):
-                    p = os.path.join(PROJECT_ROOT, f"apps/automacoes/analise_ia/dados/tabelas_sql/PY_ggci_espelho_financiamento_d1_{ano}{SUFIXO_TABELAS}.parquet")
-                    if os.path.exists(p):
-                        df_ano = pl.read_parquet(p).filter(pl.col("semestre").is_in(sems_alvo)).to_pandas()
-                        dfs_fin.append(df_ano)
+            dfs_fin = _ler_espelhos_do_banco("PY_ggci_espelho_financiamento_d1", ['2025', '2026'], sems_alvo, "FIN  BD ", espelhos_ausentes)
 
             if dfs_fin:
                 df_esp_fin_pd = pd.concat(dfs_fin, ignore_index=True)
@@ -4029,13 +4231,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
     # OTIMIZAÇÃO: Injeção direta dos dados históricos de BENEFICIOS
     try:
         if check_benef and sems_alvo:
-            dfs_ben = []
-            for ano in ['2025', '2026']:
-                if any(ano in str(s) for s in sems_alvo):
-                    p = os.path.join(PROJECT_ROOT, f"apps/automacoes/analise_ia/dados/tabelas_sql/PY_ggci_espelho_beneficio_temp_d1_{ano}{SUFIXO_TABELAS}.parquet")
-                    if os.path.exists(p):
-                        df_ano = pl.read_parquet(p).filter(pl.col("semestre").is_in(sems_alvo)).to_pandas()
-                        dfs_ben.append(df_ano)
+            dfs_ben = _ler_espelhos_do_banco("PY_ggci_espelho_beneficio_temp_d1", ['2025', '2026'], sems_alvo, "BEN  BD ", espelhos_ausentes)
 
             if dfs_ben:
                 df_esp_ben_pd = pd.concat(dfs_ben, ignore_index=True)
@@ -4078,13 +4274,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
     # OTIMIZAÇÃO: Injeção direta dos dados históricos do RIAF usando Parquets locais
     try:
         if check_riaf and sems_alvo:
-            dfs = []
-            for ano in ['2026']:
-                if any(ano in str(s) for s in sems_alvo):
-                    p = os.path.join(PROJECT_ROOT, f"apps/automacoes/analise_ia/dados/tabelas_sql/PY_ggci_espelho_riaf_d1_{ano}{SUFIXO_TABELAS}.parquet")
-                    if os.path.exists(p):
-                        df_ano = pl.read_parquet(p).filter(pl.col("semestre").is_in(sems_alvo)).to_pandas()
-                        dfs.append(df_ano)
+            dfs = _ler_espelhos_do_banco("PY_ggci_espelho_riaf_d1", ['2026'], sems_alvo, "RIAF BD", espelhos_ausentes)
             
             if dfs:
                 df_espelho_pd = pd.concat(dfs, ignore_index=True)
@@ -4770,7 +4960,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             'Status_IA', 'Status_Vínculo', 'Situação do Motivo', 'Observação da Situação', 'Mudou IES?',
             'IES Anterior', 'IES Posterior', 'Mudou Bolsa?', 'Bolsa Anterior', 'Bolsa Posterior',
             'Semestre', 'Gemini Semestre', 'Inscrição', 'Inscrição Anterior', 'Inscrição Posterior',
-            'Bolsista', 'CPF', 'Gemini CPF', 'Gemini Inconsistencias', 'Faculdade', 'Curso',
+            'Bolsista', 'CPF', 'Gemini CPF', 'Gemini Inconsistencias', 'Faculdade', 'Curso', 'Gemini Curso',
             'tipo_bolsa_final', 'qtd_pagtos', 'qtd_pagtos_retroativos', 'último_valor_pago_referencia',
             'total bolsa paga', 'Mensalidade S/ Desconto', 'Gemini Mensalidade S/ Desconto', 'Dif. s/Desc.',
             '% Dif. s/Desc.', 'Total Dif. s/Desc.', 'MSD_SOMA', 'G_MSD_SOMA', 'MSD_DOC',
@@ -4783,7 +4973,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             'Economia da OVG (R$)', 'Diagnóstico Financeiro Final', 'valor_beneficio',
             'Soma Valor Beneficio', 'qual_beneficio', 'valor_financiamento', 'Soma Valor Financiamento',
             'qual_financiamento', 'data_coleta', 'Documento Tipo', 'Data Processamento', 'uni_deficiencia',
-            'uni_sexo', 'Gemini Matricula', 'Gemini Nome Faculdade', 'Gemini Curso', 'Gemini Razao Social',
+            'uni_sexo', 'Gemini Matricula', 'Gemini Nome Faculdade', 'Gemini Razao Social',
             'Gemini Cnpj Faculdade', 'Gemini Nome Mantenedora', 'Gemini Assinatura Aluno', 'Gemini Assinatura Ies',
             'Gemini Beneficio Nome', 'Gemini Valor Beneficio', 'Gemini Valor Financiado', 'Gemini Nome Financiamento',
             'Gemini Modalidade', 'Gemini Email', 'Gemini Telefone', 'Gemini Periodo', 'Gemini Quantidade Periodos',
@@ -4981,7 +5171,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                 'inscricao', 'inscricao_anterior', 'inscricao_posterior', 'cpf', 'gemini_cpf', 
                 'tipo_bolsa_final', 'gemini_tipo_bolsa_final', 'mudou_bolsa', 'bolsa_anterior', 
                 'bolsa_posterior', 'faculdade', 'cnpj_ies', 'mudou_ies', 'ies_anterior', 'ies_posterior', 
-                'curso', 'gemini_assinatura_aluno', 'gemini_assinatura_ies', 'ultimo_valor_pago_ref', 
+                'curso', 'gemini_curso', 'gemini_assinatura_aluno', 'gemini_assinatura_ies', 'ultimo_valor_pago_ref', 
                 'total_bolsa_paga', 'qtd_pagtos', 'qtd_pagtos_retroativos', 'matricula_sem_desc', 
                 'gemini_matricula_sem_desc', 'matricula_sd_doc', 'matricula_com_desc', 
                 'gemini_matricula_com_desc', 'matricula_cd_doc', 'mensalidade_sem_desc', 
@@ -5081,6 +5271,55 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                     if col in df.columns:
                         df[col] = pd.to_datetime(df[col], errors='coerce').dt.strftime('%d/%m/%Y').fillna('')
                 df = remover_caixa_alta_df(df)
+                
+                # --- INSERCAO DE IES E MANTENEDORA ---
+                codigo_col = 'codigo_aluno' if 'codigo_aluno' in df.columns else 'UNI_CODIGO'
+                if codigo_col in df.columns:
+                    codigos = pd.to_numeric(df[codigo_col], errors='coerce')
+                    ies_series = pd.Series(np.nan, index=df.index, dtype=object)
+
+                    if not df_master_resumo.empty and 'Inscrição' in df_master_resumo.columns and 'Faculdade' in df_master_resumo.columns:
+                        mapa_ies = df_master_resumo.drop_duplicates(subset=['Inscrição']).set_index('Inscrição')['Faculdade']
+                        mapa_ies.index = pd.to_numeric(mapa_ies.index, errors='coerce')
+                        ies_series = codigos.map(mapa_ies)
+
+                    if 'INS_NOME' in df.columns:
+                        ies_series = df['INS_NOME'].fillna(ies_series)
+                        df = df.drop(columns=['INS_NOME'])
+
+                    #  QUEM NÃO TEM DOCUMENTO TAMBÉM TEM IES
+                    ies_series = completar_ies_pelo_espelho(df, ies_series, codigo_col)
+
+                    # Propaga a IES de semestres passados para semestres onde ficou vazia (ex: pagamentos residuais de alunos desligados)
+                    df['IES_temp'] = ies_series
+                    df['IES_temp'] = df.groupby(codigo_col)['IES_temp'].transform(lambda x: x.ffill().bfill())
+                    ies_series = df['IES_temp']
+                    df.drop(columns=['IES_temp'], inplace=True)
+
+                    df['IES'] = ies_series
+                    df['IES'] = aplicar_por_distintos(df['IES'], padronizar_ies)
+                    if 'MANTENEDORA' not in df.columns:
+                        df['MANTENEDORA'] = aplicar_por_distintos(df['IES'], buscar_mantenedora)
+                
+                # --- FILTRO POR SEMESTRE ALVO (Correção do vazamento de histórico passado) ---
+                if 'semestre_referencia_analise' in df.columns:
+                    sems_norm = [str(x).strip().replace('-', '/') for x in sems_alvo]
+                    df = df[df['semestre_referencia_analise'].astype(str).str.strip().isin(sems_norm)].copy()
+                elif 'SEMESTRE' in df.columns:
+                    sems_norm = df['SEMESTRE'].astype(str).str.strip().str.replace('/', '-')
+                    df = df[sems_norm.isin(sems_alvo)].copy()
+                # -----------------------------------------------------------------------------
+
+                # Move columns to the front
+                cols = list(df.columns)
+                for col_name in ['MANTENEDORA', 'IES']:
+                    if col_name in cols:
+                        cols.remove(col_name)
+                        insert_idx = 1 if len(cols) > 1 else 0
+                        cols.insert(insert_idx, col_name)
+                df = df[cols]
+                # --- FIM INSERCAO ---
+
                 cols_ordem = []
                 for c in ['codigo_aluno', 'semestre_referencia_analise', 'ano_mes_pagto']:
                     if c in df.columns: cols_ordem.append(c)
@@ -5192,6 +5431,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                     csv_str = df_aba.to_csv(index=False, sep=';')
                     # BOM na frente para o Excel abrir o UTF-8 com acento certo.
                     zipf.writestr(f'{nome_arquivo}.csv', '﻿'.encode('utf8') + csv_str.encode('utf8'))
+            _avisar_espelhos_ausentes(espelhos_ausentes)
             print(f"[GGCI       | CONCLUIDO     | FINAL ] Salvo com sucesso.")
             t_total = time.time() - t_inicio_ggci
             print(f"🎉 Regras aplicadas: Relatório gerado em {int(t_total // 60)}m e {int(t_total % 60)}s.")
@@ -5235,6 +5475,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             finally:
                 stop_save_event.set()
                 t_monitor.join()
+            _avisar_espelhos_ausentes(espelhos_ausentes)
             # print(f"[GGCI       | CONCLUIDO     | FINAL ] Salvo com sucesso.")
             t_total = time.time() - t_inicio_ggci
             minutos = int(t_total // 60)

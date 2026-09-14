@@ -464,11 +464,12 @@ ABA_POR_ROTULO = {rotulo: aba for aba, rotulo in ROTULO_ABA.items()}
 # `cond_inadimplente` em `services/ggci.py`. Ele rende DOIS baldes, e quem os separa é a
 # coluna `veredito_documento`, que guarda o que ficou embaixo; ver `_balde_do_documento`.
 #
-# `STATUS_PROCESSADO` são os cinco vereditos que só existem depois de a IA ler o arquivo —
+# `STATUS_PROCESSADO` são os seis vereditos que só existem depois de a IA ler o arquivo —
 # `Corrompido` inclusive, que é a IA dizendo que tentou e não conseguiu. Os outros dois
 # valores possíveis (`Não Processado` e `Ausente`) descrevem justamente a ausência de
 # leitura. Por isso a mesma constante serve para a rosca e para o desempate do inadimplente.
-STATUS_PROCESSADO = {'VÁLIDO', 'INVÁLIDO', 'FALSO VÁLIDO', 'FALSO INVÁLIDO', 'CORROMPIDO'}
+STATUS_PROCESSADO = {'VÁLIDO', 'INVÁLIDO', 'FALSO VÁLIDO', 'FALSO INVÁLIDO', 'CORROMPIDO',
+                     'ERRO NA INCONSISTÊNCIA'}
 STATUS_NAO_PROCESSADO_PURO = {'NÃO PROCESSADO'}
 STATUS_INADIMPLENTE = {'INADIMPLENTE'}
 STATUS_AUSENTE = {'AUSENTE'}
@@ -484,6 +485,7 @@ STATUS_POR_ROTULO = {
     'Corrompido': {'CORROMPIDO'},
     'Falso Válido': {'FALSO VÁLIDO'},
     'Falso Inválido': {'FALSO INVÁLIDO'},
+    'Erro na Inconsist.': {'ERRO NA INCONSISTÊNCIA'},
     'Não Proc.': STATUS_NAO_PROCESSADO,
     'Ausente': STATUS_AUSENTE,
 }
@@ -659,6 +661,28 @@ def _aplicar_filtros(df, request):
             continue
         alvo = {valor.upper() for valor in escolhidos}
         df = df[df[coluna].astype('string').str.upper().isin(alvo)]
+
+    possui_benef = _lista_do_parametro(request, 'possui_beneficio')
+    if possui_benef and 'beneficio' in df.columns:
+        alvo = {v.upper() for v in possui_benef}
+        if alvo == {'S'}: df = df[df['beneficio'].fillna('Sem Benefícios').str.upper() != 'SEM BENEFÍCIOS']
+        elif alvo == {'N'}: df = df[df['beneficio'].fillna('Sem Benefícios').str.upper() == 'SEM BENEFÍCIOS']
+
+    possui_finan = _lista_do_parametro(request, 'possui_financiamento')
+    if possui_finan and 'financiamento' in df.columns:
+        alvo = {v.upper() for v in possui_finan}
+        if alvo == {'S'}: df = df[df['financiamento'].fillna('Sem Financiamento').str.upper() != 'SEM FINANCIAMENTO']
+        elif alvo == {'N'}: df = df[df['financiamento'].fillna('Sem Financiamento').str.upper() == 'SEM FINANCIAMENTO']
+    possui_qualquer = _lista_do_parametro(request, 'possui_qualquer')
+    if possui_qualquer and 'beneficio' in df.columns and 'financiamento' in df.columns:
+        alvo = {v.upper() for v in possui_qualquer}
+        mask_benef = df['beneficio'].fillna('Sem Benefícios').str.upper() != 'SEM BENEFÍCIOS'
+        mask_finan = df['financiamento'].fillna('Sem Financiamento').str.upper() != 'SEM FINANCIAMENTO'
+        if alvo == {'S'}:
+            df = df[mask_benef | mask_finan]
+        elif alvo == {'N'}:
+            df = df[~(mask_benef | mask_finan)]
+
 
     return df
 
@@ -916,7 +940,7 @@ COLUNAS_DE_BUSCA = ['inscricao', 'inscricao_anterior', 'inscricao_posterior',
 # inscrição 2090214 aparecia como "2.090.214" — que ninguém digita e que a busca do
 # servidor, comparando contra o valor cru, nunca encontraria. Quem copia o que vê tem
 # de conseguir colar no campo de busca.
-COLUNAS_IDENTIFICADORAS = ['inscricao', 'cpf']
+COLUNAS_IDENTIFICADORAS = ['inscricao', 'inscricao_anterior', 'inscricao_posterior', 'cpf', 'gemini_cpf', 'matricula', 'gemini_matricula', 'telefone_1', 'telefone_2', 'gemini_telefone']
 
 # Colunas que são SEMPRE texto, mesmo parecendo número. Inscrição, CPF, matrícula e
 # telefone são identificadores: ninguém soma dois CPFs, e tratá-los como número perde o
@@ -927,6 +951,7 @@ COLUNAS_IDENTIFICADORAS = ['inscricao', 'cpf']
 COLUNAS_DE_TEXTO_NO_EXCEL = [
     'inscricao', 'inscricao_anterior', 'inscricao_posterior',
     'cpf', 'matricula', 'telefone_1', 'telefone_2',
+    'gemini_cpf', 'gemini_matricula', 'gemini_telefone'
 ]
 
 # Ordem em que as linhas saem. A pessoa é a unidade de leitura: as linhas de uma
@@ -1386,11 +1411,13 @@ MENSALIDADE_BALDES = {
     'VALOR NO DOCUMENTO É MAIOR': 'Maior',
     'VALOR NO DOCUMENTO É MENOR': 'Menor',
     'VALOR NÃO LOCALIZADO NO DOCUMENTO': 'Não localizado',
+    'PENDENTE': 'Não localizado',
 }
 
 # A ordem em que as fatias são lidas: o que conferiu, as duas direções em que divergiu e,
-# por último, o que a IA não achou no arquivo.
-ORDEM_MENSALIDADE = ['Bateu', 'Menor', 'Maior', 'Não localizado']
+# por último, o que a IA não achou no arquivo. Entre as duas direções vem primeiro a que
+# custa dinheiro — o documento cobrando MAIS do que o sistema previu.
+ORDEM_MENSALIDADE = ['Bateu', 'Maior', 'Menor', 'Não localizado']
 
 # OS OITO ESTADOS, e não uma seleção deles: são TODOS os valores que `status_ia`
 # assume, então a rosca soma exatamente o total do recorte e `fora_do_grafico` é zero.
@@ -1400,7 +1427,7 @@ ORDEM_MENSALIDADE = ['Bateu', 'Menor', 'Maior', 'Não localizado']
 # uma ressalva escrita ao lado para não passar por retrato do todo; um que cobre 100%
 # não precisa de ressalva nenhuma, e ainda bate com o total da tabela logo abaixo.
 #
-# A ORDEM É A DO CAMINHO DO DOCUMENTO: os cinco vereditos que só existem depois de a IA
+# A ORDEM É A DO CAMINHO DO DOCUMENTO: os seis vereditos que só existem depois de a IA
 # ler o arquivo, depois os dois que descrevem a ausência de leitura, e por último a
 # cobrança, que não é veredito nenhum — é estado financeiro escrito por cima.
 # Os seis baldes da rosca, na ordem em que a outra aba os desenha. Os nomes são os
@@ -1412,14 +1439,16 @@ BALDES_DA_ROSCA = [
     BALDE_INAD_PROC, BALDE_INAD_NAO_PROC, BALDE_INAD,
 ]
 
-# Os cinco vereditos que vivem DENTRO de `Processados` — o detalhe de que aquele balde
-# é feito. Eles não viram fatia: dez fatias exigiriam dez cores distinguíveis entre si
-# duas a duas, e a paleta da marca colapsa aí (medido: ΔE 1,0 sob daltonismo e 4,1 na
-# visão normal, contra os pisos de 8 e 15). Viram LINHAS da legenda, onde o nome e o
-# número os separam sem depender de cor nenhuma.
-VEREDITOS_DE_PROCESSADO = ['VÁLIDO', 'INVÁLIDO', 'FALSO VÁLIDO', 'FALSO INVÁLIDO', 'CORROMPIDO']
+# Os vereditos que vivem DENTRO de `Processados` — o detalhe de que aquele balde é feito.
+# Eles não viram fatia: dez fatias exigiriam dez cores distinguíveis entre si duas a duas, e
+# a paleta da marca colapsa aí (medido: ΔE 1,0 sob daltonismo e 4,1 na visão normal, contra
+# os pisos de 8 e 15). Viram LINHAS da legenda, onde o nome e o número os separam sem
+# depender de cor nenhuma — e é por caberem aqui que `Erro na Inconsistência` pôde entrar
+# sem custar cor nenhuma à rosca.
+VEREDITOS_DE_PROCESSADO = ['VÁLIDO', 'INVÁLIDO', 'FALSO VÁLIDO', 'FALSO INVÁLIDO',
+                           'ERRO NA INCONSISTÊNCIA', 'CORROMPIDO']
 
-# A rosca mostra SÓ O QUE A IA LEU — os cinco vereditos de `STATUS_PROCESSADO`.
+# A rosca mostra SÓ O QUE A IA LEU — os seis vereditos de `STATUS_PROCESSADO`.
 #
 # Ela já teve oito estados, com pendentes, não processados e inadimplentes junto. O
 # problema não era de espaço: os três descrevem a AUSÊNCIA de leitura, e um deles
@@ -1434,7 +1463,8 @@ VEREDITOS_DE_PROCESSADO = ['VÁLIDO', 'INVÁLIDO', 'FALSO VÁLIDO', 'FALSO INVÁ
 # O QUE FICOU DE FORA CONTINUA NA TELA: a linha de base do card diz sobre quantas das
 # linhas do recorte a rosca fala, e a tabela abaixo mostra todas.
 VEREDITOS_DO_GRAFICO = [
-    'VÁLIDO', 'INVÁLIDO', 'FALSO VÁLIDO', 'FALSO INVÁLIDO', 'CORROMPIDO', 'NÃO PROCESSADO', 'PENDENTE'
+    'VÁLIDO', 'INVÁLIDO', 'FALSO VÁLIDO', 'FALSO INVÁLIDO', 'ERRO NA INCONSISTÊNCIA',
+    'CORROMPIDO', 'NÃO PROCESSADO', 'PENDENTE'
 ]
 
 
@@ -1665,10 +1695,53 @@ def _aplicar_inconsistencias(df, request):
     return df[mascara.fillna(False).astype(bool)]
 
 
+#  O NOME DO PARÂMETRO DE CADA CARD DE MENSALIDADE, e a coluna que ele recorta. São os
+#  mesmos dois de `MEDIDAS_DE_MENSALIDADE`, com o nome curto que viaja na query string.
+PARAMETRO_DE_MENSALIDADE = {'msd': 'msd_doc', 'mcd': 'mcd_doc'}
+
+
+def _aplicar_mensalidade(df, request, ignorar=None):
+    """
+    O QUE FAZ: recorta pelas barras clicadas nos dois cards de mensalidade — `msd` para o
+        valor integral e `mcd` para o com desconto.
+
+    O VALOR QUE VIAJA É O BALDE ('Bateu', 'Maior', 'Menor', 'Não localizado'), e não o
+    texto cru da coluna. A coluna guarda cinco frases distintas que viram quatro baldes
+    (`PENDENTE` cai em "Não localizado" junto com "Valor Não Localizado No Documento"), e
+    mandar a frase obrigaria a tela a conhecer esse agrupamento. Quem o conhece é
+    `MENSALIDADE_BALDES`, aqui — o mesmo dicionário que CONTA as barras, então o recorte
+    não pode divergir do número desenhado nelas.
+
+    UNIÃO DENTRO DO MESMO CARD, interseção ENTRE os dois: marcar "Maior" e "Menor" no
+    integral traz as duas barras, e marcar também "Não loc." no com desconto pergunta pelas
+    linhas que são (maior OU menor) no integral E não localizadas no desconto. É a mesma
+    gramática das outras seções da barra, e é a única que deixa a pergunta que motivou o
+    recurso ser feita: "onde a IA leu um valor e ainda assim disse que não achou".
+
+    `ignorar` É O QUE MANTÉM AS BARRAS CLICÁVEIS. O card que recebe o clique não pode
+    aplicar o próprio recorte: se aplicasse, escolher "Não loc." zeraria as outras três
+    barras do mesmo card e não haveria como marcar a segunda nem como desmarcar a primeira
+    — exatamente o cuidado que a rosca e a lista de inconsistências já tomam logo acima.
+    """
+    for parametro, coluna in PARAMETRO_DE_MENSALIDADE.items():
+        if parametro == ignorar or coluna not in df.columns or len(df) == 0:
+            continue
+        escolhidos = set(_lista_do_parametro(request, parametro, separador='||'))
+        if not escolhidos:
+            continue
+        bruto = df[coluna].astype('string').str.strip().str.upper()
+        #  `map` sobre o dicionário dos baldes e NÃO uma comparação de texto: a linha sem
+        #  valor na coluna vira `pd.NA`, e `pd.NA` num `isin` devolve `False` — que é o que
+        #  se quer, mas só depois do `fillna`, porque no dtype `string` o `NA` não é `False`.
+        balde = bruto.map(MENSALIDADE_BALDES)
+        df = df[balde.isin(escolhidos).fillna(False).astype(bool)]
+    return df
+
+
 def _recorte_da_rosca(df, request):
     """
     O QUE FAZ: aplica o recorte clicado na legenda da rosca — os BALDES (as seis fatias,
-        pela mesma regra de `_balde_do_documento`) e os VEREDITOS (os cinco status que a
+        pela mesma regra de `_balde_do_documento`) e os VEREDITOS (os seis status que a
         IA escreve dentro de `Processados`).
 
     UNIÃO ENTRE OS DOIS, e não interseção: clicar "Pendentes" e depois "Válido" quer
@@ -1720,14 +1793,22 @@ def api_resumo_ia(request):
         df = _aplicar_filtros(df, request)
         df = _aplicar_busca(df, (request.GET.get('busca') or '').strip())
 
-    inconsistencias = (_frases_de_inconsistencia(df['gemini_inconsistencia'])
-                       if len(df) and 'gemini_inconsistencia' in df.columns else [])
+    # Para os gráficos não apagarem as outras opções quando clicados (faceted search):
+    # 1. Inconsistências respeitam a rosca (Vereditos) e as barras de mensalidade, mas
+    #    ignoram o próprio filtro.
+    df_para_inconsistencias = _aplicar_mensalidade(_recorte_da_rosca(df, request), request) if len(df) else df
+    inconsistencias = (_frases_de_inconsistencia(df_para_inconsistencias['gemini_inconsistencia'])
+                       if len(df_para_inconsistencias) and 'gemini_inconsistencia' in df_para_inconsistencias.columns else [])
 
-    recorte = _aplicar_inconsistencias(df, request) if len(df) else df
-    recorte = _recorte_da_rosca(recorte, request) if len(recorte) else recorte
+    # 2. A Rosca (Vereditos/Baldes) respeita inconsistências e mensalidade, mas ignora o
+    #    próprio filtro.
+    #  O recorte por frase sai UMA vez e serve aos dois: ele varre a coluna linha a
+    #  linha (`.map`) sobre as 80 mil da aba, e repeti-lo dobraria a parte cara da rota.
+    df_por_frase = _aplicar_inconsistencias(df, request) if len(df) else df
+    df_para_rosca = _aplicar_mensalidade(df_por_frase, request) if len(df_por_frase) else df_por_frase
 
-    if len(recorte):
-        contagem_ia = recorte['status_ia'].value_counts()
+    if len(df_para_rosca):
+        contagem_ia = df_para_rosca['status_ia'].value_counts()
         veredito = {nome: int(contagem_ia.get(nome, 0)) for nome in VEREDITOS_DO_GRAFICO}
         if 'PENDENTE' in VEREDITOS_DO_GRAFICO:
             veredito['PENDENTE'] = int(contagem_ia.get('AUSENTE', 0)) + int(contagem_ia.get('INADIMPLENTE', 0))
@@ -1735,23 +1816,45 @@ def api_resumo_ia(request):
         #  fatia "Inadimplentes Proc." daqui ser o mesmo de lá — inclusive os dois
         #  desempates (`documento_ausente` e `veredito_documento`), que são a única
         #  forma de separar cobrança sem lastro de documento lido.
-        contagem_balde = _balde_do_documento(recorte).value_counts()
+        contagem_balde = _balde_do_documento(df_para_rosca).value_counts()
         baldes = {nome: int(contagem_balde.get(nome, 0)) for nome in BALDES_DA_ROSCA}
-        processados = recorte[recorte['status_ia'].isin(STATUS_PROCESSADO)]
     else:
         veredito = {nome: 0 for nome in VEREDITOS_DO_GRAFICO}
         baldes = {nome: 0 for nome in BALDES_DA_ROSCA}
-        processados = recorte
 
-    sem_desconto, tem_sem = _contagem_de_mensalidade(processados, 'msd_doc')
-    com_desconto, tem_com = _contagem_de_mensalidade(processados, 'mcd_doc')
+    # Recorte final (interseção de tudo) para as métricas seguintes (mensalidades, etc).
+    #  `sem_mensalidade` é o mesmo recorte com todo o resto aplicado e SÓ as barras de
+    #  mensalidade de fora: é dele que cada card tira a sua própria contagem, cada um
+    #  reaplicando o balde do outro e ignorando o seu (ver `_aplicar_mensalidade`).
+    sem_mensalidade = _recorte_da_rosca(df_por_frase, request) if len(df_por_frase) else df_por_frase
+    recorte = _aplicar_mensalidade(sem_mensalidade, request) if len(sem_mensalidade) else sem_mensalidade
+
+    def _processados(frame):
+        return frame[frame['status_ia'].isin(STATUS_PROCESSADO)] if len(frame) else frame
+
+    processados = _processados(recorte)
+
+    #  CADA CARD LEVA O PRÓPRIO TOTAL, e não o `processados` lá de cima. Ignorar o
+    #  próprio filtro faz o card enxergar MAIS linhas que o resto da tela: com
+    #  "Bateu" marcado, o recorte geral tem 12.136 documentos e este card ainda
+    #  conta os 14.766 das quatro barras. Dividir um pelo outro imprimia
+    #  "Bateu 12.136 (100,0%)" ao lado de barras somando 14.766 — um total de 100%
+    #  com três barras sobrando embaixo. O denominador tem de ser o do próprio
+    #  quadro. Sem filtro de mensalidade os dois coincidem, que é por que o erro só
+    #  aparecia depois do primeiro clique.
+    frente_sem = _aplicar_mensalidade(sem_mensalidade, request, ignorar='msd')
+    frente_com = _aplicar_mensalidade(sem_mensalidade, request, ignorar='mcd')
+    proc_sem, proc_com = _processados(frente_sem), _processados(frente_com)
+
+    sem_desconto, tem_sem = _contagem_de_mensalidade(proc_sem, 'msd_doc')
+    com_desconto, tem_com = _contagem_de_mensalidade(proc_com, 'mcd_doc')
 
     return JsonResponse({
         'status': 'ok',
         'documento': rotulo,
         'total': int(len(recorte)),
         'processados': int(len(processados)),
-        # Quanto os oito estados NÃO cobrem. Hoje é sempre zero — eles são todos os
+        # Quanto os nove estados NÃO cobrem. Hoje é sempre zero — eles são todos os
         # valores de `status_ia` —, e continua vindo porque é ele que denuncia, na
         # primeira execução em que o motor inventar um estado novo, que a rosca deixou
         # de somar o total. Sem isso, a fatia faltante sumiria em silêncio.
@@ -1767,8 +1870,10 @@ def api_resumo_ia(request):
         'ordem_baldes': BALDES_DA_ROSCA,
         'vereditos_de_processado': VEREDITOS_DE_PROCESSADO,
         'mensalidade': {
-            'sem_desconto': {'contagem': sem_desconto, 'tem_dado': tem_sem},
-            'com_desconto': {'contagem': com_desconto, 'tem_dado': tem_com},
+            'sem_desconto': {'contagem': sem_desconto, 'tem_dado': tem_sem,
+                             'total': int(len(frente_sem)), 'processados': int(len(proc_sem))},
+            'com_desconto': {'contagem': com_desconto, 'tem_dado': tem_com,
+                             'total': int(len(frente_com)), 'processados': int(len(proc_com))},
         },
         'ordem_mensalidade': ORDEM_MENSALIDADE,
         'diferencas': {
@@ -1807,6 +1912,7 @@ def api_tabela_ia(request):
     df = _aplicar_filtros(df, request)
     df = _aplicar_busca(df, (request.GET.get('busca') or '').strip())
     df = _aplicar_inconsistencias(df, request)
+    df = _aplicar_mensalidade(df, request)
     df = _recorte_da_rosca(df, request)
 
     colunas = list(df.columns)
@@ -1890,6 +1996,7 @@ def api_exportar_ia(request):
         df = _aplicar_filtros(df, request)
         df = _aplicar_busca(df, (request.GET.get('busca') or '').strip())
         df = _aplicar_inconsistencias(df, request)
+        df = _aplicar_mensalidade(df, request)
         df = _recorte_da_rosca(df, request)
 
     colunas = list(df.columns)

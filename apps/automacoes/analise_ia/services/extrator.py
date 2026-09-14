@@ -659,9 +659,15 @@ def atualizar_cache_parquets(docs_selecionados=None):
     os.makedirs(pasta_parquets, exist_ok=True)
     
     try:
+        # `pool_pre_ping` porque um timeout não fica contido na tabela que estourou:
+        # o mysql-connector fecha a conexão ao estourar o `read_timeout` e o pool devolve
+        # esse mesmo soquete morto para as tabelas seguintes, que falham sem nem tentar
+        # ("MySQL Connection not available" e erros sem nexo vindos do driver perdido).
+        # Com o ping, a conexão morta é descartada e recriada no `connect()` seguinte.
         engine = create_engine(
             f'mysql+mysqlconnector://{DB_USER}:{quote_plus(DB_PASS)}@{DB_HOST}/{DB_NAME}',
-            connect_args={'connect_timeout': 30, 'read_timeout': 300}
+            connect_args={'connect_timeout': 30, 'read_timeout': 300},
+            pool_pre_ping=True
         )
         mapa_tabelas = [
             ("PY_ggci_coleta_de_dados_beneficiarios_temp_d1_analise_ia", os.path.join(PROJECT_ROOT, "apps/automacoes/analise_ia/sql/beneficiarios/PY_ggci_coleta_de_dados_beneficiarios_temp_d1_analise_ia.sql"), ["TODOS"]),

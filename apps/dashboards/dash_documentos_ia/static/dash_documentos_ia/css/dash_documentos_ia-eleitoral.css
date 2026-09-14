@@ -233,6 +233,10 @@ html[data-tema="eleitoral"] .docia-legenda__pct { color: var(--tema-texto-fraco)
 html[data-tema="eleitoral"] .docia-legenda__item:hover {
     background-color: var(--tema-superficie-3);
 }
+/* A linha inerte da rosca de inconsistências também não se acende aqui. */
+html[data-tema="eleitoral"] .docia-legenda__item--estatico:hover {
+    background-color: transparent;
+}
 
 /* --- Pílulas dos filtros do Detalhamento ---------------------------------
    Mesmo caso da legenda: borda escrita à mão no CSS claro, reapresentada aqui. */
@@ -542,10 +546,24 @@ html[data-tema="eleitoral"] .docia-card-doc:hover {
                 0 9px 20px -6px rgba(0, 0, 0, 0.55),
                 inset 0 1px 0 rgba(255, 255, 255, 0.09);
 }
+/*  A aresta de cor do KPI precisa ser repetida aqui, e não por descuido: esta
+    regra sobrescreve a `box-shadow` inteira do arquivo claro, e `box-shadow`
+    não se acumula entre regras — quem vence leva a lista toda. Sem repetir o
+    `inset 3px`, o fio de `--kpi-cor` simplesmente some no escuro. Ele fica um
+    ponto mais grosso (4px) porque menta clara sobre superfície escura tem a
+    borda mais macia que roxo sobre branco.  */
 html[data-tema="eleitoral"] .docia-kpi-card {
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35),
+    box-shadow:
+                0 1px 2px rgba(0, 0, 0, 0.35),
                 0 4px 10px -3px rgba(0, 0, 0, 0.42),
                 inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+html[data-tema="eleitoral"] .docia-kpi-card:hover {
+    box-shadow:
+                0 2px 4px rgba(0, 0, 0, 0.40),
+                0 10px 22px -8px rgba(0, 0, 0, 0.55),
+                inset 0 1px 0 rgba(255, 255, 255, 0.09);
+    border-color: color-mix(in srgb, var(--docia-luz) 14%, transparent);
 }
 html[data-tema="eleitoral"] .docia-grade-seg,
 html[data-tema="eleitoral"] .docia-grade-doc {
@@ -623,6 +641,7 @@ html[data-tema="eleitoral"] .docia-flag--ausente {
 html[data-tema="eleitoral"] .docia-flag--invalido,
 html[data-tema="eleitoral"] .docia-flag--falso-valido,
 html[data-tema="eleitoral"] .docia-flag--falso-invalido,
+html[data-tema="eleitoral"] .docia-flag--erro-na-inconsistencia,
 html[data-tema="eleitoral"] .docia-flag--corrompido {
     background-color: rgba(251, 146, 60, 0.16);
     border-color: rgba(251, 146, 60, 0.32);
@@ -700,8 +719,23 @@ html[data-tema="eleitoral"] .docia-kpi-card p {
 
 html[data-tema="eleitoral"] .docia-kpi-card::before { opacity: 0.13; }
 html[data-tema="eleitoral"] .docia-kpi-card::after  { opacity: 0.09; }
-html[data-tema="eleitoral"] .docia-kpi-card:hover::before { opacity: 0.19; }
-html[data-tema="eleitoral"] .docia-kpi-card:hover::after  { opacity: 0.13; }
+
+/*  A maré do hover acompanha o claro, mas não copia o número. O claro vai a
+    0,26/0,19; aqui a onda é uma tinta CLARA sobre superfície escura, e cor
+    clara sobre fundo escuro rende mais contraste percebido que o inverso na
+    mesma porcentagem — é a mesma regra que já governa o texto logo acima.
+    0,30/0,22 é o ponto em que a maré aparece tanto quanto no claro sem a onda
+    virar uma faixa leitosa por cima do painel.  */
+html[data-tema="eleitoral"] .docia-kpi-card:hover::before { opacity: 0.30; }
+html[data-tema="eleitoral"] .docia-kpi-card:hover::after  { opacity: 0.22; }
+
+/*  O CHIP INVERTE JUNTO. No claro o chip acende na cor do card e o glifo vai a
+    branco; aqui o `--kpi-cor` é claro de propósito, então branco sobre ele dá
+    1,6:1. `--kpi-cor-contraste` reaponta o glifo para a superfície escura, e a
+    regra do arquivo claro se resolve sozinha sem ser reescrita aqui.  */
+html[data-tema="eleitoral"] .docia-kpi-card {
+    --kpi-cor-contraste: var(--tema-superficie, #1E293B);
+}
 
 html[data-tema="eleitoral"] .docia-kpi-card:has(.docia-kpi-icone--marca)   { --kpi-cor: #6FD3BF; }
 html[data-tema="eleitoral"] .docia-kpi-card:has(.docia-kpi-icone--ok)      { --kpi-cor: #6EE7B7; }
@@ -794,3 +828,193 @@ html[data-tema="eleitoral"] #tabela-ies tbody tr:nth-child(even):not(.docia-tr--
 }
 
 html[data-tema="eleitoral"] .docia-ies-pct { color: #A3ABB8; }
+
+
+/* ==========================================================================
+   O SISTEMA DE ACABAMENTO NO ESCURO
+   ==========================================================================
+   O arquivo claro passou a derivar sombra, borda, vidro, esqueleto e estado
+   vazio de um punhado de tokens. Aqui eles são reapontados — e este bloco é
+   curto de propósito: se fosse preciso reescrever as regras uma a uma, os
+   tokens teriam falhado no único trabalho que tinham.
+
+   O QUE INVERTE E O QUE NÃO INVERTE, que é a parte que não se resolve trocando
+   valores no automático:
+
+   SOMBRA NÃO CLAREIA, ESCURECE MAIS. O reflexo de quem vem do tema claro é
+   "fundo escuro, então sombra clara" — errado. Sombra é ausência de luz em
+   qualquer tema; o que muda é que sobre uma superfície escura ela precisa de
+   MAIS alfa para aparecer, não de menos. Vai a preto puro, com opacidades
+   quase dobradas.
+
+   O FIO DE LUZ DA ARESTA INVERTE DE INTENSIDADE, NÃO DE COR. Continua branco,
+   porque continua sendo reflexo — mas a 90% ele viraria uma linha de néon no
+   topo de cada card. Cai para 7%, que é o brilho que uma aresta tem sob luz
+   fraca.
+   ========================================================================== */
+html[data-tema="eleitoral"] {
+    --docia-tinta: #000000;
+    --docia-texto: var(--tema-texto-forte, #E8EBF0);
+
+    --docia-elev-1:
+        0 1px 2px color-mix(in srgb, var(--docia-tinta) 24%, transparent),
+        0 3px 8px -2px color-mix(in srgb, var(--docia-tinta) 26%, transparent),
+        0 10px 20px -8px color-mix(in srgb, var(--docia-tinta) 34%, transparent),
+        inset 0 1px 0 color-mix(in srgb, var(--docia-luz) 7%, transparent);
+    --docia-elev-2:
+        0 1px 2px color-mix(in srgb, var(--docia-tinta) 28%, transparent),
+        0 6px 14px -3px color-mix(in srgb, var(--docia-tinta) 32%, transparent),
+        0 18px 36px -12px color-mix(in srgb, var(--docia-tinta) 42%, transparent),
+        inset 0 1px 0 color-mix(in srgb, var(--docia-luz) 9%, transparent);
+    --docia-elev-3:
+        0 2px 4px color-mix(in srgb, var(--docia-tinta) 32%, transparent),
+        0 10px 24px -4px color-mix(in srgb, var(--docia-tinta) 38%, transparent),
+        0 30px 60px -20px color-mix(in srgb, var(--docia-tinta) 50%, transparent),
+        inset 0 1px 0 color-mix(in srgb, var(--docia-luz) 11%, transparent);
+
+    /*  Borda de 70% de branco desenharia um contorno de giz em volta de cada
+        card. No escuro a aresta é insinuada, não traçada.  */
+    --docia-borda-clara: color-mix(in srgb, var(--docia-luz) 9%, transparent);
+    --docia-borda-tinta: color-mix(in srgb, var(--docia-tinta) 40%, transparent);
+
+    /*  A marca do eleitoral não é o roxo da OVG — é a primária do tema, a mesma
+        que a barra lateral e as abas usam. Sem isto, o brilho que segue o mouse
+        acenderia um roxo que não existe em nenhum outro lugar desta tela.  */
+    --docia-marca: var(--tema-primaria, #6FD3BF);
+    --docia-marca-viva: var(--tema-primaria-suave, #99F0D0);
+}
+
+/*  O vidro do cabeçalho vira superfície escura translúcida. `saturate` continua:
+    o gradiente da marca passa por trás aqui também, e desfoque sem resaturação
+    o transforma em fumaça cinza.  */
+html[data-tema="eleitoral"] header.menu-divisoria {
+    background-color: color-mix(in srgb, var(--tema-superficie, #1E293B) 78%, transparent);
+    -webkit-backdrop-filter: blur(18px) saturate(1.2);
+    backdrop-filter: blur(18px) saturate(1.2);
+    border-bottom: 1px solid var(--docia-borda-clara);
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--docia-luz) 6%, transparent),
+                0 10px 28px -18px #000000;
+}
+
+html[data-tema="eleitoral"] #card-detalhamento,
+html[data-tema="eleitoral"] .docia-card-doc {
+    border-color: var(--docia-borda-clara);
+}
+
+/*  O esqueleto inverte o sentido do contraste: no claro o bloco é escuro e o
+    brilho é branco; aqui o bloco é uma clareira de branco a 6% e o brilho é a
+    primária do tema. Manter o desenho do claro deixaria oito faixas brancas
+    piscando sobre o painel escuro — é o tipo de placeholder que ofusca mais que
+    o conteúdo que ele substitui.  */
+html[data-tema="eleitoral"] .docia-esqueleto {
+    background-image: linear-gradient(
+        90deg,
+        color-mix(in srgb, var(--docia-luz) 6%, transparent) 0%,
+        color-mix(in srgb, var(--docia-marca) 12%, transparent) 42%,
+        color-mix(in srgb, var(--docia-marca) 24%, transparent) 50%,
+        color-mix(in srgb, var(--docia-marca) 12%, transparent) 58%,
+        color-mix(in srgb, var(--docia-luz) 6%, transparent) 100%);
+}
+
+
+/*  A TRAMA DE PONTOS NO ESCURO.
+    Ela sai de `--docia-marca`, que este arquivo já reaponta para a primária do
+    tema — então a COR chega certa sozinha. O que não chega é a intensidade:
+    uma menta clara sobre superfície escura rende mais contraste que a mesma
+    porcentagem de roxo sobre branco, e o que era textura vira constelação.  */
+/*  A nota do card zerado no escuro. 52% da tinta de texto é legível sobre papel
+    e cai para cinza-fumaça sobre superfície escura — a mesma armadilha de alfa
+    que este arquivo já corrigiu no rótulo dos KPIs.  */
+html[data-tema="eleitoral"] .docia-nota-doc {
+    color: color-mix(in srgb, var(--docia-texto) 72%, transparent);
+}
+
+html[data-tema="eleitoral"] .docia-tela {
+    background-image: radial-gradient(
+        circle at 1px 1px,
+        color-mix(in srgb, var(--docia-marca) 7%, transparent) 1px,
+        transparent 1px);
+}
+
+
+/* ==========================================================================
+   A CONTRAPARTE ESCURA DA RECALIBRAÇÃO CREME / NORD
+   ==========================================================================
+   O bloco novo no fim do arquivo claro mexe em papel, fio, raio e tipografia.
+   Raio e tipografia são neutros e valem para os dois temas — é a mesma peça,
+   com o mesmo tamanho de canto e o mesmo corpo de rótulo. Cor não é: creme e
+   Polar Night são vetores opostos, e é isso que este bloco reapruma.
+
+   Só que aqui o eleitoral JÁ ERA Nord: `--tema-fundo` é `#2E3643` e
+   `--tema-superficie` é `#38414F`, praticamente o nord0 e o nord1. O pedido de
+   "mais nord" no claro era, no fundo, o pedido de que os dois temas falassem a
+   mesma língua. Então nada de cor muda deste lado — o que este bloco faz é
+   impedir que os tokens creme vazem para cá, e pagar a conta de nitidez que o
+   `backdrop-filter` deixou aberta.
+   ========================================================================== */
+
+/*  O <body>. `html[data-tema="eleitoral"] body` no `tema-menu.css` soma 0,1,1 —
+    exatamente o mesmo do `body.grid-bg` do arquivo claro, e empate se decide
+    por ordem de carga: o arquivo claro vem depois e o creme ganharia a tela
+    escura inteira. Repetir aqui com 0,2,1 resolve por especificidade, que é o
+    critério estável — a ordem dos `<link>` muda quando alguém mexe no `<head>`,
+    a especificidade não.  */
+html[data-tema="eleitoral"] body.grid-bg {
+    background-color: var(--tema-fundo);
+}
+
+/*  O CASCO FICA QUASE OPACO. Ele era `rgba(56, 65, 79, 0.72)` contando com o
+    `backdrop-blur-2xl` para fechar a imagem; sem o desfoque, 72% deixa os halos
+    aparecerem crus por trás do texto e mantém o elemento composto, que é
+    justamente o que apaga o antialias por subpixel. O que se perde é vidro; o
+    que se ganha é texto nítido em toda a tela, que foi o que se pediu.  */
+html[data-tema="eleitoral"] .menu-shell {
+    background-color: rgba(56, 65, 79, 0.96);
+}
+
+/*  A ÁREA DE TRABALHO AFUNDA, pelo mesmo motivo do claro: o cartão precisa ter
+    onde pousar. Aqui o degrau já existe de graça — `--tema-fundo` é um tom mais
+    escuro que `--tema-superficie`, que é a cor do cartão.  */
+html[data-tema="eleitoral"] .docia-tela {
+    background-color: var(--tema-fundo);
+}
+
+/*  TIPOGRAFIA DOS KPIs E DOS FILTROS. O arquivo claro aponta rótulo, base e
+    valor para os tons Polar Night, que sobre superfície escura somem. O TAMANHO
+    e o PESO de lá continuam valendo — são a correção de legibilidade, e ela é a
+    mesma nos dois temas. Só a cor inverte.
+    Vale notar que isto já melhora o escuro em relação ao que havia: rótulo e
+    base estavam em `#9CA3AF` cravado na mão, um cinza pensado para papel
+    branco, que sobre `#38414F` rende 2.9:1. `--tema-texto-fraco` rende 5.4:1.  */
+html[data-tema="eleitoral"] .docia-kpi-rotulo,
+html[data-tema="eleitoral"] .docia-kpi-base {
+    color: var(--tema-texto-fraco);
+}
+
+html[data-tema="eleitoral"] .docia-kpi-valor {
+    color: var(--tema-texto-forte);
+}
+
+html[data-tema="eleitoral"] .docia-filtro-rotulo {
+    color: var(--tema-texto-medio);
+}
+
+/*  O FIO. O claro desenha as arestas com tinta em alfa baixo; no escuro tinta
+    sobre tinta não desenha nada, e a aresta precisa ser LUZ — é a mesma
+    inversão que este arquivo já aplica nas sombras dos cards.  */
+html[data-tema="eleitoral"] .docia-card-doc,
+html[data-tema="eleitoral"] .docia-kpi-card,
+html[data-tema="eleitoral"] .menu-shell {
+    border-color: var(--tema-borda);
+}
+
+
+/*  A MESMA RESSALVA, DO OUTRO LADO. No escuro o vetor inverte: `#DC2626` cai
+    para 2.13:1 sobre a superfície, pior que o `#EF4444` original. `#F2937D` é o
+    vermelho claro que o `tema-conteudo.css` já aponta para `text-red-600/700/
+    800` — o `-500` simplesmente nunca entrou naquela lista. Usar o mesmo tom é
+    o que impede a tela de ter dois vermelhos de aviso.  */
+html[data-tema="eleitoral"] .docia-card-doc .text-red-500,
+html[data-tema="eleitoral"] #ia-vista-performance .text-red-500 {
+    color: #F2937D;
+}

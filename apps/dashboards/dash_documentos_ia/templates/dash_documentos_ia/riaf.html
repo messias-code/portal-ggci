@@ -29,10 +29,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia.css' %}?v=20260903f">
+    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia.css' %}?v=20260911f">
 
     <!-- Camada escura desta tela: o que os arquivos compartilhados não alcançam -->
-    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia-eleitoral.css' %}?v=20260903f">
+    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia-eleitoral.css' %}?v=20260911f">
 </head>
 
 <body class="grid-bg bg-[#f8f6fb] text-gray-800 fixed inset-0 p-4 lg:p-6 flex transition-colors duration-500 overflow-hidden">
@@ -60,7 +60,7 @@
                     <div class="menu-header-divisor h-12 w-px bg-purple-200/50 shrink-0"></div>
                     
                     <div class="flex items-center gap-4 min-w-0 flex-1">
-                        <div class="tela-header-icone w-14 h-14 rounded-2xl bg-gradient-to-br from-pink-100 to-pink-200 text-pink-600 flex items-center justify-center shadow-inner shrink-0 hidden sm:flex">
+                        <div class="tela-header-icone w-14 h-14 rounded-xl bg-gradient-to-br from-pink-100 to-pink-200 text-pink-600 flex items-center justify-center shadow-inner shrink-0 hidden sm:flex">
                             <i class="fa-solid fa-magnifying-glass-chart text-2xl drop-shadow-sm"></i>
                         </div>
                         <div class="min-w-0">
@@ -72,8 +72,8 @@
                     <!-- Abas de Navegação -->
                     <div class="shrink-0 ml-4 lg:ml-8">
                         <div class="docia-abas inline-flex rounded-xl shadow-sm border border-gray-200 overflow-x-auto bg-white/90 backdrop-blur-md hide-scrollbar">
-                            <a href="{% url 'dash_documentos_ia' %}" class="docia-aba px-3 xl:px-5 py-2 text-[10px] xl:text-[11px] 2xl:text-xs font-bold text-gray-600 bg-white hover:text-[#6B007B] hover:bg-pink-50 transition-colors border-r border-gray-200 whitespace-nowrap shrink-0">ENVIOS &amp; PENDÊNCIAS</a>
-                            <a href="{% url 'dash_documentos_ia_relatorio_ies' %}" class="docia-aba px-3 xl:px-5 py-2 text-[10px] xl:text-[11px] 2xl:text-xs font-bold text-gray-600 bg-white hover:text-[#6B007B] hover:bg-pink-50 transition-colors whitespace-nowrap shrink-0">ANÁLISE IA</a>
+                            <a href="{% url 'dash_documentos_ia' %}" class="docia-aba px-3 xl:px-5 py-2 text-[10px] xl:text-[11px] 2xl:text-xs font-bold text-gray-600 bg-white hover:text-[#846496] hover:bg-pink-50 transition-colors border-r border-gray-200 whitespace-nowrap shrink-0">ENVIOS &amp; PENDÊNCIAS</a>
+                            <a href="{% url 'dash_documentos_ia_relatorio_ies' %}" class="docia-aba px-3 xl:px-5 py-2 text-[10px] xl:text-[11px] 2xl:text-xs font-bold text-gray-600 bg-white hover:text-[#846496] hover:bg-pink-50 transition-colors whitespace-nowrap shrink-0">ANÁLISE IA</a>
                         </div>
                     </div>
                 </div>
@@ -104,7 +104,7 @@
             <div class="area-trabalho flex-1 p-4 lg:p-6 flex flex-col h-full overflow-hidden">
                 <div class="flex flex-col sm:flex-row gap-4 mb-4 shrink-0 px-1">
                     <!-- Diferença S/Desc. -->
-                    <div class="flex-1 bg-white/80 backdrop-blur-md border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl py-2.5 px-4 flex items-center justify-between transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_12px_40px_rgb(0,0,0,0.08)] group cursor-default">
+                    <div class="flex-1 bg-white/80 backdrop-blur-md border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-xl py-2.5 px-4 flex items-center justify-between transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_12px_40px_rgb(0,0,0,0.08)] group cursor-default">
                         <div class="min-w-0 pr-2">
                             <p class="text-[9px] xl:text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5 truncate">Diferença S/Desc.</p>
                             <h4 class="text-xl font-black text-gray-800 transition-colors truncate" id="kpi-dif-s-desc">R$ 0,00</h4>
@@ -115,7 +115,7 @@
                     </div>
 
                     <!-- Diferença C/Desc. -->
-                    <div class="flex-1 bg-white/80 backdrop-blur-md border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl py-2.5 px-4 flex items-center justify-between transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_12px_40px_rgb(0,0,0,0.08)] group cursor-default">
+                    <div class="flex-1 bg-white/80 backdrop-blur-md border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-xl py-2.5 px-4 flex items-center justify-between transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_12px_40px_rgb(0,0,0,0.08)] group cursor-default">
                         <div class="min-w-0 pr-2">
                             <p class="text-[9px] xl:text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5 truncate">Diferença C/Desc.</p>
                             <h4 class="text-xl font-black text-gray-800 transition-colors truncate" id="kpi-dif-c-desc">R$ 0,00</h4>
@@ -128,7 +128,7 @@
 
                 <div class="flex flex-row w-full gap-4 flex-1 min-h-0 h-0">
                     <!-- Bolsa Semestral -->
-                    <div class="bg-white/80 backdrop-blur-md border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl p-4 flex flex-col shrink-0 min-h-[400px] flex-1">
+                    <div class="bg-white/80 backdrop-blur-md border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-xl p-4 flex flex-col shrink-0 min-h-[400px] flex-1">
                         <div class="relative mb-2 flex items-center justify-center">
                             <h3 class="text-base font-bold text-gray-700 m-0 text-center">Bolsa Semestral (Coleta X IA)</h3>
                         </div>
@@ -183,19 +183,19 @@
                             <div class="grid grid-cols-3 bg-white border border-gray-300 rounded-xl overflow-hidden mb-4 shadow-sm divide-x divide-gray-300" style="transform: translateZ(0);">
                                 <label class="cursor-pointer block relative">
                                     <input type="checkbox" value="2025-1" class="filter-semestre peer sr-only">
-                                    <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                    <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#846496] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#6E527D]">
                                         <span class="text-[9px] sm:text-[10px] font-bold text-center leading-tight uppercase relative z-10">2025-1</span>
                                     </div>
                                 </label>
                                 <label class="cursor-pointer block relative">
                                     <input type="checkbox" value="2025-2" class="filter-semestre peer sr-only">
-                                    <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                    <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#846496] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#6E527D]">
                                         <span class="text-[9px] sm:text-[10px] font-bold text-center leading-tight uppercase relative z-10">2025-2</span>
                                     </div>
                                 </label>
                                 <label class="cursor-pointer block relative">
                                     <input type="checkbox" value="2026-1" class="filter-semestre peer sr-only">
-                                    <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                    <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#846496] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#6E527D]">
                                         <span class="text-[9px] sm:text-[10px] font-bold text-center leading-tight uppercase relative z-10">2026-1</span>
                                     </div>
                                 </label>
@@ -206,21 +206,21 @@
                                 <!-- Row 1 -->
                                 <label class="cursor-pointer block relative border-r border-b border-gray-300">
                                     <input type="checkbox" value="Válido" class="filter-status peer sr-only">
-                                    <div class="flex items-center justify-center w-full h-[3rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                    <div class="flex items-center justify-center w-full h-[3rem] transition-colors duration-200 peer-checked:bg-[#846496] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#6E527D]">
                                         <span class="text-[9px] sm:text-[10px] font-bold text-center leading-tight uppercase relative z-10">Válido</span>
                                         <span id="count-valido" class="hidden">0</span>
                                     </div>
                                 </label>
                                 <label class="cursor-pointer block relative border-r border-b border-gray-300">
                                     <input type="checkbox" value="Inválido" class="filter-status peer sr-only">
-                                    <div class="flex items-center justify-center w-full h-[3rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                    <div class="flex items-center justify-center w-full h-[3rem] transition-colors duration-200 peer-checked:bg-[#846496] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#6E527D]">
                                         <span class="text-[9px] sm:text-[10px] font-bold text-center leading-tight uppercase relative z-10">Inválido</span>
                                         <span id="count-invalido" class="hidden">0</span>
                                     </div>
                                 </label>
                                 <label class="cursor-pointer block relative border-b border-gray-300">
                                     <input type="checkbox" value="Ausente" class="filter-status peer sr-only">
-                                    <div class="flex items-center justify-center w-full h-[3rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                    <div class="flex items-center justify-center w-full h-[3rem] transition-colors duration-200 peer-checked:bg-[#846496] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#6E527D]">
                                         <span class="text-[9px] sm:text-[10px] font-bold text-center leading-tight uppercase relative z-10">Ausente</span>
                                         <span id="count-ausente" class="hidden">0</span>
                                     </div>
@@ -229,21 +229,21 @@
                                 <!-- Row 2 -->
                                 <label class="cursor-pointer block relative border-r border-b border-gray-300">
                                     <input type="checkbox" value="Não Proc." class="filter-status peer sr-only">
-                                    <div class="flex items-center justify-center w-full h-[3rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                    <div class="flex items-center justify-center w-full h-[3rem] transition-colors duration-200 peer-checked:bg-[#846496] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#6E527D]">
                                         <span class="text-[9px] sm:text-[10px] font-bold text-center leading-tight uppercase relative z-10">Não Proc.</span>
                                         <span id="count-nao_proc" class="hidden">0</span>
                                     </div>
                                 </label>
                                 <label class="cursor-pointer block relative border-r border-b border-gray-300">
                                     <input type="checkbox" value="Corrompido" class="filter-status peer sr-only">
-                                    <div class="flex items-center justify-center w-full h-[3rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                    <div class="flex items-center justify-center w-full h-[3rem] transition-colors duration-200 peer-checked:bg-[#846496] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#6E527D]">
                                         <span class="text-[9px] sm:text-[10px] font-bold text-center leading-tight uppercase relative z-10">Corrompido</span>
                                         <span id="count-corrompido" class="hidden">0</span>
                                     </div>
                                 </label>
                                 <label class="cursor-pointer block relative border-b border-gray-300">
                                     <input type="checkbox" value="Falso Válido" class="filter-status peer sr-only">
-                                    <div class="flex items-center justify-center w-full h-[3rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                    <div class="flex items-center justify-center w-full h-[3rem] transition-colors duration-200 peer-checked:bg-[#846496] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#6E527D]">
                                         <span class="text-[9px] sm:text-[10px] font-bold text-center leading-tight uppercase relative z-10">Falso Válido</span>
                                         <span id="count-falso_valido" class="hidden">0</span>
                                     </div>
@@ -252,7 +252,7 @@
                                 <!-- Row 3 -->
                                 <label class="cursor-pointer block relative border-r border-gray-300">
                                     <input type="checkbox" value="Falso Inválido" class="filter-status peer sr-only">
-                                    <div class="flex items-center justify-center w-full h-[3rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                    <div class="flex items-center justify-center w-full h-[3rem] transition-colors duration-200 peer-checked:bg-[#846496] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#6E527D]">
                                         <span class="text-[9px] sm:text-[10px] font-bold text-center leading-tight uppercase relative z-10">Falso Inválido</span>
                                         <span id="count-falso_invalido" class="hidden">0</span>
                                     </div>
@@ -270,13 +270,13 @@
                                 <div class="grid bg-white border border-gray-300 rounded-xl overflow-hidden shadow-sm divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(2, minmax(0, 1fr));">
                                     <label class="cursor-pointer block relative">
                                         <input type="checkbox" value="S" class="filter-mudou-ies peer sr-only">
-                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#846496] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#6E527D]">
                                             <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">Sim</span>
                                         </div>
                                     </label>
                                     <label class="cursor-pointer block relative">
                                         <input type="checkbox" value="N" class="filter-mudou-ies peer sr-only">
-                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#846496] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#6E527D]">
                                             <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">Não</span>
                                         </div>
                                     </label>
@@ -288,13 +288,13 @@
                                 <div class="grid bg-white border border-gray-300 rounded-xl overflow-hidden shadow-sm divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(2, minmax(0, 1fr));">
                                     <label class="cursor-pointer block relative">
                                         <input type="checkbox" value="S" class="filter-mudou-bolsa peer sr-only">
-                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#846496] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#6E527D]">
                                             <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">Sim</span>
                                         </div>
                                     </label>
                                     <label class="cursor-pointer block relative">
                                         <input type="checkbox" value="N" class="filter-mudou-bolsa peer sr-only">
-                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#846496] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#6E527D]">
                                             <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">Não</span>
                                         </div>
                                     </label>
@@ -309,13 +309,13 @@
                                 <div class="grid bg-white border border-gray-300 rounded-xl overflow-hidden shadow-sm divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(2, minmax(0, 1fr));">
                                     <label class="cursor-pointer block relative">
                                         <input type="checkbox" value="ATIVO" class="filter-vinculo peer sr-only">
-                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#846496] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#6E527D]">
                                             <span class="text-[9px] font-bold text-center leading-tight uppercase relative z-10">Ativo</span>
                                         </div>
                                     </label>
                                     <label class="cursor-pointer block relative">
                                         <input type="checkbox" value="DESLIGADO" class="filter-vinculo peer sr-only">
-                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#846496] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#6E527D]">
                                             <span class="text-[9px] font-bold text-center leading-tight uppercase relative z-10">Deslig</span>
                                         </div>
                                     </label>
@@ -327,13 +327,13 @@
                                 <div class="grid bg-white border border-gray-300 rounded-xl overflow-hidden shadow-sm divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(2, minmax(0, 1fr));">
                                     <label class="cursor-pointer block relative">
                                         <input type="checkbox" value="Veterano" class="filter-perfil peer sr-only">
-                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#846496] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#6E527D]">
                                             <span class="text-[9px] font-bold text-center leading-tight uppercase relative z-10">Vet</span>
                                         </div>
                                     </label>
                                     <label class="cursor-pointer block relative">
                                         <input type="checkbox" value="Ingresso" class="filter-perfil peer sr-only">
-                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#846496] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#6E527D]">
                                             <span class="text-[9px] font-bold text-center leading-tight uppercase relative z-10">Ingr</span>
                                         </div>
                                     </label>
@@ -364,7 +364,7 @@
             <!-- Modal IES -->
             <!-- Modal IES -->
             <div id="modal-ies" class="area-trabalho z-[60] hidden items-center justify-center p-4" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(15, 23, 42, 0.2); backdrop-filter: blur(2px); display: none;">
-                <div class="bg-gray-50 rounded-2xl flex flex-col overflow-hidden animate-fade-in-up shadow-2xl border border-gray-200" style="width: 95%; max-width: 1400px; height: 85vh; max-height: 800px; min-height: 600px;">
+                <div class="bg-gray-50 rounded-xl flex flex-col overflow-hidden animate-fade-in-up shadow-2xl border border-gray-200" style="width: 95%; max-width: 1400px; height: 85vh; max-height: 800px; min-height: 600px;">
                     <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0 bg-white">
                         <div class="flex items-center gap-4">
                             <div class="modal-header-icone w-12 h-12 rounded-xl flex items-center justify-center shadow-sm" class="docia-modal-gradiente text-white">
@@ -401,10 +401,10 @@
                         <div class="flex flex-col bg-gray-100/50" style="width: 45%; min-height: 0;">
                             <div class="px-6 py-5 border-b border-gray-200 flex justify-between items-center bg-white shrink-0">
                                 <div class="flex items-center gap-3">
-                                    <div class="docia-marcador w-2 h-6 rounded-full" style="background-color: #6B007B;"></div>
+                                    <div class="docia-marcador w-2 h-6 rounded-full" style="background-color: #846496;"></div>
                                     <h4 class="text-sm font-extrabold text-gray-800 uppercase tracking-wide">Selecionadas (<span id="count-selected-ies" class="docia-icone-color">0</span>)</h4>
                                 </div>
-                                <button onclick="clearSelectedIES()" class="docia-btn-limpar text-xs font-bold px-4 py-2 rounded-xl transition-colors border shadow-sm hover:bg-gray-50" style="color: #6B007B; border-color: rgba(107,0,123,0.2); background-color: white;">Limpar Tudo</button>
+                                <button onclick="clearSelectedIES()" class="docia-btn-limpar text-xs font-bold px-4 py-2 rounded-xl transition-colors border shadow-sm hover:bg-gray-50" style="color: #846496; border-color: rgba(107,0,123,0.2); background-color: white;">Limpar Tudo</button>
                             </div>
                             <div class="flex-1 overflow-y-auto p-6 space-y-2 custom-scrollbar-light" id="list-selected-ies" style="min-height: 0;">
                                 <div class="flex flex-col items-center justify-center h-full opacity-40" id="empty-selected-msg">
@@ -428,7 +428,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
-    <script src="{% static 'dash_documentos_ia/js/dash_documentos_ia.js' %}?v=20260903f"></script>
+    <script src="{% static 'dash_documentos_ia/js/dash_documentos_ia.js' %}?v=20260911f"></script>
     <script>
 
             function getDociaColors() {
@@ -436,7 +436,7 @@
                 if (isEleitoral) {
                     return ['#A0CE6D', '#FF4500', '#B3B3B3', '#F3B4DC', '#3A5BA8', '#E044A7', '#8A2BE2'];
                 }
-                return ['#A0CE6D', '#FF4500', '#B3B3B3', '#F3B4DC', '#6B007B', '#E044A7', '#8A2BE2'];
+                return ['#A0CE6D', '#FF4500', '#B3B3B3', '#F3B4DC', '#846496', '#E044A7', '#8A2BE2'];
             }
             
         document.addEventListener('DOMContentLoaded', () => {
@@ -1177,7 +1177,7 @@
                             <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" class="docia-icone-bg">
                                 <i class="fa-solid fa-building-columns" class="docia-icone-color"></i>
                             </div>
-                            <span class="text-xs font-bold text-gray-700 truncate group-hover:text-[#6B007B] transition-colors">${ies}</span>
+                            <span class="text-xs font-bold text-gray-700 truncate group-hover:text-[#846496] transition-colors">${ies}</span>
                         </div>
                         <button onclick="toggleIES('${ies.replace(/'/g, "\\'")}')" class="text-gray-300 hover:text-red-500 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 transition-colors shrink-0">
                             <i class="fa-solid fa-xmark"></i>

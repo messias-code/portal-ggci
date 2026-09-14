@@ -866,6 +866,8 @@ EOF
     echo ""
     
     log_msg "info" "Abrindo Túnel Tailscale na porta 8000..."
+    sudo tailscale funnel --https=443 off >/dev/null 2>&1
+    sleep 3
     sudo tailscale funnel --bg --yes 8000
     
     sleep 2 # Dá um tempinho para o Tailscale processar
@@ -986,7 +988,7 @@ def main():
                 logfile.flush()
                 if not url:
                     match = re.search(r'(https://[a-zA-Z0-9-]+\.trycloudflare\.com)', line)
-                    if match:
+                    if match and 'api.trycloudflare.com' not in match.group(1):
                         url = match.group(1)
                         with open('/tmp/cf_accel_dev.json', 'w') as f: json.dump({'url': url}, f)
         proc.wait()
