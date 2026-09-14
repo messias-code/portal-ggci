@@ -130,9 +130,24 @@ SELECT
     inst.mantenedora AS ins_mantenedora,
     inst.ins_nome AS nome_faculdade_sql,
     CASE WHEN sv.sit_tipo = 1 OR sv.sit_motdes IN (30, 57) THEN 'INGRESSO' ELSE 'VETERANO' END AS perfil,
+    -- O DESLIGAMENTO É O `sit_tipo`, NUNCA A PALAVRA NA OBSERVAÇÃO. Existia aqui um
+    -- terceiro teste, `sa.sit_obs LIKE '%DESLIGAMENTO%' / '%CANCELADO%' / '%CANCELAMENTO%'`,
+    -- e ele lia a palavra sem ler a frase. "CORREÇÃO DESLIGAMENTO" é o registro que
+    -- DESFAZ o desligamento, e é justamente o texto que a OVG grava ao religar alguém
+    -- (motivo 35, CORRECAO DESLIGAMENTO AUTOMATICO COLETA DADOS); "CANCELAMENTO DO FIES",
+    -- "CANCELAMENTO DE DESCONTO" e "CANCELAMENTO DO PROJETO TALENTO" não falam do vínculo
+    -- com a OVG, falam de um benefício de fora que o aluno perdeu — e ele segue bolsista.
+    -- Medido em 14/09/2026: das 18.032 linhas DESLIGADO cuja observação casava o LIKE,
+    -- 16.013 alunos já tinham `sit_tipo = 3` e caíam na primeira linha deste CASE; os
+    -- outros 733 alunos (1.177 linhas, 1.163 delas em 2026/2) estavam RELIGADOS e apareciam
+    -- desligados na tela. Caso real: inscrição 2243682, desligada em 03/08/2026 (sit_tipo 3)
+    -- e religada em 06/08/2026 (sit_tipo 2, "CORREÇÃO DESLIGAMENTO"), com coleta
+    -- "Matriculado" em 12/08. Varrendo a tabela inteira, NENHUM registro de `sit_tipo <> 3`
+    -- que casa o LIKE é desligamento de verdade: são todos correção ou benefício de fora.
+    -- E o LIKE também não servia de rede para o `sit_tipo = 3`: 127.173 desligamentos de
+    -- verdade não têm nenhuma dessas palavras na observação.
     CASE 
         WHEN sa.sit_tipo = 3 THEN 'DESLIGADO'
-        WHEN sa.sit_obs LIKE '%DESLIGAMENTO%' OR sa.sit_obs LIKE '%CANCELADO%' OR sa.sit_obs LIKE '%CANCELAMENTO%' THEN 'DESLIGADO'
         WHEN ca.situacao != 'S' THEN 'DESLIGADO'
         ELSE 'ATIVO'
     END AS status_vinculo,
@@ -142,7 +157,29 @@ SELECT
 FROM base_uniao_limpa b
 LEFT JOIN coleta_mes c ON b.uni_codigo = c.uni_codigo AND b.ano_mes_pagto = c.ano_mes_pagto
 LEFT JOIN LATERAL (SELECT sit_data AS data_ingresso FROM sibu.situacao WHERE uni_codigo = b.uni_codigo AND sit_tipo = 1 ORDER BY sit_data ASC LIMIT 1) h_ingresso ON true
-LEFT JOIN LATERAL (SELECT sit_tipo, sit_motdes FROM sibu.situacao WHERE uni_codigo = b.uni_codigo AND DATE(sit_data) <= LAST_DAY(STR_TO_DATE(CONCAT(CAST(b.ano_mes_pagto AS CHAR), '01'), '%Y%m%d')) AND sit_tipo IN (1, 2) ORDER BY sit_data DESC LIMIT 1) sv ON true
+-- `sv` DECIDE O PERFIL (ingresso ou veterano) e por isso não pode enxergar registro de
+-- CORREÇÃO. Religar alguém é gravado como `sit_tipo = 2`, que é o mesmo tipo da renovação
+-- de verdade — e assim a correção de um desligamento passava por "renovou", apagando o
+-- ingresso do semestre. A inscrição 2243682 entrou em 23/07/2026 (`sit_tipo = 1`,
+-- INCLUSAO), foi desligada em 03/08 e religada em 06/08: o religamento a transformava em
+-- VETERANA no primeiro semestre dela de bolsa. Medido em 14/09/2026: 4.419 alunos têm uma
+-- correção como último registro de tipo 1/2, e ignorá-la corrige 1.960 deles (2.155 linhas
+-- do espelho, 1.225 em 2026/2) — TODOS de VETERANO para INGRESSO, nenhum no sentido
+-- contrário.
+--   O `LIKE 'CORRE%'` aqui é sobre `sit_motivos.motivo`, que é CATÁLOGO fechado, e não
+-- sobre `sit_obs`, que é texto livre — é justamente a diferença que fez o `status_vinculo`
+-- errar. São 13 motivos de correção no catálogo (31..36, 49, 54, 62, 63, 65, 66, 77), e os
+-- 28.539 registros deles no banco são, sem exceção, `sit_tipo = 2`: reverter sempre veste a
+-- roupa de renovação. Motivo novo que comece com "CORRECAO" entra sozinho nesta regra.
+LEFT JOIN LATERAL (
+    SELECT s_perfil.sit_tipo, s_perfil.sit_motdes
+    FROM sibu.situacao s_perfil
+    LEFT JOIN sibu.sit_motivos m_perfil ON m_perfil.motivo_id = s_perfil.sit_motdes
+    WHERE s_perfil.uni_codigo = b.uni_codigo
+      AND DATE(s_perfil.sit_data) <= LAST_DAY(STR_TO_DATE(CONCAT(CAST(b.ano_mes_pagto AS CHAR), '01'), '%Y%m%d'))
+      AND s_perfil.sit_tipo IN (1, 2)
+      AND (m_perfil.motivo IS NULL OR m_perfil.motivo NOT LIKE 'CORRE%')
+    ORDER BY s_perfil.sit_data DESC LIMIT 1) sv ON true
 LEFT JOIN LATERAL (SELECT situacao FROM sibu.coleta_dados WHERE uni_codigo = b.uni_codigo AND (b.ano_mes_pagto = b.max_ano_mes_pagto OR DATE(data_create) <= DATE(CONCAT(LEFT(b.semestre, 4), IF(RIGHT(b.semestre, 1)='1', '-06-30', '-12-31')))) ORDER BY data_create DESC LIMIT 1) ca ON true
 LEFT JOIN LATERAL (SELECT sit_data, sit_tipo, sit_obs, sit_motdes FROM sibu.situacao WHERE uni_codigo = b.uni_codigo AND (b.ano_mes_pagto = b.max_ano_mes_pagto OR DATE(sit_data) <= DATE(CONCAT(LEFT(b.semestre, 4), IF(RIGHT(b.semestre, 1)='1', '-06-30', '-12-31')))) ORDER BY sit_data DESC LIMIT 1) sa ON true
 LEFT JOIN sibu.universitarios u_final ON b.uni_codigo = u_final.uni_codigo
@@ -156,13 +193,15 @@ LEFT JOIN sibu.cursos c_final ON u_final.cur_codigo = c_final.cur_codigo
 LEFT JOIN sibu.cursos_faculdades cf ON u_final.ins_codigo = cf.ins_codigo AND u_final.cur_codigo = cf.cur_codigo
 LEFT JOIN sibu.cursos_modalidade cmod ON cf.cursos_modalidade_id = cmod.id
 
+-- O MESMO TESTE DO `status_vinculo` LOGO ACIMA, e tem de continuar sendo o mesmo: este
+-- filtro derruba a linha de PREVISÃO de quem está desligado. Com o LIKE aqui dentro, o
+-- aluno religado perdia a previsão do semestre por causa da palavra "DESLIGAMENTO" no
+-- texto que o religou — e, depois que o CASE parou de olhar a observação, a linha ainda
+-- sumiria enquanto a coluna dizia 'ATIVO'. Ver o comentário do CASE.
 WHERE NOT (
     b.origem_dado = '2_PREVISAO' 
     AND (
         sa.sit_tipo = 3 
-        OR sa.sit_obs LIKE '%DESLIGAMENTO%' 
-        OR sa.sit_obs LIKE '%CANCELADO%' 
-        OR sa.sit_obs LIKE '%CANCELAMENTO%' 
         OR ca.situacao != 'S'
     )
 )

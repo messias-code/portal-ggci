@@ -203,13 +203,17 @@ LEFT JOIN coleta_mes c ON b.uni_codigo = c.uni_codigo AND b.ano_mes_pagto = c.an
 LEFT JOIN LATERAL (SELECT situacao, data_create FROM sibu.coleta_dados WHERE uni_codigo = b.uni_codigo ORDER BY data_create DESC LIMIT 1) ca ON true
 LEFT JOIN LATERAL (SELECT sit_data, sit_tipo, sit_obs FROM sibu.situacao WHERE uni_codigo = b.uni_codigo ORDER BY sit_data DESC LIMIT 1) sa ON true
 
+-- O DESLIGAMENTO É O `sit_tipo`, NUNCA A PALAVRA NA OBSERVAÇÃO. Os três `sit_obs LIKE`
+-- que havia aqui derrubavam a linha de PREVISÃO de quem foi RELIGADO: "CORREÇÃO
+-- DESLIGAMENTO" é o texto que desfaz o desligamento, e "CANCELAMENTO DO FIES" ou
+-- "CANCELAMENTO DE DESCONTO" nem falam do vínculo com a OVG. Mesmo teste, e mesma
+-- correção, do `status_vinculo` em
+-- `sql/beneficiarios/PY_ggci_coleta_de_dados_beneficiarios_temp_d1_documentos_ia.sql`,
+-- onde está a medição: 733 alunos religados constavam como desligados.
 WHERE NOT (
     b.origem_dado = '2_PREVISAO' 
     AND (
         sa.sit_tipo = 3 
-        OR sa.sit_obs LIKE '%DESLIGAMENTO%' 
-        OR sa.sit_obs LIKE '%CANCELADO%' 
-        OR sa.sit_obs LIKE '%CANCELAMENTO%' 
         OR ca.situacao != 'S'
     )
 );
