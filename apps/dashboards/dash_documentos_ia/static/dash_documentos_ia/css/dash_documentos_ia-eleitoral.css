@@ -553,13 +553,13 @@ html[data-tema="eleitoral"] .docia-card-doc:hover {
     ponto mais grosso (4px) porque menta clara sobre superfície escura tem a
     borda mais macia que roxo sobre branco.  */
 html[data-tema="eleitoral"] .docia-kpi-card {
-    box-shadow: inset 4px 0 0 var(--kpi-cor, #6FD3BF),
+    box-shadow:
                 0 1px 2px rgba(0, 0, 0, 0.35),
                 0 4px 10px -3px rgba(0, 0, 0, 0.42),
                 inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 html[data-tema="eleitoral"] .docia-kpi-card:hover {
-    box-shadow: inset 4px 0 0 var(--kpi-cor, #6FD3BF),
+    box-shadow:
                 0 2px 4px rgba(0, 0, 0, 0.40),
                 0 10px 22px -8px rgba(0, 0, 0, 0.55),
                 inset 0 1px 0 rgba(255, 255, 255, 0.09);
@@ -641,6 +641,7 @@ html[data-tema="eleitoral"] .docia-flag--ausente {
 html[data-tema="eleitoral"] .docia-flag--invalido,
 html[data-tema="eleitoral"] .docia-flag--falso-valido,
 html[data-tema="eleitoral"] .docia-flag--falso-invalido,
+html[data-tema="eleitoral"] .docia-flag--erro-na-inconsistencia,
 html[data-tema="eleitoral"] .docia-flag--corrompido {
     background-color: rgba(251, 146, 60, 0.16);
     border-color: rgba(251, 146, 60, 0.32);

@@ -1435,7 +1435,7 @@ body { font-family: 'Poppins', sans-serif; }
     está ocupado pelas duas ondas. A sombra interna acompanha o `border-radius`
     sozinha e não custa nem um nó a mais na árvore.  */
 .docia-kpi-card {
-    box-shadow: inset 3px 0 0 var(--kpi-cor, #6B007B),
+    box-shadow:
                 0 1px 2px rgba(17, 24, 39, 0.05),
                 0 4px 9px -3px rgba(17, 24, 39, 0.08),
                 inset 0 1px 0 rgba(255, 255, 255, 0.9);
@@ -1880,6 +1880,7 @@ html[data-tela-cheia="1"] .docia-legenda__pct { width: 44px; }
 .docia-flag--invalido,
 .docia-flag--falso-valido,
 .docia-flag--falso-invalido,
+.docia-flag--erro-na-inconsistencia,
 .docia-flag--corrompido {
     background-color: rgba(234, 88, 12, 0.11);
     border-color: rgba(234, 88, 12, 0.26);
@@ -2533,7 +2534,7 @@ html[data-tela-cheia="1"] .docia-legenda__pct { width: 44px; }
 .docia-kpi-card:hover {
     translate: 0 -4px;
 
-    box-shadow: inset 3px 0 0 var(--kpi-cor, #6B007B),
+    box-shadow:
                 0 4px 8px rgba(17, 24, 39, 0.05),
                 0 16px 24px -6px rgba(17, 24, 39, 0.12),
                 inset 0 1px 0 rgba(255, 255, 255, 0.9);
