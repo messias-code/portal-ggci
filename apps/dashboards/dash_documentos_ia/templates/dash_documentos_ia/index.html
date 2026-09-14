@@ -719,7 +719,7 @@
                                 <!--
                                     A LEGENDA AO LADO DO ANEL, e não embaixo dele como
                                     no veredito. O que muda entre os dois cards é o
-                                    tamanho da lista: o veredito tem sete vereditos
+                                    tamanho da lista: o veredito tem oito vereditos
                                     fixos, de uma ou duas palavras; aqui são dezenas de
                                     frases inteiras da IA, e quantas delas cabem é o
                                     que decide quantas fatias o anel pode ter.
@@ -853,10 +853,77 @@
                     </div>
 
                     <!--
-                        RELATÓRIOS — a segunda vista desta aba, ainda vazia. O rádio da
-                        barra já troca entre as duas; o conteúdo entra aqui.
+                        RELATÓRIOS — a segunda vista desta aba. O relatório em si ainda
+                        não existe; o que mora aqui por enquanto é a ANOTAÇÃO DAS REGRAS
+                        POR IES, que é o que se precisa ter em mãos para construí-lo.
+
+                        POR QUE AQUI E NÃO NUM COMENTÁRIO DE CÓDIGO. A regra da MAUÁ já
+                        esteve escrita em código, dentro de `calcular_auditoria_ia`, e o
+                        resultado foi ela agir onde não devia: marcou 2.084 leituras
+                        CORRETAS da IA como `Erro na Inconsistência`. Ela não é regra de
+                        auditoria, é regra de CÁLCULO de relatório — e regra de relatório
+                        tem de estar visível para quem for fazer o relatório, não
+                        enterrada na função que audita a IA.
+
+                        Só texto, sem JS: não depende de dado nenhum da API e não muda
+                        com filtro. Quando o relatório existir, ele entra ao lado disto.
                     -->
-                    <div id="ia-vista-relatorios" class="flex-1 flex flex-col" style="display: none; min-width: 0; min-height: 0;"></div>
+                    <div id="ia-vista-relatorios" class="flex-1 flex flex-col overflow-y-auto" style="display: none; min-width: 0; min-height: 0;">
+                        <!--  O card ABRAÇA O TEXTO (`flex: 0 0 auto`) em vez de esticar até o
+                              rodapé: esticado, ele vira uma moldura com dois terços de branco
+                              embaixo e passa a impressão de tela que não carregou.  -->
+                        <div class="docia-card-doc bg-white border border-gray-200 shadow-sm rounded-2xl py-5 px-8 flex flex-col"
+                             style="flex: 0 0 auto; min-width: 0;">
+
+                            <h3 class="text-sm font-extrabold text-gray-700 m-0 text-left shrink-0 uppercase tracking-wider">Regras específicas por IES</h3>
+                            <p class="docia-grafico-base text-[11px] text-gray-400 text-left m-0 mt-1 mb-3 shrink-0">
+                                O que precisa valer no relatório e <span class="font-bold">não</span> vale na Performance &middot; conferido em 14/09/2026
+                            </p>
+
+                            <div class="text-[12px] text-gray-600 leading-relaxed text-left" style="max-width: 62rem;">
+
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-sm font-extrabold text-gray-700">MAUÁ</span>
+                                    <span class="text-[10px] text-gray-400 font-medium">MAUA FACULDADE MAUA DE GOIAS &middot; contratos</span>
+                                </div>
+
+                                <p class="m-0 mb-2" style="padding-left: 0.85rem; border-left: 3px solid #EB94B5;">
+                                    Nos contratos da MAUÁ, a <span class="font-bold">mensalidade COM desconto deve ser tratada como igual à SEM desconto</span>.
+                                </p>
+
+                                <p class="m-0 mb-2">
+                                    O contrato da MAUÁ não traz linha de desconto. Por isso
+                                    <span class="font-semibold">Gemini Mensalidade C/ Desconto vem vazia</span> &mdash; e vazia é o
+                                    <span class="font-semibold">certo</span>: é o que o SIBU mostra e é o que a IA leu. A IA acerta ao
+                                    escrever &ldquo;valor da mensalidade com desconto n&atilde;o localizado no contrato&rdquo;.
+                                </p>
+
+                                <p class="m-0 mb-2">
+                                    <span class="font-bold text-gray-700">Vale só para calcular</span> &mdash; bolsa, diferença, prejuízo.
+                                    <span class="font-bold text-gray-700">Não vale</span> para preencher a coluna nem para julgar a IA. Se precisar do valor,
+                                    calcule num campo à parte; não escreva por cima do que a IA leu.
+                                </p>
+
+                                <p class="m-0 mb-3 italic text-gray-500">
+                                    Já houve uma versão que escrevia na coluna dentro da auditoria: ela marcou
+                                    <span class="font-semibold">2.084 leituras corretas da IA como &ldquo;Erro na Inconsist&ecirc;ncia&rdquo;</span>
+                                    &mdash; 98,2% do status &mdash;, porque a frase &ldquo;n&atilde;o localizado&rdquo; passou a contradizer
+                                    um n&uacute;mero que a pr&oacute;pria auditoria tinha injetado. Sobravam 39 casos reais, de outras IES.
+                                </p>
+
+                                <p class="m-0 mb-3 text-[11px] text-gray-500">
+                                    Hoje a regra vive só em <span class="font-semibold">enquadramento_cursos</span>, que é o módulo de
+                                    cálculo de bolsa. A Performance desta aba não a aplica, de propósito.
+                                </p>
+
+                                <p class="m-0 text-[11px] text-gray-400">
+                                    <span class="font-bold">MAUÁ é a única IES com regra própria</span> em todo o código. Se outra aparecer,
+                                    ela entra aqui.
+                                </p>
+
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 

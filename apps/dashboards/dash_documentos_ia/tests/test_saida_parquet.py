@@ -37,7 +37,8 @@ import django
 
 django.setup()
 
-from apps.dashboards.dash_documentos_ia.services.ggci import normalizar_tipos_para_parquet
+from apps.dashboards.dash_documentos_ia.services.ggci import (
+    gravar_parquet_atomico, normalizar_tipos_para_parquet, so_digitos)
 
 
 def quadro_de_exemplo():
@@ -148,3 +149,47 @@ class TestCasosQueQuebravamAGravacao(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestCacheDoGeminiNaoMisturaTipos(unittest.TestCase):
+    """
+    O cache local do Gemini é lido de um parquet, concatenado com o que a execução
+    acabou de ler e gravado de volta. Quem gravou o arquivo de ontem não sabe do tipo
+    de hoje: `Gemini CPF` já saiu de `COLS_NUM` como Int64 e hoje sai de
+    `calcular_auditoria_ia` como texto de dígitos. Concatenar os dois dá uma coluna
+    `object` com `np.int64` e `str` lado a lado, e o pyarrow recusa:
+
+        ArrowInvalid: Could not convert '98216570287' with type str:
+        tried to convert to int64
+
+    Foi assim que a geração de 14/09/2026 morreu, depois de vinte minutos de trabalho,
+    em `gravar_parquet_atomico`. O conserto é alinhar o lado do disco com `so_digitos`.
+    """
+
+    def test_int64_do_disco_com_texto_novo_nao_grava(self):
+        """Sem a normalização o parquet recusa a coluna — é a falha que se está travando."""
+        antigo = pd.DataFrame({'Gemini CPF': pd.array([4456647116, 5475572135], dtype='Int64')})
+        novo = pd.DataFrame({'Gemini CPF': ['98216570287', '05957547166']})
+        with tempfile.TemporaryDirectory() as pasta:
+            with self.assertRaises(Exception):
+                gravar_parquet_atomico(pd.concat([antigo, novo], ignore_index=True),
+                                       os.path.join(pasta, 'cache.parquet'))
+
+    def test_com_so_digitos_grava_e_guarda_o_zero_a_esquerda(self):
+        antigo = pd.DataFrame({'Gemini CPF': pd.array([4456647116, 5475572135], dtype='Int64')})
+        novo = pd.DataFrame({'Gemini CPF': ['98216570287', '05957547166']})
+        antigo['Gemini CPF'] = so_digitos(antigo['Gemini CPF'])
+        juntos = pd.concat([antigo, novo], ignore_index=True)
+        with tempfile.TemporaryDirectory() as pasta:
+            caminho = os.path.join(pasta, 'cache.parquet')
+            gravar_parquet_atomico(juntos, caminho)
+            lido = pd.read_parquet(caminho)
+        #  O zero à esquerda é o motivo de o CPF ser texto: como número ele some, e
+        #  05957547166 vira 5957547166, que não é o CPF de ninguém.
+        self.assertEqual(lido['Gemini CPF'].tolist(),
+                         ['4456647116', '5475572135', '98216570287', '05957547166'])
+
+    def test_so_digitos_apaga_pontuacao_e_nulo_escrito_por_extenso(self):
+        entrada = pd.Series(['123.456.789-00', '  4456647116  ', 'nan', None, '5475572135.0'])
+        self.assertEqual(so_digitos(entrada).tolist(),
+                         ['12345678900', '4456647116', '', '', '5475572135'])

@@ -551,6 +551,9 @@ def aplicar_formatacao_visual(writer, nome_aba, df):
     f_st_f_valido = workbook.add_format({'bg_color': '#CCC0DA', 'font_color': '#000000', 'valign': 'vcenter', 'align': 'center'})
     f_st_f_invalido = workbook.add_format({'bg_color': '#FFC7CE', 'font_color': '#000000', 'valign': 'vcenter', 'align': 'center'})
     f_st_nao_proc = workbook.add_format({'bg_color': '#B8CCE4', 'font_color': '#000000', 'valign': 'vcenter', 'align': 'center'})
+    # Documento válido, frase da inconsistência errada. Fica no amarelo-claro para não se
+    # confundir nem com o verde do válido puro nem com o lilás do falso válido.
+    f_st_erro_inc = workbook.add_format({'bg_color': '#FFEB9C', 'font_color': '#000000', 'valign': 'vcenter', 'align': 'center'})
 
     max_row = len(df)
     max_col = len(df.columns) - 1
@@ -765,6 +768,7 @@ def aplicar_formatacao_visual(writer, nome_aba, df):
             worksheet.conditional_format(1, i, max_row, i, {'type': 'cell', 'criteria': '==', 'value': '"Falso Inválido"', 'format': f_st_f_invalido})
             worksheet.conditional_format(1, i, max_row, i, {'type': 'cell', 'criteria': '==', 'value': '"Não Processado"', 'format': f_st_nao_proc})
             worksheet.conditional_format(1, i, max_row, i, {'type': 'cell', 'criteria': '==', 'value': '"Corrompido"', 'format': f_laranja})
+            worksheet.conditional_format(1, i, max_row, i, {'type': 'cell', 'criteria': '==', 'value': '"Erro na Inconsistência"', 'format': f_st_erro_inc})
 
         elif col in ['Diagnóstico Financeiro Final', 'diagnostico_financeiro_final']:
             worksheet.conditional_format(1, i, max_row, i, {'type': 'cell', 'criteria': '==', 'value': '"Pagamento correto"', 'format': f_verde})
@@ -1749,6 +1753,27 @@ def aplicar_transicoes(df, df_pag):
     return df
 
 
+def so_digitos(serie):
+    """
+    O QUE FAZ: Devolve a coluna como TEXTO de dígitos, sem pontuação e sem `.0`.
+    POR QUÊ EXISTE: CPF, CNPJ e telefone são identificadores, não quantidades, e o zero à
+    esquerda faz parte deles — o CPF 05957547166 vira 5957547166 assim que alguém o guarda
+    como número. Também precisa ser UM tipo só: o cache é gravado em parquet, e o pyarrow
+    recusa uma coluna `object` que misture `str` com `np.int64` ("Could not convert
+    '98216570287' with type str: tried to convert to int64"), que é como a geração morria
+    quando a normalização de CPF aqui embaixo encontrava um cache antigo gravado em Int64.
+    COMO FUNCIONA: tudo para texto, apara, apaga os nulos escritos por extenso e o `.0` que
+    o float deixa, e por fim descarta o que não for dígito.
+    PARÂMETROS: serie (Series)
+    RETORNO: Series de str.
+    """
+    return (serie.astype(object).fillna('')
+            .astype(str).str.strip()
+            .replace(['nan', 'None', '<NA>', 'NaN'], '')
+            .str.replace(r'\.0$', '', regex=True)
+            .str.replace(r'[^\d]', '', regex=True))
+
+
 def calcular_auditoria_ia(df):
     """
     O QUE FAZ: Processa o cálculo matemático final e atualiza a coluna Status_IA (Válido, Inválido, Falso Ausente, Falso Válido, etc).
@@ -1756,6 +1781,10 @@ def calcular_auditoria_ia(df):
     COMO FUNCIONA: Cruza o valor da Mensalidade S/ Desconto com a IA. Compara o total pago com o total que deveria ser pago. Produz a métrica Prejuízo e Economia.
     """
     if df.empty: return df
+
+    for col_cpf in ['Gemini CPF', 'CPF']:
+        if col_cpf in df.columns:
+            df[col_cpf] = so_digitos(df[col_cpf])
 
     def atualizar_e_aplicar_cache_local(df_documentos):
         def get_d_proc(df_alvo):
@@ -1846,6 +1875,16 @@ def calcular_auditoria_ia(df):
                 # inteiro, que ainda guarda os Válido/Inválido legítimos.
                 if 'Status_IA' in df_cache.columns:
                     df_cache = df_cache[~df_cache['Status_IA'].isin(_STATUS_SEM_DOCUMENTO)]
+                #  O CACHE VELHO NÃO SABE DO TIPO NOVO. `Gemini CPF` já chega aqui como
+                #  texto de dígitos (o `so_digitos` no topo desta função), mas o arquivo
+                #  no disco foi gravado por uma execução anterior, quando a coluna ainda
+                #  era Int64 — `COLS_NUM` a converte para inteiro na hora de salvar. O
+                #  `concat` dos dois devolvia uma coluna `object` com `np.int64` e `str`
+                #  na mesma lista, e o parquet morria na conversão. Normalizar o lado do
+                #  disco alinha os dois num tipo só, e de quebra o CPF deixa de perder o
+                #  zero à esquerda quando volta do cache.
+                if 'Gemini CPF' in df_cache.columns:
+                    df_cache['Gemini CPF'] = so_digitos(df_cache['Gemini CPF'])
                 if not df_novos.empty:
                     df_cache = pd.concat([df_cache, df_novos], ignore_index=True)
                     if 'Documento Tipo' not in df_cache.columns:
@@ -2010,11 +2049,16 @@ def calcular_auditoria_ia(df):
     # Atualiza o Status_IA para refletir que não foi processado
     df.loc[mask_nao_processado, 'Status_IA'] = 'Não Processado'
     
-    # --- REGRA DE EXCEÇÃO MAUA ---
-    is_maua = df['Faculdade'].astype(str).str.contains('MAUA FACULDADE MAUA DE GOIAS', na=False, case=False)
-    mcd_ia_temp = pd.to_numeric(df['Gemini Mensalidade C/ Desconto'], errors='coerce').fillna(0)
-    df.loc[is_maua & (mcd_ia_temp == 0), 'Gemini Mensalidade C/ Desconto'] = df.loc[is_maua & (mcd_ia_temp == 0), 'Gemini Mensalidade S/ Desconto']
-    # -----------------------------
+    # A REGRA DE EXCEÇÃO MAUA SAIU DAQUI. Ela preenchia `Gemini Mensalidade C/ Desconto`
+    # com o valor SEM desconto quando a coluna vinha vazia, para contrato da MAUÁ. Esta
+    # função audita o DESEMPENHO da IA, e aqui a coluna tem de ser o que a IA leu — na
+    # MAUÁ ela vem vazia mesmo, tanto no espelho quanto na tela do SIBU, e a IA está
+    # certa ao escrever "valor da mensalidade com desconto não localizado no contrato".
+    # Com o valor injetado, essa frase virava contradição e 2.084 leituras corretas eram
+    # marcadas `Erro na Inconsistência` — 98,2% do status. A regra continua viva onde ela
+    # de fato serve, em `enquadramento_cursos`, que é módulo de cálculo de bolsa.
+    # A nota para quem for mexer nisso está na TELA, em Documentos IA > aba Análise IA >
+    # modo de visualização "Relatórios" (card "Regras específicas por IES").
     
     msd_sys = pd.to_numeric(df['Mensalidade S/ Desconto'], errors='coerce').fillna(0)
     msd_ia = pd.to_numeric(df['Gemini Mensalidade S/ Desconto'], errors='coerce').fillna(0)
@@ -2296,7 +2340,29 @@ def calcular_auditoria_ia(df):
     sys_curso = df.get('Curso', pd.Series(['']*len(df), index=df.index)).astype(object).fillna('').astype(str).str.strip().str.upper().replace(['NAN', 'NONE', '<NA>'], '')
     ia_curso = df.get('Gemini Curso', pd.Series(['']*len(df), index=df.index)).astype(object).fillna('').astype(str).str.strip().str.upper().replace(['NAN', 'NONE', '<NA>'], '')
 
-    matematica_invalida_geral = (ia_cpf == '') | (sys_cpf != ia_cpf) | (ia_semestre == '') | (sys_semestre != ia_semestre) | (ia_curso == '') | (sys_curso != ia_curso)
+    # O CURSO SÓ É COBRADO DE QUEM O CARREGA — Histórico e RIAF.
+    #
+    # A regra chegou em e6a0275 valendo para toda aba, e `ia_curso == ''` invalida. Só que o
+    # prompt do CONTRATO nunca pediu o curso: `gemini_curso` vem vazio em 53.232 dos 53.453
+    # contratos do espelho (100% de 2026, 99,3% de 2025), e os 221 preenchidos são refugo do
+    # prompt desalinhado — treze deles dizem literalmente "(Item válido)". Medir um campo que
+    # o documento não traz é medir ruído.
+    #
+    # O ESTRAGO ERA MUDO E TOTAL: com o curso vazio, todo contrato que a IA deu por válido
+    # caía em `Falso Válido`. No Parquet de 14/09/2026 (proc_37) são 24.349 `Falso Válido`
+    # contra 146 `Válido` — e 147 é exatamente o número de contratos em que `gemini_curso`
+    # bate com `curso`. Não era a matemática discordando da IA: era a aba inteira reprovada
+    # por um campo em branco. Foi isso que zerou `Erro na Inconsistência`, que só é alcançado
+    # depois de `Falso Válido` não ter disparado.
+    #
+    # Histórico (1,3% vazio) e RIAF (11,2%) extraem o curso de verdade, e para eles o vazio
+    # continua invalidando: ali é a IA não tendo achado o que está no arquivo. Mesma razão
+    # pela qual `is_historico` já dispensa o histórico das regras financeiras — coluna que
+    # não faz parte da verificação daquele documento não entra na conta dele.
+    documento_traz_curso = is_historico | doc_tipo.str.contains('RIAF', case=False, na=False)
+    curso_invalido = documento_traz_curso & ((ia_curso == '') | (sys_curso != ia_curso))
+
+    matematica_invalida_geral = (ia_cpf == '') | (sys_cpf != ia_cpf) | (ia_semestre == '') | (sys_semestre != ia_semestre) | curso_invalido
     matematica_invalida_financeiro = (inc_original.str.contains('Valor da mensalidade integral não localizado', na=False)) | (dif_s != 0)
 
     is_riaf = doc_tipo.str.contains('RIAF', case=False, na=False)
@@ -2314,6 +2380,40 @@ def calcular_auditoria_ia(df):
     ia_financiamento = pd.to_numeric(df.get('Gemini Valor Financiamento', pd.Series([0]*len(df), index=df.index)), errors='coerce').fillna(0)
     matematica_invalida_riaf_extra = is_riaf & ((sys_beneficio != ia_beneficio) | (sys_financiamento != ia_financiamento))
 
+    # ERRO NA INCONSISTÊNCIA — a frase do Gemini não bate com o valor que ele mesmo extraiu.
+    #
+    # NO CONTRATO, MENSALIDADE COM DESCONTO NUNCA INVALIDA. Não achar o valor, ou achar um
+    # menor/maior que o do sistema, é divergência de desconto — não é erro de documento. Quem
+    # invalida contrato é semestre, CPF e mensalidade INTEGRAL; por isso as três frases de
+    # "mensalidade com desconto" não entram em `matematica_invalida_financeiro`, e não devem
+    # entrar. Só o desconto divergindo, o contrato é Válido — não "Falso Válido".
+    #
+    # O QUE ESTE BLOCO PEGA É OUTRA COISA: a frase estar errada sobre o próprio dado da IA.
+    # "não localizado" com `Gemini Mensalidade C/ Desconto` > 0, "é menor" com o valor maior ou
+    # igual, "é maior" com o valor menor ou igual. O contrato continua válido — o que falhou foi
+    # a CATALOGAÇÃO, e ela precisa ser visível para poder ser revista no prompt.
+    #
+    # Medido no Parquet de 13/09/2026 (contrato, 80.488 linhas): 2.080 casos de "não localizado"
+    # com valor lido e 39 de "é maior" com valor menor ou igual, contra 0 em "é menor". São
+    # 2.119 linhas que saem de `Válido` para cá — 8,7% dos 24.277 válidos do contrato.
+    inc_mcd_nao_loc = inc_original.str.contains('mensalidade com desconto não localizado', case=False, na=False)
+    inc_mcd_menor = inc_original.str.contains('Mensalidade com desconto no contrato é menor', case=False, na=False)
+    inc_mcd_maior = inc_original.str.contains('Mensalidade com desconto no contrato é maior', case=False, na=False)
+
+    # `is_contrato` NÃO serve aqui: ela casa CONTRATO, RIAF e RELATÓRIO juntos, porque existe
+    # para ligar o cálculo de bolsa. Esta regra é só do contrato, então a máscara é própria.
+    so_contrato = doc_tipo.str.contains('CONTRATO', case=False, na=False)
+
+    #  `mcd_ia` AQUI É O QUE A IA LEU, e só continua sendo enquanto ninguém escrever na
+    #  coluna antes deste ponto — foi exatamente o que a exceção MAUA fazia. A pergunta
+    #  deste bloco é "a IA se contradisse?", e respondê-la com um valor que nós mesmos
+    #  pusemos na coluna acusa a IA de um erro nosso.
+    cond_erro_inconsistencia = so_contrato & (~mask_ignorar_math) & (
+        (inc_mcd_nao_loc & (mcd_ia > 0)) |
+        (inc_mcd_menor & (mcd_ia >= mcd_sys)) |
+        (inc_mcd_maior & (mcd_ia <= mcd_sys))
+    )
+
     # Para Histórico, ignorar regras financeiras (pois as colunas não fazem parte de sua verificação)
     matematica_invalida = np.where(is_historico, matematica_invalida_geral, matematica_invalida_geral | matematica_invalida_financeiro | matematica_invalida_assinatura | matematica_invalida_riaf_extra)
     matematica_diz = np.where(matematica_invalida, 'Inválido', 'Válido')
@@ -2323,7 +2423,13 @@ def calcular_auditoria_ia(df):
     cond_falso_invalido = (matematica_diz == 'Válido') & (ia_resultado == 'Inválido')
     cond_falso_valido = (matematica_diz == 'Inválido') & (ia_resultado == 'Válido')
 
-    base_resultado = np.where(cond_falso_invalido, 'Falso Inválido', np.where(cond_falso_valido, 'Falso Válido', ia_resultado))
+    # `Erro na Inconsistência` entra DEPOIS dos dois falsos, e por isso só alcança a linha em
+    # que matemática e IA já concordaram em `Válido`: se houver qualquer outra divergência que
+    # invalide de verdade (semestre, CPF, mensalidade integral), o `Falso Válido` vem antes e
+    # prevalece. O erro de catalogação nunca esconde um documento inválido.
+    base_resultado = np.where(cond_falso_invalido, 'Falso Inválido',
+                     np.where(cond_falso_valido, 'Falso Válido',
+                     np.where(cond_erro_inconsistencia & (ia_resultado == 'Válido'), 'Erro na Inconsistência', ia_resultado)))
 
     # O veredito da IA sobre o ARQUIVO, isolado. Não vira coluna: serve para separar, logo
     # abaixo, o inadimplente que entregou do que não entregou — dois casos opostos para quem
@@ -2517,8 +2623,12 @@ def gerar_resumo_quantitativo(df_target, tipos_documentos):
     tem_ben = 'valor_beneficio' in df_target.columns
     s_ben = pd.to_numeric(df_target['valor_beneficio'], errors='coerce').fillna(0.0) if tem_ben else None
 
+    #  `erro na inconsistência` conta como PROCESSADO: o documento foi lido e é válido — o
+    #  que falhou foi a frase que a IA escreveu sobre a mensalidade com desconto. Fora daqui,
+    #  ele viraria "não entregue" na volumetria de envios da IES.
     STATUS_PROCESSADOS = {'inválido', 'válido', 'falso inválido', 'falso válido',
-                          'invalido', 'valido', 'falso invalido', 'falso valido'}
+                          'invalido', 'valido', 'falso invalido', 'falso valido',
+                          'erro na inconsistência', 'erro na inconsistencia'}
 
     #  INADIMPLENTE NÃO É BENEFICIÁRIO, e é daqui que sai a correção de 02/09/2026.
     #
@@ -2683,6 +2793,7 @@ def gerar_resumo_quantitativo(df_target, tipos_documentos):
 def gerar_aba_relatorio_contratos(writer, df_docs, sems_contratos):
     """
     O QUE FAZ: Monta a aba "Relatório Contratos", o painel gerencial por IES e semestre.
+
     POR QUÊ EXISTE: É a leitura executiva do relatório — quem abre o arquivo começa por ela,
     não pelas abas analíticas linha a linha.
     COMO FUNCIONA: Escreve o bloco de cada semestre em colunas de 6 e monta as linhas de

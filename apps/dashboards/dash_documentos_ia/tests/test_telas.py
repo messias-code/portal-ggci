@@ -1154,9 +1154,14 @@ class TestApiDaTela(BaseTelas):
         faixas = re.search(r'<ignoredError sqref="([^"]*)"', planilha).group(1)
         colunas_cobertas = {faixa.split(":")[0].rstrip("0123456789")
                             for faixa in faixas.split()}
+        #  O MESMO FILTRO QUE A EXPORTAÇÃO FAZ. `COLUNAS_DE_TEXTO_NO_EXCEL` também
+        #  serve à exportação da aba Análise IA, cujas colunas são as do documento e
+        #  incluem `gemini_cpf`, `gemini_matricula` e `gemini_telefone`. Estas três não
+        #  existem em `COLUNAS_TABELA`, e sem a mesma ressalva do código o `.index()`
+        #  daqui estoura num erro que não é da planilha, é do teste.
         esperadas = {
             xlsxwriter.utility.xl_col_to_name(views.COLUNAS_TABELA.index(nome))
-            for nome in views.COLUNAS_DE_TEXTO_NO_EXCEL
+            for nome in views.COLUNAS_DE_TEXTO_NO_EXCEL if nome in views.COLUNAS_TABELA
         }
         self.assertEqual(colunas_cobertas, esperadas)
 

@@ -218,6 +218,35 @@
             entre si — clicar "Válido" e "Inválido" mostra os dois.  */
         const recorteVereditos = new Set();
 
+        /*  AS BARRAS CLICADAS NOS DOIS CARDS DE MENSALIDADE, um conjunto por card.
+
+            SÃO DOIS CONJUNTOS E NÃO UM porque a pergunta que o recurso existe para
+            fazer é cruzada: "onde a IA LEU um valor com desconto e ainda assim disse
+            que não achou" é `mcd` em "Não loc." COM `msd` em "Conforme". Num conjunto
+            só, os quatro baldes teriam o mesmo nome nos dois cards e não haveria como
+            dizer de qual deles se está falando.
+
+            União dentro do card, interseção entre os cards — a mesma gramática do
+            servidor (ver `_aplicar_mensalidade` em `views.py`). As chaves são as do
+            servidor ('Bateu', 'Maior', 'Menor', 'Não localizado'), e não os rótulos
+            curtos de `ROTULO_MENSALIDADE`: o que se lê na barra é enfeite da tela, o
+            que viaja é o balde.  */
+        const recorteMensalidade = { msd: new Set(), mcd: new Set() };
+
+        /*  O card, o parâmetro que ele manda e o nome do card na etiqueta. A ordem é a
+            dos dois cards na tela, de cima para baixo.  */
+        const CARDS_DE_MENSALIDADE = [
+            ['msd', 'ia-gr-msd', 'sem_desconto', 'Mensalidade integral'],
+            ['mcd', 'ia-gr-mcd', 'com_desconto', 'Mensalidade c/ desconto'],
+        ];
+
+        /*  Esvazia OS CONJUNTOS, sem trocá-los por conjuntos novos: o callback de
+            clique de cada barra é ligado ao gráfico na criação e guarda a referência
+            do conjunto daquele card. Reatribuir `recorteMensalidade[p] = new Set()`
+            deixaria o clique escrevendo no conjunto velho — que ninguém mais lê.  */
+        const limparMensalidade = () =>
+            CARDS_DE_MENSALIDADE.forEach(([parametro]) => recorteMensalidade[parametro].clear());
+
         /*  O nome de um documento sai da caixa que o oferece, e não de uma lista aqui:
             uma segunda lista envelheceria calada no dia em que o rótulo da barra
             mudasse, e o título passaria a chamar a tabela de outra coisa.  */
@@ -249,6 +278,14 @@
             busca.append('documento', marcados(caixasDocumento)[0] || 'CONTRATO');
 
             if (recorteVereditos.size) busca.append('vereditos', Array.from(recorteVereditos).join('||'));
+
+            /*  `||` pelo mesmo motivo das frases: "Não localizado" não tem vírgula
+                hoje, mas a lista é do servidor e um balde novo com vírgula partiria o
+                recorte ao meio sem erro nenhum na tela.  */
+            CARDS_DE_MENSALIDADE.forEach(([parametro]) => {
+                const escolhidos = recorteMensalidade[parametro];
+                if (escolhidos.size) busca.append(parametro, Array.from(escolhidos).join('||'));
+            });
 
             const campoBusca = document.getElementById('ia-tabela-busca');
             const termo = (campoBusca && campoBusca.value || '').trim();
@@ -314,6 +351,7 @@
                 + marcados(nosFiltros('.filter-possui-financiamento')).length
                 + marcados(nosFiltros('.filter-possui-qualquer')).length);
             total += contador('contador-inconsistencias', inconsistenciasEscolhidas.size);
+            total += recorteMensalidade.msd.size + recorteMensalidade.mcd.size;
             total += contador('contador-ies-ia', iesDaAba().length);
             contador('contador-filtros', total);
         };
@@ -761,7 +799,7 @@
             constante aqui e não uma conta.  */
         const AR_QUE_O_APEX_GUARDA = 8;
 
-        const opcoesDeBarraHorizontal = (categorias, valores, cores, maximo, altura, faixa, formato, totalParaPct) => {
+        const opcoesDeBarraHorizontal = (categorias, valores, cores, maximo, altura, faixa, formato, totalParaPct, aoClicar = null) => {
             /*  ESCALA NÃO-LINEAR (Raiz Quadrada) PARA OS DESENHOS DAS BARRAS.
                 Quando há categorias muito desiguais (ex: 12.000 vs 400), a barra de 400
                 ficaria com 2% da largura — uma linha invisível. A raiz quadrada infla as
@@ -779,7 +817,26 @@
                     animations: { enabled: true, easing: "easeinout", speed: 800, dynamicAnimation: { speed: 400 } },
                     background: 'transparent',
                     parentHeightOffset: 0,
+                    /*  `click` E NÃO `dataPointSelection`: o segundo só dispara com a
+                        seleção nativa do Apex ligada, e ligá-la traz junto o realce
+                        dela — uma segunda marca de "escolhido" por cima da nossa, com
+                        outra regra de quando aparece. O `click` é só o aviso; quem
+                        decide o que é estar escolhido continua sendo `recorteMensalidade`.
+
+                        `dataPointIndex` vem -1 quando o clique cai no fundo do card,
+                        fora de qualquer barra — daí a guarda antes de chamar.  */
+                    events: aoClicar ? {
+                        click: (evento, contexto, config) => {
+                            const i = config && config.dataPointIndex;
+                            if (i === undefined || i === null || i < 0) return;
+                            aoClicar(i);
+                        },
+                    } : {},
                 },
+                /*  O REALCE DE PASSAGEM DIZ QUE DÁ PARA CLICAR. Sem ele a barra é um
+                    desenho que responde ao clique sem nunca ter dito que responderia —
+                    o cursor de mãozinha quem põe é `pintarGraficos`, no elemento.  */
+                states: aoClicar ? { hover: { filter: { type: 'lighten', value: 0.08 } } } : {},
                 series: [{ name: 'Linhas', data: valoresVisuais }],
                 xaxis: {
                     categories: categorias,
@@ -1227,7 +1284,7 @@
             graficos[id].render();
         };
 
-        const desenhar = (id, categorias, valores, cores, base, formato, virada = false, totalParaPct = 0) => {
+        const desenhar = (id, categorias, valores, cores, base, formato, virada = false, totalParaPct = 0, aoClicar = null) => {
             const alvo = document.getElementById(id);
             if (!alvo || typeof ApexCharts === 'undefined') return;
             /*  A folga sai da BASE quando quem chama informa uma — é o que põe os dois
@@ -1246,7 +1303,7 @@
             const teto = Math.max(base || 0, ...valores, 1)
                 * (virada ? fatorDeitado(alvo, valores, faixa, totalParaPct) : 1.12);
             const opcoes = virada
-                ? opcoesDeBarraHorizontal(categorias, valores, cores, teto, alturaDe(alvo), faixa, formato, totalParaPct)
+                ? opcoesDeBarraHorizontal(categorias, valores, cores, teto, alturaDe(alvo), faixa, formato, totalParaPct, aoClicar)
                 : opcoesDeBarra(categorias, valores, cores, teto, alturaDe(alvo), formato);
             if (graficos[id] && graficos[id].__tipo === 'bar') {
                 graficos[id].updateOptions(opcoes, false, true);
@@ -1273,13 +1330,26 @@
            do desenho e vai para a legenda, que é uma lista — e lista é onde frase
            longa se lê, inteira e uma sob a outra.
 
-           "SEM INCONSISTÊNCIAS" NÃO É UMA INCONSISTÊNCIA. A IA escreve essa frase
-           na mesma coluna que as outras e ela é a MAIS frequente de todo documento
-           — 6.738 no RIAF, 7.965 no contrato, 14.511 no histórico. Ela é opção
-           legítima da barra de filtros ("me mostre os limpos") e continua lá, mas
-           num gráfico chamado INCONSISTÊNCIAS ela era a maior fatia e ainda entrava
-           na conta de "ocorrências" da linha de base, inflando o problema com o que
-           não é problema.
+           "SEM INCONSISTÊNCIAS" É UMA FATIA, E NÃO É UMA INCONSISTÊNCIA — as duas
+           coisas ao mesmo tempo, e é isso que o desenho tem de resolver. A IA
+           escreve essa frase na mesma coluna que as outras e ela é a MAIS frequente
+           de todo documento (7.872 no contrato de 14/09/2026, contra 8.296 da maior
+           inconsistência de verdade). Ela ficou fora do anel por um tempo justamente
+           por isso: era a maior fatia de um gráfico chamado INCONSISTÊNCIAS.
+
+           O QUE A TROUXE DE VOLTA é que sem ela o anel não fecha uma pergunta —
+           "quanto do que a IA leu está limpo" — e essa é a primeira pergunta que se
+           faz diante dele. Ela entra COM AS DUAS RESSALVAS ESCRITAS no desenho:
+           ganha o cinza (o degrau que a paleta reserva para a ausência, e ela é a
+           ausência de apontamento), e fica FORA das duas contas da linha de base —
+           nem soma "ocorrências", nem conta como "tipo". A linha diz o seu número em
+           separado, depois do ponto, que é onde ele não se mistura com o problema.
+
+           A UNIDADE DE TODA FATIA É A MESMA: documentos que carregam aquela frase
+           (`_frases_de_inconsistencia` conta LINHAS, com `set` por linha). Por isso a
+           limpa pode dividir o anel com as outras sem misturar régua — o que a soma
+           das fatias excede o total de documentos é o documento com mais de um
+           apontamento, e isso já era verdade antes dela.
 
            O QUE NÃO VIRA FATIA É SOMADO, e não calado: são até 47 frases distintas
            num só recorte, e a paleta da casa não tem 47 cores que se distingam duas
@@ -1299,6 +1369,11 @@
             `.docia-legenda--lado`) cabem quatorze linhas de ~20px na altura do card,
             e treze deixam a última sem encostar na borda de baixo.  */
         const FATIAS_DE_INCONSISTENCIA = 13;
+
+        /*  A FATIA DA LIMPA SAI DESSE ORÇAMENTO, não se soma a ele: a conta das treze
+            linhas é a altura do card, e ela não cresceu. Com quatorze, a última
+            encosta na borda de baixo — que é o que os treze evitavam.  */
+        const FATIAS_COM_A_LIMPA = FATIAS_DE_INCONSISTENCIA - 1;
 
         /*  A RAMPA DE CORES DAS FATIAS — a paleta da casa não tem treze degraus.
 
@@ -1372,8 +1447,10 @@
                 return;
             }
 
+            const eALimpa = (i) => semAcento(i.frase) === SEM_INCONSISTENCIA;
+            const limpa = (corpo.inconsistencias || []).find(eALimpa);
             const todas = (corpo.inconsistencias || [])
-                .filter((i) => semAcento(i.frase) !== SEM_INCONSISTENCIA)
+                .filter((i) => !eALimpa(i))
                 .sort((a, b) => b.linhas - a.linhas);
 
             if (!todas.length) {
@@ -1388,9 +1465,8 @@
                 empurraria para fora a menos frequente das que iam ser mostradas, e o
                 gráfico ficaria uma fatia mais cheio do que a lista comporta.  */
             soOAnel(false);
-            const mostradas = todas.length > FATIAS_DE_INCONSISTENCIA
-                ? todas.slice(0, FATIAS_DE_INCONSISTENCIA - 1)
-                : todas;
+            const vagas = limpa ? FATIAS_COM_A_LIMPA : FATIAS_DE_INCONSISTENCIA;
+            const mostradas = todas.length > vagas ? todas.slice(0, vagas - 1) : todas;
             const cauda = todas.slice(mostradas.length);
             const ocorrencias = todas.reduce((soma, i) => soma + i.linhas, 0);
 
@@ -1400,12 +1476,26 @@
                 nomes.push('Outras ' + formatarNumero(cauda.length) + ' inconsistências');
                 valores.push(cauda.reduce((soma, i) => soma + i.linhas, 0));
             }
+            /*  A LIMPA VAI POR ÚLTIMO, depois até da cauda. Ela é a maior fatia de
+                todas, e na primeira posição empurraria a ordem decrescente das
+                inconsistências para depois de si — a lista deixaria de se ler de cima
+                para baixo como "da mais comum para a menos". No fim, ela é o
+                fechamento do anel e a legenda continua sendo a ordem do problema.  */
+            if (limpa) {
+                nomes.push(limpa.frase);
+                valores.push(limpa.linhas);
+            }
 
             if (alvoBase) {
+                /*  As duas contas da base são SÓ DAS INCONSISTÊNCIAS: `ocorrências` vem
+                    de `todas`, que já exclui a limpa, e `tipos` também. O número dos
+                    limpos vem depois do ponto, separado, porque ele não é problema —
+                    somá-lo aqui inflaria o problema com o que não é problema.  */
                 alvoBase.innerHTML = '<span class="text-red-500 font-medium">'
                     + formatarNumero(ocorrencias) + ' ocorrências em '
                     + formatarNumero(corpo.processados) + ' documentos lidos</span>'
-                    + ' &middot; ' + formatarNumero(todas.length) + ' tipos';
+                    + ' &middot; ' + formatarNumero(todas.length) + ' tipos'
+                    + (limpa ? ' &middot; ' + formatarNumero(limpa.linhas) + ' sem apontamento' : '');
             }
 
             /*  O CINZA É O DEGRAU QUE A PALETA RESERVA para o que não é um assunto
@@ -1414,11 +1504,33 @@
                 ordem das cores da casa repetida em três tons.  */
             const tema = temaAtual();
             const cinza = PALETA_OVG[tema][4];
+            /*  DOIS CINZAS, e não um: a cauda e a limpa fazem o mesmo papel de
+                "não é um assunto próprio" e ficariam indistinguíveis lado a lado no
+                anel. O da limpa é o mesmo degrau puxado para longe do fundo do card —
+                para o preto no tema claro, para o branco no eleitoral, que é escuro.
+                Um tom fixo acertaria um tema e sumiria no outro.  */
+            const cinzaDaLimpa = puxarTom(cinza, tema === 'eleitoral' ? 255 : 0, 0.45);
             const degraus = rampaDeInconsistencia(tema);
-            const cores = nomes.map((_, i) => (cauda.length && i === nomes.length - 1)
-                ? cinza : degraus[i % degraus.length]);
+            const iCauda = cauda.length ? mostradas.length : -1;
+            const iLimpa = limpa ? nomes.length - 1 : -1;
+            const cores = nomes.map((_, i) => {
+                if (i === iLimpa) return cinzaDaLimpa;
+                if (i === iCauda) return cinza;
+                return degraus[i % degraus.length];
+            });
 
-            desenharRosca(id, nomes, valores, cores, 'Ocorrências');
+            /*  O CENTRO CONTA FRASES, e o nome dele mudou quando a limpa virou fatia.
+                Ele soma as fatias, e com "Sem inconsistências" entre elas a soma
+                deixou de ser "ocorrências": 17.608 contra as 13.642 de problema real.
+                Uma fatia que não é ocorrência sob um total chamado "Ocorrências" é o
+                tipo de número que ninguém confere e todo mundo cita.
+
+                `Frases` é o que TODA fatia é, sem exceção — a IA escreveu aquela frase
+                naquele documento, e "Sem inconsistências" é uma delas. O total passa
+                de 14.766 lidos porque o documento com dois apontamentos escreve duas
+                frases; é a linha de base, logo abaixo, que diz sobre quantos
+                documentos o anel fala.  */
+            desenharRosca(id, nomes, valores, cores, 'Frases da IA');
             /*  CLICÁVEL: agora os itens da legenda filtram a tabela diretamente,
                 assim como no Veredito. O item "Outras N" é especial e abre a
                 telinha completa quando clicado.  */
@@ -1632,7 +1744,7 @@
         const pintarGraficos = (corpo) => {
             const tema = temaAtual();
 
-            /*  VEREDITO — os cinco que a tela pediu. A linha de base diz quantas
+            /*  VEREDITO — os seis que a tela pediu. A linha de base diz quantas
                 linhas do recorte ficaram FORA deles (ausentes, inadimplentes e
                 corrompidos): sem ela o card passaria por retrato do todo e o total
                 não bateria com o da tabela abaixo.  */
@@ -1641,7 +1753,7 @@
             const somaVeredito = nomes.reduce((s, n) => s + veredito[n], 0);
             const base = document.getElementById('ia-base-veredito');
             if (base) {
-                /*  Com os oito estados a rosca cobre o recorte inteiro, e a base é
+                /*  Com os nove estados a rosca cobre o recorte inteiro, e a base é
                     só o total. A ressalva só aparece se um dia o motor inventar um
                     estado que esta lista não conhece — ver `fora_do_grafico`.  */
                 /*  A BASE DIZ SOBRE QUANTAS LINHAS A ROSCA FALA. Ela cobre só os
@@ -1696,8 +1808,15 @@
             /*  BENEFICIÁRIOS é PESSOA e DOCUMENTOS é LINHA — o mesmo CPF aparece em
                 mais de uma inscrição no mesmo semestre (714 no contrato de 2025-1), e
                 é por isso que os dois números não se somam nem se igualam.  */
-            escrever('ia-kpi-beneficiarios', formatarNumero(corpo.beneficiarios),
-                     'CPFs distintos no recorte');
+            let haFiltros = false;
+            for (const chave of parametros().keys()) {
+                if (chave !== 'documento' && chave !== 'expandido') {
+                    haFiltros = true;
+                    break;
+                }
+            }
+            const rotuloCpfs = haFiltros ? 'CPFs distintos no filtro aplicado' : 'CPFs distintos no Documento selecionado';
+            escrever('ia-kpi-beneficiarios', formatarNumero(corpo.beneficiarios), rotuloCpfs);
             escrever('ia-kpi-documentos', formatarNumero(corpo.total),
                      formatarNumero(corpo.processados) + ' lidos pela IA');
             escrever('ia-kpi-parcial', formatarNumero(bolsa.Parcial || 0),
@@ -1758,13 +1877,20 @@
                 return ordem.map((b) => c[b] || 0);
             }));
 
-            [['ia-gr-msd', 'ia-base-msd', 'sem_desconto'],
-             ['ia-gr-mcd', 'ia-base-mcd', 'com_desconto']].forEach(([idGr, idBase, chave]) => {
+            CARDS_DE_MENSALIDADE.forEach(([parametro, idGr, chave]) => {
+                const idBase = idGr.replace('ia-gr-', 'ia-base-');
                 const medida = (corpo.mensalidade || {})[chave] || {};
                 const contagem = medida.contagem || {};
                 const alvoBase = document.getElementById(idBase);
 
-                if (!corpo.processados) {
+                /*  O TOTAL DO CARD É O DO CARD. Ele ignora o próprio filtro de
+                    mensalidade, então vê mais linhas que o resto da tela, e é essa
+                    conta — não a geral — que fecha com as quatro barras. Os campos
+                    vêm do back; o `||` cobre a resposta antiga, de antes deles.  */
+                const lidos = medida.processados !== undefined ? medida.processados : corpo.processados;
+                const totalDoCard = medida.total !== undefined ? medida.total : corpo.total;
+
+                if (!lidos) {
                     if (alvoBase) alvoBase.textContent = 'nenhum documento processado';
                     mostrarVazio(idGr, 'fa-hourglass-half',
                                  'A IA ainda não leu nenhum documento neste recorte.');
@@ -1777,10 +1903,10 @@
                     return;
                 }
                 if (alvoBase) {
-                    if (corpo.processados === corpo.total) {
-                        alvoBase.innerHTML = formatarNumero(corpo.total) + ' documentos lidos';
+                    if (lidos === totalDoCard) {
+                        alvoBase.innerHTML = formatarNumero(totalDoCard) + ' documentos lidos';
                     } else {
-                        alvoBase.innerHTML = '<span class="text-red-500 font-medium">' + formatarNumero(corpo.processados) + ' lidos de ' + formatarNumero(corpo.total) + ' documentos</span>';
+                        alvoBase.innerHTML = '<span class="text-red-500 font-medium">' + formatarNumero(lidos) + ' lidos de ' + formatarNumero(totalDoCard) + ' documentos</span>';
                     }
                 }
                 /*  A régua dos dois é a `reguaComum` medida acima. É o que deixa os
@@ -1793,8 +1919,36 @@
                 //  nomes sai da medida delas.
                 const cats = ordem.map((b) => ROTULO_MENSALIDADE[b] || b);
                 const vals = ordem.map((b) => contagem[b] || 0);
-                const colors = CORES_MENSALIDADE(tema);
-                desenhar(idGr, cats, vals, colors, reguaComum, 'numero', true, corpo.processados);
+
+                /*  O QUE FICOU DE FORA FICA LAVADO, e não some: é o mesmo recado do
+                    risco na legenda da rosca (`docia-legenda__item--fora`) — escolher
+                    uma barra é deixar as outras de fora, e elas passam a dizer isso de
+                    si mesmas. Lavar a cor em vez de esconder a barra é o que mantém a
+                    comparação de pé: o número da barra não escolhida continua legível,
+                    que é justamente o que se quer olhar depois de escolher.
+
+                    O ALVO DA LAVAGEM SEGUE O FUNDO DO CARD, como na fatia dos limpos:
+                    para o branco no tema claro, para o preto no eleitoral. Um alvo
+                    fixo apagaria a barra num tema e a destacaria no outro.  */
+                const escolhidos = recorteMensalidade[parametro];
+                const alvoDaLavagem = tema === 'eleitoral' ? 0 : 255;
+                const colors = CORES_MENSALIDADE(tema).map((cor, i) => (
+                    escolhidos.size && !escolhidos.has(ordem[i])
+                        ? puxarTom(cor, alvoDaLavagem, 0.62)
+                        : cor
+                ));
+
+                const alvoGr = document.getElementById(idGr);
+                if (alvoGr) alvoGr.style.cursor = 'pointer';
+
+                desenhar(idGr, cats, vals, colors, reguaComum, 'numero', true, lidos,
+                         (i) => {
+                             const balde = ordem[i];
+                             if (balde === undefined) return;
+                             if (escolhidos.has(balde)) escolhidos.delete(balde);
+                             else escolhidos.add(balde);
+                             recarregar();
+                         });
 
             });
 
@@ -1980,6 +2134,15 @@
             recorteVereditos.forEach(
                 (v) => etiquetas.push(chip('Veredito', rotuloDoVeredito(v), 'veredito:' + v)));
 
+            /*  O NOME DO CARD VAI NA ETIQUETA, e não só o balde: "Não localizado"
+                sozinho não diz de qual das duas mensalidades se fala, e as duas podem
+                estar recortadas ao mesmo tempo — é justamente o cruzamento delas que
+                o recurso existe para permitir.  */
+            CARDS_DE_MENSALIDADE.forEach(([parametro, , , rotulo]) => {
+                recorteMensalidade[parametro].forEach(
+                    (balde) => etiquetas.push(chip(rotulo, balde, parametro + ':' + balde)));
+            });
+
             const campo = document.getElementById('ia-tabela-busca');
             const termo = (campo && campo.value || '').trim();
             if (termo) etiquetas.push(chip('Busca', termo, 'busca:*'));
@@ -2019,6 +2182,7 @@
                     inconsistenciasEscolhidas.delete(valor);
                     atualizarRotuloInc();
                 } else if (tipo === 'veredito') recorteVereditos.delete(valor);
+                else if (recorteMensalidade[tipo]) recorteMensalidade[tipo].delete(valor);
                 else if (tipo === 'busca') {
                     const campo = document.getElementById('ia-tabela-busca');
                     if (campo) campo.value = '';
@@ -2035,6 +2199,7 @@
                     inconsistenciasEscolhidas.clear();
                     atualizarRotuloInc();
                     recorteVereditos.clear();
+                    limparMensalidade();
                     const campo = document.getElementById('ia-tabela-busca');
                     if (campo) campo.value = '';
                     const limpar = document.getElementById('ia-btn-limpar-busca');
@@ -2285,6 +2450,11 @@
                 voltaria vazia sem nada na barra explicando por quê.  */
             inconsistenciasEscolhidas.clear();
             atualizarRotuloInc();
+            /*  As barras de mensalidade, pelo mesmo motivo com outra cara: os quatro
+                baldes existem em toda aba, mas o Histórico não carrega mensalidade
+                nenhuma (`tem_dado` falso) — levar "Não localizado" para lá devolveria
+                a aba inteira ou nada, sem nada na barra explicando por quê.  */
+            limparMensalidade();
             recarregar();
         }));
 
@@ -2331,6 +2501,7 @@
                     (caixa.checked = caixa.value === 'CONTRATO'));
                 inconsistenciasEscolhidas.clear();
                 atualizarRotuloInc();
+                limparMensalidade();
                 // O filtro de IES vive noutro escopo e não se zera sozinho: sem
                 // isto o botão limparia a barra e deixaria as instituições presas.
                 if (typeof window.resetFiltroIES === 'function') window.resetFiltroIES();
