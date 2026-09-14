@@ -2650,27 +2650,27 @@ html[data-tela-cheia="1"] .docia-legenda__pct { width: 44px; }
     começa a animação já adiantada: a página abre com as oito ondas em oito
     fases diferentes, que é o que tira a faixa do aspecto de coreografia.  */
 @keyframes docia-mare-frente {
-    0%     { translate:   0     0;   }
-    12.5%  { translate:  14px   3px; }
-    25%    { translate:  20px   6px; }
-    37.5%  { translate:  14px   3px; }
-    50%    { translate:   0     0;   }
-    62.5%  { translate: -14px   3px; }
-    75%    { translate: -20px   6px; }
-    87.5%  { translate: -14px   3px; }
-    100%   { translate:   0     0;   }
+    0%     { translate:  20px   3px; }
+    12.5%  { translate:  14px   5px; }
+    25%    { translate:   0px   6px; }
+    37.5%  { translate: -14px   5px; }
+    50%    { translate: -20px   3px; }
+    62.5%  { translate: -14px   1px; }
+    75%    { translate:   0px   0px; }
+    87.5%  { translate:  14px   1px; }
+    100%   { translate:  20px   3px; }
 }
 
 @keyframes docia-mare-fundo {
-    0%     { translate:   0     8px; }
-    12.5%  { translate: -18px   4px; }
-    25%    { translate: -26px   0;   }
-    37.5%  { translate: -18px   4px; }
-    50%    { translate:   0     8px; }
-    62.5%  { translate:  18px   4px; }
-    75%    { translate:  26px   0;   }
-    87.5%  { translate:  18px   4px; }
-    100%   { translate:   0     8px; }
+    0%     { translate:  26px   4px; }
+    12.5%  { translate:  18px   1px; }
+    25%    { translate:   0px   0px; }
+    37.5%  { translate: -18px   1px; }
+    50%    { translate: -26px   4px; }
+    62.5%  { translate: -18px   7px; }
+    75%    { translate:   0px   8px; }
+    87.5%  { translate:  18px   7px; }
+    100%   { translate:  26px   4px; }
 }
 
 .docia-kpi-card::before { animation: docia-mare-frente 7s linear infinite; }
