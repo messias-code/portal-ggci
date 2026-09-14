@@ -3998,6 +3998,47 @@ def _avisar_espelhos_ausentes(ausentes):
     print(f"[GGCI       | INCOMPLETO    | FINAL ] O relatório abaixo está SEM esses dados. Rode a extração de novo para regerar as tabelas.")
 
 
+def completar_ies_pelo_espelho(df, ies_series, codigo_col, caminho_espelho=None):
+    """
+    O QUE FAZ: Preenche o nome da IES das linhas de pagamento que ficaram sem ele, lendo o
+    espelho de beneficiários por (codigo_aluno, semestre).
+    POR QUÊ EXISTE: a IES da aba Pagamentos vinha só do universo dos DOCUMENTOS, e quem teve
+    o repasse inteiro estornado não entra nesse universo (a regra é a de sempre: sem repasse
+    líquido não se cobra documento). O pagamento continua na aba, com `bolsa_paga = 0` e
+    `lan_valor_cancelamento` igual à bolsa, mas o aluno sumia do mapa: a IES ficava vazia e a
+    MANTENEDORA virava "Não Encontrada". Na geração de 14/09/2026 eram 351 linhas de 326.038
+    (194 alunos, R$ 264.651,18 cancelados) e TODAS tinham `bolsa_paga = 0` — nenhuma linha
+    com repasse ficou sem IES. O cadastro existia, só não estava sendo lido: o espelho de
+    beneficiários cobre 100% dessas linhas e as 47 IES que ele devolve resolvem todas no
+    catálogo de mantenedoras.
+    COMO FUNCIONA: cruza COM o semestre, porque o cadastro do SIBU é sempre o estado atual —
+    a faculdade de hoje não pode ser jogada em cima do pagamento de um semestre antigo. Só
+    mexe nas linhas sem nome; o que já veio do documento fica como está.
+    PARÂMETROS: df (DataFrame de pagamentos), ies_series (Series de IES, com buracos),
+                codigo_col (nome da coluna de inscrição em `df`),
+                caminho_espelho (str, opcional — o padrão é o Parquet do próprio app)
+    RETORNO: Series de IES com os buracos preenchidos onde o espelho soube responder.
+    """
+    faltando = ies_series.isna() | (ies_series.astype(str).str.strip() == '')
+    if not faltando.any() or 'semestre_referencia_analise' not in df.columns:
+        return ies_series
+
+    if caminho_espelho is None:
+        caminho_espelho = os.path.join(PROJECT_ROOT, f"apps/automacoes/analise_ia/dados/tabelas_sql/PY_ggci_coleta_de_dados_beneficiarios_temp_d1{SUFIXO_TABELAS}.parquet")
+    if not os.path.exists(caminho_espelho):
+        return ies_series
+
+    espelho = pd.read_parquet(caminho_espelho, columns=['codigo_aluno', 'semestre', 'nome_faculdade_sql'])
+    espelho = espelho.dropna(subset=['nome_faculdade_sql'])
+    chave_espelho = (pd.to_numeric(espelho['codigo_aluno'], errors='coerce').astype('Int64').astype(str)
+                     + '|' + espelho['semestre'].astype(str).str.strip())
+    mapa = pd.Series(espelho['nome_faculdade_sql'].values, index=chave_espelho)
+    mapa = mapa[~mapa.index.duplicated(keep='first')]
+
+    chave_df = (pd.to_numeric(df[codigo_col], errors='coerce').astype('Int64').astype(str)
+                + '|' + df['semestre_referencia_analise'].astype(str).str.strip())
+    return ies_series.where(~faltando, chave_df.map(mapa))
+
 def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_relatorio=False, gerar_relatorio_riaf=False, gerar_quantitativo=True, gerar_pagamentos=True, sems_riaf=None, sems_contratos=None, processo_id=None, formato="EXCEL"):
     """
     O QUE FAZ: Ponto de entrada final do fluxo de transformação (ETAPA 3). Lê os CSVs temporários, aplica regras, cria o Excel Final.
@@ -5233,31 +5274,50 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                 
                 # --- INSERCAO DE IES E MANTENEDORA ---
                 codigo_col = 'codigo_aluno' if 'codigo_aluno' in df.columns else 'UNI_CODIGO'
-                if codigo_col in df.columns and not df_master_resumo.empty and 'Inscrição' in df_master_resumo.columns:
-                    if 'Faculdade' in df_master_resumo.columns:
+                if codigo_col in df.columns:
+                    codigos = pd.to_numeric(df[codigo_col], errors='coerce')
+                    ies_series = pd.Series(np.nan, index=df.index, dtype=object)
+
+                    if not df_master_resumo.empty and 'Inscrição' in df_master_resumo.columns and 'Faculdade' in df_master_resumo.columns:
                         mapa_ies = df_master_resumo.drop_duplicates(subset=['Inscrição']).set_index('Inscrição')['Faculdade']
-                        df_temp_idx = pd.to_numeric(df[codigo_col], errors='coerce')
                         mapa_ies.index = pd.to_numeric(mapa_ies.index, errors='coerce')
-                        
-                        ies_series = df_temp_idx.map(mapa_ies)
-                        
-                        if 'INS_NOME' in df.columns:
-                            ies_series = df['INS_NOME'].fillna(ies_series)
-                            df = df.drop(columns=['INS_NOME'])
-                        df['IES'] = ies_series
-                        
-                        df['IES'] = aplicar_por_distintos(df['IES'], padronizar_ies)
-                        if 'MANTENEDORA' not in df.columns:
-                            df['MANTENEDORA'] = aplicar_por_distintos(df['IES'], buscar_mantenedora)
-                            
-                        # Move columns to the front
-                        cols = list(df.columns)
-                        for col_name in ['MANTENEDORA', 'IES']:
-                            if col_name in cols:
-                                cols.remove(col_name)
-                                insert_idx = 1 if len(cols) > 1 else 0
-                                cols.insert(insert_idx, col_name)
-                        df = df[cols]
+                        ies_series = codigos.map(mapa_ies)
+
+                    if 'INS_NOME' in df.columns:
+                        ies_series = df['INS_NOME'].fillna(ies_series)
+                        df = df.drop(columns=['INS_NOME'])
+
+                    #  QUEM NÃO TEM DOCUMENTO TAMBÉM TEM IES
+                    ies_series = completar_ies_pelo_espelho(df, ies_series, codigo_col)
+
+                    # Propaga a IES de semestres passados para semestres onde ficou vazia (ex: pagamentos residuais de alunos desligados)
+                    df['IES_temp'] = ies_series
+                    df['IES_temp'] = df.groupby(codigo_col)['IES_temp'].transform(lambda x: x.ffill().bfill())
+                    ies_series = df['IES_temp']
+                    df.drop(columns=['IES_temp'], inplace=True)
+
+                    df['IES'] = ies_series
+                    df['IES'] = aplicar_por_distintos(df['IES'], padronizar_ies)
+                    if 'MANTENEDORA' not in df.columns:
+                        df['MANTENEDORA'] = aplicar_por_distintos(df['IES'], buscar_mantenedora)
+                
+                # --- FILTRO POR SEMESTRE ALVO (Correção do vazamento de histórico passado) ---
+                if 'semestre_referencia_analise' in df.columns:
+                    sems_norm = [str(x).strip().replace('-', '/') for x in sems_alvo]
+                    df = df[df['semestre_referencia_analise'].astype(str).str.strip().isin(sems_norm)].copy()
+                elif 'SEMESTRE' in df.columns:
+                    sems_norm = df['SEMESTRE'].astype(str).str.strip().str.replace('/', '-')
+                    df = df[sems_norm.isin(sems_alvo)].copy()
+                # -----------------------------------------------------------------------------
+
+                # Move columns to the front
+                cols = list(df.columns)
+                for col_name in ['MANTENEDORA', 'IES']:
+                    if col_name in cols:
+                        cols.remove(col_name)
+                        insert_idx = 1 if len(cols) > 1 else 0
+                        cols.insert(insert_idx, col_name)
+                df = df[cols]
                 # --- FIM INSERCAO ---
 
                 cols_ordem = []
