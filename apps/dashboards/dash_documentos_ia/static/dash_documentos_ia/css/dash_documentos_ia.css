@@ -3375,6 +3375,7 @@ html[data-docia-aba="analise"] #filtros-analise { display: block; }
     Navegador que não conhece a palavra descarta a declaração inteira e alinha pelo
     topo, que é exatamente o que se quer no caso ruim. */
 .docia-legenda--lado {
+    overflow-y: auto;
     height: auto;
     align-self: stretch;
     justify-content: safe center;
@@ -3393,7 +3394,8 @@ html[data-docia-aba="analise"] #filtros-analise { display: block; }
 .docia-legenda--lado .docia-legenda__valor { width: 54px; }
 .docia-legenda--lado .docia-legenda__pct { width: 48px; }
 
-html[data-tela-cheia="1"] .docia-legenda--lado { height: auto; }
+html[data-tela-cheia="1"] .docia-legenda--lado {
+    overflow-y: auto; height: auto; }
 
 /*  A LINHA "ANEL + LISTA" — a repartição de largura do card de inconsistências.
 
