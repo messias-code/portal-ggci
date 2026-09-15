@@ -16,12 +16,24 @@ WITH UniversoAtivos AS (
         -- Busca o ins_codigo do lançamento para conectar com a instituição
         l.ins_codigo
         
-    FROM coleta_dados cd
+    FROM sibu.coleta_dados cd
     INNER JOIN (
-        SELECT coleta_id, MAX(lan_anomes) as lan_anomes, MAX(ins_codigo) as ins_codigo 
-        FROM lancamento 
-        GROUP BY coleta_id
-    ) l ON l.coleta_id = cd.id
+        SELECT 
+            coleta_id, 
+            uni_codigo,
+            CONCAT(SUBSTRING(CAST(lan_anomes AS CHAR), 1, 4), '-', CASE WHEN CAST(SUBSTRING(CAST(lan_anomes AS CHAR), 5, 2) AS UNSIGNED) <= 6 THEN '1' ELSE '2' END) AS semestre_lancamento,
+            MAX(lan_anomes) as lan_anomes, 
+            MAX(ins_codigo) as ins_codigo 
+        FROM sibu.lancamento 
+        GROUP BY 
+            coleta_id, 
+            uni_codigo, 
+            CONCAT(SUBSTRING(CAST(lan_anomes AS CHAR), 1, 4), '-', CASE WHEN CAST(SUBSTRING(CAST(lan_anomes AS CHAR), 5, 2) AS UNSIGNED) <= 6 THEN '1' ELSE '2' END)
+    ) l ON (
+        (l.coleta_id IS NOT NULL AND l.coleta_id = cd.id)
+        OR
+        (l.coleta_id IS NULL AND l.uni_codigo = cd.uni_codigo)
+    )
     WHERE cd.data_create >= '2025-01-01' 
       AND (
           cd.outros_financiamentos = 'S' 
