@@ -4821,6 +4821,14 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                         df_docs['Semestre'].astype(str).str.strip().str.replace('/', '-'),
                         aplicar_por_distintos(df_docs['Documento Tipo'], limpar_texto_geral),
                     )) if not df_docs.empty else set()
+                    
+                    ja_no_relatorio_riaf = set(zip(
+                        df_riaf['Inscrição'].astype(str).str.split('.').str[0].str.strip(),
+                        df_riaf['Semestre'].astype(str).str.strip().str.replace('/', '-'),
+                        aplicar_por_distintos(pd.Series([DOC_RIAF]*len(df_riaf)), limpar_texto_geral),
+                    )) if not df_riaf.empty else set()
+                    
+                    ja_no_relatorio.update(ja_no_relatorio_riaf)
 
                     # O CONSOLIDADOR NORMALIZA o texto das colunas (sem acento, maiúsculas),
                     # então o `Documento` chega como `HISTORICO ESCOLAR` e não bateria com o
@@ -4832,6 +4840,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                     }
 
                     novas_cobrancas = []
+                    novas_cobrancas_riaf = []
                     for row in df_indevidas.to_dict('records'):
                         semestre_row = str(row.get('Semestre', '')).strip().replace('/', '-')
                         documento_row = str(row.get('Documento', '')).strip()
@@ -4845,7 +4854,8 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                             continue
                         if (inscricao_row, semestre_row, limpar_texto_geral(documento_row)) in ja_no_relatorio:
                             continue
-                        novas_cobrancas.append({
+                            
+                        novo_registro = {
                             'Status_IA': 'Inadimplente',
                             'Documento Ausente': 'SIM',
                             'Inscrição': inscricao_row,
@@ -4854,13 +4864,25 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                             'Bolsista': limpar_texto_geral(str(row.get('Beneficiário', ''))),
                             'CPF': row.get('CPF', ''),
                             'Faculdade': limpar_texto_geral(str(row.get('Instituição', ''))),
-                        })
+                        }
+                        
+                        if documento_canonico == DOC_RIAF:
+                            novas_cobrancas_riaf.append(novo_registro)
+                        else:
+                            novas_cobrancas.append(novo_registro)
 
                     if novas_cobrancas:
                         df_docs = pd.concat(
                             [df_docs, converter_colunas_para_salvamento(pd.DataFrame(novas_cobrancas))],
                             ignore_index=True)
-                        print(f"[GGCI       | INJETADOS     | COBRANÇA] {len(novas_cobrancas)} "
+                            
+                    if novas_cobrancas_riaf:
+                        df_riaf = pd.concat(
+                            [df_riaf, converter_colunas_para_salvamento(pd.DataFrame(novas_cobrancas_riaf))],
+                            ignore_index=True)
+                            
+                    if novas_cobrancas or novas_cobrancas_riaf:
+                        print(f"[GGCI       | INJETADOS     | COBRANÇA] {len(novas_cobrancas) + len(novas_cobrancas_riaf)} "
                               f"cobranças do site sem lançamento no semestre.")
                 except Exception as erro_cobranca:
                     # Falhar aqui não pode derrubar o relatório: a fatia fica vazia e todo o
