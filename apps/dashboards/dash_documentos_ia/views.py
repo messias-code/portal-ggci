@@ -1297,10 +1297,17 @@ def _montar_linhas(df):
             recorte[coluna] = recorte[coluna].astype('string')
     recorte = recorte[COLUNAS_TABELA]
 
-    # `object` + `where(notna)` troca NaN/NaT por None, que vira `null` no JSON. Sem
     # isso o `NaN` sai como literal inválido e o `JSON.parse` do navegador estoura.
     recorte = recorte.astype(object).where(pd.notna(recorte), None)
-    return [[v if v is None or isinstance(v, (str, int, float, bool)) else str(v) for v in linha]
+
+    import re
+    def _limpar_excel(v):
+        if v is None: return v
+        if isinstance(v, (int, float, bool)): return v
+        s = v if isinstance(v, str) else str(v)
+        return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\ud800-\udfff\ufffe\uffff]', '', s)
+
+    return [[_limpar_excel(v) for v in linha]
             for linha in recorte.values.tolist()]
 
 
@@ -2108,7 +2115,15 @@ def _montar_linhas_cruas(df, colunas):
         if coluna in recorte.columns:
             recorte[coluna] = recorte[coluna].astype('string')
     recorte = recorte.astype(object).where(pd.notna(recorte), None)
-    return [[v if v is None or isinstance(v, (str, int, float, bool)) else str(v) for v in linha]
+    
+    import re
+    def _limpar_excel(v):
+        if v is None: return v
+        if isinstance(v, (int, float, bool)): return v
+        s = v if isinstance(v, str) else str(v)
+        return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\ud800-\udfff\ufffe\uffff]', '', s)
+
+    return [[_limpar_excel(v) for v in linha]
             for linha in recorte.values.tolist()]
 
 
@@ -2156,7 +2171,7 @@ def api_exportar_ia(request):
     rotulos = [_rotulo_de_coluna(nome) for nome in colunas]
 
     buffer = _io.BytesIO()
-    livro = xlsxwriter.Workbook(buffer, {'in_memory': True})
+    livro = xlsxwriter.Workbook(buffer, {'in_memory': True, 'strings_to_formulas': False, 'strings_to_urls': False})
     aba = livro.add_worksheet('Análise da IA')
 
     cabecalho = livro.add_format({
@@ -2305,7 +2320,7 @@ def api_exportar(request):
     # células da base inteira leva 52 s pelo pandas e 23 s por aqui. O caminho do
     # pandas monta um DataFrame intermediário e resolve o tipo célula a célula; as
     # linhas já saem prontas de `_montar_linhas`.
-    livro = xlsxwriter.Workbook(buffer, {'in_memory': True})
+    livro = xlsxwriter.Workbook(buffer, {'in_memory': True, 'strings_to_formulas': False, 'strings_to_urls': False})
     aba = livro.add_worksheet('Detalhamento')
 
     cabecalho = livro.add_format({
@@ -2583,7 +2598,7 @@ def api_exportar_ies(request):
         linha['enviados'] = linha['esperados'] - linha['NaoEnviados']
 
     buffer = _io.BytesIO()
-    livro = xlsxwriter.Workbook(buffer, {'in_memory': True})
+    livro = xlsxwriter.Workbook(buffer, {'in_memory': True, 'strings_to_formulas': False, 'strings_to_urls': False})
     aba = livro.add_worksheet('Envios e Pendências')
 
     cabecalho = livro.add_format({
