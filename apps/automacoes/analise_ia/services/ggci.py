@@ -117,7 +117,7 @@ COLUNAS_ABA_DOCUMENTO = [
     'tipo_documento', 'status_ia', 'gemini_inconsistencia', 'semestre', 'gemini_semestre',
     'bolsista', 'inscricao', 'inscricao_anterior', 'inscricao_posterior', 'cpf', 'gemini_cpf',
     'tipo_bolsa_final', 'mudou_bolsa', 'bolsa_anterior', 'bolsa_posterior', 'faculdade',
-    'mudou_ies', 'ies_anterior', 'ies_posterior', 'curso', 'ultimo_valor_pago_ref',
+    'mudou_ies', 'ies_anterior', 'ies_posterior', 'curso', 'gemini_curso', 'ultimo_valor_pago_ref',
     'total_bolsa_paga', 'qtd_pagtos', 'qtd_pagtos_retroativos', 'mensalidade_sem_desc',
     'gemini_mensalidade_sem_desc', 'msd_doc', 'mensalidade_com_desc',
     'gemini_mensalidade_com_desc', 'mcd_doc', 'valor_beneficio', 'soma_valor_beneficio',
@@ -128,7 +128,7 @@ COLUNAS_ABA_DOCUMENTO = [
     'data_processamento', 'processado', 'processar', 'qtd_token', 'qtd_disciplinas_matriculadas',
     'qtd_disciplinas_reprovadas', 'perfil', 'status_vinculo', 'situacao_motivo',
     'observacao_situacao', 'email', 'telefone_1', 'telefone_2', 'data_nascimento', 'matricula',
-    'periodo_atual', 'qtd_periodos', 'modalidade'
+    'periodo_atual', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade'
 ]
 
 
@@ -4136,7 +4136,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                         'cpf': 'CPF', 'gemini_curso': 'Gemini Curso', 'curso': 'Curso', 'gemini_nome_faculdade': 'Gemini Nome Faculdade',
                         'nome_faculdade': 'Faculdade', 'gemini_mensalidade_sem_desconto': 'Gemini Mensalidade S/ Desconto',
                         'mensalidade_sem_desconto': 'Mensalidade S/ Desconto', 'gemini_mensalidade_com_desconto': 'Gemini Mensalidade C/ Desconto',
-                        'mensalidade_com_desconto': 'Mensalidade C/ Desconto', 'gemini_concluiu_curso': 'gemini_concluiu_curso',
+                        'mensalidade_com_desconto': 'Mensalidade C/ Desconto', 'gemini_concluiu_curso': 'Gemini Concluiu Curso',
                         'gemini_semestre': 'Gemini Semestre', 'data_create': 'data_create', 'qtde_token': 'Qtde Token'
                     }
                     df_espelho_hist_pd = df_espelho_hist_pd.rename(columns=mapa_colunas_hist)
@@ -4983,7 +4983,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             'Qtde Token', 'gemini_vigencia', 'gemini_clausulas', 'gemini_recisao', 'gemini_cnpj_mantenedora',
             'gemini_documentos_beneficio', 'gemini_cnpj_banco', 'gemini_numero', 'gemini_numero_semestres',
             'gemini_semestres_feitos', 'gemini_semestres_financiados', 'gemini_valor_limite_credito',
-            'gemini_valor_semestralidade', 'gemini_valor_coparticipacao', 'Processar', 'gemini_concluiu_curso',
+            'gemini_valor_semestralidade', 'gemini_valor_coparticipacao', 'Processar', 'Gemini Concluiu Curso',
             'data_coleta_atual_sistema', 'inscricao_ano_semestre', 'data_ingresso', 'Check Contrato',
             'Check Financiamento', 'Check Benefícios', 'Check RIAF', 'Check Histórico', 'Check Doc beneficios',
             'Duração Total Semestres', 'Qtd Disciplinas Matriculadas', 'Qtd Disciplinas Reprovadas', 'Perfil do Beneficiario'
@@ -5065,7 +5065,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             'Gemini Quantidade Periodos': 'gemini_qtd_periodos',
             'gemini_numero_semestres': 'gemini_numero_semestres',
             'gemini_semestres_feitos': 'gemini_semestres_feitos',
-            'gemini_concluiu_curso': 'gemini_concluiu_curso',
+            'Gemini Concluiu Curso': 'gemini_concluiu_curso',
             'Inscrição': 'inscricao',
             'inscricao_ano_semestre': 'inscricao_ano_semestre',
             'Inscrição Anterior': 'inscricao_anterior',
