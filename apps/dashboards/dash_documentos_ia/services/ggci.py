@@ -1072,6 +1072,13 @@ def mesclar_sql_e_reordenar(df, df_sql, df_pag=None, df_mes_a_mes=None):
         df['orig_idx_merge'] = df.index
         df = pd.merge(df, df_sql, left_on=['Inscrição', 'Semestre'], right_on=['uni_codigo', 'semestre'], how='left', suffixes=('', '_sql'))
         
+        #  QUEM ACHOU O PRÓPRIO SEMESTRE NO BANCO, ANOTADO AGORA. Daqui para baixo
+        #  `uni_codigo` deixa de responder a essa pergunta: o remapeamento logo abaixo
+        #  escreve nela o código vindo do ÚLTIMO semestre do aluno, e a linha que não
+        #  tinha semestre no banco passa a parecer que tinha. O fallback por inscrição,
+        #  lá embaixo, precisa desta resposta para não pisar no dado do semestre certo.
+        achou_o_proprio_semestre = df['uni_codigo'].notna()
+
         # Fallback para o último semestre disponível (resolve alunos com semestre divergente no Excel que sumiriam no BD)
         mask = df['uni_codigo'].isna() & df['Inscrição'].notna()
         if mask.any():
@@ -1158,6 +1165,14 @@ def mesclar_sql_e_reordenar(df, df_sql, df_pag=None, df_mes_a_mes=None):
             'periodo_atual': 'Semestre atual',
             'periodo_quantidade': 'Semestre quantidade',
             'matricula': 'Matricula',
+            #  O CURSO DO PRÓPRIO SEMESTRE, e não o do último. `CUR_NOME` sempre esteve
+            #  no `df_sql`, mas só era lido lá embaixo, no fallback por Inscrição, que
+            #  entrega o curso do ÚLTIMO semestre do aluno. Para quem transferiu isso
+            #  significa carimbar o curso de hoje num semestre antigo — o mesmo defeito
+            #  que a Faculdade tinha. Aqui o valor vem da linha do semestre, e como este
+            #  laço só preenche buraco, o curso que o espelho do documento já trouxe
+            #  continua mandando.
+            'CUR_NOME': 'Curso',
             'ins_cnpj': 'Ins. CNPJ',
             'ins_razao_social': 'Ins. Razão Social',
             'ins_nome_fantasia': 'Ins. Nome Fantasia',
@@ -1243,7 +1258,30 @@ def mesclar_sql_e_reordenar(df, df_sql, df_pag=None, df_mes_a_mes=None):
                         df[col_df] = df[col_df].replace(r'^\s*[-]*\s*$', np.nan, regex=True)
                     df[col_df] = df[col_df].replace(['', ' ', '-', 'nan', 'NaN', 'NAN', 'None', '<NA>', 'NÃO INFORMADO', 'NAO INFORMADO', 'Não Informado'], np.nan)
                     if col_df == 'Faculdade':
-                        df[col_df] = df_fallback[col_sql].fillna(df[col_df])
+                        #  A IES DO ÚLTIMO SEMESTRE SÓ VALE PARA QUEM NÃO TEM SEMESTRE
+                        #  PRÓPRIO NO BANCO.
+                        #
+                        #  `df_fallback` é o aluno inteiro reduzido à sua ÚLTIMA linha
+                        #  (`drop_duplicates(subset=['uni_codigo'], keep='last')`), e aqui
+                        #  ele vinha na frente: `df_fallback.fillna(df)` sobrescrevia o
+                        #  nome que o merge por (Inscrição, Semestre) já tinha acertado.
+                        #  Para quem TRANSFERIU de faculdade isso reescrevia a história —
+                        #  a IES nova passava a assinar todos os semestres anteriores, e
+                        #  com ela a mantenedora e o CNPJ que a tela usa para cobrar.
+                        #
+                        #  CASO REAL (15/09/2026): inscrição 2203791, com pagamento na
+                        #  UNIGOYAZES de 07/2025 a 06/2026 e transferência para a
+                        #  UNIARAGUAIA em 08/2026. O espelho trazia os quatro semestres
+                        #  certos; o relatório mostrava UNIARAGUAIA nos quatro.
+                        #
+                        #  A INVERSÃO TINHA MOTIVO e ele continua valendo para quem o
+                        #  banco não soube responder por semestre: nessas linhas a
+                        #  `Faculdade` é o nome lido do DOCUMENTO, que vem abreviado e
+                        #  sujo, e o nome do cadastro é melhor do que ele. Por isso a
+                        #  precedência não foi trocada, foi RESTRINGIDA.
+                        df[col_df] = np.where(achou_o_proprio_semestre,
+                                              df[col_df].fillna(df_fallback[col_sql]),
+                                              df_fallback[col_sql].fillna(df[col_df]))
                     else:
                         df[col_df] = df[col_df].fillna(df_fallback[col_sql])
         
