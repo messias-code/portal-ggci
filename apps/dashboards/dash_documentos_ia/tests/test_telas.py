@@ -1194,6 +1194,29 @@ class TestApiDaTela(BaseTelas):
         }
         self.assertEqual(colunas_cobertas, esperadas)
 
+    def test_o_xlsx_da_analise_ia_sai_sem_precisar_de_reparo(self):
+        """
+        O `sqref` de `<ignoredError>` é UMA string com as faixas separadas por espaço. A
+        exportação da aba Análise IA passava a lista Python ao xlsxwriter, que interpolava
+        o `repr` dela — `sqref="['E2:E73', 'F2:F73']"`. O XML continuava bem formado (nenhum
+        parser reclamava), mas o Excel recusava o conteúdo: toda exportação desta aba abria
+        com "Parte de /xl/worksheets/sheet1.xml com erro XML" e a planilha "reparada".
+        """
+        import io as _io
+        import re
+        import zipfile
+
+        resposta = self.cliente.get(
+            reverse("dash_documentos_ia_exportar_ia"), {"documento": "RIAF"})
+        if len(resposta.content) < 1000:
+            self.skipTest("sem Parquet nesta máquina")
+
+        planilha = zipfile.ZipFile(_io.BytesIO(resposta.content)).read(
+            "xl/worksheets/sheet1.xml").decode()
+        faixas = re.search(r'<ignoredError sqref="([^"]*)"', planilha).group(1)
+        #  Nada de aspas, colchetes ou vírgulas: só "A2:A73", separadas por espaço.
+        self.assertRegex(faixas, r'^[A-Z]+\d+:[A-Z]+\d+( [A-Z]+\d+:[A-Z]+\d+)*$')
+
     def test_exportacao_recusa_quem_nao_tem_permissao(self):
         self.cliente.force_login(self.sem_acesso)
         self.assertEqual(

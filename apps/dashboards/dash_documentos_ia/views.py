@@ -2184,10 +2184,15 @@ def api_exportar_ia(request):
 
     #  Identificadores como TEXTO: sem isto o Excel marca cada célula de inscrição e CPF
     #  com o aviso "número armazenado como texto" — um triângulo verde em 80 mil linhas.
-    faixas = []
-    for indice, nome in enumerate(colunas):
-        if nome in COLUNAS_DE_TEXTO_NO_EXCEL:
-            faixas.append(xlsxwriter.utility.xl_range(1, indice, max(len(linhas), 1), indice))
+    #
+    #  O `sqref` do XLSX é UMA STRING com as faixas separadas por espaço, como faz a
+    #  exportação da tabela de beneficiários. Passar a lista Python fazia o xlsxwriter
+    #  interpolar o `repr` dela — `sqref="['E2:E73', 'F2:F73']"` —, um XML bem formado e
+    #  semanticamente inválido: o Excel abria o arquivo acusando erro em
+    #  /xl/worksheets/sheet1.xml e "reparava" a planilha em toda exportação desta aba.
+    faixas = ' '.join(
+        xlsxwriter.utility.xl_range(1, indice, max(len(linhas), 1), indice)
+        for indice, nome in enumerate(colunas) if nome in COLUNAS_DE_TEXTO_NO_EXCEL)
     if faixas:
         aba.ignore_errors({'number_stored_as_text': faixas})
 
