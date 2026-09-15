@@ -2602,6 +2602,21 @@
                 inconsistenciasEscolhidas.clear();
                 atualizarRotuloInc();
                 limparMensalidade();
+                /*  O RECORTE CLICADO NA ROSCA TAMBÉM É FILTRO, e era o único que
+                    sobrevivia ao botão: quem escolhia "Falso válido" na legenda e
+                    depois pedia o padrão de volta continuava vendo só aquela fatia,
+                    com a barra inteira limpa e nada nela explicando o número da
+                    tabela. As barras de mensalidade e as frases já saíam aqui — este
+                    conjunto ficou de fora quando a legenda virou botão.  */
+                recorteVereditos.clear();
+                /*  E a busca da tabela, pelo mesmo motivo e com o mesmo efeito: ela
+                    recorta o que se vê e a etiqueta dela some junto com as outras.
+                    É o que "Limpar filtros" da faixa de etiquetas e o botão da aba
+                    Envios já fazem — só este caminho deixava o termo preso.  */
+                const campoBusca = document.getElementById('ia-tabela-busca');
+                if (campoBusca) campoBusca.value = '';
+                const limparBusca = document.getElementById('ia-btn-limpar-busca');
+                if (limparBusca) limparBusca.classList.add('hidden');
                 // O filtro de IES vive noutro escopo e não se zera sozinho: sem
                 // isto o botão limparia a barra e deixaria as instituições presas.
                 if (typeof window.resetFiltroIES === 'function') window.resetFiltroIES();
