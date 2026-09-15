@@ -491,6 +491,10 @@ def escrever_aba(writer, nome_aba, df, fmt_header=None):
                     else:
                         limpos.append(v)
                 else:
+                    if isinstance(v, str):
+                        # Previne "Erro de carregamento. Linha 2, coluna 0" removendo
+                        # caracteres de controle ASCII que quebram o parser XML do Excel
+                        v = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', v)
                     limpos.append(v)
         worksheet.write_column(1, i, limpos)
 
