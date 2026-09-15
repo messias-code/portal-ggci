@@ -285,6 +285,13 @@ class TestPecasDaVistaNaTela(TestCase):
         self.cliente = Client()
         self.cliente.force_login(self.usuario)
         self.html = self.cliente.get(reverse("dash_documentos_ia")).content.decode()
+        # A barra lateral tem DUAS baterias de filtros na mesma página — `#filtros-envios`
+        # e `#filtros-analise` —, porque as duas abas são a mesma tela e cada uma recorta a
+        # sua. Os controles se repetem de propósito, com ids próprios, e o JS isola cada
+        # bateria pela RAIZ. Contar no documento inteiro acha o dobro de tudo; o que estes
+        # testes vigiam é a barra de Envios & Pendências.
+        self.barra_envios = self.html.split('id="filtros-envios"', 1)[1].split(
+            'id="filtros-analise"', 1)[0]
 
     def test_a_vista_publica_os_elementos_que_o_js_preenche(self):
         for elemento in ['id="ies-chips"', 'id="tabela-ies"', 'id="ies-cabecalho"',
@@ -306,10 +313,10 @@ class TestPecasDaVistaNaTela(TestCase):
 
         valores = re.findall(
             r'<input type="checkbox" value="([^"]+)" class="filter-documento-ies peer',
-            self.html)
+            self.barra_envios)
         self.assertEqual(valores, ['CONTRATO', 'RIAF', 'HISTÓRICO',
                                    'BENEFÍCIOS', 'FINANCIAMENTO'])
-        secao = self.html.split('id="filtro-documentos"', 1)[1].split('>', 1)[0]
+        secao = self.barra_envios.split('id="filtro-documentos"', 1)[1].split('>', 1)[0]
         self.assertIn('display: none', secao)
 
     def test_contrato_nasce_marcado(self):
@@ -351,7 +358,7 @@ class TestPecasDaVistaNaTela(TestCase):
 
         valores = re.findall(
             r'<input type="checkbox" value="([^"]+)" class="filter-documento-ies peer',
-            self.html)
+            self.barra_envios)
         self.assertEqual(sorted(valores), sorted(views.ABA_POR_ROTULO))
 
     def test_periodo_e_instituicao_valem_nos_dois_modos(self):
@@ -360,10 +367,13 @@ class TestPecasDaVistaNaTela(TestCase):
         aluno e à faculdade. Dentro de `#filtros-beneficiarios` eles sumiriam junto com o
         bloco no modo IES, e a vista somaria os quatro semestres de uma vez.
         """
-        bloco = self.html.split('id="filtros-beneficiarios"', 1)[1].split('</aside>', 1)[0]
+        bloco = self.barra_envios.split('id="filtros-beneficiarios"', 1)[1]
         # O bloco vai até o `</div>` que o fecha; basta que os dois controles não
         # estejam nele antes da seção de Instituição, que vem depois.
-        self.assertNotIn('filter-semestre', bloco.split('id="filtro-documentos"', 1)[0])
+        # `class="` no alvo: o comentário que separa as duas baterias cita a classe em
+        # prosa, e uma busca solta acharia a explicação em vez do controle.
+        self.assertNotIn('class="filter-semestre',
+                         bloco.split('id="filtro-documentos"', 1)[0])
         self.assertIn('filter-semestre', self.html)
         self.assertIn('openModalIES()', self.html)
 
@@ -400,17 +410,19 @@ class TestSemanticaDoPercentualNaTabela(SimpleTestCase):
         self.assertIn(
             "const progresso = (falta, base) => (base > 0 ? (1 - (falta || 0) / base) * 100 : null);",
             self.js)
-        self.assertIn("medida: '% enviado',", self.js)
         self.assertIn("pct: (l) => progresso(l.NaoEnviados, esperadosDe(l)) },", self.js)
-        self.assertIn("medida: '% já processado',", self.js)
         self.assertIn("pct: (l) => progresso(l.NaoProcessados, enviadosDe(l)) },", self.js)
 
     def test_os_tres_de_inadimplencia_sao_a_excecao(self):
-        """Fatia crua e marcados com `inverso`, que é o que os pinta como alerta."""
+        """
+        Fatia crua sobre o total da linha — nunca o complemento. `progresso()` ali diria
+        "97% não inadimplente" e esconderia justamente o que a coluna existe para
+        denunciar.
+        """
         for chave in ['InadProc', 'InadNaoProc', 'Inadimplentes']:
             with self.subTest(coluna=chave):
                 self.assertIn("pct: (l) => fatia(l.%s, l.total) }" % chave, self.js)
-        self.assertEqual(self.js.count("medida: '% do total', inverso: true,"), 3)
+                self.assertNotIn("progresso(l.%s" % chave, self.js)
 
     def test_a_cobranca_sem_lastro_fica_fora_do_que_a_ies_deve(self):
         """
@@ -428,16 +440,18 @@ class TestSemanticaDoPercentualNaTabela(SimpleTestCase):
                       self.js)
         self.assertIn("const pct = valorPct === null ? '' :", self.js)
 
-    def test_o_cabecalho_nomeia_a_medida_de_cada_coluna(self):
+    def test_o_cabecalho_mostra_so_o_nome_da_coluna(self):
         """
-        Sem o rótulo, "36 (97,2%)" sob PENDENTES lê como "97,2% estão pendentes" — o
-        oposto do que diz. Cada coluna tem denominador próprio, e é o cabeçalho que o
-        informa.
+        O cabeçalho já nomeou a medida embaixo do nome ('% enviado', '% do esperado'...),
+        e o rótulo SAIU POR DECISÃO em 0b2dd12 — seis linhas de legenda dentro de um
+        cabeçalho de nove colunas pesavam mais do que explicavam.
+
+        O teste vira o contrário do que era: nenhuma coluna volta a carregar `medida` sem
+        que o CSS e a altura do cabeçalho sejam revistos junto. O denominador de cada
+        coluna continua travado nos testes acima, que é onde ele de fato mora.
         """
-        self.assertIn('docia-ies-th__medida', self.js)
-        for medida in ["'% do esperado'", "'% já processado'", "'% enviado'", "'% do total'"]:
-            with self.subTest(medida=medida):
-                self.assertIn('medida: %s' % medida, self.js)
+        self.assertIn('docia-ies-th__nome', self.js)
+        self.assertNotIn('medida:', self.js)
 
 
 class TestExportacaoDaVisaoIES(TestCase):
