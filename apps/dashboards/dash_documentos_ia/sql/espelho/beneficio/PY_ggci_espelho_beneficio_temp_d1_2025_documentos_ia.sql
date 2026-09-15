@@ -7,6 +7,10 @@ WITH UltimaTentativa AS (
           WHERE l_ies.uni_codigo = df.uni_codigo
             AND l_ies.lan_anomes <= CAST(CONCAT(LEFT(df.semestre, 4), IF(RIGHT(df.semestre, 1) = '1', '06', '12')) AS UNSIGNED)
           ORDER BY l_ies.lan_anomes DESC LIMIT 1) AS ins_codigo_semestre,
+        (SELECT l_cur.cur_codigo FROM sibu.lancamento l_cur
+          WHERE l_cur.uni_codigo = df.uni_codigo
+            AND l_cur.lan_anomes <= CAST(CONCAT(LEFT(df.semestre, 4), IF(RIGHT(df.semestre, 1) = '1', '06', '12')) AS UNSIGNED)
+          ORDER BY l_cur.lan_anomes DESC LIMIT 1) AS cur_codigo_semestre,
         ROW_NUMBER() OVER(
             PARTITION BY uni_codigo, semestre 
             ORDER BY data_create DESC, id DESC
@@ -91,10 +95,15 @@ FROM UltimaTentativa u
 LEFT JOIN UnicoUsuarioBolsista ub ON u.uni_codigo = ub.usuario
 LEFT JOIN sibu.universitarios uni ON u.uni_codigo = uni.uni_codigo
 LEFT JOIN ColetaBeneficios cd ON u.uni_codigo = cd.uni_codigo AND u.semestre = cd.semestre AND cd.rn_cd = 1
--- IES DO SEMESTRE: a instituição vem do último lançamento até o fim do semestre do
--- documento (subquery `ins_codigo_semestre` na CTE), caindo no cadastro quando não há
--- lançamento. Sem isso quem transfere fica com a IES nova em todos os semestres.
+-- IES E CURSO DO SEMESTRE: o cadastro do aluno só guarda a faculdade e o curso ATUAIS, então
+-- quem transfere ficaria com os dois de hoje carimbados em todos os semestres. Os dois vêm do
+-- último lançamento até o fim do semestre do documento (subqueries `ins_codigo_semestre` e
+-- `cur_codigo_semestre` na CTE), caindo no cadastro quando não há lançamento.
+--   O CURSO SAI DO MESMO LANÇAMENTO QUE A IES: quem troca de faculdade quase sempre troca de
+-- curso junto, e cruzar a faculdade do semestre com o curso de hoje monta um par que nunca
+-- existiu. É esta coluna que a regra de curso do RIAF e do Histórico compara com o que a IA
+-- leu no documento.
 LEFT JOIN sibu.instituicao i ON i.ins_codigo = COALESCE(u.ins_codigo_semestre, uni.ins_codigo)
-LEFT JOIN sibu.cursos c ON uni.cur_codigo = c.cur_codigo
+LEFT JOIN sibu.cursos c ON c.cur_codigo = COALESCE(u.cur_codigo_semestre, uni.cur_codigo)
 
 WHERE u.ordem_tentativa = 1;

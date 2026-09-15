@@ -184,12 +184,21 @@ LEFT JOIN LATERAL (SELECT situacao FROM sibu.coleta_dados WHERE uni_codigo = b.u
 LEFT JOIN LATERAL (SELECT sit_data, sit_tipo, sit_obs, sit_motdes FROM sibu.situacao WHERE uni_codigo = b.uni_codigo AND (b.ano_mes_pagto = b.max_ano_mes_pagto OR DATE(sit_data) <= DATE(CONCAT(LEFT(b.semestre, 4), IF(RIGHT(b.semestre, 1)='1', '-06-30', '-12-31')))) ORDER BY sit_data DESC LIMIT 1) sa ON true
 LEFT JOIN sibu.universitarios u_final ON b.uni_codigo = u_final.uni_codigo
 LEFT JOIN sibu.sit_motivos sma ON sa.sit_motdes = sma.motivo_id
--- IES DO SEMESTRE: o cadastro do aluno só guarda a faculdade atual, então quem transfere
--- ficaria com a IES nova em todos os semestres. A instituição vem do último lançamento
--- até o fim do semestre da linha, caindo no cadastro quando não há lançamento.
-LEFT JOIN LATERAL (SELECT l_ies.ins_codigo FROM sibu.lancamento l_ies WHERE l_ies.uni_codigo = b.uni_codigo AND l_ies.lan_anomes <= CAST(CONCAT(LEFT(b.semestre, 4), IF(RIGHT(b.semestre, 1) = '1', '06', '12')) AS UNSIGNED) ORDER BY l_ies.lan_anomes DESC LIMIT 1) ies_sem ON true
+-- IES E CURSO DO SEMESTRE: o cadastro do aluno só guarda a faculdade e o curso ATUAIS,
+-- então quem transfere ficaria com os dois de hoje carimbados em todos os semestres. Os
+-- dois vêm do último lançamento até o fim do semestre da linha, caindo no cadastro quando
+-- não há lançamento — `sibu.lancamento` grava `ins_codigo` E `cur_codigo` em cada mês pago,
+-- que é o único lugar do banco onde essa história existe por semestre.
+--   O CURSO ANDA JUNTO COM A IES, e por isso sai do MESMO lançamento: transferir de
+-- faculdade quase sempre é trocar de curso também, e ler a faculdade do semestre com o
+-- curso de hoje produz um par que nunca existiu. Caso real (15/09/2026): a inscrição
+-- 2203791 pagou ENGENHARIA AGRONÔMICA na UNIGOYAZES de 07/2025 a 06/2026 e ENGENHARIA
+-- CIVIL na UNIARAGUAIA a partir de 08/2026 — o relatório dizia ENGENHARIA CIVIL nos
+-- quatro semestres, e a regra de curso do RIAF e do Histórico compara justamente esta
+-- coluna com o que a IA lê no documento.
+LEFT JOIN LATERAL (SELECT l_ies.ins_codigo, l_ies.cur_codigo FROM sibu.lancamento l_ies WHERE l_ies.uni_codigo = b.uni_codigo AND l_ies.lan_anomes <= CAST(CONCAT(LEFT(b.semestre, 4), IF(RIGHT(b.semestre, 1) = '1', '06', '12')) AS UNSIGNED) ORDER BY l_ies.lan_anomes DESC LIMIT 1) ies_sem ON true
 LEFT JOIN sibu.instituicao inst ON inst.ins_codigo = COALESCE(ies_sem.ins_codigo, u_final.ins_codigo)
-LEFT JOIN sibu.cursos c_final ON u_final.cur_codigo = c_final.cur_codigo
+LEFT JOIN sibu.cursos c_final ON c_final.cur_codigo = COALESCE(ies_sem.cur_codigo, u_final.cur_codigo)
 LEFT JOIN sibu.cursos_faculdades cf ON u_final.ins_codigo = cf.ins_codigo AND u_final.cur_codigo = cf.cur_codigo
 LEFT JOIN sibu.cursos_modalidade cmod ON cf.cursos_modalidade_id = cmod.id
 
