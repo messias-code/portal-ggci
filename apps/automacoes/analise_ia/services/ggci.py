@@ -1616,36 +1616,51 @@ def aplicar_transicoes(df, df_pag):
         # === SOLUÇÃO DEFINITIVA PARA MÚLTIPLOS DOCUMENTOS ===
         # Precisamos isolar a "linha do tempo" real das inscrições (uma por CPF + Inscrição),
         # calcular o anterior/posterior nela, e mapear de volta.
-        chaves_tempo = ['CPF_clean', 'Semestre_clean', 'Inscrição_ord', 'Inscrição_clean', 'tipo_bolsa_final', 'Faculdade']
+        chaves_tempo = ['CPF_clean', 'Semestre_clean', 'Inscrição_ord', 'Inscrição_clean']
         df_unico = df[chaves_tempo].drop_duplicates(subset=['CPF_clean', 'Inscrição_clean']).copy()
         df_unico = df_unico.sort_values(by=['CPF_clean', 'Semestre_clean', 'Inscrição_ord'], kind='stable')
         
         df_unico['Inscrição Anterior'] = df_unico.groupby('CPF_clean')['Inscrição_clean'].shift(1).astype(str).replace(['<NA>', 'nan', 'NaN', 'None'], '-').fillna("-")
         df_unico['Inscrição Posterior'] = df_unico.groupby('CPF_clean')['Inscrição_clean'].shift(-1).astype(str).replace(['<NA>', 'nan', 'NaN', 'None'], '-').fillna("-")
-        
-        df_unico['Bolsa Anterior'] = df_unico.groupby('CPF_clean')['tipo_bolsa_final'].shift(1).fillna("-")
-        df_unico['Bolsa Posterior'] = df_unico.groupby('CPF_clean')['tipo_bolsa_final'].shift(-1).fillna("-")
-        curr_b_u = df_unico.get('tipo_bolsa_final', pd.Series("-", index=df_unico.index))
-        df_unico['Bolsa Anterior'] = np.where((df_unico['Bolsa Anterior'] != "-") & (df_unico['Bolsa Anterior'] != curr_b_u), df_unico['Bolsa Anterior'], "-")
-        df_unico['Bolsa Posterior'] = np.where((df_unico['Bolsa Posterior'] != "-") & (df_unico['Bolsa Posterior'] != curr_b_u), df_unico['Bolsa Posterior'], "-")
-        df_unico['Mudou Bolsa?'] = np.where((df_unico['Bolsa Posterior'] != "-"), "S", "N")
-        
-        df_unico['IES Anterior'] = df_unico.groupby('CPF_clean')['Faculdade'].shift(1).fillna("-")
-        df_unico['IES Posterior'] = df_unico.groupby('CPF_clean')['Faculdade'].shift(-1).fillna("-")
-        curr_ies_u = df_unico.get('Faculdade', pd.Series("-", index=df_unico.index))
-        df_unico['IES Anterior'] = np.where((df_unico['IES Anterior'] != "-") & (df_unico['IES Anterior'] != curr_ies_u), df_unico['IES Anterior'], "-")
-        df_unico['IES Posterior'] = np.where((df_unico['IES Posterior'] != "-") & (df_unico['IES Posterior'] != curr_ies_u), df_unico['IES Posterior'], "-")
-        df_unico['Mudou IES?'] = np.where((df_unico['IES Posterior'] != "-"), "S", "N")
-        
         df_unico['Tem_Semestre_Posterior'] = df_unico.groupby('CPF_clean')['Inscrição_clean'].shift(-1).notna()
         
-        # Mapear de volta para o DF completo usando MultiIndex para evitar InvalidIndexError
-        map_cols = ['Tem_Semestre_Posterior', 'Inscrição Anterior', 'Inscrição Posterior', 'Bolsa Anterior', 'Bolsa Posterior', 'Mudou Bolsa?', 'IES Anterior', 'IES Posterior', 'Mudou IES?']
-        df_map = df_unico.set_index(['CPF_clean', 'Inscrição_clean'])[map_cols]
+        # A LINHA DO TEMPO DA BOLSA E DA IES É POR SEMESTRE, NÃO POR INSCRIÇÃO. A inscrição
+        # NÃO muda quando o aluno transfere de faculdade ou muda tipo de bolsa: o mesmo
+        # `uni_codigo` atravessa os semestres. Por isso, Bolsa e IES têm a sua própria
+        # linha do tempo, deduplicada por CPF + semestre + inscrição.
+        chaves_ies = ['CPF_clean', 'Semestre_clean', 'Inscrição_ord', 'Inscrição_clean', 'Faculdade', 'tipo_bolsa_final']
+        df_ies_unico = df[chaves_ies].drop_duplicates(subset=['CPF_clean', 'Semestre_clean', 'Inscrição_clean']).copy()
+        df_ies_unico = df_ies_unico.sort_values(by=['CPF_clean', 'Semestre_clean', 'Inscrição_ord'], kind='stable')
         
-        df = df.join(df_map, on=['CPF_clean', 'Inscrição_clean'])
+        # --- Cálculo IES ---
+        df_ies_unico['IES Anterior'] = df_ies_unico.groupby('CPF_clean')['Faculdade'].shift(1).fillna("-")
+        df_ies_unico['IES Posterior'] = df_ies_unico.groupby('CPF_clean')['Faculdade'].shift(-1).fillna("-")
+        curr_ies_u = df_ies_unico.get('Faculdade', pd.Series("-", index=df_ies_unico.index))
+        df_ies_unico['IES Anterior'] = np.where((df_ies_unico['IES Anterior'] != "-") & (df_ies_unico['IES Anterior'] != curr_ies_u), df_ies_unico['IES Anterior'], "-")
+        df_ies_unico['IES Posterior'] = np.where((df_ies_unico['IES Posterior'] != "-") & (df_ies_unico['IES Posterior'] != curr_ies_u), df_ies_unico['IES Posterior'], "-")
+        # Marca S nos DOIS lados da transferência: o último semestre na faculdade antiga e o primeiro na nova
+        df_ies_unico['Mudou IES?'] = np.where((df_ies_unico['IES Anterior'] != "-") | (df_ies_unico['IES Posterior'] != "-"), "S", "N")
         
-        for c in map_cols:
+        # --- Cálculo Bolsa ---
+        df_ies_unico['Bolsa Anterior'] = df_ies_unico.groupby('CPF_clean')['tipo_bolsa_final'].shift(1).fillna("-")
+        df_ies_unico['Bolsa Posterior'] = df_ies_unico.groupby('CPF_clean')['tipo_bolsa_final'].shift(-1).fillna("-")
+        curr_b_u = df_ies_unico.get('tipo_bolsa_final', pd.Series("-", index=df_ies_unico.index))
+        df_ies_unico['Bolsa Anterior'] = np.where((df_ies_unico['Bolsa Anterior'] != "-") & (df_ies_unico['Bolsa Anterior'] != curr_b_u), df_ies_unico['Bolsa Anterior'], "-")
+        df_ies_unico['Bolsa Posterior'] = np.where((df_ies_unico['Bolsa Posterior'] != "-") & (df_ies_unico['Bolsa Posterior'] != curr_b_u), df_ies_unico['Bolsa Posterior'], "-")
+        # Assim como IES, marca S nos dois lados quando a bolsa ou a universidade mudarem!
+        df_ies_unico['Mudou Bolsa?'] = np.where((df_ies_unico['Bolsa Anterior'] != "-") | (df_ies_unico['Bolsa Posterior'] != "-") | (df_ies_unico['Mudou IES?'] == 'S'), "S", "N")
+        
+        # Mapear de volta para o DF completo (df_unico mapeia por Inscrição)
+        map_cols_unico = ['Tem_Semestre_Posterior', 'Inscrição Anterior', 'Inscrição Posterior']
+        df_map_unico = df_unico.set_index(['CPF_clean', 'Inscrição_clean'])[map_cols_unico]
+        df = df.join(df_map_unico, on=['CPF_clean', 'Inscrição_clean'])
+        
+        # Mapear de volta para o DF completo (df_ies_unico mapeia por CPF+Semestre+Inscrição)
+        map_cols_ies = ['IES Anterior', 'IES Posterior', 'Mudou IES?', 'Bolsa Anterior', 'Bolsa Posterior', 'Mudou Bolsa?']
+        df_map_ies = df_ies_unico.set_index(['CPF_clean', 'Semestre_clean', 'Inscrição_clean'])[map_cols_ies]
+        df = df.join(df_map_ies, on=['CPF_clean', 'Semestre_clean', 'Inscrição_clean'])
+        
+        for c in map_cols_unico + map_cols_ies:
             df[c] = df[c].fillna("-" if c != 'Tem_Semestre_Posterior' else False)
             
         df.drop(columns=['CPF_clean', 'Inscrição_clean', 'Semestre_clean', 'Inscrição_ord'], inplace=True, errors='ignore')
