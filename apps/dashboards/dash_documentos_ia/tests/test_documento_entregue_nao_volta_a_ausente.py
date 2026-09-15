@@ -49,6 +49,10 @@ def _linhas(**col):
         'Gemini Semestre': ['2025/2'] * n,
         'Faculdade': ['IES EXEMPLO'] * n,
         'Curso': ['ENFERMAGEM'] * n,
+        # O histórico é um dos dois documentos que trazem o curso, e curso divergente (ou
+        # em branco) invalida — sem a leitura da IA aqui, `Válido` viraria `Falso Válido`
+        # e o teste mediria a regra de curso em vez do cache.
+        'Gemini Curso': ['ENFERMAGEM'] * n,
         'tipo_bolsa_final': ['INTEGRAL'] * n,
         'Gemini Mensalidade C/ Desconto': [0.0] * n,
         'Gemini Mensalidade S/ Desconto': [0.0] * n,

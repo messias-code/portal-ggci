@@ -1200,6 +1200,7 @@ document.addEventListener('turbo:load', () => {
             const checkboxesMudouBolsa = nosFiltros('.filter-mudou-bolsa');
             const checkboxesVinculo = nosFiltros('.filter-vinculo');
             const checkboxesPerfil = nosFiltros('.filter-perfil');
+            const checkboxesBolsa = nosFiltros('.filter-bolsa');
 
             const marcados = (caixas) => Array.from(caixas)
                 .filter((caixa) => caixa.checked)
@@ -1226,6 +1227,7 @@ document.addEventListener('turbo:load', () => {
                     `status_doc`, que escolhem o que listar dentro do mesmo universo.  */
                 [['vinculo', checkboxesVinculo],
                  ['perfil', checkboxesPerfil],
+                 ['bolsa', checkboxesBolsa],
                  ['mudou_ies', checkboxesMudouIES],
                  ['mudou_bolsa', checkboxesMudouBolsa]].forEach(([nome, caixas]) => {
                     const escolhidos = marcados(caixas);
@@ -2373,9 +2375,29 @@ document.addEventListener('turbo:load', () => {
                 return linhas;
             };
 
+            /*  A IDENTIDADE DE CADA BALDE — a cor e o glifo, na ordem de `FATIAS`.
+
+                Os tokens são os mesmos `docia-kpi-icone--*` dos KPIs da vista de
+                beneficiários, e é o que faz as duas faixas lerem como a mesma tela: os
+                cards de IES eram os únicos da aba montados à mão no JS, com gradiente,
+                borda branca e um selo de porcentagem no lugar do ícone.
+
+                A COR É SEMÂNTICA, e não a da rosca. Verde o que já passou pela IA,
+                laranja o que ela ainda não leu, azul o que nem chegou; roxo, rosa e
+                vermelho para a família da inadimplência, com o vermelho na fatia que
+                aponta ERRO em curso — a cobrança sem repasse.  */
+            const ICONE_DA_FATIA = [
+                ['ovg-verde',    'fa-circle-check'],
+                ['ovg-laranja',  'fa-hourglass-half'],
+                ['ovg-azul',     'fa-inbox'],
+                ['ovg-roxo',     'fa-money-check-dollar'],
+                ['ovg-rosa',     'fa-scale-unbalanced'],
+                ['ovg-vermelho', 'fa-circle-exclamation'],
+            ];
+
             /**
-             * O QUE FAZ: pinta os seis chips do topo — o total de cada balde no recorte
-             *   inteiro, com a proporção ao lado.
+             * O QUE FAZ: pinta os seis KPIs do topo — o total de cada balde no recorte
+             *   inteiro, com a proporção embaixo do número.
              * POR QUÊ CLICAR ORDENA, e não filtra: recortar a tabela por "só os
              *   pendentes" a deixaria com as mesmas ~110 linhas, porque toda IES tem
              *   pendência de alguma coisa. O gesto prometeria um recorte e não entregaria
@@ -2414,22 +2436,62 @@ document.addEventListener('turbo:load', () => {
                 const somaTudo = CHAVES_DAS_FATIAS.reduce((acc, chave) => acc + (totais[chave] || 0), 0);
                 const somaEsperados = ['Processados', 'NaoProcessados', 'NaoEnviados'].reduce((acc, chave) => acc + (totais[chave] || 0), 0);
 
-                elIES.chips.innerHTML = FATIAS.map((nome, indice) => {
+                /*  O MARKUP É O MESMO DOS KPIs DA OUTRA VISTA, copiado do template e não
+                    reinventado aqui: `docia-kpi-card` é quem traz a sombra, as ondas, o
+                    relevo do hover e a entrada escalonada. O gradiente que estava neste
+                    lugar dependia de `from-white/90` e `to-gray-50/50`, duas utilitárias
+                    que o bundle purgado não gera — na tela o card saía SEM fundo nenhum,
+                    com a borda branca de `border-white/60` por cima do fundo da página.
+                    Era essa a diferença que se via: não um estilo alternativo, e sim o
+                    estilo alternativo faltando metade das regras.
+
+                    O PERCENTUAL DESCE PARA A TERCEIRA LINHA (`docia-kpi-base`), que é
+                    onde a Análise IA já põe a base da conta. O selo à direita ocupava o
+                    lugar do ícone, e é o ícone que dá cor ao card — sem ele os seis
+                    ficavam iguais entre si, que é o problema que `--kpi-cor` resolve.
+                    A linha também diz de QUE base o número é fatia: os três primeiros
+                    baldes dividem o documento esperado, os três últimos, o total.
+
+                    MONTA UMA VEZ, DEPOIS SÓ REESCREVE OS NÚMEROS. `.docia-kpi-card` tem
+                    animação de ENTRADA, e recriar os nós a cada pintura a dispararia de
+                    novo: a faixa inteira sumiria e subiria 14px a cada tecla digitada na
+                    busca por nome de instituição.
+
+                    `min-width` INLINE, e não `min-w-[9rem]` — a utilitária é outra que o
+                    bundle não tem. Aqui ela importa e nos KPIs de beneficiários não: são
+                    seis cards na mesma faixa, contra quatro, e sem piso os rótulos longos
+                    (`Inadimplentes Não Proc.`) viram reticência antes da primeira letra.
+                    O container já quebra linha (`flex-wrap`).  */
+                if (elIES.chips.childElementCount !== FATIAS.length) {
+                    elIES.chips.innerHTML = FATIAS.map((nome, indice) => {
+                        const [cor, glifo] = ICONE_DA_FATIA[indice];
+                        return `<div class="flex-1 bg-white border border-gray-200 shadow-sm hover:border-gray-300 transition-colors rounded-2xl py-2.5 px-4 flex items-center justify-between group cursor-default docia-kpi-card" style="min-width: 9rem;">
+                            <div class="pr-2" style="min-width: 0;">
+                                <p class="text-[9px] xl:text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escaparHtml(nome)}</p>
+                                <h4 class="docia-kpi-valor font-black text-gray-800 transition-colors" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">0</h4>
+                                <p class="docia-kpi-base m-0"></p>
+                            </div>
+                            <div class="docia-kpi-icone docia-kpi-icone--${cor} w-10 h-10 rounded-2xl flex items-center justify-center shrink-0">
+                                <i class="fa-solid ${glifo} text-base"></i>
+                            </div>
+                        </div>`;
+                    }).join('');
+                }
+
+                Array.from(elIES.chips.children).forEach((cartao, indice) => {
                     const chave = CHAVES_DAS_FATIAS[indice];
                     const valor = totais[chave] || 0;
                     const base = (indice < 3) ? somaEsperados : somaTudo;
                     const percentual = base > 0 ? (valor / base) * 100 : 0;
-                    
-                    return `<div class="flex-1 min-w-[9rem] bg-gradient-to-br from-white/90 to-gray-50/50 backdrop-blur-md border border-white/60 shadow-[0_4px_20px_rgb(0,0,0,0.08)] rounded-3xl py-2.5 px-4 flex items-center justify-between cursor-default">
-                        <div class="flex flex-col pr-2" style="min-width: 0;">
-                            <p class="text-[9px] xl:text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escaparHtml(nome)}</p>
-                            <h4 class="text-xl font-black text-gray-800" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${formatarNumero(valor)}</h4>
-                        </div>
-                        <div class="shrink-0 flex items-center justify-end">
-                            <span class="text-[11px] font-extrabold px-2.5 py-1 rounded-xl bg-gray-100/80 text-gray-500 border border-gray-200/60 shadow-sm">${formatarPercentual(percentual)}</span>
-                        </div>
-                    </div>`;
-                }).join('');
+
+                    const alvoValor = cartao.querySelector('.docia-kpi-valor');
+                    const alvoBase = cartao.querySelector('.docia-kpi-base');
+                    if (alvoValor) alvoValor.textContent = formatarNumero(valor);
+                    if (alvoBase) {
+                        alvoBase.textContent = formatarPercentual(percentual)
+                            + (indice < 3 ? ' do esperado' : ' do total');
+                    }
+                });
             };
 
             /**

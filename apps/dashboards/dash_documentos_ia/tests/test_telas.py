@@ -205,6 +205,13 @@ class TestIntegridadeDoTemplate(BaseTelas):
             "templates", "dash_documentos_ia", "index.html")
         with open(caminho, encoding="utf-8") as arquivo:
             self.html = arquivo.read()
+        # A barra lateral carrega DUAS baterias de filtros — `#filtros-envios` e
+        # `#filtros-analise` —, uma por aba, na mesma página. Os controles se repetem de
+        # propósito: cada aba recorta a sua base e o JS isola a bateria pela RAIZ, nunca
+        # pelo `document`. Os testes de duplicidade abaixo olham UMA bateria, senão
+        # acusariam como cópia esquecida aquilo que é a segunda aba.
+        self.barra_envios = self.html.split('id="filtros-envios"', 1)[1].split(
+            'id="filtros-analise"', 1)[0]
 
     def test_todas_as_tags_de_bloco_fecham(self):
         import re
@@ -277,6 +284,12 @@ class TestIntegridadeDoTemplate(BaseTelas):
         as duas órfãs (`historico`, `riaf`), que só se alcança digitando a URL. Uma
         cópia esquecida continuaria oferecendo o Relatório RIAF, que saiu da navegação.
 
+        NO `index.html` AS ABAS NÃO SÃO LINKS: "Envios & Pendências" e "Análise IA" são a
+        MESMA tela e a mesma URL, e enquanto foram dois `<a href>` trocar de aba
+        recarregava a página — matando pelo `pagehide` qualquer atualização em curso. Lá
+        a aba é `<button data-aba>`, e é isso que se confere. Nos outros quatro templates
+        a barra continua navegando entre telas distintas.
+
         A última aba não pode levar `border-r`: a divisória existe para separá-la de
         quem vinha depois, e sozinha vira um fio cortando a barra por dentro do canto
         arredondado.
@@ -294,10 +307,17 @@ class TestIntegridadeDoTemplate(BaseTelas):
             with self.subTest(template=nome):
                 with open(os.path.join(pasta, nome), encoding="utf-8") as arquivo:
                     html = arquivo.read()
-                abas = re.findall(r'<a href="\{% url \'([^\']+)\' %\}"'
-                                  r' class="docia-aba [^"]*"[^>]*>', html)
-                self.assertEqual(abas, ["dash_documentos_ia",
-                                        "dash_documentos_ia_relatorio_ies"])
+                if nome == "index.html":
+                    abas = re.findall(r'class="docia-aba [^"]*"[^>]*'
+                                      r'\sdata-aba="([^"]+)"', html)
+                    self.assertEqual(abas, ["envios", "analise"])
+                else:
+                    abas = re.findall(r'<a href="\{% url \'([^\']+)\' %\}"'
+                                      r' class="docia-aba [^"]*"[^>]*>', html)
+                    self.assertEqual(abas, ["dash_documentos_ia",
+                                            "dash_documentos_ia_relatorio_ies"])
+                # A aba morta não volta por caminho nenhum, nem como link nem como botão.
+                self.assertNotIn("dash_documentos_ia_relatorio_riaf", html)
                 ultima = html.split('class="docia-aba ')[-1].split(">", 1)[0]
                 self.assertNotIn("border-r", ultima)
 
@@ -307,6 +327,10 @@ class TestIntegridadeDoTemplate(BaseTelas):
         idênticos, um abaixo do outro. As cópias não se falavam — `querySelectorAll`
         recolhia as quatro caixas de cada par, e dava para ver "Sim" aceso numa cópia e
         apagado na outra, com o recorte saindo da que ninguém estava olhando.
+
+        A contagem é DENTRO de `#filtros-envios`: a bateria da aba Análise IA repete as
+        mesmas classes de propósito, e é justamente por elas viverem em raízes separadas
+        que o bug de antes não pode voltar.
         """
         import re
 
@@ -314,8 +338,9 @@ class TestIntegridadeDoTemplate(BaseTelas):
                                ("filter-mudou-ies", 2), ("filter-mudou-bolsa", 2),
                                ("filter-semestre", 4), ("filter-modo", 2)]:
             with self.subTest(filtro=classe):
-                self.assertEqual(len(re.findall(r'class="%s peer' % classe, self.html)),
-                                 opcoes)
+                self.assertEqual(
+                    len(re.findall(r'class="%s peer' % classe, self.barra_envios)),
+                    opcoes)
 
     def test_os_pares_que_se_excluem_estao_marcados_para_o_javascript(self):
         """
@@ -324,9 +349,13 @@ class TestIntegridadeDoTemplate(BaseTelas):
         controle promete uma decisão e aceita uma contradição.
 
         Os semestres NÃO entram: ali marcar dois soma, e é pergunta legítima.
+
+        São CINCO grupos na barra de Envios — Vínculo, Perfil, Bolsa, Mudou de IES e
+        Mudou de bolsa. A bateria da aba Análise IA tem a sua própria conta e fica fora
+        daqui, senão o número diria só que existem duas barras.
         """
-        self.assertEqual(self.html.count("docia-grupo-exclusivo"), 4)
-        semestres = self.html.split('class="filter-semestre', 1)[0]
+        self.assertEqual(self.barra_envios.count("docia-grupo-exclusivo"), 5)
+        semestres = self.barra_envios.split('class="filter-semestre', 1)[0]
         self.assertNotIn("docia-grupo-exclusivo", semestres.rsplit("<section", 1)[-1])
 
     def test_nenhum_elemento_tem_dois_atributos_class(self):

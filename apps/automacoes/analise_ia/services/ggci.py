@@ -117,7 +117,7 @@ COLUNAS_ABA_DOCUMENTO = [
     'tipo_documento', 'status_ia', 'gemini_inconsistencia', 'semestre', 'gemini_semestre',
     'bolsista', 'inscricao', 'inscricao_anterior', 'inscricao_posterior', 'cpf', 'gemini_cpf',
     'tipo_bolsa_final', 'mudou_bolsa', 'bolsa_anterior', 'bolsa_posterior', 'faculdade',
-    'mudou_ies', 'ies_anterior', 'ies_posterior', 'curso', 'ultimo_valor_pago_ref',
+    'mudou_ies', 'ies_anterior', 'ies_posterior', 'curso', 'gemini_curso', 'ultimo_valor_pago_ref',
     'total_bolsa_paga', 'qtd_pagtos', 'qtd_pagtos_retroativos', 'mensalidade_sem_desc',
     'gemini_mensalidade_sem_desc', 'msd_doc', 'mensalidade_com_desc',
     'gemini_mensalidade_com_desc', 'mcd_doc', 'valor_beneficio', 'soma_valor_beneficio',
@@ -128,7 +128,7 @@ COLUNAS_ABA_DOCUMENTO = [
     'data_processamento', 'processado', 'processar', 'qtd_token', 'qtd_disciplinas_matriculadas',
     'qtd_disciplinas_reprovadas', 'perfil', 'status_vinculo', 'situacao_motivo',
     'observacao_situacao', 'email', 'telefone_1', 'telefone_2', 'data_nascimento', 'matricula',
-    'periodo_atual', 'qtd_periodos', 'modalidade'
+    'periodo_atual', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade'
 ]
 
 
@@ -1072,6 +1072,13 @@ def mesclar_sql_e_reordenar(df, df_sql, df_pag=None, df_mes_a_mes=None):
         df['orig_idx_merge'] = df.index
         df = pd.merge(df, df_sql, left_on=['Inscrição', 'Semestre'], right_on=['uni_codigo', 'semestre'], how='left', suffixes=('', '_sql'))
         
+        #  QUEM ACHOU O PRÓPRIO SEMESTRE NO BANCO, ANOTADO AGORA. Daqui para baixo
+        #  `uni_codigo` deixa de responder a essa pergunta: o remapeamento logo abaixo
+        #  escreve nela o código vindo do ÚLTIMO semestre do aluno, e a linha que não
+        #  tinha semestre no banco passa a parecer que tinha. O fallback por inscrição,
+        #  lá embaixo, precisa desta resposta para não pisar no dado do semestre certo.
+        achou_o_proprio_semestre = df['uni_codigo'].notna()
+
         # Fallback para o último semestre disponível (resolve alunos com semestre divergente no Excel que sumiriam no BD)
         mask = df['uni_codigo'].isna() & df['Inscrição'].notna()
         if mask.any():
@@ -1158,6 +1165,14 @@ def mesclar_sql_e_reordenar(df, df_sql, df_pag=None, df_mes_a_mes=None):
             'periodo_atual': 'Período atual',
             'periodo_quantidade': 'Período quantidade',
             'matricula': 'Matricula',
+            #  O CURSO DO PRÓPRIO SEMESTRE, e não o do último. `CUR_NOME` sempre esteve
+            #  no `df_sql`, mas só era lido lá embaixo, no fallback por Inscrição, que
+            #  entrega o curso do ÚLTIMO semestre do aluno. Para quem transferiu isso
+            #  significa carimbar o curso de hoje num semestre antigo — o mesmo defeito
+            #  que a Faculdade tinha. Aqui o valor vem da linha do semestre, e como este
+            #  laço só preenche buraco, o curso que o espelho do documento já trouxe
+            #  continua mandando.
+            'CUR_NOME': 'Curso',
             'ins_cnpj': 'Ins. CNPJ',
             'ins_razao_social': 'Ins. Razão Social',
             'ins_nome_fantasia': 'Ins. Nome Fantasia',
@@ -1243,7 +1258,30 @@ def mesclar_sql_e_reordenar(df, df_sql, df_pag=None, df_mes_a_mes=None):
                         df[col_df] = df[col_df].replace(r'^\s*[-]*\s*$', np.nan, regex=True)
                     df[col_df] = df[col_df].replace(['', ' ', '-', 'nan', 'NaN', 'NAN', 'None', '<NA>', 'NÃO INFORMADO', 'NAO INFORMADO', 'Não Informado'], np.nan)
                     if col_df == 'Faculdade':
-                        df[col_df] = df_fallback[col_sql].fillna(df[col_df])
+                        #  A IES DO ÚLTIMO SEMESTRE SÓ VALE PARA QUEM NÃO TEM SEMESTRE
+                        #  PRÓPRIO NO BANCO.
+                        #
+                        #  `df_fallback` é o aluno inteiro reduzido à sua ÚLTIMA linha
+                        #  (`drop_duplicates(subset=['uni_codigo'], keep='last')`), e aqui
+                        #  ele vinha na frente: `df_fallback.fillna(df)` sobrescrevia o
+                        #  nome que o merge por (Inscrição, Semestre) já tinha acertado.
+                        #  Para quem TRANSFERIU de faculdade isso reescrevia a história —
+                        #  a IES nova passava a assinar todos os semestres anteriores, e
+                        #  com ela a mantenedora e o CNPJ que a tela usa para cobrar.
+                        #
+                        #  CASO REAL (15/09/2026): inscrição 2203791, com pagamento na
+                        #  UNIGOYAZES de 07/2025 a 06/2026 e transferência para a
+                        #  UNIARAGUAIA em 08/2026. O espelho trazia os quatro semestres
+                        #  certos; o relatório mostrava UNIARAGUAIA nos quatro.
+                        #
+                        #  A INVERSÃO TINHA MOTIVO e ele continua valendo para quem o
+                        #  banco não soube responder por semestre: nessas linhas a
+                        #  `Faculdade` é o nome lido do DOCUMENTO, que vem abreviado e
+                        #  sujo, e o nome do cadastro é melhor do que ele. Por isso a
+                        #  precedência não foi trocada, foi RESTRINGIDA.
+                        df[col_df] = np.where(achou_o_proprio_semestre,
+                                              df[col_df].fillna(df_fallback[col_sql]),
+                                              df_fallback[col_sql].fillna(df[col_df]))
                     else:
                         df[col_df] = df[col_df].fillna(df_fallback[col_sql])
         
@@ -4136,7 +4174,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                         'cpf': 'CPF', 'gemini_curso': 'Gemini Curso', 'curso': 'Curso', 'gemini_nome_faculdade': 'Gemini Nome Faculdade',
                         'nome_faculdade': 'Faculdade', 'gemini_mensalidade_sem_desconto': 'Gemini Mensalidade S/ Desconto',
                         'mensalidade_sem_desconto': 'Mensalidade S/ Desconto', 'gemini_mensalidade_com_desconto': 'Gemini Mensalidade C/ Desconto',
-                        'mensalidade_com_desconto': 'Mensalidade C/ Desconto', 'gemini_concluiu_curso': 'gemini_concluiu_curso',
+                        'mensalidade_com_desconto': 'Mensalidade C/ Desconto', 'gemini_concluiu_curso': 'Gemini Concluiu Curso',
                         'gemini_semestre': 'Gemini Semestre', 'data_create': 'data_create', 'qtde_token': 'Qtde Token'
                     }
                     df_espelho_hist_pd = df_espelho_hist_pd.rename(columns=mapa_colunas_hist)
@@ -4983,7 +5021,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             'Qtde Token', 'gemini_vigencia', 'gemini_clausulas', 'gemini_recisao', 'gemini_cnpj_mantenedora',
             'gemini_documentos_beneficio', 'gemini_cnpj_banco', 'gemini_numero', 'gemini_numero_semestres',
             'gemini_semestres_feitos', 'gemini_semestres_financiados', 'gemini_valor_limite_credito',
-            'gemini_valor_semestralidade', 'gemini_valor_coparticipacao', 'Processar', 'gemini_concluiu_curso',
+            'gemini_valor_semestralidade', 'gemini_valor_coparticipacao', 'Processar', 'Gemini Concluiu Curso',
             'data_coleta_atual_sistema', 'inscricao_ano_semestre', 'data_ingresso', 'Check Contrato',
             'Check Financiamento', 'Check Benefícios', 'Check RIAF', 'Check Histórico', 'Check Doc beneficios',
             'Duração Total Semestres', 'Qtd Disciplinas Matriculadas', 'Qtd Disciplinas Reprovadas', 'Perfil do Beneficiario'
@@ -5065,7 +5103,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             'Gemini Quantidade Periodos': 'gemini_qtd_periodos',
             'gemini_numero_semestres': 'gemini_numero_semestres',
             'gemini_semestres_feitos': 'gemini_semestres_feitos',
-            'gemini_concluiu_curso': 'gemini_concluiu_curso',
+            'Gemini Concluiu Curso': 'gemini_concluiu_curso',
             'Inscrição': 'inscricao',
             'inscricao_ano_semestre': 'inscricao_ano_semestre',
             'Inscrição Anterior': 'inscricao_anterior',
