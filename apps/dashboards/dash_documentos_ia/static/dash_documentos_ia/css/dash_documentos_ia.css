@@ -425,6 +425,12 @@ body { font-family: 'Poppins', sans-serif; }
 
    O fundo deixa de ser translúcido: sobre a tela inteira, `bg-white/80` deixaria os
    gráficos aparecendo por baixo das linhas da tabela.
+
+   `max-height: none !important` — a tabela da Análise IA carrega `max-height: 280px` no
+   `style=` do próprio card, que é o teto que paga a faixa de KPIs mais alta daquela aba.
+   Expandido, esse teto continuava valendo: o card subia para o topo da janela e parava
+   em 280px de altura, com o dashboard aparecendo embaixo dele. Precisa de `!important`
+   porque estilo inline vence qualquer regra de classe.
    ========================================================================== */
 .docia-detalhamento--expandido {
     position: fixed;
@@ -433,6 +439,7 @@ body { font-family: 'Poppins', sans-serif; }
     bottom: 1rem;
     left: 1rem;
     z-index: 1050;
+    max-height: none !important;
     background-color: #FFFFFF;
     box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
 }
