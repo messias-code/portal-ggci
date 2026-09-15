@@ -2120,6 +2120,42 @@ html[data-tela-cheia="1"] .docia-legenda__pct { width: 44px; }
     color: #B0007A;
 }
 
+.docia-kpi-icone--ovg-azul {
+    background-color: rgba(0, 75, 135, 0.10);
+    border-color: rgba(0, 75, 135, 0.18);
+    color: #004B87;
+}
+.docia-kpi-icone--ovg-verde {
+    background-color: rgba(0, 150, 64, 0.10);
+    border-color: rgba(0, 150, 64, 0.18);
+    color: #009640;
+}
+.docia-kpi-icone--ovg-laranja {
+    background-color: rgba(247, 148, 30, 0.10);
+    border-color: rgba(247, 148, 30, 0.18);
+    color: #F7941E;
+}
+.docia-kpi-icone--ovg-roxo {
+    background-color: rgba(107, 0, 123, 0.10);
+    border-color: rgba(107, 0, 123, 0.18);
+    color: #6B007B;
+}
+.docia-kpi-icone--ovg-rosa {
+    background-color: rgba(214, 0, 143, 0.10);
+    border-color: rgba(214, 0, 143, 0.18);
+    color: #D6008F;
+}
+.docia-kpi-icone--ovg-amarelo {
+    background-color: rgba(234, 179, 8, 0.10); /* tailwind yellow-500 rgba(234,179,8) */
+    border-color: rgba(234, 179, 8, 0.18);
+    color: #EAB308;
+}
+.docia-kpi-icone--ovg-vermelho {
+    background-color: rgba(220, 38, 38, 0.10); /* tailwind red-600 rgba(220, 38, 38) */
+    border-color: rgba(220, 38, 38, 0.18);
+    color: #DC2626;
+}
+
 
 /* ==========================================================================
    ESTADOS INTERATIVOS DOS CONTROLES
@@ -2682,6 +2718,14 @@ html[data-tela-cheia="1"] .docia-legenda__pct { width: 44px; }
 .docia-kpi-card:nth-child(3)::after  { animation-delay: -5.5s; }
 .docia-kpi-card:nth-child(4)::before { animation-delay: -6.7s; }
 .docia-kpi-card:nth-child(4)::after  { animation-delay: -8.0s; }
+/*  O QUINTO E O SEXTO são das faixas de SEIS cards — a Análise IA e a vista por
+    IES de Envios & Pendências. Sem fase própria eles repetiam o desenho do
+    primeiro e do segundo na mesma linha, que é exatamente o papel de parede que
+    a defasagem existe para evitar.  */
+.docia-kpi-card:nth-child(5)::before { animation-delay: -1.1s; }
+.docia-kpi-card:nth-child(5)::after  { animation-delay: -1.5s; }
+.docia-kpi-card:nth-child(6)::before { animation-delay: -3.4s; }
+.docia-kpi-card:nth-child(6)::after  { animation-delay: -4.2s; }
 
 /*  O QUE SOBROU PARA O HOVER: a maré SOBE. `scale` no eixo Y com
     `transform-origin: bottom` mantém a base colada no `bottom: -1px` — subir
@@ -2726,6 +2770,13 @@ html[data-tela-cheia="1"] .docia-legenda__pct { width: 44px; }
 .docia-kpi-card:has(.docia-kpi-icone--ok)      { --kpi-cor: #047857; }
 .docia-kpi-card:has(.docia-kpi-icone--inativo) { --kpi-cor: #64748B; }
 .docia-kpi-card:has(.docia-kpi-icone--doc)     { --kpi-cor: #B0007A; }
+.docia-kpi-card:has(.docia-kpi-icone--ovg-azul)    { --kpi-cor: #004B87; }
+.docia-kpi-card:has(.docia-kpi-icone--ovg-verde)   { --kpi-cor: #009640; }
+.docia-kpi-card:has(.docia-kpi-icone--ovg-laranja) { --kpi-cor: #F7941E; }
+.docia-kpi-card:has(.docia-kpi-icone--ovg-roxo)    { --kpi-cor: #6B007B; }
+.docia-kpi-card:has(.docia-kpi-icone--ovg-rosa)    { --kpi-cor: #D6008F; }
+.docia-kpi-card:has(.docia-kpi-icone--ovg-amarelo) { --kpi-cor: #EAB308; }
+.docia-kpi-card:has(.docia-kpi-icone--ovg-vermelho) { --kpi-cor: #DC2626; }
 
 
 /* ==========================================================================
@@ -2765,6 +2816,8 @@ html[data-tela-cheia="1"] .docia-legenda__pct { width: 44px; }
 .docia-kpi-card:nth-child(2) { animation-delay: 0.04s; }
 .docia-kpi-card:nth-child(3) { animation-delay: 0.08s; }
 .docia-kpi-card:nth-child(4) { animation-delay: 0.12s; }
+.docia-kpi-card:nth-child(5) { animation-delay: 0.16s; }
+.docia-kpi-card:nth-child(6) { animation-delay: 0.20s; }
 .docia-card-doc:nth-child(1) { animation-delay: 0.16s; }
 .docia-card-doc:nth-child(2) { animation-delay: 0.20s; }
 .docia-card-doc:nth-child(3) { animation-delay: 0.24s; }
@@ -3128,8 +3181,14 @@ body :is(button, a[href]):disabled { cursor: not-allowed; }
     font-size: 11px; /* Letra maior para melhorar leitura */
 }
 
+/*  A ALTURA É A DOS OITO VEREDITOS, medida e não arredondada: em tela cheia o item
+    da legenda ganha `padding: 4px 7px` e passa de 14,8px para 22,8px, então as oito
+    linhas mais os 9px de respiro do topo pedem 192px — 193 com o fio de separação,
+    porque a caixa é `border-box` e a altura declarada engole o `border-top`. Os 180px
+    que estavam aqui deixavam 13px de fora, e como a caixa é `overflow-y: auto`, o que
+    aparecia no F11 era uma barra de rolagem no card do veredito. */
 html[data-tela-cheia="1"] .docia-legenda--ia {
-    height: 180px; /* Compensa o padding extra dos itens em tela cheia */
+    height: 193px;
 }
 
 .docia-legenda--ia .docia-legenda__item { padding: 0 6px; }

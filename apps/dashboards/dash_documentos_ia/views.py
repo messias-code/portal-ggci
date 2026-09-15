@@ -496,7 +496,7 @@ STATUS_POR_ROTULO = {
 # conteúdo. `processado` fica como o desempate de reserva, para o Parquet que ainda não
 # tem `veredito_documento`; assim que o motor rodar, ela deixa de ser consultada.
 COLUNAS_BASE = ['inscricao', 'cpf', 'semestre', 'faculdade', 'status_vinculo', 'status_ia', 'mudou_ies', 'mudou_bolsa', 'perfil',
-                'processado', 'documento_ausente', 'veredito_documento']
+                'processado', 'documento_ausente', 'veredito_documento', 'tipo_bolsa_final', 'beneficio', 'financiamento']
 
 # Cache em memória do DataFrame concatenado. A pasta é sobrescrita a cada
 # atualização, então a chave leva o mtime dos arquivos: se o motor rodar, o
@@ -616,6 +616,7 @@ def _lista_do_parametro(request, nome, separador=','):
 FILTROS_DE_PESSOA = (
     ('vinculo', 'status_vinculo'),
     ('perfil', 'perfil'),
+    ('bolsa', 'tipo_bolsa_final'),
     ('mudou_ies', 'mudou_ies'),
     ('mudou_bolsa', 'mudou_bolsa'),
 )
@@ -1415,8 +1416,12 @@ MENSALIDADE_BALDES = {
 }
 
 # A ordem em que as fatias são lidas: o que conferiu, as duas direções em que divergiu e,
-# por último, o que a IA não achou no arquivo. Entre as duas direções vem primeiro a que
-# custa dinheiro — o documento cobrando MAIS do que o sistema previu.
+# por último, o que a IA não achou no arquivo.
+#
+# QUEM É MAIOR É O DOCUMENTO, e não o sistema — o rótulo fala da coluna `*_doc`. Então
+# "Maior" é o documento cobrando MAIS do que o sistema paga (e aí estamos pagando a
+# MENOS), e "Menor" é o documento cobrando menos, que é o caso que custa dinheiro. A
+# frase que estava aqui dizia o contrário, e foi ela que se leu em 14/09/2026.
 ORDEM_MENSALIDADE = ['Bateu', 'Maior', 'Menor', 'Não localizado']
 
 # OS OITO ESTADOS, e não uma seleção deles: são TODOS os valores que `status_ia`
@@ -1576,28 +1581,59 @@ def _diferenca_de_mensalidade(processados, chave):
     if len(processados) == 0 or not {coluna, no_sistema, na_ia} <= set(processados.columns):
         return vazio
 
-    if len(processados) == 0:
-        return vazio
-
-    # O usuário pediu para o dashboard bater com o relatório em Excel, que trata
-    # valores não localizados pela IA como 0 na soma, gerando a divergência total.
-    val_ia = pd.to_numeric(processados[na_ia], errors='coerce').fillna(0)
-    val_sistema = pd.to_numeric(processados[no_sistema], errors='coerce').fillna(0)
-    
-    diferenca = val_sistema - val_ia
-    soma_ia = float(val_ia.sum())
-    soma_diff = float(diferenca.sum())
-    pct = (soma_diff / soma_ia * 100) if soma_ia else 0.0
+    val_ia = pd.to_numeric(processados[na_ia], errors='coerce')
+    val_sistema = pd.to_numeric(processados[no_sistema], errors='coerce')
 
     balde = processados[coluna].astype('string').str.strip().str.upper()
+    baldes = balde.map(MENSALIDADE_BALDES)
     coincidem = int((balde == 'COLETA DE DADOS CONFORME DOCUMENTO').sum())
+
+    # IGNORAR EXPLICITAMENTE "Não localizado" na conta financeira.
+    mascara_nao_loc = (baldes == 'Não localizado')
+    val_ia.loc[mascara_nao_loc] = pd.NA
+    
+    diferenca = val_sistema - val_ia
+    
+    # SOMA APENAS O PREJUÍZO (PAGO A MAIS):
+    # A pedido da área de negócio, o KPI principal não deve mais ser o "saldo líquido"
+    # da divergência, mas sim APENAS o montante que estamos pagando a mais.
+    # Pagamos a mais quando o sistema > documento (diferença positiva, balde 'Menor').
+    mascara_pago_a_mais = diferenca > 0
+    
+    soma_ia = float(val_ia.sum())
+    soma_diff = float(diferenca[mascara_pago_a_mais].sum())
+    pct = (soma_diff / soma_ia * 100) if soma_ia else 0.0
+
+    # DIVERGIR É TER OS DOIS VALORES E ELES NÃO BATEREM — só "Maior" e "Menor".
+    # Mas como o KPI agora é "PAGO A MAIS", os divergentes exibidos na base do
+    # card serão apenas os casos de prejuízo.
+    divergentes = int(mascara_pago_a_mais.sum())
+
+    # CADA BALDE COM O SEU DINHEIRO, que é o que o balão do card abre.
+    #
+    # A soma total não diz de onde ela vem, e sem isso o número é sem procedência: 
+    # "Menor" é o documento cobrando MENOS do que o sistema paga, então ele entra
+    # somando. "Maior" desconta. "Não localizado" não entra mais na conta (valor NaN).
+    #
+    # A conta é a do RECORTE EM CURSO: `processados` já chegou aqui filtrado por
+    # documento, semestre, instituição e o resto da barra, então o balão fala do que
+    # está na tela, e não do relatório inteiro.
+    por_balde = {}
+    for nome in ORDEM_MENSALIDADE:
+        dentro = (baldes == nome)
+        por_balde[nome] = {'linhas': int(dentro.sum()),
+                           'soma': round(float(diferenca[dentro].sum()), 2)}
+
+    tem_dado = any(por_balde[b]['linhas'] for b in ('Bateu', 'Menor', 'Maior'))
 
     return {
         'soma': round(soma_diff, 2),
         'linhas': int(len(diferenca)),
         'coincidem': coincidem,
+        'divergentes': divergentes,
+        'por_balde': por_balde,
         'pct': round(pct, 2),
-        'tem_dado': True,
+        'tem_dado': tem_dado,
     }
 
 
@@ -1849,6 +1885,21 @@ def api_resumo_ia(request):
     sem_desconto, tem_sem = _contagem_de_mensalidade(proc_sem, 'msd_doc')
     com_desconto, tem_com = _contagem_de_mensalidade(proc_com, 'mcd_doc')
 
+    #  A RÉGUA DOS DOIS CARDS NÃO SE MEXE COM O CLIQUE. Ela é o maior balde, e até
+    #  aqui saía das contagens que a resposta já leva — que ENCOLHEM quando se escolhe
+    #  um balde, porque cada card reaplica o filtro do outro. Com a régua menor, as
+    #  mesmas contagens desenhavam barras MAIORES: clicar em "Conforme" no card de
+    #  baixo esticava as quatro barras do de cima sem que número nenhum tivesse
+    #  mudado, e o desenho passava a responder ao clique em vez de responder ao dado.
+    #
+    #  Medida sobre `sem_mensalidade` — todo o resto do recorte aplicado e NENHUM dos
+    #  dois filtros de mensalidade —, ela só se mexe quando se mexe a barra de filtros,
+    #  que é quando os números de fato mudam.
+    proc_livre = _processados(sem_mensalidade)
+    livre_sem, _ = _contagem_de_mensalidade(proc_livre, 'msd_doc')
+    livre_com, _ = _contagem_de_mensalidade(proc_livre, 'mcd_doc')
+    regua_mensalidade = max([0, *livre_sem.values(), *livre_com.values()])
+
     return JsonResponse({
         'status': 'ok',
         'documento': rotulo,
@@ -1876,6 +1927,7 @@ def api_resumo_ia(request):
                              'total': int(len(frente_com)), 'processados': int(len(proc_com))},
         },
         'ordem_mensalidade': ORDEM_MENSALIDADE,
+        'regua_mensalidade': int(regua_mensalidade),
         'diferencas': {
             'sem_desconto': _diferenca_de_mensalidade(processados, 'sem_desconto'),
             'com_desconto': _diferenca_de_mensalidade(processados, 'com_desconto'),

@@ -59,21 +59,29 @@
         PALETA_OVG[tema][0], PALETA_OVG[tema][1], PALETA_OVG[tema][2], PALETA_OVG[tema][4],
     ];
 
-    /*  UMA PALAVRA POR BALDE, e não a frase inteira da coluna do documento.
+    /*  O MENOR NOME QUE AINDA DIZ DE QUEM SE FALA, e não a frase inteira da coluna
+        do documento.
 
         O nome cru ("Coleta de Dados conforme Documento", 34 caracteres) obrigava a
         faixa dos nomes a 205px — mais da metade de um card de mensalidade, e o que
         sobrava para as barras era menos que o texto ao lado delas. A frase também
         não acrescenta nada: as quatro são variações de "o valor do documento contra
-        o do sistema", e o que as distingue são as quatro palavras daqui.
+        o do sistema", e o que as distingue são as palavras daqui.
+
+        MAS "MAIOR" E "MENOR" SOZINHOS NÃO DIZEM MAIOR DO QUÊ, e a leitura natural é
+        a errada: quem olha o card do dinheiro assume que o sujeito é o sistema, e aí
+        "Menor" parece o balde inofensivo. É o contrário — o sujeito é o DOCUMENTO,
+        e o documento cobrando menos é justamente o que faz o sistema pagar a mais
+        (ver `ORDEM_MENSALIDADE`, na view). O "Doc." custa ~7px na faixa dos nomes,
+        que se medem sozinhos (ver `larguraDaFaixa`), e desfaz a inversão.
 
         O TEXTO INTEIRO CONTINUA A UM PALMO: é o que a tabela logo abaixo e a
         planilha trazem na coluna `msd_doc`/`mcd_doc`, onde ele é o dado, e não um
         rótulo.  */
     const ROTULO_MENSALIDADE = {
         'Bateu': 'Conforme',
-        'Maior': 'Maior',
-        'Menor': 'Menor',
+        'Maior': 'Doc. maior',
+        'Menor': 'Doc. menor',
         'Não localizado': 'Não loc.',
     };
 
@@ -95,6 +103,7 @@
     const FILTROS_DE_PESSOA = [
         ['vinculo', 'filter-vinculo', 'Vínculo'],
         ['perfil', 'filter-perfil', 'Perfil'],
+        ['bolsa', 'filter-bolsa', 'Bolsa'],
         ['mudou_ies', 'filter-mudou-ies', 'Mudou IES'],
         ['mudou_bolsa', 'filter-mudou-bolsa', 'Mudou bolsa'],
         ['possui_beneficio', 'filter-possui-beneficio', 'Benefícios'],
@@ -499,6 +508,14 @@
         const tintaForte = () => (temaAtual() === 'eleitoral'
             ? tinta('--tema-texto-forte', '#F2F5F9') : '#111827');
 
+        /*  A TINTA DO QUE FICOU DE FORA — o degrau abaixo da média, o mesmo que a
+            legenda da rosca já usa no percentual. Nas barras de mensalidade ela
+            escreve o nome e o número da barra NÃO escolhida: a cor lavada da barra
+            sozinha dizia pouco, porque uma barra clara também é o que se vê quando
+            não há escolha nenhuma na tela.  */
+        const tintaFraca = () => (temaAtual() === 'eleitoral'
+            ? tinta('--tema-texto-fraco', '#94A3B8') : '#9CA3AF');
+
         /*  A calha é quase invisível de propósito: ela é o FUNDO da medida, não um
             dado. Forte demais, viraria uma segunda série; ausente, o vazio volta a ser
             só vazio. No tema escuro ela clareia em vez de escurecer, porque ali o que
@@ -799,7 +816,36 @@
             constante aqui e não uma conta.  */
         const AR_QUE_O_APEX_GUARDA = 8;
 
-        const opcoesDeBarraHorizontal = (categorias, valores, cores, maximo, altura, faixa, formato, totalParaPct, aoClicar = null) => {
+        const opcoesDeBarraHorizontal = (categorias, valores, cores, maximo, altura, faixa, formato, totalParaPct, aoClicar = null, marcados = null) => {
+            /*  A ESCOLHA SE MARCA COMO NO CHIP DA ROSCA, e não só lavando as outras.
+
+                Lavar a barra que ficou de fora é o recado de "esta não", mas ele só se
+                lê comparando uma barra com a outra — e quando NÃO HÁ escolha nenhuma as
+                quatro estão na cor cheia, que é exatamente o que a escolhida também
+                fica. Sobrava um estado dizendo duas coisas.
+
+                A escolhida ganha então as MESMAS TRÊS MARCAS do item ativo da legenda
+                (`.docia-legenda__item--ativo`): a faixa de fundo no roxo da casa, o nome
+                nesse mesmo roxo e a cor cheia na barra. As outras recuam em fundo
+                nenhum, tinta fraca e barra lavada. É o vocabulário que a tela já usa
+                para dizer "este é o recorte", agora também aqui.
+
+                A FAIXA DE FUNDO VEM DO PRÓPRIO APEX (`backgroundBarColors`), que a
+                desenha da largura inteira da área de plotagem, atrás da barra: é a
+                mesma tira que o chip pinta atrás do texto na legenda. O array anda com
+                o ponto, então basta apagá-la (`transparent`) em quem não foi escolhido.  */
+            const corDoChip = () => (temaAtual() === 'eleitoral'
+                ? tinta('--tema-superficie-3', '#4D5867') : 'rgba(107, 0, 123, 0.09)');
+            const tintaDoAtivo = () => (temaAtual() === 'eleitoral'
+                ? tinta('--tema-primaria', '#6FD3BF') : '#6B007B');
+
+            const tintaDoRotulo = (i) => {
+                if (!marcados) return tintaMedia();
+                return marcados[i] ? tintaDoAtivo() : tintaFraca();
+            };
+            const tintasDosRotulos = categorias.map((_, i) => tintaDoRotulo(i));
+            const fundosDasBarras = categorias.map((_, i) => (
+                marcados && marcados[i] ? corDoChip() : 'transparent'));
             /*  ESCALA NÃO-LINEAR (Raiz Quadrada) PARA OS DESENHOS DAS BARRAS.
                 Quando há categorias muito desiguais (ex: 12.000 vs 400), a barra de 400
                 ficaria com 2% da largura — uma linha invisível. A raiz quadrada infla as
@@ -814,7 +860,14 @@
                     height: altura,
                     fontFamily: 'Poppins, sans-serif',
                     toolbar: { show: false },
-                    animations: { enabled: true, easing: "easeinout", speed: 800, dynamicAnimation: { speed: 400 } },
+                    /*  SEM ANIMAÇÃO NAS MENSALIDADES. Aqui a barra não é uma novidade
+                        que chega: é a MESMA medida relida a cada clique, e o clique cai
+                        na própria barra. Crescendo do zero a cada resposta, o alvo do
+                        próximo clique andava por 800ms, e a comparação entre os dois
+                        cards — que é a razão de eles estarem um sobre o outro — se fazia
+                        com os oito comprimentos ainda a caminho. Sem animação a resposta
+                        ao clique é imediata e a barra só se mexe quando o dado muda.  */
+                    animations: { enabled: false },
                     background: 'transparent',
                     parentHeightOffset: 0,
                     /*  `click` E NÃO `dataPointSelection`: o segundo só dispara com a
@@ -863,7 +916,7 @@
                         maxWidth: faixa,
                         offsetX: -VAO_ATE_A_BARRA,
                         offsetY: RECUO_DO_NOME,
-                        style: { colors: tintaMedia(), fontSize: '10px', fontWeight: 600 },
+                        style: { colors: tintasDosRotulos, fontSize: '10px', fontWeight: 600 },
                     },
                     axisBorder: { show: false },
                     axisTicks: { show: false },
@@ -900,6 +953,13 @@
                         barHeight: '70%',
                         distributed: Array.isArray(cores) && cores.length > 1,
                         dataLabels: { position: 'top' },
+                        //  A faixa do escolhido (ver a nota em `fundosDasBarras`). O
+                        //  raio é o mesmo da barra, para a tira não sair em esquadro
+                        //  debaixo de uma ponta arredondada.
+                        colors: {
+                            backgroundBarColors: fundosDasBarras,
+                            backgroundBarRadius: 6,
+                        },
                     },
                 },
                 colors: cores,
@@ -910,7 +970,7 @@
                     textAnchor: 'start',
                     formatter: (valorVis, opcoes) =>
                         rotuloDoValor(valores[opcoes.dataPointIndex], totalParaPct),
-                    style: { fontSize: '11px', fontWeight: 700, colors: [tintaMedia()] },
+                    style: { fontSize: '11px', fontWeight: 700, colors: tintasDosRotulos },
                     background: { enabled: false },
                     dropShadow: { enabled: false },
                 },
@@ -1284,7 +1344,7 @@
             graficos[id].render();
         };
 
-        const desenhar = (id, categorias, valores, cores, base, formato, virada = false, totalParaPct = 0, aoClicar = null) => {
+        const desenhar = (id, categorias, valores, cores, base, formato, virada = false, totalParaPct = 0, aoClicar = null, marcados = null) => {
             const alvo = document.getElementById(id);
             if (!alvo || typeof ApexCharts === 'undefined') return;
             /*  A folga sai da BASE quando quem chama informa uma — é o que põe os dois
@@ -1303,7 +1363,7 @@
             const teto = Math.max(base || 0, ...valores, 1)
                 * (virada ? fatorDeitado(alvo, valores, faixa, totalParaPct) : 1.12);
             const opcoes = virada
-                ? opcoesDeBarraHorizontal(categorias, valores, cores, teto, alturaDe(alvo), faixa, formato, totalParaPct, aoClicar)
+                ? opcoesDeBarraHorizontal(categorias, valores, cores, teto, alturaDe(alvo), faixa, formato, totalParaPct, aoClicar, marcados)
                 : opcoesDeBarra(categorias, valores, cores, teto, alturaDe(alvo), formato);
             if (graficos[id] && graficos[id].__tipo === 'bar') {
                 graficos[id].updateOptions(opcoes, false, true);
@@ -1466,7 +1526,7 @@
                 gráfico ficaria uma fatia mais cheio do que a lista comporta.  */
             soOAnel(false);
             const vagas = limpa ? FATIAS_COM_A_LIMPA : FATIAS_DE_INCONSISTENCIA;
-            const mostradas = todas.length > vagas ? todas.slice(0, vagas - 1) : todas;
+            const mostradas = todas;
             const cauda = todas.slice(mostradas.length);
             const ocorrencias = todas.reduce((soma, i) => soma + i.linhas, 0);
 
@@ -1525,12 +1585,12 @@
                 Uma fatia que não é ocorrência sob um total chamado "Ocorrências" é o
                 tipo de número que ninguém confere e todo mundo cita.
 
-                `Frases` é o que TODA fatia é, sem exceção — a IA escreveu aquela frase
-                naquele documento, e "Sem inconsistências" é uma delas. O total passa
-                de 14.766 lidos porque o documento com dois apontamentos escreve duas
-                frases; é a linha de base, logo abaixo, que diz sobre quantos
-                documentos o anel fala.  */
-            desenharRosca(id, nomes, valores, cores, 'Frases da IA');
+                `Catálogos` é o que TODA fatia é, sem exceção — a IA catalogou aquele
+                apontamento naquele documento, e "Sem inconsistências" é um deles. O
+                total passa de 14.766 lidos porque o documento com dois apontamentos
+                entra em dois catálogos; é a linha de base, logo abaixo, que diz sobre
+                quantos documentos o anel fala.  */
+            desenharRosca(id, nomes, valores, cores, 'Catálogos da IA');
             /*  CLICÁVEL: agora os itens da legenda filtram a tabela diretamente,
                 assim como no Veredito. O item "Outras N" é especial e abre a
                 telinha completa quando clicado.  */
@@ -1832,26 +1892,45 @@
                     const valor = document.getElementById(id);
                     const base = document.getElementById(id + '-base');
                     const medida = dif[chave] || {};
+                    const cartao = valor ? valor.closest('.docia-kpi-card') : null;
                     if (!medida.tem_dado) {
-                        if (valor) valor.textContent = '—';
-                        if (base) base.textContent = 'sem valor lido neste recorte';
-                        if (valor && valor.parentElement) valor.parentElement.title = '';
+                        if (cartao) cartao.style.display = 'none';
                         return;
+                    } else {
+                        if (cartao) cartao.style.display = '';
                     }
                     if (valor) valor.textContent = formatarMoeda(medida.soma);
+
+                    /*  A BASE CONTA O QUE DIVERGIU, e não o que bateu. O card é o da
+                        DIFERENÇA: quem olha para ele está atrás da linha que não
+                        fechou, e ler "12.136 de 14.766 coincidem" obrigava a fazer a
+                        subtração de cabeça para chegar ao número que se queria.
+
+                        O DENOMINADOR SAI DA LINHA e fica no balão. São seis cards
+                        dividindo a faixa e a base é uma linha só, com reticências (ver
+                        `.docia-kpi-base`): a 1280px "1.486 de 14.766 divergem (10,1%)"
+                        não cabe, e o que a reticência come é o fim da frase — logo, o
+                        percentual, que é justamente o que se pediu para ficar à vista
+                        sem passar o mouse.
+
+                        QUEM CONTA É O SERVIDOR, e o complemento de `coincidem` não
+                        serve: ele traz junto o "não localizado", onde a IA não leu valor
+                        nenhum e portanto não há o que divergir (ver
+                        `_diferenca_de_mensalidade`). O `||` cobre a resposta antiga, de
+                        antes do campo.  */
+                    const divergentes = medida.divergentes !== undefined
+                        ? medida.divergentes
+                        : Math.max(0, (medida.linhas || 0) - (medida.coincidem || 0));
+                    const pctDivergentes = medida.linhas
+                        ? (divergentes / medida.linhas * 100).toFixed(1).replace('.', ',')
+                        : '0,0';
                     if (base) {
-                        base.textContent = formatarNumero(medida.coincidem)
-                            + ' de ' + formatarNumero(medida.linhas) + ' coincidem';
+                        base.textContent = formatarNumero(divergentes)
+                            + ' docs divergem (' + pctDivergentes + '%)';
                     }
+
                     if (valor && valor.parentElement) {
-                        let texto_tooltip = 'Os valores da coleta batem exatamente com os do documento.';
-                        if (medida.pct > 0) {
-                            texto_tooltip = 'Comparado ao documento, a coleta tem um AUMENTO de ' + formatarNumero(medida.pct) + '%. Isso significa que o valor no sistema é maior (estamos pagando mais caro).';
-                        } else if (medida.pct < 0) {
-                            texto_tooltip = 'Comparado ao documento, a coleta tem uma QUEDA de ' + formatarNumero(Math.abs(medida.pct)) + '%. Isso significa que o valor no sistema é menor (estamos pagando a menos).';
-                        }
-                        
-                        valor.parentElement.title = texto_tooltip;
+                        valor.parentElement.title = '';
                     }
                 });
 
@@ -1871,11 +1950,18 @@
                 Continua sendo UMA régua para os dois cards, que é o que mantém a
                 comparação entre eles honesta (ver a nota da `base` em `desenhar`).
                 Só o teto mudou, então todas as barras crescem pelo mesmo fator e as
-                proporções entre elas ficam exatamente como estavam.  */
-            const reguaComum = Math.max(1, ...['sem_desconto', 'com_desconto'].flatMap((k) => {
-                const c = ((corpo.mensalidade || {})[k] || {}).contagem || {};
-                return ordem.map((b) => c[b] || 0);
-            }));
+                proporções entre elas ficam exatamente como estavam.
+
+                E ELA VEM DO SERVIDOR, medida sem nenhum dos dois filtros de mensalidade
+                (ver `regua_mensalidade` na view). Tirada das contagens da resposta, a
+                régua encolhia junto com elas a cada clique — e barra que não mudou de
+                número crescia na tela. O `||` cobre a resposta antiga, de antes do
+                campo: ali ela volta a sair das contagens, como saía.  */
+            const reguaComum = corpo.regua_mensalidade
+                || Math.max(1, ...['sem_desconto', 'com_desconto'].flatMap((k) => {
+                    const c = ((corpo.mensalidade || {})[k] || {}).contagem || {};
+                    return ordem.map((b) => c[b] || 0);
+                }));
 
             CARDS_DE_MENSALIDADE.forEach(([parametro, idGr, chave]) => {
                 const idBase = idGr.replace('ia-gr-', 'ia-base-');
@@ -1932,9 +2018,17 @@
                     fixo apagaria a barra num tema e a destacaria no outro.  */
                 const escolhidos = recorteMensalidade[parametro];
                 const alvoDaLavagem = tema === 'eleitoral' ? 0 : 255;
+                /*  LAVADA, E NÃO APAGADA. A 0,85 a barra de fora era um risco quase
+                    da cor do card: dizia "ignore esta", que é mais do que o recado —
+                    o número dela continua sendo o que se vai olhar depois de escolher
+                    (ver a nota acima). A 0,6 ela recua sem sumir, e quem sustenta a
+                    diferença é o texto, em `tintasDosRotulos`.  */
+                const marcados = escolhidos.size
+                    ? ordem.map((balde) => escolhidos.has(balde))
+                    : null;
                 const colors = CORES_MENSALIDADE(tema).map((cor, i) => (
-                    escolhidos.size && !escolhidos.has(ordem[i])
-                        ? puxarTom(cor, alvoDaLavagem, 0.62)
+                    marcados && !marcados[i]
+                        ? puxarTom(cor, alvoDaLavagem, 0.6)
                         : cor
                 ));
 
@@ -1948,7 +2042,7 @@
                              if (escolhidos.has(balde)) escolhidos.delete(balde);
                              else escolhidos.add(balde);
                              recarregar();
-                         });
+                         }, marcados);
 
             });
 
@@ -2138,9 +2232,15 @@
                 sozinho não diz de qual das duas mensalidades se fala, e as duas podem
                 estar recortadas ao mesmo tempo — é justamente o cruzamento delas que
                 o recurso existe para permitir.  */
+            /*  A ETIQUETA DIZ O QUE A BARRA DIZ. O balde cru ("Bateu") é o que viaja
+                para o servidor e o que a ação de remover carrega, mas na tela ele nunca
+                aparece: a barra clicada está escrita "Conforme" (ver
+                `ROTULO_MENSALIDADE`), e a etiqueta que nascia desse clique dizia outra
+                palavra — duas grafias do mesmo recorte na mesma tela.  */
             CARDS_DE_MENSALIDADE.forEach(([parametro, , , rotulo]) => {
-                recorteMensalidade[parametro].forEach(
-                    (balde) => etiquetas.push(chip(rotulo, balde, parametro + ':' + balde)));
+                recorteMensalidade[parametro].forEach((balde) => etiquetas.push(
+                    chip(rotulo, ROTULO_MENSALIDADE[balde] || balde,
+                         parametro + ':' + balde)));
             });
 
             const campo = document.getElementById('ia-tabela-busca');
