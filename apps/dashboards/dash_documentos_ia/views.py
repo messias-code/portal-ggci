@@ -1936,6 +1936,98 @@ def api_resumo_ia(request):
     })
 
 
+# O recorte e a ordem das colunas da aba Análise IA, por documento. UMA LISTA POR
+# DOCUMENTO, e não uma lista comum com exceções: o que cada aba tem de próprio é
+# justamente o motivo de esta tela ter uma aba por vez (ver a nota de `COLUNAS_TABELA`).
+# O RIAF traz matrícula com e sem desconto, o CNPJ e a mantenedora da IES — e nenhuma
+# dessas pertence a Contrato, Histórico, Benefício ou Financiamento, onde viriam vazias.
+#
+# Quem não está aqui NÃO É ERRO: são as colunas que a aba tem no Parquet e que o
+# relatório desta tela não pede (no RIAF, `gemini_semestre`, as duas de assinatura,
+# `gemini_valor_beneficio`/`_financiamento`, `gemini_email`, `documento_ausente` e
+# `veredito_documento`). Elas continuam no arquivo do motor; o recorte é só da tela.
+#
+# Documento fora do dicionário passa direto, com todas as colunas do Parquet.
+COLUNAS_ANALISE_IA = {
+    'CONTRATO': [
+        'status_ia', 'gemini_inconsistencia', 'semestre', 'bolsista', 'inscricao',
+        'inscricao_anterior', 'inscricao_posterior', 'cpf', 'gemini_cpf',
+        'tipo_bolsa_final', 'mudou_bolsa', 'bolsa_anterior', 'bolsa_posterior',
+        'mudou_ies', 'ies_anterior', 'ies_posterior', 'faculdade', 'curso',
+        'ultimo_valor_pago_ref', 'total_bolsa_paga', 'qtd_pagtos',
+        'qtd_pagtos_retroativos', 'mensalidade_sem_desc', 'gemini_mensalidade_sem_desc',
+        'msd_doc', 'mensalidade_com_desc', 'gemini_mensalidade_com_desc', 'mcd_doc',
+        'valor_beneficio', 'soma_valor_beneficio', 'beneficio', 'valor_financiamento',
+        'soma_valor_financiamento', 'financiamento', 'soma_ovg_devia_pagar_sis',
+        'soma_ovg_devia_pagar_ia', 'soma_prejuizo_ovg', 'soma_economia_ovg',
+        'diagnostico_financeiro_final', 'data_coleta', 'data_coleta_atual_sistema',
+        'data_create', 'data_processamento', 'processado', 'processar', 'qtd_token',
+        'qtd_disciplinas_matriculadas', 'qtd_disciplinas_reprovadas', 'perfil',
+        'status_vinculo', 'situacao_motivo', 'observacao_situacao', 'email',
+        'telefone_1', 'telefone_2', 'data_nascimento', 'matricula', 'periodo_atual',
+        'qtd_periodos', 'modalidade'
+    ],
+    'RIAF': [
+        'status_ia', 'gemini_inconsistencia', 'semestre', 'bolsista', 'inscricao',
+        'inscricao_anterior', 'inscricao_posterior', 'cpf', 'gemini_cpf',
+        'tipo_bolsa_final', 'mudou_bolsa', 'bolsa_anterior', 'bolsa_posterior',
+        'mudou_ies', 'ies_anterior', 'ies_posterior', 'faculdade', 'cnpj_ies',
+        'ins_mantenedora', 'curso', 'gemini_curso',
+        'ultimo_valor_pago_ref', 'total_bolsa_paga', 'qtd_pagtos',
+        'qtd_pagtos_retroativos', 'matricula_sem_desc', 'gemini_matricula_sem_desc',
+        'matricula_sd_doc', 'matricula_com_desc', 'gemini_matricula_com_desc',
+        'matricula_cd_doc', 'mensalidade_sem_desc', 'gemini_mensalidade_sem_desc',
+        'msd_doc', 'mensalidade_com_desc', 'gemini_mensalidade_com_desc', 'mcd_doc',
+        'valor_beneficio', 'soma_valor_beneficio', 'beneficio', 'valor_financiamento',
+        'soma_valor_financiamento', 'financiamento', 'soma_ovg_devia_pagar_sis',
+        'soma_ovg_devia_pagar_ia', 'soma_prejuizo_ovg', 'soma_economia_ovg',
+        'diagnostico_financeiro_final', 'data_coleta', 'data_coleta_atual_sistema',
+        'data_create', 'data_processamento', 'processado', 'processar', 'qtd_token',
+        'qtd_disciplinas_matriculadas', 'qtd_disciplinas_reprovadas', 'perfil',
+        'status_vinculo', 'situacao_motivo', 'observacao_situacao', 'email',
+        'telefone_1', 'telefone_2', 'data_nascimento', 'matricula', 'periodo_atual',
+        'qtd_periodos', 'modalidade'
+    ],
+}
+
+# Os renomeios da tela, por documento. O cabeçalho é o Title Case da chave (ver
+# `_rotulo_de_coluna`), então renomear a coluna é o único jeito de mudar o que se lê —
+# e é o mesmo nome que sai no .xlsx, porque a exportação usa este mesmo recorte.
+#
+# `cnpj_ies` -> `ins_cnpj` para o CNPJ ficar ao lado da mantenedora com o mesmo
+# prefixo, que é como o cadastro da IES chega do SQL (`Ins. CNPJ`/`Ins. Mantenedora`).
+RENOMES_ANALISE_IA = {
+    'CONTRATO': {
+        'tipo_bolsa_final': 'bolsa',
+        'qtd_pagtos_retroativos': 'qtd_pagtos_retroativos_(100%)',
+    },
+    'RIAF': {
+        'tipo_bolsa_final': 'bolsa',
+        'qtd_pagtos_retroativos': 'qtd_pagtos_retroativos_(100%)',
+        'cnpj_ies': 'ins_cnpj',
+    },
+}
+
+
+def _formatar_colunas_analise_ia(df, rotulo):
+    """
+    O QUE FAZ: recorta as colunas da aba na ordem pedida e aplica os renomeios dela.
+    PARÂMETROS: df (DataFrame da aba já filtrado) e rotulo (CONTRATO, RIAF, ...).
+    ATENÇÃO: coluna da lista que não exista no Parquet é PULADA em silêncio — é o que
+        deixa a tela continuar de pé entre uma mudança no motor e a próxima geração do
+        relatório, quando a coluna nova ainda não foi gravada.
+    """
+    colunas = COLUNAS_ANALISE_IA.get(rotulo)
+    if not colunas:
+        return df
+
+    df = df[[c for c in colunas if c in df.columns]].copy()
+
+    renomes = {de: para for de, para in RENOMES_ANALISE_IA.get(rotulo, {}).items()
+               if de in df.columns}
+    return df.rename(columns=renomes) if renomes else df
+
+
 @login_required(login_url='/')
 def api_tabela_ia(request):
     """
@@ -1966,6 +2058,8 @@ def api_tabela_ia(request):
     df = _aplicar_inconsistencias(df, request)
     df = _aplicar_mensalidade(df, request)
     df = _recorte_da_rosca(df, request)
+    
+    df = _formatar_colunas_analise_ia(df, rotulo)
 
     colunas = list(df.columns)
     limite = _limite_da_tabela(request)
@@ -2050,6 +2144,8 @@ def api_exportar_ia(request):
         df = _aplicar_inconsistencias(df, request)
         df = _aplicar_mensalidade(df, request)
         df = _recorte_da_rosca(df, request)
+        
+        df = _formatar_colunas_analise_ia(df, rotulo)
 
     colunas = list(df.columns)
     if len(df):
