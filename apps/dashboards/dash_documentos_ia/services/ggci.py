@@ -5561,7 +5561,24 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                 if not df_tipo.empty:
                     print(f"[GGCI       | GERANDO       | DOCS  ] {tab_name} ({len(df_tipo)} linhas)...")
                     if doc_original == DOC_HISTORICO:
-                        df_tipo = df_tipo.drop(columns=COLS_CHECK, errors='ignore')
+                        colunas_historico = [
+                            'status_ia', 'gemini_inconsistencia', 'semestre', 'bolsista', 
+                            'inscricao', 'inscricao_anterior', 'inscricao_posterior', 'cpf', 
+                            'gemini_cpf', 'tipo_bolsa_final', 'mudou_bolsa', 'bolsa_anterior', 
+                            'bolsa_posterior', 'faculdade', 'mudou_ies', 'ies_anterior', 
+                            'ies_posterior', 'curso', 'gemini_curso', 'ultimo_valor_pago_ref', 
+                            'total_bolsa_paga', 'qtd_pagtos', 'qtd_pagtos_retroativos', 
+                            'data_coleta', 'data_coleta_atual_sistema', 'data_create', 
+                            'data_processamento', 'processado', 'processar', 'qtd_token', 
+                            'qtd_disciplinas_matriculadas', 'qtd_disciplinas_reprovadas', 
+                            'perfil', 'status_vinculo', 'situacao_motivo', 'observacao_situacao', 
+                            'email', 'telefone_1', 'telefone_2', 'data_nascimento', 'matricula', 
+                            'periodo_atual', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade'
+                        ]
+                        for c in colunas_historico:
+                            if c not in df_tipo.columns:
+                                df_tipo[c] = None
+                        df_tipo = df_tipo[[c for c in colunas_historico if c in df_tipo.columns]]
                     if doc_original in (DOC_CONTRATO, DOC_BENEF, DOC_FINANC):
                         df_tipo = df_tipo[[c for c in COLUNAS_ABA_DOCUMENTO if c in df_tipo.columns]]
                     df_tipo = df_tipo.drop(columns=['tipo_documento', 'Documento Tipo'], errors='ignore')
