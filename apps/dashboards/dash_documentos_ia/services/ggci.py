@@ -491,6 +491,10 @@ def escrever_aba(writer, nome_aba, df, fmt_header=None):
                     else:
                         limpos.append(v)
                 else:
+                    if isinstance(v, str):
+                        # Previne "Erro de carregamento. Linha 2, coluna 0" removendo
+                        # caracteres de controle ASCII que quebram o parser XML do Excel
+                        v = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', v)
                     limpos.append(v)
         worksheet.write_column(1, i, limpos)
 
@@ -1619,36 +1623,51 @@ def aplicar_transicoes(df, df_pag):
         # fazia com que um Histórico apontasse para o Contrato da MESMA inscrição.
         # Precisamos isolar a "linha do tempo" real das inscrições (uma por CPF + Inscrição),
         # calcular o anterior/posterior nela, e mapear de volta.
-        chaves_tempo = ['CPF_clean', 'Semestre_clean', 'Inscrição_ord', 'Inscrição_clean', 'tipo_bolsa_final', 'Faculdade']
+        chaves_tempo = ['CPF_clean', 'Semestre_clean', 'Inscrição_ord', 'Inscrição_clean']
         df_unico = df[chaves_tempo].drop_duplicates(subset=['CPF_clean', 'Inscrição_clean']).copy()
         df_unico = df_unico.sort_values(by=['CPF_clean', 'Semestre_clean', 'Inscrição_ord'], kind='stable')
         
         df_unico['Inscrição Anterior'] = df_unico.groupby('CPF_clean')['Inscrição_clean'].shift(1).astype(str).replace(['<NA>', 'nan', 'NaN', 'None'], '-').fillna("-")
         df_unico['Inscrição Posterior'] = df_unico.groupby('CPF_clean')['Inscrição_clean'].shift(-1).astype(str).replace(['<NA>', 'nan', 'NaN', 'None'], '-').fillna("-")
-        
-        df_unico['Bolsa Anterior'] = df_unico.groupby('CPF_clean')['tipo_bolsa_final'].shift(1).fillna("-")
-        df_unico['Bolsa Posterior'] = df_unico.groupby('CPF_clean')['tipo_bolsa_final'].shift(-1).fillna("-")
-        curr_b_u = df_unico.get('tipo_bolsa_final', pd.Series("-", index=df_unico.index))
-        df_unico['Bolsa Anterior'] = np.where((df_unico['Bolsa Anterior'] != "-") & (df_unico['Bolsa Anterior'] != curr_b_u), df_unico['Bolsa Anterior'], "-")
-        df_unico['Bolsa Posterior'] = np.where((df_unico['Bolsa Posterior'] != "-") & (df_unico['Bolsa Posterior'] != curr_b_u), df_unico['Bolsa Posterior'], "-")
-        df_unico['Mudou Bolsa?'] = np.where((df_unico['Bolsa Posterior'] != "-"), "S", "N")
-        
-        df_unico['IES Anterior'] = df_unico.groupby('CPF_clean')['Faculdade'].shift(1).fillna("-")
-        df_unico['IES Posterior'] = df_unico.groupby('CPF_clean')['Faculdade'].shift(-1).fillna("-")
-        curr_ies_u = df_unico.get('Faculdade', pd.Series("-", index=df_unico.index))
-        df_unico['IES Anterior'] = np.where((df_unico['IES Anterior'] != "-") & (df_unico['IES Anterior'] != curr_ies_u), df_unico['IES Anterior'], "-")
-        df_unico['IES Posterior'] = np.where((df_unico['IES Posterior'] != "-") & (df_unico['IES Posterior'] != curr_ies_u), df_unico['IES Posterior'], "-")
-        df_unico['Mudou IES?'] = np.where((df_unico['IES Posterior'] != "-"), "S", "N")
-        
         df_unico['Tem_Semestre_Posterior'] = df_unico.groupby('CPF_clean')['Inscrição_clean'].shift(-1).notna()
         
-        # Mapear de volta para o DF completo
-        map_cols = ['Tem_Semestre_Posterior', 'Inscrição Anterior', 'Inscrição Posterior', 'Bolsa Anterior', 'Bolsa Posterior', 'Mudou Bolsa?', 'IES Anterior', 'IES Posterior', 'Mudou IES?']
-        df_map = df_unico.set_index(['CPF_clean', 'Inscrição_clean'])[map_cols]
+        # A LINHA DO TEMPO DA BOLSA E DA IES É POR SEMESTRE, NÃO POR INSCRIÇÃO. A inscrição
+        # NÃO muda quando o aluno transfere de faculdade ou muda tipo de bolsa: o mesmo
+        # `uni_codigo` atravessa os semestres. Por isso, Bolsa e IES têm a sua própria
+        # linha do tempo, deduplicada por CPF + semestre + inscrição.
+        chaves_ies = ['CPF_clean', 'Semestre_clean', 'Inscrição_ord', 'Inscrição_clean', 'Faculdade', 'tipo_bolsa_final']
+        df_ies_unico = df[chaves_ies].drop_duplicates(subset=['CPF_clean', 'Semestre_clean', 'Inscrição_clean']).copy()
+        df_ies_unico = df_ies_unico.sort_values(by=['CPF_clean', 'Semestre_clean', 'Inscrição_ord'], kind='stable')
         
-        df = df.join(df_map, on=['CPF_clean', 'Inscrição_clean'])
+        # --- Cálculo IES ---
+        df_ies_unico['IES Anterior'] = df_ies_unico.groupby('CPF_clean')['Faculdade'].shift(1).fillna("-")
+        df_ies_unico['IES Posterior'] = df_ies_unico.groupby('CPF_clean')['Faculdade'].shift(-1).fillna("-")
+        curr_ies_u = df_ies_unico.get('Faculdade', pd.Series("-", index=df_ies_unico.index))
+        df_ies_unico['IES Anterior'] = np.where((df_ies_unico['IES Anterior'] != "-") & (df_ies_unico['IES Anterior'] != curr_ies_u), df_ies_unico['IES Anterior'], "-")
+        df_ies_unico['IES Posterior'] = np.where((df_ies_unico['IES Posterior'] != "-") & (df_ies_unico['IES Posterior'] != curr_ies_u), df_ies_unico['IES Posterior'], "-")
+        # Marca S nos DOIS lados da transferência: o último semestre na faculdade antiga e o primeiro na nova
+        df_ies_unico['Mudou IES?'] = np.where((df_ies_unico['IES Anterior'] != "-") | (df_ies_unico['IES Posterior'] != "-"), "S", "N")
         
-        for c in map_cols:
+        # --- Cálculo Bolsa ---
+        df_ies_unico['Bolsa Anterior'] = df_ies_unico.groupby('CPF_clean')['tipo_bolsa_final'].shift(1).fillna("-")
+        df_ies_unico['Bolsa Posterior'] = df_ies_unico.groupby('CPF_clean')['tipo_bolsa_final'].shift(-1).fillna("-")
+        curr_b_u = df_ies_unico.get('tipo_bolsa_final', pd.Series("-", index=df_ies_unico.index))
+        df_ies_unico['Bolsa Anterior'] = np.where((df_ies_unico['Bolsa Anterior'] != "-") & (df_ies_unico['Bolsa Anterior'] != curr_b_u), df_ies_unico['Bolsa Anterior'], "-")
+        df_ies_unico['Bolsa Posterior'] = np.where((df_ies_unico['Bolsa Posterior'] != "-") & (df_ies_unico['Bolsa Posterior'] != curr_b_u), df_ies_unico['Bolsa Posterior'], "-")
+        # Assim como IES, marca S nos dois lados quando a bolsa ou a universidade mudarem!
+        df_ies_unico['Mudou Bolsa?'] = np.where((df_ies_unico['Bolsa Anterior'] != "-") | (df_ies_unico['Bolsa Posterior'] != "-") | (df_ies_unico['Mudou IES?'] == 'S'), "S", "N")
+        
+        # Mapear de volta para o DF completo (df_unico mapeia por Inscrição)
+        map_cols_unico = ['Tem_Semestre_Posterior', 'Inscrição Anterior', 'Inscrição Posterior']
+        df_map_unico = df_unico.set_index(['CPF_clean', 'Inscrição_clean'])[map_cols_unico]
+        df = df.join(df_map_unico, on=['CPF_clean', 'Inscrição_clean'])
+        
+        # Mapear de volta para o DF completo (df_ies_unico mapeia por CPF+Semestre+Inscrição)
+        map_cols_ies = ['IES Anterior', 'IES Posterior', 'Mudou IES?', 'Bolsa Anterior', 'Bolsa Posterior', 'Mudou Bolsa?']
+        df_map_ies = df_ies_unico.set_index(['CPF_clean', 'Semestre_clean', 'Inscrição_clean'])[map_cols_ies]
+        df = df.join(df_map_ies, on=['CPF_clean', 'Semestre_clean', 'Inscrição_clean'])
+        
+        for c in map_cols_unico + map_cols_ies:
             df[c] = df[c].fillna("-" if c != 'Tem_Semestre_Posterior' else False)
             
         df.drop(columns=['CPF_clean', 'Inscrição_clean', 'Semestre_clean', 'Inscrição_ord'], inplace=True, errors='ignore')
@@ -4802,6 +4821,14 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                         df_docs['Semestre'].astype(str).str.strip().str.replace('/', '-'),
                         aplicar_por_distintos(df_docs['Documento Tipo'], limpar_texto_geral),
                     )) if not df_docs.empty else set()
+                    
+                    ja_no_relatorio_riaf = set(zip(
+                        df_riaf['Inscrição'].astype(str).str.split('.').str[0].str.strip(),
+                        df_riaf['Semestre'].astype(str).str.strip().str.replace('/', '-'),
+                        aplicar_por_distintos(pd.Series([DOC_RIAF]*len(df_riaf)), limpar_texto_geral),
+                    )) if not df_riaf.empty else set()
+                    
+                    ja_no_relatorio.update(ja_no_relatorio_riaf)
 
                     # O CONSOLIDADOR NORMALIZA o texto das colunas (sem acento, maiúsculas),
                     # então o `Documento` chega como `HISTORICO ESCOLAR` e não bateria com o
@@ -4813,6 +4840,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                     }
 
                     novas_cobrancas = []
+                    novas_cobrancas_riaf = []
                     for row in df_indevidas.to_dict('records'):
                         semestre_row = str(row.get('Semestre', '')).strip().replace('/', '-')
                         documento_row = str(row.get('Documento', '')).strip()
@@ -4826,7 +4854,8 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                             continue
                         if (inscricao_row, semestre_row, limpar_texto_geral(documento_row)) in ja_no_relatorio:
                             continue
-                        novas_cobrancas.append({
+                            
+                        novo_registro = {
                             'Status_IA': 'Inadimplente',
                             'Documento Ausente': 'SIM',
                             'Inscrição': inscricao_row,
@@ -4835,13 +4864,25 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                             'Bolsista': limpar_texto_geral(str(row.get('Beneficiário', ''))),
                             'CPF': row.get('CPF', ''),
                             'Faculdade': limpar_texto_geral(str(row.get('Instituição', ''))),
-                        })
+                        }
+                        
+                        if documento_canonico == DOC_RIAF:
+                            novas_cobrancas_riaf.append(novo_registro)
+                        else:
+                            novas_cobrancas.append(novo_registro)
 
                     if novas_cobrancas:
                         df_docs = pd.concat(
                             [df_docs, converter_colunas_para_salvamento(pd.DataFrame(novas_cobrancas))],
                             ignore_index=True)
-                        print(f"[GGCI       | INJETADOS     | COBRANÇA] {len(novas_cobrancas)} "
+                            
+                    if novas_cobrancas_riaf:
+                        df_riaf = pd.concat(
+                            [df_riaf, converter_colunas_para_salvamento(pd.DataFrame(novas_cobrancas_riaf))],
+                            ignore_index=True)
+                            
+                    if novas_cobrancas or novas_cobrancas_riaf:
+                        print(f"[GGCI       | INJETADOS     | COBRANÇA] {len(novas_cobrancas) + len(novas_cobrancas_riaf)} "
                               f"cobranças do site sem lançamento no semestre.")
                 except Exception as erro_cobranca:
                     # Falhar aqui não pode derrubar o relatório: a fatia fica vazia e todo o
@@ -5520,7 +5561,24 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                 if not df_tipo.empty:
                     print(f"[GGCI       | GERANDO       | DOCS  ] {tab_name} ({len(df_tipo)} linhas)...")
                     if doc_original == DOC_HISTORICO:
-                        df_tipo = df_tipo.drop(columns=COLS_CHECK, errors='ignore')
+                        colunas_historico = [
+                            'status_ia', 'gemini_inconsistencia', 'semestre', 'bolsista', 
+                            'inscricao', 'inscricao_anterior', 'inscricao_posterior', 'cpf', 
+                            'gemini_cpf', 'tipo_bolsa_final', 'mudou_bolsa', 'bolsa_anterior', 
+                            'bolsa_posterior', 'faculdade', 'mudou_ies', 'ies_anterior', 
+                            'ies_posterior', 'curso', 'gemini_curso', 'ultimo_valor_pago_ref', 
+                            'total_bolsa_paga', 'qtd_pagtos', 'qtd_pagtos_retroativos', 
+                            'data_coleta', 'data_coleta_atual_sistema', 'data_create', 
+                            'data_processamento', 'processado', 'processar', 'qtd_token', 
+                            'qtd_disciplinas_matriculadas', 'qtd_disciplinas_reprovadas', 
+                            'perfil', 'status_vinculo', 'situacao_motivo', 'observacao_situacao', 
+                            'email', 'telefone_1', 'telefone_2', 'data_nascimento', 'matricula', 
+                            'periodo_atual', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade'
+                        ]
+                        for c in colunas_historico:
+                            if c not in df_tipo.columns:
+                                df_tipo[c] = None
+                        df_tipo = df_tipo[[c for c in colunas_historico if c in df_tipo.columns]]
                     if doc_original in (DOC_CONTRATO, DOC_BENEF, DOC_FINANC):
                         df_tipo = df_tipo[[c for c in COLUNAS_ABA_DOCUMENTO if c in df_tipo.columns]]
                     df_tipo = df_tipo.drop(columns=['tipo_documento', 'Documento Tipo'], errors='ignore')
