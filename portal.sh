@@ -1344,6 +1344,15 @@ function teardown_full() {
 # --------------------------------------------------------------------------
 # MENU PRINCIPAL (LOOP ANTI-FALHAS)
 # --------------------------------------------------------------------------
+# Suporte a execução direta via CLI (sem menu iterativo)
+if [ "$1" == "dev" ]; then
+    run_dev_server
+    exit 0
+elif [ "$1" == "prod" ]; then
+    run_server
+    exit 0
+fi
+
 while true; do
     print_ovg_logo
     
