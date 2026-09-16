@@ -77,6 +77,11 @@ SELECT
     (SELECT l_int.tipo_bolsa FROM sibu.lancamento l_int WHERE l_int.uni_codigo = u.uni_codigo AND l_int.lan_anomes LIKE CONCAT(SUBSTRING(u.semestre, 1, 4), '%') ORDER BY l_int.lan_anomes DESC LIMIT 1) AS tipo_bolsa, 
     u.gemini_tipo_bolsa,
 
+    -- VALORES DA COLETA ATRELADOS DIRETAMENTE AO DOCUMENTO (Fix IA Dashboard)
+    (cd_direto.valor_mensalidade_sem_desconto / 100) AS `Mensalidade S/ Desconto`,
+    (cd_direto.valor_mensalidade_com_desconto / 100) AS `Mensalidade C/ Desconto`,
+
+
     -- DADOS ESPECÍFICOS DE CONTRATO
     u.gemini_mensalidade_sem_desconto,
     u.gemini_mensalidade_com_desconto,
@@ -105,4 +110,5 @@ LEFT JOIN ColetaBeneficios cd ON u.uni_codigo = cd.uni_codigo AND u.semestre = c
 LEFT JOIN sibu.instituicao i ON i.ins_codigo = COALESCE(u.ins_codigo_semestre, uni.ins_codigo)
 LEFT JOIN sibu.cursos c ON c.cur_codigo = COALESCE(u.cur_codigo_semestre, uni.cur_codigo)
 
+LEFT JOIN sibu.coleta_dados cd_direto ON u.coleta_dados_id = cd_direto.id
 WHERE u.ordem_tentativa = 1;
