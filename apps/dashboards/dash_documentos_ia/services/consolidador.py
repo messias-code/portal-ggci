@@ -177,19 +177,6 @@ def get_configs(processo_id=None):
                 'Documento Tipo', 'Coleta ID', 'Data Processamento'
             ]
         },
-        /cobranca_do_site',
-            'saida': 'consolidado_cobranca_do_site.parquet',
-            'aba': 'Cobrança do Site',
-            'ext': '.xlsx',
-            'semestre_do_nome_do_arquivo': True,
-            'cols_num': ['Inscrição', 'CPF'],
-            'cols_moeda': [],
-            'cols_txt': ['Beneficiário', 'Instituição', 'Documento', 'Documento status', 'Lançamento'],
-            'ordem_colunas': [
-                'Inscrição', 'Semestre', 'Beneficiário', 'CPF', 'Beneficiário status',
-                'Instituição', 'CNPJ', 'Documento', 'Documento status', 'Lançamento',
-            ]
-        }
     ]
 
 def normalizar_colunas_mistas(df):
