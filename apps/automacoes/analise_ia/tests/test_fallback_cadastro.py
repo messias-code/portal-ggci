@@ -26,7 +26,7 @@ from django.test import SimpleTestCase
 from apps.automacoes.analise_ia.services.ggci import mesclar_sql_e_reordenar
 
 
-COLS_CADASTRO = ['Modalidade', 'Período atual', 'Período quantidade', 'Matricula']
+COLS_CADASTRO = ['Modalidade Aluno', 'Período atual', 'Período quantidade', 'Matricula']
 
 
 def _documento(inscricao, semestre):
@@ -55,11 +55,12 @@ class FallbackCadastroTests(SimpleTestCase):
         """
         df_sql = pd.DataFrame({
             'uni_codigo': [2213322], 'semestre': ['2026-1'],
-            'modalidade': ['Presencial'], 'periodo_atual': [7.0], 'periodo_quantidade': [8],
+            'modalidade_aluno': ['Presencial'], 'modalidade_ies': ['Presencial'], 'periodo_atual': [7.0], 'periodo_quantidade': [8],
             'matricula': ['12345'], 'tipo_bolsa_final': ['INTEGRAL'], 'qtd_pagtos': [0],
         })
         obtido = _colher(mesclar_sql_e_reordenar(_documento(2213322, '2025-2'), df_sql))
-        self.assertEqual(obtido['Modalidade'], 'Presencial')
+        self.assertEqual(obtido['Modalidade Aluno'], 'Presencial')
+        self.assertEqual(obtido['Modalidade IES'], 'Presencial')
         self.assertEqual(obtido['Período quantidade'], 8)
         self.assertEqual(obtido['Período atual'], 6.0)
 
@@ -71,14 +72,15 @@ class FallbackCadastroTests(SimpleTestCase):
         """
         df_sql = pd.DataFrame({
             'uni_codigo': [555, 555], 'semestre': ['2025-2', '2026-1'],
-            'modalidade': ['', 'EAD'],
+            'modalidade_aluno': ['', 'EAD'], 'modalidade_ies': ['', 'EAD'],
             'periodo_atual': ['', 7.0],
             'periodo_quantidade': ['', 8],
             'matricula': ['', '12345'],
             'tipo_bolsa_final': ['INTEGRAL', 'INTEGRAL'], 'qtd_pagtos': [0, 0],
         })
         obtido = _colher(mesclar_sql_e_reordenar(_documento(555, '2025-2'), df_sql))
-        self.assertEqual(obtido['Modalidade'], 'EAD')
+        self.assertEqual(obtido['Modalidade Aluno'], 'EAD')
+        self.assertEqual(obtido['Modalidade IES'], 'EAD')
         self.assertEqual(obtido['Período quantidade'], 8)
         self.assertEqual(obtido['Período atual'], 7.0)
         self.assertEqual(obtido['Matricula'], '12345')
@@ -90,13 +92,14 @@ class FallbackCadastroTests(SimpleTestCase):
         """
         df_sql = pd.DataFrame({
             'uni_codigo': [777, 777], 'semestre': ['2025-2', '2026-1'],
-            'modalidade': ['Presencial', 'EAD'],
+            'modalidade_aluno': ['Presencial', 'EAD'], 'modalidade_ies': ['Presencial', 'EAD'],
             'periodo_atual': [3.0, 4.0], 'periodo_quantidade': [8, 10],
             'matricula': ['999', '111'],
             'tipo_bolsa_final': ['PARCIAL', 'PARCIAL'], 'qtd_pagtos': [1, 1],
         })
         obtido = _colher(mesclar_sql_e_reordenar(_documento(777, '2025-2'), df_sql))
-        self.assertEqual(obtido['Modalidade'], 'Presencial')
+        self.assertEqual(obtido['Modalidade Aluno'], 'Presencial')
+        self.assertEqual(obtido['Modalidade IES'], 'Presencial')
         self.assertEqual(obtido['Período quantidade'], 8)
         self.assertEqual(obtido['Período atual'], 3.0)
 
@@ -108,7 +111,7 @@ class FallbackCadastroTests(SimpleTestCase):
         """
         df_sql = pd.DataFrame({
             'uni_codigo': [888, 888], 'semestre': ['2025-2', '2026-1'],
-            'modalidade': ['Presencial', 'Presencial'],
+            'modalidade_aluno': ['Presencial', 'Presencial'], 'modalidade_ies': ['Presencial', 'Presencial'],
             'periodo_atual': [0.0, 5.0], 'periodo_quantidade': [0, 10],
             'matricula': ['321', '321'],
             'tipo_bolsa_final': ['INTEGRAL', 'INTEGRAL'], 'qtd_pagtos': [1, 1],

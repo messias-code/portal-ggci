@@ -128,7 +128,7 @@ COLUNAS_ABA_DOCUMENTO = [
     'data_processamento', 'processado', 'processar', 'qtd_token', 'qtd_disciplinas_matriculadas',
     'qtd_disciplinas_reprovadas', 'perfil', 'status_vinculo', 'situacao_motivo',
     'observacao_situacao', 'email', 'telefone_1', 'telefone_2', 'data_nascimento', 'matricula',
-    'periodo_atual', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade'
+    'periodo_atual', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies'
 ]
 
 
@@ -650,7 +650,8 @@ def aplicar_formatacao_visual(writer, nome_aba, df):
             'GEMINI_PERIODO': (19.14, None),
             'QTD_PERIODOS': (16.71, None),
             'GEMINI_QTD_PERIODOS': (24.14, None),
-            'MODALIDADE': (15.43, None),
+            'MODALIDADE_ALUNO': (15.43, None),
+            'MODALIDADE_IES': (15.43, None),
             'VALOR_BENEFICIO': (18.86, fmt_moeda),
             'SOMA_VALOR_BENEFICIO': (24.71, fmt_moeda),
             'VALOR_FINANCIAMENTO': (23.43, fmt_moeda),
@@ -900,14 +901,14 @@ def buscar_dados_financeiros_sql(semestres_presentes, inscricoes=None):
             b.inclusao AS inscricao_ano_semestre, b.flag_deficiencia AS uni_deficiencia, b.sexo AS uni_sexo, 'N/A' AS tipo_bolsista_renovacao, b.perfil AS perfil,
             b.data_nascimento, b.email_aluno AS email, b.telefone_principal AS telefone_1, b.telefone_secundario AS telefone_2, b.periodo_atual, b.periodo_quantidade, 
             b.matricula_ies AS matricula, 
-            b.modalidade_curso AS modalidade,
+            b.modalidade_aluno, b.modalidade_ies,
             b.ins_cnpj, b.ins_razao_social, b.ins_nome_fantasia, b.ins_mantenedora, b.nome_faculdade_sql, MAX(p.valor_matricula_sem_desconto) AS valor_matricula_sem_desconto, MAX(p.valor_matricula_com_desconto) AS valor_matricula_com_desconto,
             b.nome_aluno AS Bolsista_sql, b.cpf_aluno AS UNI_CPF, b.curso_aluno AS CUR_NOME,
             b.qtd_disciplinas_matriculadas, b.qtd_disciplinas_reprovadas
         FROM beneficiarios b
         LEFT JOIN pagamentos p ON b.codigo_aluno = p.codigo_aluno AND b.semestre = p.semestre_referencia_analise
         WHERE (b.semestre IN ({sems_formatados}) {f"OR b.codigo_aluno IN ({','.join(map(str, inscricoes))})" if inscricoes else ""})
-        GROUP BY b.codigo_aluno, b.semestre, b.tipo_bolsa, b.status_vinculo, b.data_inclusao, b.ultima_observacao, b.ultimo_motivo, b.inclusao, b.flag_deficiencia, b.sexo, b.perfil, b.data_nascimento, b.email_aluno, b.telefone_principal, b.telefone_secundario, b.periodo_atual, b.periodo_quantidade, b.matricula_ies, b.modalidade_curso, b.ins_cnpj, b.ins_razao_social, b.ins_nome_fantasia, b.ins_mantenedora, b.nome_faculdade_sql, b.nome_aluno, b.cpf_aluno, b.curso_aluno, b.qtd_disciplinas_matriculadas, b.qtd_disciplinas_reprovadas
+        GROUP BY b.codigo_aluno, b.semestre, b.tipo_bolsa, b.status_vinculo, b.data_inclusao, b.ultima_observacao, b.ultimo_motivo, b.inclusao, b.flag_deficiencia, b.sexo, b.perfil, b.data_nascimento, b.email_aluno, b.telefone_principal, b.telefone_secundario, b.periodo_atual, b.periodo_quantidade, b.matricula_ies, b.modalidade_aluno, b.modalidade_ies, b.ins_cnpj, b.ins_razao_social, b.ins_nome_fantasia, b.ins_mantenedora, b.nome_faculdade_sql, b.nome_aluno, b.cpf_aluno, b.curso_aluno, b.qtd_disciplinas_matriculadas, b.qtd_disciplinas_reprovadas
     """
     
     try:
@@ -946,7 +947,7 @@ def buscar_dados_financeiros_sql(semestres_presentes, inscricoes=None):
                 'situacao_atual_sistema', 'sit_data_atual_sistema', 'data_coleta_atual_sistema', 
                 'sit_obs_atual_sistema', 'inscricao_ano_semestre', 'uni_deficiencia', 'uni_sexo', 
                 'tipo_bolsista_renovacao', 'perfil', 'data_nascimento', 'email', 'telefone_1', 
-                'telefone_2', 'periodo_atual', 'periodo_quantidade', 'matricula', 'modalidade', 
+                'telefone_2', 'periodo_atual', 'periodo_quantidade', 'matricula', 'modalidade_aluno', 'modalidade_ies', 
                 'ins_cnpj', 'ins_razao_social', 'ins_nome_fantasia', 'ins_mantenedora', 
                 'Bolsista_sql', 'UNI_CPF', 'CUR_NOME', 'qtd_disciplinas_matriculadas', 
                 'qtd_disciplinas_reprovadas'
@@ -968,7 +969,7 @@ def buscar_dados_financeiros_sql(semestres_presentes, inscricoes=None):
                 'qual_beneficio': 'Sem Benefícios', 'qual_financiamento': 'Sem Financiamento',
                 'data_coleta': '',
                 'inscricao_ano_semestre': '', 'uni_deficiencia': '', 'uni_sexo': '', 'tipo_bolsista_renovacao': '', 'perfil': '',
-                'data_nascimento': '', 'email': '', 'telefone_1': '', 'telefone_2': '', 'periodo_atual': '', 'periodo_quantidade': '', 'matricula': '', 'modalidade': '',
+                'data_nascimento': '', 'email': '', 'telefone_1': '', 'telefone_2': '', 'periodo_atual': '', 'periodo_quantidade': '', 'matricula': '', 'modalidade_aluno': '', 'modalidade_ies': '',
                 'ins_cnpj': '', 'ins_razao_social': '', 'ins_nome_fantasia': '', 'ins_mantenedora': '', 'valor_matricula_sem_desconto': 0.0, 'valor_matricula_com_desconto': 0.0
             }
             df_merged.fillna(valores_para_zerar, inplace=True)
@@ -1177,7 +1178,8 @@ def mesclar_sql_e_reordenar(df, df_sql, df_pag=None, df_mes_a_mes=None):
             'ins_razao_social': 'Ins. Razão Social',
             'ins_nome_fantasia': 'Ins. Nome Fantasia',
             'ins_mantenedora': 'Ins. Mantenedora',
-            'modalidade': 'Modalidade',
+            'modalidade_aluno': 'Modalidade Aluno',
+            'modalidade_ies': 'Modalidade IES',
             'valor_matricula_com_desconto': 'Matricula C/ Desconto',
             'valor_matricula_sem_desconto': 'Matricula S/ Desconto',
             'qtd_disciplinas_matriculadas': 'Qtd Disciplinas Matriculadas',
@@ -1238,7 +1240,8 @@ def mesclar_sql_e_reordenar(df, df_sql, df_pag=None, df_mes_a_mes=None):
             # vazia no relatorio so pode ser merge sem match — exatamente o que o fallback
             # existe para cobrir. `periodo_atual` propaga o ultimo valor conhecido; o ajuste
             # por diferenca de semestre continua sendo feito no remapeamento acima (calc_diff).
-            'modalidade': 'Modalidade',
+            'modalidade_aluno': 'Modalidade Aluno',
+            'modalidade_ies': 'Modalidade IES',
             'periodo_atual': 'Período atual',
             'periodo_quantidade': 'Período quantidade',
             'qtd_disciplinas_matriculadas': 'Qtd Disciplinas Matriculadas',
@@ -1570,8 +1573,10 @@ def mesclar_sql_e_reordenar(df, df_sql, df_pag=None, df_mes_a_mes=None):
     df.insert(idx_curso + 4, 'último_valor_pago_referencia', col_val)
     df.insert(idx_curso + 5, 'total bolsa paga', col_tot)
     
-    if 'modalidade_sql' in df.columns:
-        df['modalidade'] = df['modalidade_sql'].combine_first(df.get('modalidade', pd.NA))
+    if 'modalidade_aluno_sql' in df.columns:
+        df['modalidade_aluno'] = df['modalidade_aluno_sql'].combine_first(df.get('modalidade_aluno', pd.NA))
+    if 'modalidade_ies_sql' in df.columns:
+        df['modalidade_ies'] = df['modalidade_ies_sql'].combine_first(df.get('modalidade_ies', pd.NA))
     
     return df
 
@@ -3358,7 +3363,7 @@ def gerar_aba_relatorio_contratos(writer, df_docs, sems_contratos):
 
     worksheet.write_comment(54, 0, "puxar valores de matriculas das coleta de dados para ajustar 2026-jan, observar se contratos tem valor de matricula pois agora é um requisito necessario para recalculo de bolsas")
 
-def gerar_aba_relatorio_riaf(writer, df_riaf, sems_riaf):
+def gerar_aba_relatorio_riaf(writer, df_riaf, sems_riaf, colunas_da_aba=None):
     """
     O QUE FAZ: Monta a aba "Relatório RIAF", equivalente gerencial da aba de contratos.
     POR QUÊ EXISTE: O RIAF tem conjunto de colunas e regras de aferição próprios e não cabe
@@ -3506,8 +3511,19 @@ def gerar_aba_relatorio_riaf(writer, df_riaf, sems_riaf):
         # Arquivos has subcolumns, so the Variação is merged, meaning it has 6 None below it
         return [(title, fmt_title)] + [("", fmt_cell, 2) for _ in range(len(sems_riaf)*3)] + ([("", fmt_cell, 6)] if has_var else [])
 
-    colunas_riaf_exp = ['status_ia', 'gemini_inconsistencia', 'semestre', 'gemini_semestre', 'bolsista', 'inscricao', 'inscricao_anterior', 'inscricao_posterior', 'cpf', 'gemini_cpf', 'tipo_bolsa_final', 'gemini_tipo_bolsa_final', 'mudou_bolsa', 'bolsa_anterior', 'bolsa_posterior', 'faculdade', 'cnpj_ies', 'mudou_ies', 'ies_anterior', 'ies_posterior', 'curso', 'gemini_assinatura_aluno', 'gemini_assinatura_ies', 'ultimo_valor_pago_ref', 'total_bolsa_paga', 'qtd_pagtos', 'qtd_pagtos_retroativos', 'matricula_sem_desc', 'gemini_matricula_sem_desc', 'matricula_sd_doc', 'matricula_com_desc', 'gemini_matricula_com_desc', 'matricula_cd_doc', 'mensalidade_sem_desc', 'gemini_mensalidade_sem_desc', 'msd_doc', 'mensalidade_com_desc', 'gemini_mensalidade_com_desc', 'mcd_doc', 'valor_beneficio', 'soma_valor_beneficio', 'gemini_valor_beneficio', 'beneficio', 'valor_financiamento', 'soma_valor_financiamento', 'gemini_valor_financiamento', 'financiamento', 'soma_ovg_devia_pagar_sis', 'soma_ovg_devia_pagar_ia', 'soma_prejuizo_ovg', 'soma_economia_ovg', 'diagnostico_financeiro_final', 'data_coleta', 'data_coleta_atual_sistema', 'data_create', 'data_processamento', 'processado', 'processar', 'qtd_token', 'qtd_disciplinas_matriculadas', 'qtd_disciplinas_reprovadas', 'perfil', 'status_vinculo', 'situacao_motivo', 'observacao_situacao', 'email', 'gemini_email', 'telefone_1', 'telefone_2', 'data_nascimento', 'matricula', 'periodo_atual', 'qtd_periodos', 'modalidade']
-    _cols_riaf_final = [c for c in colunas_riaf_exp if c in df_riaf.columns and c not in ['tipo_documento', 'Documento Tipo']]
+    #  A LETRA DE CADA COLUNA VEM DA ORDEM DA ABA `Riaf`, então quem manda é a própria aba.
+    #  Havia aqui uma segunda lista, escrita à mão, com a ordem que se esperava dela — e essa
+    #  lista não tinha `gemini_curso`, que a aba passou a escrever na 22ª posição. Uma coluna
+    #  a menos na contagem empurra em uma casa TODAS as letras dali para a frente, e o
+    #  relatório continua bonito somando a coluna vizinha: `total_bolsa_paga` virava
+    #  `ultimo_valor_pago_ref` (a mensalidade no lugar do semestre inteiro), `status_vinculo`
+    #  virava `perfil` (Ativos e Inativos zerados) e `soma_valor_beneficio` virava
+    #  `valor_beneficio`. Ao contrário do Contrato, que é reordenado por
+    #  `COLUNAS_ABA_DOCUMENTO` antes de ser escrito, a aba `Riaf` sai na ordem do DataFrame
+    #  (ver `montar_abas_de_dados`) — por isso a ordem chega por parâmetro em vez de lista fixa.
+    _cols_riaf_final = [c for c in (list(df_riaf.columns) if colunas_da_aba is None
+                                    else colunas_da_aba)
+                        if c not in ['tipo_documento', 'Documento Tipo']]
     
     def _get_col_r(n):
         if n in _cols_riaf_final: return col_to_letter(_cols_riaf_final.index(n))
@@ -4502,7 +4518,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                 # `qtd_pagtos_retroativos` e `último_valor_pago_referencia` entram por causa de
                 # `sem_repasse_liquido`, logo abaixo: sem elas o filtro só sabe QUANTOS lançamentos
                 # existem, não quanto sobrou depois dos cancelamentos.
-                cols_fin = ['uni_codigo', 'semestre', 'valor_financiamento', 'valor_beneficio', 'qtd_pagtos', 'qtd_pagtos_retroativos', 'último_valor_pago_referencia', 'matricula', 'modalidade', 'email', 'telefone_1', 'telefone_2', 'data_nascimento', 'periodo_atual', 'periodo_quantidade']
+                cols_fin = ['uni_codigo', 'semestre', 'valor_financiamento', 'valor_beneficio', 'qtd_pagtos', 'qtd_pagtos_retroativos', 'último_valor_pago_referencia', 'matricula', 'modalidade_aluno', 'modalidade_ies', 'email', 'telefone_1', 'telefone_2', 'data_nascimento', 'periodo_atual', 'periodo_quantidade']
                 cols_fin = [c for c in cols_fin if c in df_financas.columns and (c not in df_ativos.columns or c in ['uni_codigo', 'semestre'])]
                 df_fin_reduzido = df_financas[cols_fin].drop_duplicates(subset=['uni_codigo', 'semestre'], keep='last').copy()
                 df_fin_reduzido['semestre'] = df_fin_reduzido['semestre'].astype(str).str.strip().str.replace('/', '-')
@@ -4645,7 +4661,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                             'Curso': limpar_texto_geral(row['CUR_NOME']), 'Documento Tipo': row['tipo_original']
                         }
                         for col_orig, col_dest in [
-                            ('matricula', 'Matricula'), ('modalidade', 'modalidade'), 
+                            ('matricula', 'Matricula'), ('modalidade_aluno', 'modalidade_aluno'), ('modalidade_ies', 'modalidade_ies'), 
                             ('email', 'E-mail'), ('telefone_1', 'Telefone 1'), ('telefone_2', 'Telefone 2'),
                             ('data_nascimento', 'Data nascimento'), ('periodo_atual', 'Período atual'),
                             ('periodo_quantidade', 'Período quantidade')
@@ -4705,7 +4721,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                                 'Curso': limpar_texto_geral(row['CUR_NOME']), 'Documento Tipo': DOC_RIAF
                             }
                             for col_orig, col_dest in [
-                                ('matricula', 'Matricula'), ('modalidade', 'modalidade'), 
+                                ('matricula', 'Matricula'), ('modalidade_aluno', 'modalidade_aluno'), ('modalidade_ies', 'modalidade_ies'), 
                                 ('email', 'E-mail'), ('telefone_1', 'Telefone 1'), ('telefone_2', 'Telefone 2'),
                                 ('data_nascimento', 'Data nascimento'), ('periodo_atual', 'Período atual'),
                                 ('periodo_quantidade', 'Período quantidade')
@@ -5032,7 +5048,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             'Gemini Modalidade', 'Gemini Email', 'Gemini Telefone', 'Gemini Periodo', 'Gemini Quantidade Periodos',
             'Gemini Tipo Bolsa', 'Data nascimento', 'E-mail', 'Telefone 1', 'Telefone 2', 'Período atual',
             'Período quantidade', 'Matricula', 'Ins. Cnpj', 'Ins. Nome Fantasia', 'Ins. Mantenedora',
-            'Modalidade', 'Matricula C/ Desconto', 'Matricula S/ Desconto', 'data_create', 'Processado',
+            'Modalidade Aluno', 'Modalidade IES', 'Matricula C/ Desconto', 'Matricula S/ Desconto', 'data_create', 'Processado',
             'Qtde Token', 'gemini_vigencia', 'gemini_clausulas', 'gemini_recisao', 'gemini_cnpj_mantenedora',
             'gemini_documentos_beneficio', 'gemini_cnpj_banco', 'gemini_numero', 'gemini_numero_semestres',
             'gemini_semestres_feitos', 'gemini_semestres_financiados', 'gemini_valor_limite_credito',
@@ -5129,7 +5145,8 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             'Bolsa Posterior': 'bolsa_posterior',
             'tipo_bolsa_final': 'tipo_bolsa_final',
             'Gemini Tipo Bolsa': 'gemini_tipo_bolsa',
-            'Modalidade': 'modalidade',
+            'Modalidade Aluno': 'modalidade_aluno',
+            'Modalidade IES': 'modalidade_ies',
             'Gemini Modalidade': 'gemini_modalidade',
             'qual_beneficio': 'qual_beneficio',
             'Gemini Beneficio Nome': 'gemini_nome_beneficio',
@@ -5238,7 +5255,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                 'processar', 'qtd_token', 'qtd_disciplinas_matriculadas', 'qtd_disciplinas_reprovadas', 
                 'perfil', 'status_vinculo', 'situacao_motivo', 'observacao_situacao', 'email', 
                 'gemini_email', 'telefone_1', 'telefone_2', 'data_nascimento', 'matricula', 
-                'periodo_atual', 'qtd_periodos', 'modalidade'
+                'periodo_atual', 'qtd_periodos', 'modalidade_aluno', 'modalidade_ies'
             ]
             
             for c in colunas_riaf:
@@ -5302,7 +5319,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             'qtd_disciplinas_matriculadas', 'qtd_disciplinas_reprovadas', 
             'perfil', 'status_vinculo', 'situacao_motivo', 'observacao_situacao', 
             'email', 'telefone_1', 'telefone_2', 'data_nascimento', 'matricula', 
-            'periodo_atual', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade'
+            'periodo_atual', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies'
         ]
         
         AVISO_VAZIO = "Nenhum documento encontrado ou processado para este tipo"
@@ -5509,7 +5526,10 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             if gerar_relatorio_riaf:
                 print(f"[GGCI       | GERANDO       | RIAF  ] Relatório RIAF IES...")
                 if sems_riaf:
-                    gerar_aba_relatorio_riaf(writer, df_riaf, sems_riaf)
+                    #  A aba `Riaf` sai com as colunas do DataFrame menos as de check, e é
+                    #  dessa ordem que as fórmulas do relatório tiram a letra de cada coluna.
+                    colunas_aba_riaf = [c for c in df_riaf.columns if c not in COLS_CHECK]
+                    gerar_aba_relatorio_riaf(writer, df_riaf, sems_riaf, colunas_aba_riaf)
                 else:
                     print(f"[GGCI       | AVISO         | RIAF  ] Nenhum semestre configurado para RIAF.")
 

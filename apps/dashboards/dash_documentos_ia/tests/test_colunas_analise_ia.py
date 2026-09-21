@@ -20,8 +20,9 @@ coluna (`_rotulo_de_coluna`), então renomear a coluna é o que muda o que se l�
 renomeio perdido não derruba nada — só passa a escrever outra palavra.
 
 O QUE ESTE TESTE GARANTE: cada documento sai com as SUAS colunas, na ordem pedida, com
-os seus renomeios; o que é do RIAF não aparece no Contrato; os documentos sem recorte
-passam inteiros; e coluna ainda não gravada pelo motor é pulada sem erro.
+os seus renomeios; o que é do RIAF não aparece no Contrato; o Histórico, cujo recorte
+só reordena, não perde coluna nenhuma no caminho; Benefício e Financiamento, que não
+têm recorte, passam inteiros; e coluna ainda não gravada pelo motor é pulada sem erro.
 """
 import os
 import sys
@@ -65,7 +66,7 @@ COLUNAS_NO_PARQUET_RIAF = [
     'processar', 'qtd_token', 'qtd_disciplinas_matriculadas',
     'qtd_disciplinas_reprovadas', 'perfil', 'status_vinculo', 'situacao_motivo',
     'observacao_situacao', 'email', 'gemini_email', 'telefone_1', 'telefone_2',
-    'data_nascimento', 'matricula', 'periodo_atual', 'qtd_periodos', 'modalidade',
+    'data_nascimento', 'matricula', 'periodo_atual', 'qtd_periodos', 'modalidade_aluno', 'modalidade_ies',
     'documento_ausente', 'veredito_documento',
 ]
 
@@ -85,8 +86,26 @@ COLUNAS_NO_PARQUET_CONTRATO = [
     'processar', 'qtd_token', 'qtd_disciplinas_matriculadas',
     'qtd_disciplinas_reprovadas', 'perfil', 'status_vinculo', 'situacao_motivo',
     'observacao_situacao', 'email', 'telefone_1', 'telefone_2', 'data_nascimento',
-    'matricula', 'periodo_atual', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade',
+    'matricula', 'periodo_atual', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies',
     'documento_ausente', 'veredito_documento',
+]
+
+
+# O mesmo, para o Histórico. Note que ele NÃO tem `documento_ausente` nem
+# `veredito_documento`: cada aba tem o seu conjunto, e por isso a lista do Contrato não
+# serve de dublê aqui.
+COLUNAS_NO_PARQUET_HISTORICO = [
+    'status_ia', 'gemini_inconsistencia', 'semestre', 'bolsista', 'inscricao',
+    'inscricao_anterior', 'inscricao_posterior', 'cpf', 'gemini_cpf', 'tipo_bolsa_final',
+    'mudou_bolsa', 'bolsa_anterior', 'bolsa_posterior', 'faculdade', 'mudou_ies',
+    'ies_anterior', 'ies_posterior', 'curso', 'gemini_curso', 'ultimo_valor_pago_ref',
+    'total_bolsa_paga', 'qtd_pagtos', 'qtd_pagtos_retroativos', 'data_coleta',
+    'data_coleta_atual_sistema', 'data_create', 'data_processamento', 'processado',
+    'processar', 'qtd_token', 'qtd_disciplinas_matriculadas',
+    'qtd_disciplinas_reprovadas', 'perfil', 'status_vinculo', 'situacao_motivo',
+    'observacao_situacao', 'situacao_motivo_atual', 'observacao_situacao_atual',
+    'email', 'telefone_1', 'telefone_2', 'data_nascimento',
+    'matricula', 'periodo_atual', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies',
 ]
 
 
@@ -102,25 +121,39 @@ class TestRecorteDoRiaf(unittest.TestCase):
         self.assertEqual(list(saida.columns), [
             'status_ia', 'gemini_inconsistencia', 'semestre', 'bolsista', 'inscricao',
             'inscricao_anterior', 'inscricao_posterior', 'cpf', 'gemini_cpf',
-            'bolsa', 'mudou_bolsa', 'bolsa_anterior', 'bolsa_posterior',
-            'mudou_ies', 'ies_anterior', 'ies_posterior', 'faculdade', 'ins_cnpj',
-            'ins_mantenedora', 'curso', 'gemini_curso',
+            'bolsa', 'gemini_tipo_bolsa_final', 'mudou_bolsa', 'bolsa_anterior',
+            'bolsa_posterior', 'mudou_ies', 'ies_anterior', 'ies_posterior', 'faculdade',
+            'ins_cnpj', 'ins_mantenedora', 'curso', 'gemini_curso',
+            'gemini_assinatura_aluno', 'gemini_assinatura_ies',
             'ultimo_valor_pago_ref', 'total_bolsa_paga', 'qtd_pagtos',
             'qtd_pagtos_retroativos_(100%)', 'matricula_sem_desc',
             'gemini_matricula_sem_desc', 'matricula_sd_doc', 'matricula_com_desc',
             'gemini_matricula_com_desc', 'matricula_cd_doc', 'mensalidade_sem_desc',
             'gemini_mensalidade_sem_desc', 'msd_doc', 'mensalidade_com_desc',
             'gemini_mensalidade_com_desc', 'mcd_doc', 'valor_beneficio',
-            'soma_valor_beneficio', 'beneficio', 'valor_financiamento',
+            'gemini_valor_beneficio', 'soma_valor_beneficio', 'beneficio',
+            'valor_financiamento', 'gemini_valor_financiamento',
             'soma_valor_financiamento', 'financiamento', 'soma_ovg_devia_pagar_sis',
             'soma_ovg_devia_pagar_ia', 'soma_prejuizo_ovg', 'soma_economia_ovg',
             'diagnostico_financeiro_final', 'data_coleta', 'data_coleta_atual_sistema',
             'data_create', 'data_processamento', 'processado', 'processar', 'qtd_token',
             'qtd_disciplinas_matriculadas', 'qtd_disciplinas_reprovadas', 'perfil',
             'status_vinculo', 'situacao_motivo', 'observacao_situacao', 'email',
-            'telefone_1', 'telefone_2', 'data_nascimento', 'matricula', 'periodo_atual',
-            'qtd_periodos', 'modalidade',
+            'gemini_email', 'telefone_1', 'telefone_2', 'data_nascimento', 'matricula',
+            'periodo_atual', 'qtd_periodos', 'modalidade_aluno', 'modalidade_ies',
         ])
+
+    def test_toda_coluna_da_ia_do_riaf_esta_na_tela(self):
+        """A regra que manda no recorte: toda `gemini_*` da aba entra, sem exceção útil.
+
+        A tela existe para pôr lado a lado o que o sistema esperava e o que a IA leu no
+        documento; uma `gemini_*` de fora deixa a coluna do sistema sozinha, respondendo
+        a metade de uma comparação. `gemini_semestre` é a única fora, e não por recorte:
+        o prompt do RIAF não pergunta o semestre e ela vem vazia nas 35.352 linhas.
+        """
+        de_fora = [c for c in COLUNAS_NO_PARQUET_RIAF
+                   if c.startswith('gemini_') and c not in COLUNAS_ANALISE_IA['RIAF']]
+        self.assertEqual(de_fora, ['gemini_semestre'])
 
     def test_valores_acompanham_o_renomeio(self):
         """Renomear é só o rótulo: o dado sob `bolsa` continua sendo `tipo_bolsa_final`."""
@@ -136,14 +169,15 @@ class TestRecorteDoRiaf(unittest.TestCase):
             self.assertIn(nome, COLUNAS_NO_PARQUET_RIAF, nome)
 
     def test_o_que_ficou_de_fora_e_o_que_se_espera(self):
-        """As nove colunas que o RIAF tem no Parquet e que esta tela não pede."""
+        """As três colunas que o RIAF tem no Parquet e que esta tela não pede.
+
+        `documento_ausente` e `veredito_documento` são controle do motor, não dado do
+        beneficiário. `gemini_semestre` fica de fora pelo motivo do teste acima.
+        """
         de_fora = [c for c in COLUNAS_NO_PARQUET_RIAF
                    if c not in COLUNAS_ANALISE_IA['RIAF']]
         self.assertEqual(de_fora, [
-            'gemini_semestre', 'gemini_tipo_bolsa_final', 'gemini_assinatura_aluno',
-            'gemini_assinatura_ies', 'gemini_valor_beneficio',
-            'gemini_valor_financiamento', 'gemini_email', 'documento_ausente',
-            'veredito_documento',
+            'gemini_semestre', 'documento_ausente', 'veredito_documento',
         ])
 
     def test_coluna_ainda_nao_gravada_e_pulada(self):
@@ -176,15 +210,45 @@ class TestNaoMisturaComOsOutrosDocumentos(unittest.TestCase):
             'inscricao_anterior', 'inscricao_posterior', 'cpf', 'gemini_cpf',
             'bolsa', 'mudou_bolsa',
         ])
-        self.assertEqual(list(saida.columns)[-1], 'modalidade')
+        self.assertEqual(list(saida.columns)[-2:], ['modalidade_aluno', 'modalidade_ies'])
         self.assertIn('qtd_pagtos_retroativos_(100%)', saida.columns)
 
     def test_documento_sem_recorte_passa_inteiro(self):
-        """Histórico, Benefício e Financiamento continuam com todas as colunas deles."""
+        """Benefício e Financiamento continuam com todas as colunas deles."""
         entrada = aba_falsa(COLUNAS_NO_PARQUET_CONTRATO)
-        for rotulo in ('HISTÓRICO', 'BENEFÍCIOS', 'FINANCIAMENTO'):
+        for rotulo in ('BENEFÍCIOS', 'FINANCIAMENTO'):
             saida = _formatar_colunas_analise_ia(entrada, rotulo)
             self.assertEqual(list(saida.columns), COLUNAS_NO_PARQUET_CONTRATO, rotulo)
+
+    def test_historico_so_reordena_e_nao_perde_coluna(self):
+        """O recorte do Histórico não corta nada: ele existe só para agrupar.
+
+        É a diferença que importa entre ele e os outros dois recortes. `faculdade` sobe
+        para junto de `mudou_ies`/`ies_anterior`/`ies_posterior` e `gemini_concluiu_curso`
+        fica ao lado de `periodo_atual`/`qtd_periodos`, que é o par que os dois gráficos
+        novos comparam. Cortar coluna aqui seria acidente, não recorte.
+
+        RENOMEIA DUAS, e só renomeia: `situacao_motivo` e `observacao_situacao` ganham o
+        sufixo "no período" para não serem lidas como a situação de hoje, que chegou nas
+        duas colunas ao lado. Nenhuma das 46 fica pelo caminho.
+        """
+        saida = _formatar_colunas_analise_ia(
+            aba_falsa(COLUNAS_NO_PARQUET_HISTORICO), 'HISTÓRICO')
+        esperadas = [RENOMES_ANALISE_IA['HISTÓRICO'].get(c, c)
+                     for c in COLUNAS_NO_PARQUET_HISTORICO]
+        self.assertEqual(sorted(saida.columns), sorted(esperadas))
+        ordem = list(saida.columns)
+        self.assertEqual(ordem[13:18],
+                         ['mudou_ies', 'ies_anterior', 'ies_posterior', 'faculdade',
+                          'curso'])
+        self.assertEqual(ordem[-3:],
+                         ['qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies'])
+        #  AS QUATRO EM SEQUÊNCIA: a do período e a de hoje, lado a lado, que é o
+        #  contraste que a tela existe para mostrar.
+        i = ordem.index('situacao_motivo_no_periodo')
+        self.assertEqual(ordem[i:i + 4],
+                         ['situacao_motivo_no_periodo', 'observacao_situacao_no_periodo',
+                          'situacao_motivo_atual', 'observacao_situacao_atual'])
 
     def test_renomeio_do_riaf_nao_escapa_para_os_outros(self):
         """`cnpj_ies` só vira `ins_cnpj` no RIAF."""

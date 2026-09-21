@@ -37,7 +37,7 @@ contexto: |
   - CURTO-CIRCUITO FINANCEIRO: Se o valor extraído no documento for vazio (""), É ESTRITAMENTE PROIBIDO realizar comparações matemáticas com o valor do sistema. Apenas retorne "". A decisão de marcar 'valido: 0' ou 'valido: 1' obedecerá ÚNICA E EXCLUSIVAMENTE às regras da seção 'logica_de_campo'.
 
   7. MENTALIDADE DE FORMALIDADE (Assinaturas):
-  - O RIAF só é válido se estiver assinado pelo Aluno E pela IES (física ou digital gov.br). Para estes campos o conteúdo é "sim" se tiver assinatura, e "Não localizado" se não tiver.
+  - O RIAF só é válido se estiver assinado pelo Aluno E pela IES (física ou digital gov.br). Para estes campos o conteúdo é "sim" se tiver assinatura, e "" se não tiver.
 
   8. MENTALIDADE DE DIAGNÓSTICO E PRECISÃO DE ERRO (Trava de Lote):
   - NUNCA invente frases de erro. Use ESTRITAMENTE o 'catalogo_erros'.
@@ -48,8 +48,7 @@ contexto: |
 
 # TIPAGEM DE DADOS E TRATAMENTO DE AUSÊNCIA
 tipagem_ausencia:
-  - 'Campos Numéricos/Financeiros Não Localizados: Retorne EXCLUSIVAMENTE string vazia "". JAMAIS retorne null ou textos. Cancele qualquer validação matemática.'
-  - 'Campos de Texto Não Localizados (Nomes, Curso, Assinaturas): Retorne EXATAMENTE "Não localizado".'
+  - 'Qualquer Campo Não Localizado (seja Numérico, Texto ou Assinatura): Retorne EXCLUSIVAMENTE string vazia "". JAMAIS retorne null ou "Não localizado". Cancele validações matemáticas para números vazios.'
 
 # LOGICA DE CAMPO E REGRAS DE VALIDEZ (STATUS GLOBAL)
 logica_de_campo:
@@ -74,7 +73,7 @@ logica_de_campo:
     lista:
       - 'valor_outros_beneficios', 'nome_outros_beneficios', 'valor_financiamento', 'nome_financiamento'
     estado_inicial: 'Iniciam com valido: 0.'
-    regra_ausencia_silenciosa: 'Se NÃO localizados no documento, retorne "" (ou "Não localizado"). MANTENHA valido: 0. Isso é um "Soft Fail" que NÃO gera inconsistência e NÃO altera o status global.'
+    regra_ausencia_silenciosa: 'Se NÃO localizados no documento, retorne "". MANTENHA valido: 0. Isso é um "Soft Fail" que NÃO gera inconsistência e NÃO altera o status global.'
     regra_presenca_obrigatoria: 'ESCALONAMENTO DINÂMICO: Se o dado EXISTIR no documento, ele passa a agir como OBRIGATÓRIO. Se houver input do sistema e ele divergir (ex: input=556.10, doc=556.00), MANTENHA valido: 0, registre o erro no catálogo e TRAVE O STATUS GLOBAL EM "invalido".'
     regra_sucesso: 'Se existir e for idêntico ao input (ou capturado sem input via Captura Livre), marque valido: 1.'
 
@@ -83,7 +82,7 @@ logica_de_campo:
       - 'nome_aluno', 'matricula_aluno', 'inscricao_ovg', 'razao_social_ies', 'mantenedora_ies', 'data_nascimento_aluno', 'telefone_aluno', 'email_aluno', 'quantidade_periodos', 'periodo_atual', 'municipio_ies'
     estado_inicial: 'Iniciam com valido: 0.'
     regra_sucesso: 'Se o dado for localizado, aplique a normalização e altere para valido: 1.'
-    regra_ausencia_silenciosa: 'Se vazio no documento, retorne string vazia ou "Não localizado". MANTENHA valido: 0. (Soft Fail). Não gera inconsistência.'
+    regra_ausencia_silenciosa: 'Se vazio no documento, retorne string vazia "". MANTENHA valido: 0. (Soft Fail). Não gera inconsistência.'
     regra_divergencia_real: 'Se divergir do input, MANTENHA valido: 0 e registre a inconsistência no nivel_baixo. Isso NÃO impede o status global de virar "valido".'
 
   excecoes_de_curto_circuito:
@@ -124,8 +123,8 @@ regras_gerais:
 catalogo_erros:
   nivel_critico:
     - 'Tipo de Documento inválido'
-    - 'CPF do aluno não localizado no documento'
-    - 'CPF do aluno diverge do sistema'
+    - 'CPF não localizado no documento'
+    - 'CPF do documento diverge do sistema'
   nivel_alto: # Erros em campos Obrigatórios / Institucionais (Travam status em invalido)
     - 'CNPJ da IES não localizado no documento'
     - 'CNPJ da IES diverge do sistema'
@@ -133,8 +132,8 @@ catalogo_erros:
     - 'Nome fantasia da IES diverge do sistema'
     - 'Curso não localizado no documento'
     - 'Curso diverge do sistema'
-    - 'Semestre de referência não localizado no documento'
-    - 'Semestre de referência diverge do sistema'
+    - ''
+    - 'Semestre diverge com sistema'
     - 'Tipo de bolsa não localizado no documento'
     - 'Tipo de bolsa diverge do sistema'
     - 'Modalidade não localizada no documento'

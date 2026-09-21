@@ -230,7 +230,7 @@ class TestParidadeComAnaliseIA(SimpleTestCase):
         for caminho in (GGCI_DASH, GGCI_ANALISE):
             fonte = self._fonte(caminho)
             trecho = fonte.split('mapping_fallback = {')[1].split('}')[0]
-            for chave in ("'modalidade'", "'periodo_atual'", "'periodo_quantidade'"):
+            for chave in ("'modalidade_aluno', 'modalidade_ies'", "'periodo_atual'", "'periodo_quantidade'"):
                 self.assertIn(chave, trecho,
                               f'{chave} ausente do mapping_fallback em {caminho}')
 

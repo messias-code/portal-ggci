@@ -293,6 +293,7 @@ def extrair_documento_scriptcase(tarefa, doc_config, semestre_str, is_pendentes=
                                 log_pendentes_origem = "da PY_ggci_pendentes_historico_geral"
                                 
                             # Adiciona inscrições forçadas pelo usuário (Processados Hoje)
+                            tem_forcada = False
                             if isinstance(inscricoes_forcadas, list):
                                 for item in inscricoes_forcadas:
                                     doc_alvo = item.get("documento")
@@ -305,12 +306,12 @@ def extrair_documento_scriptcase(tarefa, doc_config, semestre_str, is_pendentes=
                                         if not sems_alvo or semestre_str in sems_alvo:
                                             forcadas_clean = ",".join([x.strip() for x in lista_forcada.replace('\n', ',').split(',') if x.strip()])
                                             if forcadas_clean:
-                                                if inscricoes_pendentes:
-                                                    inscricoes_pendentes += "," + forcadas_clean
-                                                    log_pendentes_origem += " + Processados Hoje"
-                                                else:
+                                                if not tem_forcada:
                                                     inscricoes_pendentes = forcadas_clean
-                                                    log_pendentes_origem = "dos Processados Hoje"
+                                                    log_pendentes_origem = "APENAS dos Processados Hoje (Atualização Pontual)"
+                                                    tem_forcada = True
+                                                else:
+                                                    inscricoes_pendentes += "," + forcadas_clean
                                 
                             if not inscricoes_pendentes:
                                 print(f"{tag} ⚠️ Nenhuma inscrição pendente na view para este semestre. Pulando extração.")
@@ -905,8 +906,9 @@ def executar(docs_selecionados=None, periodos_por_doc=None, processo_id=None, in
     tarefas_menus = [
         {"nome_menu": "Análise Contratos Processados", "pasta_raiz": f"{base_dir}/analise_documentos_processados"},
         {"nome_menu": "Agendar Processamento", "pasta_raiz": f"{base_dir}/analise_documentos_agendar_processamentos"},
-        {"nome_menu": "Relatório de Contratos", "pasta_raiz": f"{base_dir}/cobranca_do_site"},
     ]
+    if not inscricoes_forcadas:
+        tarefas_menus.append({"nome_menu": "Relatório de Contratos", "pasta_raiz": f"{base_dir}/cobranca_do_site"})
     pasta_pagamentos = f"{base_dir}/analise_pagamentos"
 
     # // Limpeza da área de staging

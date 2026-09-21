@@ -43,10 +43,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia.css' %}?v=20260911f">
+    <!--
+        Flatpickr: o calendário do filtro de data da aba Análise IA. A folha dele
+        vem ANTES da desta tela de propósito — `.docia-calendario` reescreve o
+        desenho inteiro do widget e precisa ganhar da folha original na cascata.
+        Versão presa: sem ela um `major` novo no CDN repinta o calendário sozinho.
+    -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+    
+    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia.css' %}?v=20260921c">
 
     <!-- Camada escura desta tela: o que os arquivos compartilhados não alcançam -->
-    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia-eleitoral.css' %}?v=20260911f">
+    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia-eleitoral.css' %}?v=20260921c">
 </head>
 
 <body class="grid-bg bg-[#f8f6fb] text-gray-800 fixed inset-0 p-4 lg:p-6 flex transition-colors duration-500 overflow-hidden">
@@ -707,24 +715,69 @@
                                 aparece quando a janela aperta, e o que ele tira vem do
                                 card das inconsistências, que a 1280px ainda tem 700px.
                             -->
-                            <div class="flex flex-col gap-3" style="flex: 0.7 1 0; min-width: 250px; min-height: 0;">
+                            <div class="flex flex-col gap-3" style="flex: 1.15 1 0; min-width: 250px; min-height: 0;">
                                 <div class="docia-card-doc bg-white border border-gray-200 shadow-sm rounded-2xl py-3 px-2 flex flex-col"
-                                     style="flex: 1 1 0; min-width: 0; min-height: 0;">
+                                     id="ia-card-msd" style="flex: 1 1 0; min-width: 0; min-height: 0;">
                                     <h3 class="text-sm font-extrabold text-gray-700 m-0 text-center shrink-0" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">MENSALIDADE SEM DESCONTO</h3>
                                     <p class="docia-grafico-base text-[10px] text-gray-400 text-center m-0 shrink-0" id="ia-base-msd"></p>
                                     <div class="docia-grafico-ia w-full flex justify-center items-center" id="ia-gr-msd" style="flex: 1 1 0; min-height: 0;"></div>
                                 </div>
 
                                 <div class="docia-card-doc bg-white border border-gray-200 shadow-sm rounded-2xl py-3 px-2 flex flex-col"
-                                     style="flex: 1 1 0; min-width: 0; min-height: 0;">
+                                     id="ia-card-mcd" style="flex: 1 1 0; min-width: 0; min-height: 0;">
                                     <h3 class="text-sm font-extrabold text-gray-700 m-0 text-center shrink-0" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">MENSALIDADE COM DESCONTO</h3>
                                     <p class="docia-grafico-base text-[10px] text-gray-400 text-center m-0 shrink-0" id="ia-base-mcd"></p>
                                     <div class="docia-grafico-ia w-full flex justify-center items-center" id="ia-gr-mcd" style="flex: 1 1 0; min-height: 0;"></div>
                                 </div>
+
+                                <!--
+                                    OS DOIS CARDS DO HISTÓRICO, que ocupam esta mesma
+                                    coluna quando o documento é o Histórico. São CARDS
+                                    PRÓPRIOS, e não os de mensalidade com outro título e
+                                    outros dados dentro: um é rosca com legenda clicável e
+                                    o outro é barra deitada com linha de base, enquanto os
+                                    de mensalidade são dois gráficos gêmeos sem legenda.
+                                    Trocar o conteúdo por dentro obrigaria cada peça do
+                                    card a saber de qual documento ela é — e a rosca
+                                    herdaria a caixa medida para as barras.
+
+                                    QUEM TROCA É O JS (ver `mostrarCardsDo` em
+                                    `analise_ia.js`), porque o documento se escolhe sem
+                                    recarregar a página. Nascem escondidos: a tela abre no
+                                    CONTRATO, e um card vazio no primeiro quadro pisca.
+
+                                    O HISTÓRICO NÃO CARREGA MENSALIDADE (`tem_dado` falso),
+                                    então o que estes dois substituem não é dado nenhum —
+                                    era o recado "este documento não traz valor de
+                                    mensalidade" repetido em dois cards.
+                                -->
+                                <div class="docia-card-doc bg-white border border-gray-200 shadow-sm rounded-2xl py-3 px-2 flex flex-col hidden"
+                                     id="ia-card-sit" style="flex: 1 1 0; min-width: 0; min-height: 0;">
+                                    <h3 class="text-sm font-extrabold text-gray-700 m-0 text-center shrink-0" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">SITUAÇÃO DO PERÍODO</h3>
+                                    <p class="docia-grafico-base text-[10px] text-gray-400 text-center m-0 shrink-0" id="ia-base-sit"></p>
+                                    <!--
+                                        ANEL E LEGENDA LADO A LADO, como no card das
+                                        inconsistências e ao contrário do veredito: a
+                                        coluna tem metade da altura dos vizinhos (são dois
+                                        cards dividindo o que eles têm inteiro) e a legenda
+                                        embaixo deixaria ao anel uma tira de ~60px.
+                                    -->
+                                    <div class="docia-anel-e-lista docia-anel-e-lista--estreito">
+                                        <div class="docia-grafico-ia flex justify-center items-center" id="ia-gr-sit"></div>
+                                        <div class="docia-legenda docia-legenda--ia docia-legenda--lado" id="ia-legenda-sit"></div>
+                                    </div>
+                                </div>
+
+                                <div class="docia-card-doc bg-white border border-gray-200 shadow-sm rounded-2xl py-3 px-2 flex flex-col hidden"
+                                     id="ia-card-alerta" style="flex: 1 1 0; min-width: 0; min-height: 0;">
+                                    <h3 class="text-sm font-extrabold text-gray-700 m-0 text-center shrink-0" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">ALERTAS DO HISTÓRICO</h3>
+                                    <p class="docia-grafico-base text-[10px] text-gray-400 text-center m-0 shrink-0" id="ia-base-alerta"></p>
+                                    <div class="docia-grafico-ia w-full flex justify-center items-center" id="ia-gr-alerta" style="flex: 1 1 0; min-height: 0;"></div>
+                                </div>
                             </div>
 
                             <div class="docia-card-doc bg-white border border-gray-200 shadow-sm rounded-2xl py-4 px-2 flex flex-col"
-                                 style="flex: 1.8 1 0; min-width: 0; min-height: 0;">
+                                 style="flex: 1.35 1 0; min-width: 0; min-height: 0;">
                                 <h3 class="text-sm font-extrabold text-gray-700 m-0 text-center shrink-0" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">INCONSISTÊNCIAS</h3>
                                 <p class="docia-grafico-base text-[10px] text-gray-400 text-center m-0 mb-1 shrink-0" id="ia-base-inconsistencias"></p>
                                 <!--
@@ -1248,7 +1301,60 @@
                           </div>
                         </div>
 
+                        
                         <section class="docia-filtro-secao">
+                            <div class="docia-filtro-cabecalho">
+                                <h4 class="docia-filtro-titulo">Modalidade</h4>
+                                <span class="docia-filtro-contador" id="contador-modalidade" style="display: none;">0</span>
+                            </div>
+                            <div class="docia-filtro-linha">
+                                <span class="docia-filtro-rotulo">Aluno</span>
+                                <div class="docia-grupo-exclusivo docia-grade-seg grid bg-white border border-gray-300 rounded-xl overflow-hidden divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(3, minmax(0, 1fr));">
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="PRESENCIAL" class="filter-modalidade-aluno peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">Pres</span>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="SEMI-PRESENCIAL" class="filter-modalidade-aluno peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">Semi</span>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="EAD" class="filter-modalidade-aluno peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">EAD</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="docia-filtro-linha">
+                                <span class="docia-filtro-rotulo">IES</span>
+                                <div class="docia-grupo-exclusivo docia-grade-seg grid bg-white border border-gray-300 rounded-xl overflow-hidden divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(3, minmax(0, 1fr));">
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="PRESENCIAL" class="filter-modalidade-ies peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">Pres</span>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="SEMI-PRESENCIAL" class="filter-modalidade-ies peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">Semi</span>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="EAD" class="filter-modalidade-ies peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">EAD</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </section>
+<section class="docia-filtro-secao">
                             <div class="docia-filtro-cabecalho">
                                 <h4 class="docia-filtro-titulo">Instituição</h4>
                                 <span class="docia-filtro-contador" id="contador-ies" style="display: none;">0</span>
@@ -1433,6 +1539,51 @@
                                 </label>
                             </div>
                         </section>
+                        <!--
+                            DATA DE PROCESSAMENTO — UM DIA, e só o dia.
+
+                            A coluna `data_processamento` guarda data E hora
+                            ("09/02/2026 17:54:06"), mas a pergunta que se faz aqui é
+                            sempre de dia inteiro: "o que a IA leu na segunda?". Hora
+                            exigiria saber o minuto de uma execução que roda em lote —
+                            não existe pergunta assim nesta tela.
+
+                            UM CAMPO, e não uma grade de caixinhas como as seções
+                            vizinhas: são centenas de dias distintos no arquivo, e
+                            desenhá-los em botões daria uma barra de rolagem DENTRO da
+                            barra de filtros.
+
+                            O `<input type="date">` CONTINUA AQUI, mas quem se vê na
+                            tela é o campo gêmeo que o flatpickr põe ao lado (`altInput`):
+                            este guarda a data em ISO, que é o formato que a view compara,
+                            e o gêmeo mostra dd/mm/aaaa e abre o calendário. O popup do
+                            nativo é desenhado pelo NAVEGADOR e não aceita CSS nenhum —
+                            nem borda, nem corpo de letra, nem rodapé com botão —, e era
+                            por isso que a seleção não se parecia com o resto da tela.
+
+                            NASCE VAZIO, e vazio é "todos os dias". O `placeholder`
+                            daqui é o que o campo diz em repouso; em foco ele vira o
+                            molde `dd/mm/aaaa`, trocado pelo JS — o `type="date"` não
+                            aceitava `placeholder` nenhum, era o navegador que desenhava
+                            o molde, e não havia como dizer outra coisa no lugar.
+
+                            SEM BOTÃO PRÓPRIO DE LIMPAR: a data tem o X da etiqueta
+                            sobre a tabela, o "Limpar filtros" da faixa e o "Restaurar
+                            padrão" do cabeçalho. Um quarto caminho só teria onde caber
+                            em cima do calendário.
+                        -->
+                        <section class="docia-filtro-secao">
+                            <div class="docia-filtro-cabecalho">
+                                <h4 class="docia-filtro-titulo">Data de processamento</h4>
+                                <span class="docia-filtro-contador" id="contador-data-proc-ia" style="display: none;">0</span>
+                            </div>
+                            <div class="docia-campo-data" id="campo-data-proc-ia">
+                                <i class="fa-regular fa-calendar docia-campo-data__icone" aria-hidden="true"></i>
+                                <input type="date" id="filtro-data-proc-ia" class="docia-campo-data__entrada"
+                                       placeholder="Selecione uma data"
+                                       aria-label="Filtrar pela data de processamento">
+                            </div>
+                        </section>
 
 
 
@@ -1614,7 +1765,60 @@
                             SELEÇÃO PRÓPRIA: o modal grava na aba que está aberta. Ver
                             `dociaIESAtivas` / `dociaTrocarAbaIES` em `dash_documentos_ia.js`.
                         -->
+                        
                         <section class="docia-filtro-secao">
+                            <div class="docia-filtro-cabecalho">
+                                <h4 class="docia-filtro-titulo">Modalidade</h4>
+                                <span class="docia-filtro-contador" id="contador-modalidade-ia" style="display: none;">0</span>
+                            </div>
+                            <div class="docia-filtro-linha">
+                                <span class="docia-filtro-rotulo">Aluno</span>
+                                <div class="docia-grupo-exclusivo docia-grade-seg grid bg-white border border-gray-300 rounded-xl overflow-hidden divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(3, minmax(0, 1fr));">
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="PRESENCIAL" class="filter-modalidade-aluno peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">Pres</span>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="SEMI-PRESENCIAL" class="filter-modalidade-aluno peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">Semi</span>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="EAD" class="filter-modalidade-aluno peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">EAD</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="docia-filtro-linha">
+                                <span class="docia-filtro-rotulo">IES</span>
+                                <div class="docia-grupo-exclusivo docia-grade-seg grid bg-white border border-gray-300 rounded-xl overflow-hidden divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(3, minmax(0, 1fr));">
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="PRESENCIAL" class="filter-modalidade-ies peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">Pres</span>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="SEMI-PRESENCIAL" class="filter-modalidade-ies peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">Semi</span>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer block relative">
+                                        <input type="checkbox" value="EAD" class="filter-modalidade-ies peer sr-only">
+                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                            <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">EAD</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </section>
+<section class="docia-filtro-secao">
                             <div class="docia-filtro-cabecalho">
                                 <h4 class="docia-filtro-titulo">Instituição</h4>
                                 <span class="docia-filtro-contador" id="contador-ies-ia" style="display: none;">0</span>
@@ -2108,12 +2312,21 @@
     -->
     <script src="{% static 'js/motor-ocupado.js' %}?v=1"></script>
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-    <script src="{% static 'dash_documentos_ia/js/dash_documentos_ia.js' %}?v=20260909c"></script>
+    <script src="{% static 'dash_documentos_ia/js/dash_documentos_ia.js' %}?v=20260916b"></script>
     <!--
         A ABA ANÁLISE IA. Depois de `dash_documentos_ia.js` porque o filtro de
         instituições e o console de atualização vivem lá e são compartilhados; este
         arquivo só monta a segunda aba.
     -->
-    <script src="{% static 'dash_documentos_ia/js/analise_ia.js' %}?v=20260909d"></script>
+    <!--
+        O FLATPICKR VEM ANTES DE `analise_ia.js`, que o chama no `iniciar()`. Só a
+        folha de estilo dele estava na página: o módulo inteiro morria num
+        `flatpickr is not defined` no meio do arranque, e o que vinha depois da
+        chamada — "Restaurar Padrão", troca de tema e a primeira consulta da aba —
+        nunca chegava a ser registrado.
+    -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/pt.js"></script>
+    <script src="{% static 'dash_documentos_ia/js/analise_ia.js' %}?v=20260921d"></script>
 </body>
 </html>

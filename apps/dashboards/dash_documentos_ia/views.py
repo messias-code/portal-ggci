@@ -619,6 +619,8 @@ FILTROS_DE_PESSOA = (
     ('bolsa', 'tipo_bolsa_final'),
     ('mudou_ies', 'mudou_ies'),
     ('mudou_bolsa', 'mudou_bolsa'),
+    ('modalidade_aluno', 'modalidade_aluno'),
+    ('modalidade_ies', 'modalidade_ies'),
 )
 
 
@@ -627,7 +629,8 @@ def _aplicar_filtros(df, request):
     O QUE FAZ: aplica os filtros da barra lateral e da legenda.
     COMO FUNCIONA: recortes independentes, todos opcionais — `semestres`
         (checkboxes), `ies` (modal, separado por `||` porque nome de faculdade tem
-        vírgula), `status` (legenda das roscas) e os quatro de PESSOA
+        vírgula), `status` (legenda das roscas), `data_proc` (um dia, em ISO) e os
+        quatro de PESSOA
         (`FILTROS_DE_PESSOA`). Ausência de parâmetro significa "tudo", que é o
         estado inicial da tela.
 
@@ -684,6 +687,22 @@ def _aplicar_filtros(df, request):
         elif alvo == {'N'}:
             df = df[~(mask_benef | mask_finan)]
 
+    #  DATA DE PROCESSAMENTO — UM DIA, sem hora.
+    #
+    #  A coluna guarda data E hora como TEXTO ("09/02/2026 17:54:06"), e o que nunca
+    #  passou pela IA como "-". A tela manda o dia em ISO (`data_proc=2026-02-09`),
+    #  que é o valor cru de um `<input type="date">` e a única grafia que não troca de
+    #  significado entre locales; a comparação acontece na grafia do ARQUIVO, cortando
+    #  os dez primeiros caracteres — converter 66 mil textos em data a cada clique
+    #  custaria mais do que a tela inteira desenha.
+    #
+    #  O "-" SAI QUANDO UM DIA É ESCOLHIDO, e é o esperado: a pergunta aqui é "o que
+    #  rodou neste dia", e quem não rodou não tem dia nenhum.
+    data_proc = (request.GET.get('data_proc') or '').strip()
+    if data_proc and 'data_processamento' in df.columns:
+        partes = data_proc.split('-')
+        dia = '/'.join(reversed(partes)) if len(partes) == 3 else data_proc
+        df = df[df['data_processamento'].astype('string').str.slice(0, 10) == dia]
 
     return df
 
@@ -923,7 +942,8 @@ COLUNAS_TABELA = [
     'matricula',
     'periodo_atual',
     'qtd_periodos',
-    'modalidade',
+    'modalidade_aluno',
+    'modalidade_ies',
 ]
 
 # As que realmente existem no Parquet — as duas derivadas saem da leitura.
@@ -942,6 +962,7 @@ COLUNAS_DE_BUSCA = ['inscricao', 'inscricao_anterior', 'inscricao_posterior',
 # servidor, comparando contra o valor cru, nunca encontraria. Quem copia o que vê tem
 # de conseguir colar no campo de busca.
 COLUNAS_IDENTIFICADORAS = ['inscricao', 'inscricao_anterior', 'inscricao_posterior', 'cpf', 'gemini_cpf', 'matricula', 'gemini_matricula', 'telefone_1', 'telefone_2', 'gemini_telefone']
+COLUNAS_INTEIRAS = ['periodo_atual', 'qtd_periodos']
 
 # Colunas que são SEMPRE texto, mesmo parecendo número. Inscrição, CPF, matrícula e
 # telefone são identificadores: ninguém soma dois CPFs, e tratá-los como número perde o
@@ -1295,6 +1316,9 @@ def _montar_linhas(df):
     for coluna in COLUNAS_IDENTIFICADORAS:
         if coluna in recorte.columns:
             recorte[coluna] = recorte[coluna].astype('string')
+    for coluna in COLUNAS_INTEIRAS:
+        if coluna in recorte.columns:
+            recorte[coluna] = pd.to_numeric(recorte[coluna], errors='coerce').astype('Int64')
     recorte = recorte[COLUNAS_TABELA]
 
     # isso o `NaN` sai como literal inválido e o `JSON.parse` do navegador estoura.
@@ -1379,6 +1403,17 @@ def _carregar_aba_inteira(rotulo):
         )
         df['semestre'] = df['semestre'].astype('string')
         df['faculdade'] = df['faculdade'].astype('string')
+
+        #  AQUI E NÃO NA ROTA: `pagou_depois` olha os semestres SEGUINTES ao de cada
+        #  linha, e na rota o df já chegou recortado pelo semestre da barra — não
+        #  haveria futuro nenhum para olhar (ver `_pagou_depois`). Calculada na carga,
+        #  ela viaja no cache da aba e custa uma vez por relatório.
+        #
+        #  SÓ NO HISTÓRICO porque é só lá que alguém pergunta: é a coluna que separa
+        #  "formou e o pagamento parou" de "formou e continuou recebendo". Ela fica
+        #  fora de `COLUNAS_ANALISE_IA`, então não aparece na tabela nem no .xlsx.
+        if rotulo == 'HISTÓRICO':
+            df['pagou_depois'], df['valor_pago_depois'] = _pagamentos_posteriores(df)
 
     _cache_aba_inteira[rotulo] = ((caminho, marca), df)
     return df
@@ -1662,6 +1697,448 @@ def _contagem_de_mensalidade(processados, coluna):
     return contagem, tem_dado
 
 
+# --------------------------------------------------------------------------------
+# OS DOIS GRÁFICOS DO HISTÓRICO
+# --------------------------------------------------------------------------------
+# ELES OCUPAM O LUGAR DOS DE MENSALIDADE, e não se somam a eles: no Histórico as duas
+# colunas de mensalidade são 100% "não localizado" nos 16.464 documentos lidos de 2025-2
+# — o documento não carrega esse valor, e os dois cards ficavam com o aviso de vazio.
+#
+# A PERGUNTA QUE O HISTÓRICO RESPONDE é outra: o aluno concluiu o curso, e quando. Três
+# fontes que não dependem uma da outra: o PONTO DA MATRIZ (`periodo_atual` e
+# `qtd_periodos`), a FORMATURA NO CADASTRO (`situacao_motivo_atual`, cruzada com o
+# repasse posterior) e a LEITURA DA IA (`gemini_concluiu_curso`).
+#
+# A ORDEM ENTRE ELAS É ESTA, e é o que organiza os dois cards: a formatura no cadastro é
+# um FATO lançado pela IES; a matriz é uma ESTIMATIVA de onde o aluno deveria estar; e a
+# leitura da IA é uma OPINIÃO sobre um documento. Onde o fato existe, ele manda — e onde
+# ele contradiz a opinião, nasce alerta.
+
+
+# OS TRÊS ESTADOS DA FORMATURA NO CADASTRO, na ordem da certeza.
+#
+# O PROBLEMA QUE ELES RESOLVEM: a FORMATURA quase nunca é lançada no semestre em que o
+# aluno concluiu. No Histórico de 2025-2, o motivo DAQUELE semestre é FORMATURA em 14
+# linhas; a situação ATUAL do mesmo aluno é FORMATURA em 2.401 delas. Quem lê só a coluna
+# do período vê "Renovação CPD" de gente que terminou o curso há um semestre.
+#
+# O CASO QUE ENSINOU A REGRA, a inscrição 2043562: em 2025-2 o cadastro diz "Renovação
+# CPD", vínculo ATIVO, seis pagamentos até dezembro; a formatura foi lançada em 04/02/2026,
+# já no semestre seguinte. Ela não estudou 2026-1 e formou depois — não houve repasse
+# nenhum em 2026-1. O lançamento atrasou, e a conclusão é de 2025-2.
+#
+# É ISSO QUE O DINHEIRO DECIDE. `pagou_depois` é a única evidência independente que temos
+# de que o aluno seguiu estudando: se a formatura está no cadastro e o repasse parou neste
+# semestre, ele concluiu aqui; se o repasse continuou, neste semestre ele ainda cursava e
+# a formatura é de verdade posterior.
+FORMATURA_CONFIRMADA = 'Formou'
+FORMATURA_POSTERIOR = 'Formou depois'
+FORMATURA_AUSENTE = 'Não consta'
+
+
+def _formatura_no_cadastro(df):
+    """
+    O QUE FAZ: por linha, o que o CADASTRO diz sobre a formatura naquele semestre —
+        'Formou', 'Formou depois' ou 'Não consta'.
+
+    A CONTA, medida no Histórico de 2025-2 (22.391 linhas): 1.670 'Formou', 731 'Formou
+    depois' e 19.990 'Não consta'.
+
+    "FORMOU" É A CERTEZA DA TELA, e não uma inferência sobre o documento: ela não depende
+    de o Gemini ter lido coisa alguma. Das 1.590 linhas lidas em 'Formou', a IA concorda
+    em 1.192 — as outras 398 são divergência que vira alerta.
+
+    SÓ VALE COM A COLUNA `situacao_motivo_atual` NO RELATÓRIO. Sem ela — relatório gerado
+    antes de o motor passar a gravá-la — todas as linhas voltam para 'Não consta' e os
+    alertas que dependem dela ficam zerados, sem derrubar o resto da tela.
+
+    O ÚLTIMO SEMESTRE DA ABA NÃO TEM FUTURO para olhar, então nele 'Formou depois' não
+    existe — é a mesma ressalva de `_pagamentos_posteriores`, e vale para as duas.
+    """
+    import pandas as pd
+
+    if len(df) == 0 or 'situacao_motivo_atual' not in df.columns:
+        return pd.Series(FORMATURA_AUSENTE, index=df.index, dtype='string')
+
+    #  MAIÚSCULA NA COMPARAÇÃO: o motor passa o relatório inteiro por Title Case antes de
+    #  gravar, então o que está no Parquet é "Formatura" e não "FORMATURA".
+    motivo = df['situacao_motivo_atual'].astype('string').str.strip().str.upper()
+    formou = (motivo == 'FORMATURA').fillna(False)
+    depois = (df['pagou_depois'].fillna(False).astype(bool)
+              if 'pagou_depois' in df.columns else pd.Series(False, index=df.index))
+
+    estado = pd.Series(FORMATURA_AUSENTE, index=df.index, dtype='string')
+    estado[formou & ~depois] = FORMATURA_CONFIRMADA
+    estado[formou & depois] = FORMATURA_POSTERIOR
+    return estado
+
+
+# A REPARTIÇÃO DA ROSCA, na ordem em que a legenda a lê.
+#
+# MEDIDO NO HISTÓRICO DE 2025-2 (16.464 lidos): 1.590 formados, 32 passados do limite,
+# 448 no último período, 14.338 em curso e 56 sem período no cadastro.
+#
+# "SEM PERÍODO" E NÃO "SEM MATRIZ", que era o nome antigo: matriz é a palavra de dentro
+# de casa para a grade do curso, e quem abre a tela lê o que falta — o período do
+# cadastro. É o mesmo grupo, com o nome que se entende sem perguntar.
+#
+# "FORMADO" VEM NA FRENTE DE TODOS, e é o único que não sai da matriz: os outros quatro
+# comparam `periodo_atual` com `qtd_periodos`, e este é o cadastro DIZENDO que o curso
+# acabou (ver `_formatura_no_cadastro`). Fato ganha de estimativa: as 1.590 linhas
+# formadas de 2025-2 estavam espalhadas pelas outras quatro fatias — 1.312 em "Último
+# período", 217 em "Em curso", 47 em "Passou do limite" e 14 em "Sem período" —, cada uma
+# delas descrevendo como promessa um curso que já tinha terminado.
+SITUACOES_DO_PERIODO = ['Formado', 'Passou do limite', 'Último período', 'Em curso',
+                        'Sem período']
+
+
+def _situacao_do_periodo(df):
+    """
+    O QUE FAZ: devolve um dos cinco estados de `SITUACOES_DO_PERIODO`, um por linha — a
+        formatura do cadastro quando ela existe, e a comparação entre `periodo_atual` e
+        `qtd_periodos` para todo o resto.
+
+    OS CINCO COBREM TUDO, sem sobra: é o que deixa a rosca somar exatamente o total de
+    lidos do card e dispensa a ressalva que o Veredito precisa ter.
+
+    "SEM PERÍODO" É O CADASTRO INCOMPLETO, e não um erro de leitura: são as linhas em que
+    um dos dois lados é zero ou não é número (70 em 2025-2, e em 69 delas o zero está em
+    `qtd_periodos`). Comparar período com zero diria "excedeu o limite" de todas elas —
+    um alerta de dinheiro nascido de um campo em branco.
+    """
+    import pandas as pd
+
+    if len(df) == 0:
+        return pd.Series([], index=df.index, dtype='string')
+    if not {'periodo_atual', 'qtd_periodos'} <= set(df.columns):
+        return pd.Series('Sem período', index=df.index, dtype='string')
+
+    #  `to_numeric` e não leitura direta: `periodo_atual` chega como TEXTO no Parquet
+    #  ("10.0"), com uma linha em branco em 2025-2. Comparar texto com número aqui
+    #  ordenaria "12" antes de "9".
+    atual = pd.to_numeric(df['periodo_atual'], errors='coerce')
+    total = pd.to_numeric(df['qtd_periodos'], errors='coerce')
+
+    situacao = pd.Series('Em curso', index=df.index, dtype='string')
+    situacao[(atual == total).fillna(False)] = 'Último período'
+    situacao[(atual > total).fillna(False)] = 'Passou do limite'
+    #  POR ÚLTIMO ENTRE OS DA MATRIZ, para cobrir os três de cima: sem período não é
+    #  nenhum dos outros.
+    situacao[(atual.isna() | total.isna() | (atual <= 0) | (total <= 0))] = 'Sem período'
+    #  E A FORMATURA POR CIMA DE TODOS, "Sem período" inclusive: o cadastro pode estar sem
+    #  a matriz e ter a formatura lançada — é o caso da 2043562, que aparecia como "Sem
+    #  período" com o curso concluído e o repasse encerrado em dezembro.
+    situacao[_formatura_no_cadastro(df) == FORMATURA_CONFIRMADA] = 'Formado'
+    return situacao
+
+
+# As três respostas possíveis, na ordem em que a legenda as lê.
+RESPOSTAS_DE_CONCLUSAO = ['Sim', 'Não', 'Sem resposta']
+
+
+def _concluiu_curso(df):
+    """
+    O QUE FAZ: normaliza `gemini_concluiu_curso` em Sim / Não / Sem resposta.
+
+    "SEM RESPOSTA" É MAIS QUE O CAMPO VAZIO: a IA também escreve frases ali quando não
+    conseguiu decidir ("Não Avaliado Devido A Erro Crítico De CPF"). Casar o começo por
+    "Não" jogaria essa frase no balde de quem NÃO concluiu, que é uma afirmação que a IA
+    não fez. Só as duas palavras exatas contam como resposta.
+
+    COLUNA SÓ DO HISTÓRICO, e só onde a IA leu: nas outras abas ela não existe, e no
+    próprio Histórico 2026-1 e 2026-2 vêm inteiros sem leitura (ver a nota do card).
+    """
+    import pandas as pd
+
+    if len(df) == 0:
+        return pd.Series([], index=df.index, dtype='string')
+    if 'gemini_concluiu_curso' not in df.columns:
+        return pd.Series('Sem resposta', index=df.index, dtype='string')
+
+    bruto = df['gemini_concluiu_curso'].astype('string').str.strip().str.upper()
+    resposta = pd.Series('Sem resposta', index=df.index, dtype='string')
+    resposta[(bruto == 'SIM').fillna(False)] = 'Sim'
+    #  As duas grafias: a IA escreve com acento, e o acento já se perdeu uma vez na
+    #  passagem pelo Excel (ver `_chave_da_inconsistencia`).
+    resposta[(bruto.isin({'NÃO', 'NAO'})).fillna(False)] = 'Não'
+    return resposta
+
+
+def _pagamentos_posteriores(df):
+    """
+    O QUE FAZ: para cada linha, se o CPF dela recebeu bolsa em um semestre POSTERIOR e
+        quanto — devolve as duas medidas, nessa ordem.
+
+    POR QUE ELE EXISTE: é o único sinal de dinheiro que a conclusão do curso produz. Quem
+    formou e continuou na folha só aparece no semestre SEGUINTE — em 2025-2, 209 CPFs que
+    a IA deu como formados receberam R$ 1,03 milhão em 2026.
+
+    DENTRO DO SEMESTRE NÃO HÁ O QUE CONFERIR: cruzei com a aba Pagamentos e `qtd_pagtos
+    = 6` equivale, sem uma exceção em 103.738 lançamentos, a ter recebido até dezembro.
+    A pergunta "o último pagamento foi o de dezembro?" já está respondida nessa coluna.
+
+    SOBRE A ABA INTEIRA, antes de qualquer filtro — por isso ele é calculado na carga e
+    não na rota. Medido depois do filtro de semestre, o recorte de 2025-2 não teria
+    nenhuma linha de 2026 para olhar e a conta daria zero em todo mundo.
+
+    O ÚLTIMO SEMESTRE DA ABA É SEMPRE FALSO aqui, e isso é a verdade e não uma falha:
+    não há futuro gravado para ele. É a linha de base do card que diz isso.
+
+    POR CPF E NÃO POR INSCRIÇÃO: a inscrição muda de um semestre para o outro (é ela que
+    a renovação cria), então cruzar por ela não acharia ninguém. O CPF é a pessoa, que é
+    quem formou e quem continua recebendo.
+    """
+    import pandas as pd
+
+    nada = (pd.Series(False, index=df.index), pd.Series(0.0, index=df.index))
+    if len(df) == 0 or not {'cpf', 'semestre', 'qtd_pagtos', 'total_bolsa_paga'} <= set(df.columns):
+        return nada
+
+    recebeu = pd.to_numeric(df['qtd_pagtos'], errors='coerce').fillna(0) > 0
+    semestre = df['semestre'].astype('string')
+    if not recebeu.any():
+        return nada
+
+    #  O MAIOR SEMESTRE EM QUE CADA CPF RECEBEU, comparado com o da linha. A comparação sai
+    #  em NÚMERO, não em texto: o formato é `AAAA-S`, de largura fixa, então a posição na
+    #  ordem alfabética JÁ É a ordem cronológica e o código inteiro diz a mesma coisa.
+    #
+    #  POR QUE O RODEIO: em texto, o `max()` por CPF cai no caminho lento do pandas —
+    #  StringDtype não tem agregação em Cython e os 22.646 grupos são comparados um a um em
+    #  Python. Eram 0,91s dos 0,96s que esta função custava na carga do Histórico (a aba
+    #  mais lenta a abrir, 1,27s contra 0,06s do Contrato, que tem 23 mil linhas MAIS);
+    #  em número, 0,02s. O resultado é idêntico linha a linha.
+    ordem = {nome: i for i, nome in enumerate(sorted(semestre.dropna().unique()))}
+    codigo = semestre.map(ordem).astype('float64')
+    ultimo = codigo[recebeu].groupby(df['cpf'][recebeu]).max()
+    depois = (df['cpf'].map(ultimo) > codigo).fillna(False)
+
+    #  O QUANTO: a soma do que veio DEPOIS, semestre a semestre. A soma acumulada de trás
+    #  para a frente dá, em cada semestre, o total do CPF daquele em diante; tirar o do
+    #  próprio semestre deixa só o futuro.
+    #
+    #  AGRUPADO POR (CPF, SEMESTRE) ANTES DE SOMAR porque o mesmo CPF tem mais de uma
+    #  inscrição no mesmo semestre (714 no contrato de 2025-1): sem isso, a linha de uma
+    #  delas contaria o repasse da outra como se fosse posterior.
+    valor = pd.to_numeric(df['total_bolsa_paga'], errors='coerce').fillna(0.0)
+    tabela = (pd.DataFrame({'cpf': df['cpf'], 'semestre': semestre, 'valor': valor})
+              .groupby(['cpf', 'semestre'], as_index=False)['valor'].sum()
+              .sort_values(['cpf', 'semestre'], ascending=[True, False]))
+    tabela['posterior'] = tabela.groupby('cpf')['valor'].cumsum() - tabela['valor']
+
+    mapa = tabela.set_index(['cpf', 'semestre'])['posterior']
+    chave = pd.MultiIndex.from_arrays([df['cpf'], semestre])
+    return depois, pd.Series(mapa.reindex(chave).to_numpy(), index=df.index).fillna(0.0)
+
+
+# OS ALERTAS, na ordem da GRAVIDADE e não da frequência — é a ordem em que se decide o
+# que fazer primeiro, e o tamanho de cada um já está escrito na barra.
+#
+# OS TRÊS PRIMEIROS SÃO O MESMO CONFRONTO: o que a IA leu no documento contra o que o
+# cadastro registrou (ver `_formatura_no_cadastro`). Eles não existiam enquanto a única
+# medida de conclusão era a matriz do curso, e é neles que está o dinheiro — R$ 2,88
+# milhões nas 708 linhas de 2025-2, contra R$ 327 mil nos dois últimos.
+#
+# CADA LINHA CAI EM NO MÁXIMO UM. Os três de cima são recortes de estados diferentes da
+# formatura, então já não se cruzam entre si; os dois de baixo são fatias inteiras da
+# rosca ao lado, e a escada de `_alerta_do_historico` decide as poucas linhas que caem nos
+# dois lugares. É isso que deixa o clique filtrar a tabela sem ambiguidade e as barras se
+# somarem.
+#
+# O QUE NÃO É ALERTA FICA FORA DO GRÁFICO e vai para a linha de base: em 2025-2 são 15.674
+# dos 16.464 lidos, e entre eles os 1.590 que formaram — 1.192 deles com a IA dizendo o
+# mesmo. Numa régua comum, os 27 de "passou do limite" mediriam 0,2% da faixa.
+#
+# `nota` é o que o valor em dinheiro SIGNIFICA naquele alerta. Hoje os cinco falam da
+# bolsa paga no próprio semestre do recorte, mas o campo continua por alerta e não um
+# rótulo só para todos: o alerta que nasceu de dinheiro pago DEPOIS já existiu aqui, e
+# ressuscitá-lo com a legenda errada seria um número certo mentindo.
+#
+# DOIS RÓTULOS: o do eixo e o que o balão abre. No gráfico deitado o nome mora numa faixa
+# à esquerda das barras, e a faixa sai da medida do maior nome (ver `larguraDaFaixa` no
+# JS) — cada letra reservada aqui é barra a menos. A primeira versão levou isso ao pé da
+# letra e chegou em "Formado x matriz", que ninguém entende sem passar o mouse. O eixo
+# ficou barato e a tela, ilegível.
+#
+# ENTÃO O NOME DO EIXO VOLTOU A SER UMA FRASE, e o que ela descreve é O QUE ACONTECEU COM
+# O ALUNO — não a mecânica da comparação que produziu o alerta. "IA nega a formatura" é
+# lido de primeira; "IA x cadastro" exige saber o que se comparou.
+#
+# O BALÃO CONTINUA COM A REGRA, porque ela é o que responde "por que esta linha caiu
+# aqui" na hora de trabalhar a lista. Os dois saem daqui, e não um de cada lado: rótulo
+# de tela em dois arquivos envelhece metade de cada vez.
+ALERTAS_DO_HISTORICO = [
+    ('ia_sem_registro', 'A IA diz formado e o cadastro não registra formatura',
+     'IA formou, cadastro não', 'pago no semestre', 'total_bolsa_paga'),
+    ('ia_antecipou', 'A IA diz formado, mas a formatura do cadastro é posterior',
+     'Formatura veio depois', 'pago no semestre', 'total_bolsa_paga'),
+    ('ia_negou', 'Formatura no cadastro e a IA leu que não concluiu',
+     'IA nega a formatura', 'pago no semestre', 'total_bolsa_paga'),
+    ('excedeu_cursando', 'Passou do limite de períodos sem formatura no cadastro',
+     'Passou do limite e cursa', 'pago no semestre', 'total_bolsa_paga'),
+    #  "Sem período" e não "Sem período no cadastro": é o mesmo grupo de 56 da fatia
+    #  homônima da rosca ao lado, e dois nomes para a mesma população em cards vizinhos
+    #  fazem parecer que são coisas diferentes. A frase inteira fica no balão.
+    ('sem_matriz', 'Cadastro sem período atual ou sem total de períodos', 'Sem período',
+     'pago no semestre', 'total_bolsa_paga'),
+]
+
+
+def _alerta_do_historico(df):
+    """
+    O QUE FAZ: devolve a chave do alerta de cada linha, ou vazio para a linha sem alerta.
+
+    A REGRA DE CADA UM, e o que ela vale em 2025-2 (16.464 lidos):
+
+      `ia_sem_registro` (287, R$ 1,05 mi) — a IA leu "concluiu o curso" e o cadastro não
+          tem formatura nenhuma para este aluno, nem neste semestre nem depois. Ou a IES
+          não informou a conclusão, ou a IA alucinou — e as duas hipóteses se resolvem do
+          mesmo jeito: perguntando à IES. É o alerta que mais vale a pena trabalhar.
+
+      `ia_antecipou` (42, R$ 167 mil) — a IA diz formado, o cadastro registra a formatura
+          SÓ DEPOIS e o repasse continuou (ver 'Formou depois'). Neste semestre o aluno
+          ainda cursava: a IA leu como conclusão um documento que não a provava. São
+          poucos, e é o grupo que mede o quanto a leitura se adianta.
+
+      `ia_negou` (379, R$ 1,66 mi) — o caminho inverso: a formatura está no cadastro, o
+          repasse parou aqui, e a IA leu "não concluiu". A conclusão é fato; o que está em
+          xeque é a leitura. Sem esta barra, o erro da IA que custa mais caro seria
+          justamente o único invisível — dizer que não formou não gera pergunta nenhuma.
+
+      `excedeu_cursando` (27, R$ 105 mil) — passou do limite de períodos da matriz e o
+          cadastro não registra formatura. Aqui se investiga, e as disciplinas NÃO
+          explicam. Antes da formatura do cadastro este grupo tinha 33 linhas e um irmão
+          de 46 ("já formou e passou do limite") que hoje não existe mais: aqueles 46
+          ESTAVAM formados, e o cadastro diz isso sem precisar da matriz.
+
+      `sem_matriz` (55, R$ 221 mil) — cadastro sem período ou sem total de períodos, e sem
+          formatura lançada. Nenhuma pergunta de matriz pode ser feita sobre eles enquanto
+          o campo estiver em branco. A chave guarda o nome antigo de propósito: ela viaja
+          na URL do filtro, e trocá-la quebraria todo link já salvo (o rótulo, esse, é
+          "Sem período" — ver `ALERTAS_DO_HISTORICO`).
+
+    A ESCADA, de cima para baixo, atribui e a de baixo prevalece: os dois alertas de
+    matriz entram primeiro e os três da IA passam por cima deles. São 6 linhas em 2025-2 e
+    a escolha é deliberada — "a IA diz formado e o cadastro não registra" é uma pergunta
+    para a IES, e "passou do limite" é a mesma pergunta com menos informação.
+    """
+    import pandas as pd
+
+    situacao = _situacao_do_periodo(df)
+    formatura = _formatura_no_cadastro(df)
+    concluiu = _concluiu_curso(df)
+
+    diz_formado = concluiu == 'Sim'
+    alerta = pd.Series(pd.NA, index=df.index, dtype='string')
+    alerta[situacao == 'Sem período'] = 'sem_matriz'
+    alerta[situacao == 'Passou do limite'] = 'excedeu_cursando'
+    alerta[(formatura == FORMATURA_CONFIRMADA) & (concluiu == 'Não')] = 'ia_negou'
+    alerta[(formatura == FORMATURA_POSTERIOR) & diz_formado] = 'ia_antecipou'
+    alerta[(formatura == FORMATURA_AUSENTE) & diz_formado] = 'ia_sem_registro'
+    return alerta
+
+
+#  O NOME DO PARÂMETRO DE CADA CARD DO HISTÓRICO. Mesma gramática dos dois de
+#  mensalidade, cujo lugar eles ocupam — ver `PARAMETRO_DE_MENSALIDADE`.
+PARAMETROS_DO_HISTORICO = ('sit', 'alerta')
+
+
+def _aplicar_historico(df, request, ignorar=None):
+    """
+    O QUE FAZ: recorta pelo que foi clicado nos dois cards do Histórico — `sit` para as
+        fatias da rosca de situação e `alerta` para as barras de alerta.
+
+    UNIÃO DENTRO DO MESMO CARD, INTERSEÇÃO ENTRE OS DOIS, e `ignorar` para o card que
+    recebeu o clique não aplicar o próprio recorte: é a mesma mecânica de
+    `_aplicar_mensalidade`, na mesma posição da rota, e pelas mesmas três razões.
+
+    NO-OP NAS OUTRAS ABAS sem precisar saber qual é a aba: os parâmetros só nascem na
+    tela do Histórico, e sem eles a função devolve o que recebeu.
+    """
+    escolhas = {nome: set(_lista_do_parametro(request, nome, separador='||'))
+                for nome in PARAMETROS_DO_HISTORICO if nome != ignorar}
+    if not any(escolhas.values()) or len(df) == 0:
+        return df
+
+    if escolhas.get('sit'):
+        df = df[_situacao_do_periodo(df).isin(escolhas['sit']).fillna(False).astype(bool)]
+    if escolhas.get('alerta') and len(df):
+        df = df[_alerta_do_historico(df).isin(escolhas['alerta']).fillna(False).astype(bool)]
+    return df
+
+
+def _quadro_do_historico(frente_sit, frente_alerta):
+    """
+    O QUE FAZ: monta os dois cards — a repartição da situação do período e a contagem de
+        cada alerta com o dinheiro dele.
+
+    DOIS RECORTES E NÃO UM: cada card ignora o próprio filtro, então cada um conta sobre o
+    que ele mesmo enxerga. É o mesmo cuidado dos cards de mensalidade, e a mesma razão —
+    com "Passou do limite" marcado, o denominador do card de situação continua sendo o dele.
+
+    `tem_dado` DISTINGUE "ZERO" DE "NÃO SE PERGUNTA AQUI": no Histórico de 2026-1 e 2026-2
+    a IA não leu documento nenhum, e a coluna `gemini_concluiu_curso` vem inteira vazia.
+    Sem esta bandeira, os cards desenhariam "nenhum formado" para um semestre em que a
+    pergunta simplesmente não foi feita.
+    """
+    import pandas as pd
+
+    situacao = _situacao_do_periodo(frente_sit)
+    concluiu = _concluiu_curso(frente_sit)
+
+    contagem, quebra = {}, {}
+    for nome in SITUACOES_DO_PERIODO:
+        dentro = (situacao == nome) if len(frente_sit) else pd.Series([], dtype=bool)
+        contagem[nome] = int(dentro.sum())
+        respostas = concluiu[dentro].value_counts() if contagem[nome] else {}
+        quebra[nome] = {r: int(respostas.get(r, 0)) for r in RESPOSTAS_DE_CONCLUSAO}
+
+    alerta = _alerta_do_historico(frente_alerta)
+
+    def _dinheiro(coluna):
+        return (pd.to_numeric(frente_alerta[coluna], errors='coerce').fillna(0.0)
+                if coluna in frente_alerta.columns
+                else pd.Series(0.0, index=frente_alerta.index))
+
+    alertas = []
+    for chave, rotulo, curto, nota, coluna in ALERTAS_DO_HISTORICO:
+        dentro = (alerta == chave).fillna(False) if len(frente_alerta) else pd.Series([], dtype=bool)
+        alertas.append({'chave': chave, 'rotulo': rotulo, 'curto': curto, 'nota': nota,
+                        'linhas': int(dentro.sum()),
+                        'valor': round(float(_dinheiro(coluna)[dentro].sum()), 2)})
+
+    #  O QUE NÃO É ALERTA, para a linha de base do card: são 15.674 dos 16.464 lidos de
+    #  2025-2, e sem esta linha as cinco barras somando 790 passariam pelo recorte
+    #  inteiro. Elas não repartem os lidos — são o que sobra depois de tirar quem está no
+    #  caminho normal (ver a nota de `ALERTAS_DO_HISTORICO`).
+    #
+    #  E OS FORMADOS AO LADO, que é a pergunta que abriu este card: de quantos temos
+    #  CERTEZA de que concluíram. Certeza é o cadastro, não a IA — por isso são os 1.590
+    #  de `FORMATURA_CONFIRMADA` e não os que a IA deu como formados, e por isso eles
+    #  contam mesmo estando em alerta: os 379 de `ia_negou` formaram, e o alerta ali é
+    #  sobre a LEITURA. `confirmados` é onde os dois lados dizem a mesma coisa.
+    sem_alerta = alerta.isna() if len(frente_alerta) else pd.Series([], dtype=bool)
+    formatura = _formatura_no_cadastro(frente_alerta)
+    formou = (formatura == FORMATURA_CONFIRMADA) if len(frente_alerta) else pd.Series([], dtype=bool)
+    formados = int(formou.sum())
+    confirmados = int((formou & (_concluiu_curso(frente_alerta) == 'Sim')).sum())
+
+    return {
+        'ordem_situacao': SITUACOES_DO_PERIODO,
+        #  A QUEBRA POR RESPOSTA DA IA NÃO VAI NA RESPOSTA, só o `tem_dado` que sai
+        #  dela: ela existia para o balão de cada fatia, e esse balão foi embora (ver
+        #  `pintarSituacao`, no JS). A bandeira, sim, continua escrita na base do card.
+        'situacao': {'contagem': contagem,
+                     'total': int(len(frente_sit)),
+                     'tem_dado': any(quebra[s]['Sim'] or quebra[s]['Não']
+                                     for s in SITUACOES_DO_PERIODO)},
+        'alertas': alertas,
+        'normais': {'formados': formados, 'confirmados': confirmados,
+                    'sem_alerta': int(sem_alerta.sum()) if len(frente_alerta) else 0,
+                    'total': int(len(frente_alerta))},
+    }
+
+
 # DUAS NORMALIZAÇÕES, e as duas foram descobertas olhando a lista pronta na tela.
 #
 # 1. A CAIXA. As frases vêm coladas por vírgula numa coluna só, e da segunda em diante
@@ -1839,7 +2316,8 @@ def api_resumo_ia(request):
     # Para os gráficos não apagarem as outras opções quando clicados (faceted search):
     # 1. Inconsistências respeitam a rosca (Vereditos) e as barras de mensalidade, mas
     #    ignoram o próprio filtro.
-    df_para_inconsistencias = _aplicar_mensalidade(_recorte_da_rosca(df, request), request) if len(df) else df
+    df_para_inconsistencias = _aplicar_historico(
+        _aplicar_mensalidade(_recorte_da_rosca(df, request), request), request) if len(df) else df
     inconsistencias = (_frases_de_inconsistencia(df_para_inconsistencias['gemini_inconsistencia'])
                        if len(df_para_inconsistencias) and 'gemini_inconsistencia' in df_para_inconsistencias.columns else [])
 
@@ -1848,7 +2326,8 @@ def api_resumo_ia(request):
     #  O recorte por frase sai UMA vez e serve aos dois: ele varre a coluna linha a
     #  linha (`.map`) sobre as 80 mil da aba, e repeti-lo dobraria a parte cara da rota.
     df_por_frase = _aplicar_inconsistencias(df, request) if len(df) else df
-    df_para_rosca = _aplicar_mensalidade(df_por_frase, request) if len(df_por_frase) else df_por_frase
+    df_para_rosca = (_aplicar_historico(_aplicar_mensalidade(df_por_frase, request), request)
+                     if len(df_por_frase) else df_por_frase)
 
     if len(df_para_rosca):
         contagem_ia = df_para_rosca['status_ia'].value_counts()
@@ -1870,7 +2349,8 @@ def api_resumo_ia(request):
     #  mensalidade de fora: é dele que cada card tira a sua própria contagem, cada um
     #  reaplicando o balde do outro e ignorando o seu (ver `_aplicar_mensalidade`).
     sem_mensalidade = _recorte_da_rosca(df_por_frase, request) if len(df_por_frase) else df_por_frase
-    recorte = _aplicar_mensalidade(sem_mensalidade, request) if len(sem_mensalidade) else sem_mensalidade
+    recorte = (_aplicar_historico(_aplicar_mensalidade(sem_mensalidade, request), request)
+               if len(sem_mensalidade) else sem_mensalidade)
 
     def _processados(frame):
         return frame[frame['status_ia'].isin(STATUS_PROCESSADO)] if len(frame) else frame
@@ -1885,8 +2365,8 @@ def api_resumo_ia(request):
     #  com três barras sobrando embaixo. O denominador tem de ser o do próprio
     #  quadro. Sem filtro de mensalidade os dois coincidem, que é por que o erro só
     #  aparecia depois do primeiro clique.
-    frente_sem = _aplicar_mensalidade(sem_mensalidade, request, ignorar='msd')
-    frente_com = _aplicar_mensalidade(sem_mensalidade, request, ignorar='mcd')
+    frente_sem = _aplicar_historico(_aplicar_mensalidade(sem_mensalidade, request, ignorar='msd'), request)
+    frente_com = _aplicar_historico(_aplicar_mensalidade(sem_mensalidade, request, ignorar='mcd'), request)
     proc_sem, proc_com = _processados(frente_sem), _processados(frente_com)
 
     sem_desconto, tem_sem = _contagem_de_mensalidade(proc_sem, 'msd_doc')
@@ -1902,10 +2382,23 @@ def api_resumo_ia(request):
     #  Medida sobre `sem_mensalidade` — todo o resto do recorte aplicado e NENHUM dos
     #  dois filtros de mensalidade —, ela só se mexe quando se mexe a barra de filtros,
     #  que é quando os números de fato mudam.
-    proc_livre = _processados(sem_mensalidade)
+    proc_livre = _processados(_aplicar_historico(sem_mensalidade, request))
     livre_sem, _ = _contagem_de_mensalidade(proc_livre, 'msd_doc')
     livre_com, _ = _contagem_de_mensalidade(proc_livre, 'mcd_doc')
     regua_mensalidade = max([0, *livre_sem.values(), *livre_com.values()])
+
+    #  OS DOIS CARDS DO HISTÓRICO, um recorte cada, pela mesma regra dos de mensalidade
+    #  logo acima: o card que recebeu o clique ignora o próprio filtro.
+    #
+    #  SÓ SOBRE O QUE A IA LEU (`_processados`), como tudo mais nesta faixa: "concluiu o
+    #  curso?" não tem resposta em documento que a IA não abriu, e contar essas linhas
+    #  encheria a fatia "Sem resposta" com ausência de leitura em vez de indecisão da IA.
+    quadro_historico = None
+    if rotulo == 'HISTÓRICO':
+        base_hist = _aplicar_mensalidade(sem_mensalidade, request)
+        quadro_historico = _quadro_do_historico(
+            _processados(_aplicar_historico(base_hist, request, ignorar='sit')),
+            _processados(_aplicar_historico(base_hist, request, ignorar='alerta')))
 
     return JsonResponse({
         'status': 'ok',
@@ -1927,6 +2420,9 @@ def api_resumo_ia(request):
         'baldes': baldes,
         'ordem_baldes': BALDES_DA_ROSCA,
         'vereditos_de_processado': VEREDITOS_DE_PROCESSADO,
+        #  Só o Histórico o traz; nas outras abas é `None`, e é por ele que a tela sabe
+        #  quais dois cards desenhar no lugar dos de mensalidade.
+        'historico': quadro_historico,
         'mensalidade': {
             'sem_desconto': {'contagem': sem_desconto, 'tem_dado': tem_sem,
                              'total': int(len(frente_sem)), 'processados': int(len(proc_sem))},
@@ -1949,15 +2445,28 @@ def api_resumo_ia(request):
 # O RIAF traz matrícula com e sem desconto, o CNPJ e a mantenedora da IES — e nenhuma
 # dessas pertence a Contrato, Histórico, Benefício ou Financiamento, onde viriam vazias.
 #
+# TODA COLUNA `gemini_*` DA ABA ENTRA, e esta regra vale mais que o enxugamento da lista.
+# A tela existe para comparar o que o sistema esperava com o que a IA encontrou no
+# documento, e uma `gemini_*` de fora quebra justamente esse par: o RIAF mostrava
+# `valor_beneficio` e `valor_financiamento` do cadastro sem os dois valores que a IA leu
+# ao lado (5.926 e 311 com valor diferente de zero), e a coluna do sistema sozinha não
+# responde nada — ela é o esperado de uma comparação que não estava na tela. Pelo mesmo motivo
+# entram `gemini_tipo_bolsa_final`, `gemini_email` e as duas de assinatura, que são
+# perguntas que só o RIAF faz.
+#
+# `gemini_semestre` É A ÚNICA QUE FICA DE FORA, e não por recorte: ela vem VAZIA nas
+# 35.352 linhas da aba — o prompt do RIAF não pede o semestre. Coluna sempre em branco
+# na tela não é informação, é uma pergunta sem resposta ocupando largura. No dia em que o
+# prompt passar a pedir, ela entra aqui.
+#
 # Quem não está aqui NÃO É ERRO: são as colunas que a aba tem no Parquet e que o
-# relatório desta tela não pede (no RIAF, `gemini_semestre`, as duas de assinatura,
-# `gemini_valor_beneficio`/`_financiamento`, `gemini_email`, `documento_ausente` e
-# `veredito_documento`). Elas continuam no arquivo do motor; o recorte é só da tela.
+# relatório desta tela não pede (no RIAF, `documento_ausente` e `veredito_documento`).
+# Elas continuam no arquivo do motor; o recorte é só da tela.
 #
 # Documento fora do dicionário passa direto, com todas as colunas do Parquet.
 COLUNAS_ANALISE_IA = {
     'CONTRATO': [
-        'status_ia', 'gemini_inconsistencia', 'semestre', 'bolsista', 'inscricao',
+        'status_ia', 'gemini_inconsistencia', 'semestre', 'gemini_semestre', 'bolsista', 'inscricao',
         'inscricao_anterior', 'inscricao_posterior', 'cpf', 'gemini_cpf',
         'tipo_bolsa_final', 'mudou_bolsa', 'bolsa_anterior', 'bolsa_posterior',
         'mudou_ies', 'ies_anterior', 'ies_posterior', 'faculdade', 'curso',
@@ -1972,28 +2481,46 @@ COLUNAS_ANALISE_IA = {
         'qtd_disciplinas_matriculadas', 'qtd_disciplinas_reprovadas', 'perfil',
         'status_vinculo', 'situacao_motivo', 'observacao_situacao', 'email',
         'telefone_1', 'telefone_2', 'data_nascimento', 'matricula', 'periodo_atual',
-        'qtd_periodos', 'modalidade'
+        'qtd_periodos', 'modalidade_aluno', 'modalidade_ies'
     ],
     'RIAF': [
         'status_ia', 'gemini_inconsistencia', 'semestre', 'bolsista', 'inscricao',
         'inscricao_anterior', 'inscricao_posterior', 'cpf', 'gemini_cpf',
-        'tipo_bolsa_final', 'mudou_bolsa', 'bolsa_anterior', 'bolsa_posterior',
+        'tipo_bolsa_final', 'gemini_tipo_bolsa_final', 'mudou_bolsa', 'bolsa_anterior',
+        'bolsa_posterior',
         'mudou_ies', 'ies_anterior', 'ies_posterior', 'faculdade', 'cnpj_ies',
         'ins_mantenedora', 'curso', 'gemini_curso',
+        'gemini_assinatura_aluno', 'gemini_assinatura_ies',
         'ultimo_valor_pago_ref', 'total_bolsa_paga', 'qtd_pagtos',
         'qtd_pagtos_retroativos', 'matricula_sem_desc', 'gemini_matricula_sem_desc',
         'matricula_sd_doc', 'matricula_com_desc', 'gemini_matricula_com_desc',
         'matricula_cd_doc', 'mensalidade_sem_desc', 'gemini_mensalidade_sem_desc',
         'msd_doc', 'mensalidade_com_desc', 'gemini_mensalidade_com_desc', 'mcd_doc',
-        'valor_beneficio', 'soma_valor_beneficio', 'beneficio', 'valor_financiamento',
+        'valor_beneficio', 'gemini_valor_beneficio', 'soma_valor_beneficio', 'beneficio',
+        'valor_financiamento', 'gemini_valor_financiamento',
         'soma_valor_financiamento', 'financiamento', 'soma_ovg_devia_pagar_sis',
         'soma_ovg_devia_pagar_ia', 'soma_prejuizo_ovg', 'soma_economia_ovg',
         'diagnostico_financeiro_final', 'data_coleta', 'data_coleta_atual_sistema',
         'data_create', 'data_processamento', 'processado', 'processar', 'qtd_token',
         'qtd_disciplinas_matriculadas', 'qtd_disciplinas_reprovadas', 'perfil',
         'status_vinculo', 'situacao_motivo', 'observacao_situacao', 'email',
+        'gemini_email',
         'telefone_1', 'telefone_2', 'data_nascimento', 'matricula', 'periodo_atual',
-        'qtd_periodos', 'modalidade'
+        'qtd_periodos', 'modalidade_aluno', 'modalidade_ies'
+    ],
+    'HISTÓRICO': [
+        'status_ia', 'gemini_inconsistencia', 'semestre', 'bolsista', 'inscricao',
+        'inscricao_anterior', 'inscricao_posterior', 'cpf', 'gemini_cpf',
+        'tipo_bolsa_final', 'mudou_bolsa', 'bolsa_anterior', 'bolsa_posterior',
+        'mudou_ies', 'ies_anterior', 'ies_posterior', 'faculdade', 'curso', 'gemini_curso',
+        'ultimo_valor_pago_ref', 'total_bolsa_paga', 'qtd_pagtos',
+        'qtd_pagtos_retroativos', 'data_coleta', 'data_coleta_atual_sistema',
+        'data_create', 'data_processamento', 'processado', 'processar', 'qtd_token',
+        'qtd_disciplinas_matriculadas', 'qtd_disciplinas_reprovadas', 'perfil',
+        'status_vinculo', 'situacao_motivo', 'observacao_situacao',
+        'situacao_motivo_atual', 'observacao_situacao_atual', 'email',
+        'telefone_1', 'telefone_2', 'data_nascimento', 'matricula', 'periodo_atual',
+        'qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies'
     ],
 }
 
@@ -2012,6 +2539,15 @@ RENOMES_ANALISE_IA = {
         'tipo_bolsa_final': 'bolsa',
         'qtd_pagtos_retroativos': 'qtd_pagtos_retroativos_(100%)',
         'cnpj_ies': 'ins_cnpj',
+    },
+    #  "NO PERÍODO" SÓ NO HISTÓRICO, e só porque aqui existe a coluna ATUAL ao lado: as
+    #  duas guardam a mesma coisa em momentos diferentes, e sem o sufixo a tabela mostra
+    #  "Situação Motivo" e "Situação Motivo Atual" lado a lado sem dizer que a primeira é
+    #  a DAQUELE semestre. Nas outras abas não há a segunda coluna, não há a confusão, e
+    #  um nome mais longo só ocuparia tela.
+    'HISTÓRICO': {
+        'situacao_motivo': 'situacao_motivo_no_periodo',
+        'observacao_situacao': 'observacao_situacao_no_periodo',
     },
 }
 
@@ -2064,8 +2600,15 @@ def api_tabela_ia(request):
     df = _aplicar_busca(df, (request.GET.get('busca') or '').strip())
     df = _aplicar_inconsistencias(df, request)
     df = _aplicar_mensalidade(df, request)
+    df = _aplicar_historico(df, request)
     df = _recorte_da_rosca(df, request)
-    
+
+    #  OS MOTIVOS VIAJAM FORA DA TABELA, e por isso são separados ANTES do recorte de
+    #  colunas: eles não são mais uma coluna para varrer com o olho — são o que a tela
+    #  mostra ao parar o ponteiro sobre o `Status IA` daquela linha. Virar coluna
+    #  devolveria o problema que a coluna existe para resolver, que é tabela larga demais.
+    motivos = df['motivos_divergencia'] if 'motivos_divergencia' in df.columns else None
+
     df = _formatar_colunas_analise_ia(df, rotulo)
 
     colunas = list(df.columns)
@@ -2094,9 +2637,29 @@ def api_tabela_ia(request):
         'documento': rotulo,
         'colunas': colunas,
         'linhas': _montar_linhas_cruas(df, colunas),
+        'motivos': _motivos_das_linhas(motivos, df),
         'total_rows': total,
         'limite': limite,
     })
+
+
+def _motivos_das_linhas(serie, df):
+    """
+    O QUE FAZ: devolve, na ORDEM FINAL das linhas, a lista de motivos de cada uma.
+
+    POR QUE RECEBE O `df` JÁ ORDENADO: a ordenação e o corte de `limite` acontecem depois
+    do recorte de colunas, então a série guardada antes ainda está na ordem antiga e com
+    as linhas que ficaram de fora. `reindex` pelo índice final resolve as duas coisas de
+    uma vez — o Parquet mantém o índice ao longo de todos os filtros.
+
+    LISTA VAZIA quando a coluna não existe: relatório gerado antes desta mudança não a tem,
+    e a tela precisa continuar de pé — sem tooltip, e não em branco.
+    """
+    if serie is None or serie.empty:
+        return []
+    import pandas as pd
+    return [[frase.strip() for frase in str(valor).split('|') if frase.strip()]
+            for valor in serie.reindex(df.index).fillna('')]
 
 
 def _montar_linhas_cruas(df, colunas):
@@ -2114,6 +2677,9 @@ def _montar_linhas_cruas(df, colunas):
     for coluna in COLUNAS_IDENTIFICADORAS:
         if coluna in recorte.columns:
             recorte[coluna] = recorte[coluna].astype('string')
+    for coluna in COLUNAS_INTEIRAS:
+        if coluna in recorte.columns:
+            recorte[coluna] = pd.to_numeric(recorte[coluna], errors='coerce').astype('Int64')
     recorte = recorte.astype(object).where(pd.notna(recorte), None)
     
     import re
@@ -2158,6 +2724,7 @@ def api_exportar_ia(request):
         df = _aplicar_busca(df, (request.GET.get('busca') or '').strip())
         df = _aplicar_inconsistencias(df, request)
         df = _aplicar_mensalidade(df, request)
+        df = _aplicar_historico(df, request)
         df = _recorte_da_rosca(df, request)
         
         df = _formatar_colunas_analise_ia(df, rotulo)

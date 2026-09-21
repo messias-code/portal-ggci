@@ -187,14 +187,14 @@ contrato_tipagem:
       - curso.conteudo
     tipo_permitido:
       - 'STRING extraida e limpa do documento'
-      - 'STRING_EXATA: "Não localizado"'
+      - 'STRING_EXATA: ""'
 
   campo_situacao:
     campos:
       - situacao.conteudo
     tipo_permitido:
       - 'STRING extraida do documento (ex: "Cursando", "Trancado", "Concluído", "Evadido")'
-      - 'STRING_EXATA: "Não localizado"'
+      - 'STRING_EXATA: ""'
 
   campo_status_conclusao:
     campos:
@@ -211,14 +211,14 @@ contrato_tipagem:
       - cpf.conteudo
     tipo_permitido:
       - 'STRING_NUMERICA_EXATA (11 digitos, sem pontuacao)'
-      - 'STRING_EXATA: "Não localizado"'
+      - 'STRING_EXATA: ""'
 
   campo_semestre:
     campos:
       - semestre.conteudo
     tipo_permitido:
       - 'STRING_FORMATADA: AAAA-I (ex: 2025-1 | 2025-2)'
-      - 'STRING_EXATA: "Não localizado"'
+      - 'STRING_EXATA: ""'
 
   campos_texto:
     campos:
@@ -275,9 +275,9 @@ catalogo_erros:
     - 'CPF do documento diverge do sistema'
   nivel_alto:
     - 'Curso não localizado no documento'
-    - 'Curso do documento diverge do sistema'
-    - 'Semestre esperado não localizado nos registros de disciplinas'
-    - 'Semestre acadêmico do documento diverge do sistema'
+    - 'Curso diverge do sistema'
+    - ''
+    - 'Semestre diverge com sistema'
     - 'Situação acadêmica do documento diverge da esperada pelo sistema'
   nivel_medio:
     - 'Documento ilegível ou sem informações curriculares suficientes'
@@ -341,7 +341,7 @@ exemplos_saida:
     cpf: { conteudo: '55566677788', valido: 1 }
     curso: { conteudo: 'PEDAGOGIA', valido: 1 }
     semestre: { conteudo: '2024-2', valido: 1 }
-    situacao: { conteudo: 'Não localizado', valido: 0 }
+    situacao: { conteudo: '', valido: 0 }
     concluiu_curso: 'não'
     inconsistencias: { conteudo: 'Situação acadêmica do documento diverge da esperada pelo sistema, Documento ilegível ou sem informações curriculares suficientes', valido: 0 }
     status: { conteudo: 'invalido', valido: 0 }

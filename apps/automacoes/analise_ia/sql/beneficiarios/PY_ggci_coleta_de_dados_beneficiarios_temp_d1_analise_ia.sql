@@ -111,17 +111,15 @@ SELECT
     u_final.uni_deficiencia AS flag_deficiencia,
     u_final.uni_sexo AS sexo,
     u_final.uni_matricula AS matricula_ies,
-    COALESCE(
-        NULLIF(TRIM(
-            CASE u_final.uni_tipo_curso
-                WHEN 'P' THEN 'Presencial'
-                WHEN 'D' THEN 'EAD'
-                WHEN 'S' THEN 'Semi-Presencial'
-                ELSE u_final.uni_tipo_curso
-            END
-        ), ''),
-        cmod.descricao
-    ) AS modalidade_curso,
+    NULLIF(TRIM(
+        CASE u_final.uni_tipo_curso
+            WHEN 'P' THEN 'Presencial'
+            WHEN 'D' THEN 'EAD'
+            WHEN 'S' THEN 'Semi-Presencial'
+            ELSE u_final.uni_tipo_curso
+        END
+    ), '') AS modalidade_aluno,
+    cmod.descricao AS modalidade_ies,
     CONCAT(u_final.inscricao_ano, '/', IF(MONTH(u_final.data_importacao) <= 6, 1, 2)) AS inclusao,
     h_ingresso.data_ingresso AS data_inclusao,
     inst.ins_cnpj,

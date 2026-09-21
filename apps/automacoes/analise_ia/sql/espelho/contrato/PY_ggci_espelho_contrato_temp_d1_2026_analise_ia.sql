@@ -61,13 +61,19 @@ SELECT
     c.cur_nome AS curso, u.gemini_curso,
     uni.uni_matricula AS matricula, u.gemini_matricula,
     
+    CASE uni.uni_tipo_curso
+        WHEN 'P' THEN 'Presencial'
+        WHEN 'D' THEN 'EAD'
+        WHEN 'S' THEN 'Semi-Presencial'
+        ELSE uni.uni_tipo_curso
+    END AS modalidade_aluno,
     (
         SELECT cmod.descricao 
         FROM sibu.cursos_faculdades cf_int 
         INNER JOIN sibu.cursos_modalidade cmod ON cf_int.cursos_modalidade_id = cmod.id 
         WHERE cf_int.cur_codigo = uni.cur_codigo AND cf_int.ins_codigo = uni.ins_codigo 
         LIMIT 1
-    ) AS modalidade, 
+    ) AS modalidade_ies, 
     u.gemini_modalidade,
     
     u.semestre_calc AS semestre_aluno, u.gemini_semestre,

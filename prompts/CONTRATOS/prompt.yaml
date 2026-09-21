@@ -100,7 +100,7 @@ contrato_tipagem:
       - cpf
     tipo_permitido:
       - 'STRING_NUMERICA_EXATA (11 digitos, sem pontuacao)'
-      - 'STRING_EXATA: ''Não localizado'''
+      - 'STRING_EXATA: '''''
     proibicoes_absolutas:
       - 'Proibido pontuacao.'
       - 'Proibido texto explicativo.'
@@ -111,7 +111,7 @@ contrato_tipagem:
       - semestre
     tipo_permitido:
       - 'STRING_FORMATADA: AAAA/I (ex: 2025/1 | 2025/2 | 2024/1 | 2024/2 etc.)'
-      - 'STRING_EXATA: ''Não localizado'''
+      - 'STRING_EXATA: '''''
     proibicoes_absolutas:
       - 'Proibido texto explicativo.'
       - 'Proibido datas completas.'
@@ -128,8 +128,7 @@ contrato_tipagem:
       - 'OU ''valido'' | ''invalido'' (para status.conteudo)'
 
   normalizacao_nao_localizado:
-    - 'Campos TEXTUAIS usam EXATAMENTE: ''Não localizado''.'
-    - 'Campos NUMERICOS usam EXCLUSIVAMENTE string vazia ''''.'
+    - 'Todos os campos (textuais ou numéricos) usam EXCLUSIVAMENTE string vazia '''' quando a informacao não for localizada.'
     - 'Nunca use null.'
     - 'Nenhuma outra variacao e permitida.'
 
@@ -216,19 +215,19 @@ logica_de_campo:
 catalogo_erros:
   nivel_critico:
     - 'Tipo de Documento inválido'
-    - 'CPF não localizado no contrato'
-    - 'CPF do contrato diverge do sistema'
+    - 'CPF não localizado no documento'
+    - 'CPF do documento diverge do sistema'
   nivel_alto:
-    - 'Semestre letivo não localizado no contrato'
-    - 'Semestre letivo do contrato diverge do sistema'
+    - ''
+    - 'Semestre diverge com sistema'
   nivel_medio:
     - 'Valor da mensalidade sem desconto não localizado no documento'
-    - 'Mensalidade integral no contrato é MENOR que o esperado'
-    - 'Mensalidade integral no contrato é MAIOR que o esperado'
+    - 'Valor da mensalidade sem desconto é MENOR que o esperado no documento'
+    - 'Valor da mensalidade sem desconto é MAIOR que o esperado no documento'
   nivel_baixo:
     - 'Valor da mensalidade com desconto não localizado no documento'
-    - 'Mensalidade com desconto no contrato é MENOR que o esperado'
-    - 'Mensalidade com desconto no contrato é MAIOR que o esperado'
+    - 'Valor da mensalidade com desconto é MENOR que o esperado no documento'
+    - 'Valor da mensalidade com desconto é MAIOR que o esperado no documento'
 
 # ESTRUTURA JSON DE SAIDA
 saida_json:
@@ -258,7 +257,7 @@ exemplos_saida:
     mensalidade_sem_desconto: { conteudo: '', valido: 0 }
     mensalidade_com_desconto: { conteudo: '', valido: 0 }
     semestre: { conteudo: '', valido: 0 }
-    inconsistencias: { conteudo: 'CPF do contrato diverge do sistema', valido: 0 }
+    inconsistencias: { conteudo: 'CPF do documento diverge do sistema', valido: 0 }
     status: { conteudo: 'invalido', valido: 0 }
 
   contrato_semestre_divergente:
@@ -267,15 +266,15 @@ exemplos_saida:
     mensalidade_sem_desconto: { conteudo: '1200.00', valido: 1 }
     mensalidade_com_desconto: { conteudo: '1100.00', valido: 1 }
     semestre: { conteudo: '2024/2', valido: 0 }
-    inconsistencias: { conteudo: 'Semestre letivo do contrato diverge do sistema', valido: 0 }
+    inconsistencias: { conteudo: 'Semestre diverge com sistema', valido: 0 }
     status: { conteudo: 'invalido', valido: 0 }
 
   contrato_semestre_nao_localizado:
     cpf: { conteudo: '12345678901', valido: 1 }
     mensalidade_sem_desconto: { conteudo: '1200.00', valido: 1 }
     mensalidade_com_desconto: { conteudo: '1100.00', valido: 1 }
-    semestre: { conteudo: 'Não localizado', valido: 0 }
-    inconsistencias: { conteudo: 'Semestre letivo não localizado no contrato', valido: 0 }
+    semestre: { conteudo: '', valido: 0 }
+    inconsistencias: { conteudo: '', valido: 0 }
     status: { conteudo: 'invalido', valido: 0 }
 
   contrato_total_semestre_dividir_por_6_ok:
@@ -291,7 +290,7 @@ exemplos_saida:
     mensalidade_sem_desconto: { conteudo: '1200.00', valido: 1 }
     mensalidade_com_desconto: { conteudo: '1000.00', valido: 0 }
     semestre: { conteudo: '2025/1', valido: 1 }
-    inconsistencias: { conteudo: 'Mensalidade com desconto no contrato é MENOR que o esperado', valido: 1 }
+    inconsistencias: { conteudo: 'Valor da mensalidade com desconto é MENOR que o esperado no documento', valido: 1 }
     status: { conteudo: 'valido', valido: 1 }
 
   contrato_mensalidade_com_desconto_nao_localizada:
@@ -324,7 +323,7 @@ exemplos_saida:
     mensalidade_sem_desconto: { conteudo: '1897.30', valido: 1 }
     mensalidade_com_desconto: { conteudo: '569.19', valido: 0 }
     semestre: { conteudo: '2025/2', valido: 1 }
-    inconsistencias: { conteudo: 'Mensalidade com desconto no contrato é MENOR que o esperado', valido: 1 }
+    inconsistencias: { conteudo: 'Valor da mensalidade com desconto é MENOR que o esperado no documento', valido: 1 }
     status: { conteudo: 'valido', valido: 1 }
 
   contrato_tipo_invalido:

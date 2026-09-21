@@ -127,9 +127,62 @@ COLUNAS_ABA_DOCUMENTO = [
     'data_processamento', 'processado', 'processar', 'qtd_token', 'qtd_disciplinas_matriculadas',
     'qtd_disciplinas_reprovadas', 'perfil', 'status_vinculo', 'situacao_motivo',
     'observacao_situacao', 'email', 'telefone_1', 'telefone_2', 'data_nascimento', 'matricula',
-    'periodo_atual', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade', 'documento_ausente',
-    'veredito_documento'
+    'periodo_atual', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies', 'documento_ausente',
+    'veredito_documento', 'motivos_divergencia'
 ]
+
+
+#  AS FRASES DO CATÁLOGO, POR MOTIVO E POR DOCUMENTO.
+#
+#  Cada chave é um pedaço elementar de `matematica_invalida` (ver `calcular_auditoria_ia`),
+#  e o valor é a frase que a IA teria escrito se tivesse visto aquela divergência. Elas são
+#  cópia literal do `catalogo_erros` de `prompts/<TIPO>/prompt.yaml`: é o vocabulário que
+#  quem lê o relatório já conhece da coluna `Gemini Inconsistencias`, e inventar um segundo
+#  jeito de dizer "o CPF não bate" faria a mesma falha ter dois nomes na mesma tela.
+#
+#  `PADRAO` atende Histórico, Benefício e Financiamento. Os dois últimos ainda não têm
+#  prompt (a IA não processa esses documentos hoje), então herdam o texto neutro do
+#  Histórico até ganharem catálogo próprio.
+#
+#  Os três motivos `catalogo_*` são os únicos que NÃO vêm do catálogo, e não poderiam vir:
+#  eles descrevem a IA se contradizendo — a frase que ela escolheu não bate com o valor que
+#  ela mesma extraiu. É o que a tela chama de `Erro na Inconsistência`.
+#
+#  E os `correto_*` completam a dupla: apontar que a frase está errada, sem dizer qual era a
+#  certa, deixa quem revisa o prompt exatamente onde estava — tendo que abrir o documento para
+#  descobrir. Estes voltam ao catálogo, porque a frase certa é uma das do `catalogo_erros`;
+#  qual delas depende do valor lido, e por isso são máscaras próprias e não texto fixo.
+CATALOGO_MOTIVOS = {
+    'cpf_ausente':           {'PADRAO': 'CPF não localizado no documento'},
+    'cpf_diverge':           {'PADRAO': 'CPF do documento diverge do sistema'},
+    'semestre_ausente':      {'PADRAO': ''},
+    'semestre_diverge':      {'PADRAO': 'Semestre diverge com sistema'},
+    'curso_ausente':         {'PADRAO': 'Curso não localizado no documento'},
+    'curso_diverge':         {'PADRAO': 'Curso diverge do sistema'},
+    'msd_ausente':           {'PADRAO': 'Valor da mensalidade sem desconto não localizado no documento'},
+    'msd_menor':             {'PADRAO': 'Valor da mensalidade sem desconto é MENOR que o esperado no documento'},
+    'msd_maior':             {'PADRAO': 'Valor da mensalidade sem desconto é MAIOR que o esperado no documento'},
+    'assinatura_aluno':      {'PADRAO': 'Assinatura do aluno não localizada'},
+    'assinatura_ies':        {'PADRAO': 'Assinatura da IES não localizada'},
+    'assinatura_apontada':   {'PADRAO': 'Assinatura apontada como não localizada pela própria IA'},
+    'beneficio_diverge':     {'PADRAO': 'Valor de outros benefícios diverge do sistema'},
+    'financiamento_diverge': {'PADRAO': 'Valor do financiamento diverge do sistema'},
+    'mcd_ausente':           {'PADRAO': 'Valor da mensalidade com desconto não localizado no documento'},
+    'mcd_menor':             {'PADRAO': 'Valor da mensalidade com desconto é MENOR que o esperado no documento'},
+    'mcd_maior':             {'PADRAO': 'Valor da mensalidade com desconto é MAIOR que o esperado no documento'},
+    'catalogo_mcd_nao_loc':  {'PADRAO': "A IA Apontou 'Mensalidade com desconto não localizado', Mas leu um valor no documento"},
+    'catalogo_mcd_menor':    {'PADRAO': "A IA Apontou 'Mensalidade com desconto é MENOR que o esperado', Mas o valor que ela leu não é menor"},
+    'catalogo_mcd_maior':    {'PADRAO': "A IA Apontou 'Mensalidade com desconto é MAIOR que o esperado', Mas o valor que ela leu não é maior"},
+    'correto_mcd_nao_loc':   {'PADRAO': "O Correto Seria: 'Valor da mensalidade com desconto não localizado no documento'"},
+    'correto_mcd_menor':     {'PADRAO': "O Correto Seria: 'Valor da mensalidade com desconto é MENOR que o esperado no documento'"},
+    'correto_mcd_maior':     {'PADRAO': "O Correto Seria: 'Valor da mensalidade com desconto é MAIOR que o esperado no documento'"},
+    'correto_mcd_conforme':  {'PADRAO': "O Correto Seria: 'Valor da mensalidade com desconto está CONFORME o esperado no documento'"}
+}
+
+#  Como os motivos viajam dentro da célula: uma frase por motivo, nesta ordem. A barra foi
+#  escolhida porque nenhuma frase do catálogo a contém — a vírgula, que é o separador da
+#  IA em `Gemini Inconsistencias`, aparece dentro das frases dos três `catalogo_*`.
+SEPARADOR_MOTIVOS = ' | '
 
 
 SEMESTRES_PADRAO = ["2025-1", "2025-2", "2026-1"]
@@ -390,7 +443,7 @@ def remover_caixa_alta_df(df):
     o de linhas. Medido em 166.849 x 62: 28,9s -> 8,6s, com .equals() == True.
     """
     if df is None or df.empty: return df
-    colunas_protegidas = ['tipo_documento', 'Documento Tipo', 'Faculdade', 'MANTENEDORA', 'IES']
+    colunas_protegidas = ['tipo_documento', 'Documento Tipo', 'Faculdade', 'MANTENEDORA', 'IES', 'motivos_divergencia']
     for col in df.columns:
         if col in colunas_protegidas:
             continue
@@ -405,7 +458,7 @@ def remover_caixa_alta_df(df):
                     continue
                 distintos = pd.unique(s[eh_str])
                 convertidos = pd.Series(distintos, dtype=object).astype(str)
-                if col == 'gemini_inconsistencia':
+                if col in ['gemini_inconsistencia', 'observacao_situacao', 'observacao_situacao_atual']:
                     convertidos = convertidos.str.capitalize()
                 else:
                     convertidos = convertidos.str.title()
@@ -654,7 +707,8 @@ def aplicar_formatacao_visual(writer, nome_aba, df):
             'GEMINI_PERIODO': (19.14, None),
             'QTD_PERIODOS': (16.71, None),
             'GEMINI_QTD_PERIODOS': (24.14, None),
-            'MODALIDADE': (15.43, None),
+            'MODALIDADE_ALUNO': (15.43, None),
+            'MODALIDADE_IES': (15.43, None),
             'VALOR_BENEFICIO': (18.86, fmt_moeda),
             'SOMA_VALOR_BENEFICIO': (24.71, fmt_moeda),
             'VALOR_FINANCIAMENTO': (23.43, fmt_moeda),
@@ -904,14 +958,14 @@ def buscar_dados_financeiros_sql(semestres_presentes, inscricoes=None):
             b.inclusao AS inscricao_ano_semestre, b.flag_deficiencia AS uni_deficiencia, b.sexo AS uni_sexo, 'N/A' AS tipo_bolsista_renovacao, b.perfil AS perfil,
             b.data_nascimento, b.email_aluno AS email, b.telefone_principal AS telefone_1, b.telefone_secundario AS telefone_2, b.periodo_atual, b.periodo_quantidade, 
             b.matricula_ies AS matricula, 
-            b.modalidade_curso AS modalidade,
+            b.modalidade_aluno, b.modalidade_ies,
             b.ins_cnpj, b.ins_razao_social, b.ins_nome_fantasia, b.ins_mantenedora, b.nome_faculdade_sql, MAX(p.valor_matricula_sem_desconto) AS valor_matricula_sem_desconto, MAX(p.valor_matricula_com_desconto) AS valor_matricula_com_desconto,
             b.nome_aluno AS Bolsista_sql, b.cpf_aluno AS UNI_CPF, b.curso_aluno AS CUR_NOME,
             b.qtd_disciplinas_matriculadas, b.qtd_disciplinas_reprovadas
         FROM beneficiarios b
         LEFT JOIN pagamentos p ON b.codigo_aluno = p.codigo_aluno AND b.semestre = p.semestre_referencia_analise
         WHERE (b.semestre IN ({sems_formatados}) {f"OR b.codigo_aluno IN ({','.join(map(str, inscricoes))})" if inscricoes else ""})
-        GROUP BY b.codigo_aluno, b.semestre, b.tipo_bolsa, b.status_vinculo, b.data_inclusao, b.ultima_observacao, b.ultimo_motivo, b.inclusao, b.flag_deficiencia, b.sexo, b.perfil, b.data_nascimento, b.email_aluno, b.telefone_principal, b.telefone_secundario, b.periodo_atual, b.periodo_quantidade, b.matricula_ies, b.modalidade_curso, b.ins_cnpj, b.ins_razao_social, b.ins_nome_fantasia, b.ins_mantenedora, b.nome_faculdade_sql, b.nome_aluno, b.cpf_aluno, b.curso_aluno, b.qtd_disciplinas_matriculadas, b.qtd_disciplinas_reprovadas
+        GROUP BY b.codigo_aluno, b.semestre, b.tipo_bolsa, b.status_vinculo, b.data_inclusao, b.ultima_observacao, b.ultimo_motivo, b.inclusao, b.flag_deficiencia, b.sexo, b.perfil, b.data_nascimento, b.email_aluno, b.telefone_principal, b.telefone_secundario, b.periodo_atual, b.periodo_quantidade, b.matricula_ies, b.modalidade_aluno, b.modalidade_ies, b.ins_cnpj, b.ins_razao_social, b.ins_nome_fantasia, b.ins_mantenedora, b.nome_faculdade_sql, b.nome_aluno, b.cpf_aluno, b.curso_aluno, b.qtd_disciplinas_matriculadas, b.qtd_disciplinas_reprovadas
     """
     
     try:
@@ -950,7 +1004,7 @@ def buscar_dados_financeiros_sql(semestres_presentes, inscricoes=None):
                 'situacao_atual_sistema', 'sit_data_atual_sistema', 'data_coleta_atual_sistema', 
                 'sit_obs_atual_sistema', 'inscricao_ano_semestre', 'uni_deficiencia', 'uni_sexo', 
                 'tipo_bolsista_renovacao', 'perfil', 'data_nascimento', 'email', 'telefone_1', 
-                'telefone_2', 'periodo_atual', 'periodo_quantidade', 'matricula', 'modalidade', 
+                'telefone_2', 'periodo_atual', 'periodo_quantidade', 'matricula', 'modalidade_aluno', 'modalidade_ies', 
                 'ins_cnpj', 'ins_razao_social', 'ins_nome_fantasia', 'ins_mantenedora', 
                 'Bolsista_sql', 'UNI_CPF', 'CUR_NOME', 'qtd_disciplinas_matriculadas', 
                 'qtd_disciplinas_reprovadas'
@@ -972,7 +1026,7 @@ def buscar_dados_financeiros_sql(semestres_presentes, inscricoes=None):
                 'qual_beneficio': 'Sem Benefícios', 'qual_financiamento': 'Sem Financiamento',
                 'data_coleta': '',
                 'inscricao_ano_semestre': '', 'uni_deficiencia': '', 'uni_sexo': '', 'tipo_bolsista_renovacao': '', 'perfil': '',
-                'data_nascimento': '', 'email': '', 'telefone_1': '', 'telefone_2': '', 'periodo_atual': '', 'periodo_quantidade': '', 'matricula': '', 'modalidade': '',
+                'data_nascimento': '', 'email': '', 'telefone_1': '', 'telefone_2': '', 'periodo_atual': '', 'periodo_quantidade': '', 'matricula': '', 'modalidade_aluno': '', 'modalidade_ies': '',
                 'ins_cnpj': '', 'ins_razao_social': '', 'ins_nome_fantasia': '', 'ins_mantenedora': '', 'valor_matricula_sem_desconto': 0.0, 'valor_matricula_com_desconto': 0.0
             }
             df_merged.fillna(valores_para_zerar, inplace=True)
@@ -1004,7 +1058,33 @@ def buscar_dados_financeiros_sql(semestres_presentes, inscricoes=None):
             
             df_sql = df_sql.drop_duplicates(subset=['uni_codigo', 'semestre'], keep='last')
             #             print("[GGCI       | SQL           | FINANC] Sucesso.")
-            
+
+            #  A ÚLTIMA SITUAÇÃO DO ALUNO, AO LADO DA SITUAÇÃO DAQUELE SEMESTRE.
+            #
+            #  POR QUE ELA EXISTE: a FORMATURA quase nunca é lançada no semestre em que o
+            #  aluno concluiu. Em 2025-2, o motivo DAQUELE semestre é FORMATURA em 14
+            #  linhas; o motivo ATUAL é FORMATURA em 2.401 das mesmas linhas. Quem lê só a
+            #  coluna do período vê "Renovação CPD" de gente que já formou há um semestre.
+            #
+            #  E O LANÇAMENTO NÃO VOLTA ATRÁS: dos 4.375 alunos que já tiveram FORMATURA
+            #  em alguma linha, os 4.375 seguem com FORMATURA hoje. É isso que faz a
+            #  coluna ATUAL responder "formou em algum momento?" sem precisar dizer quando.
+            #
+            #  FORA DA QUERY ACIMA, E NÃO MAIS UMA COLUNA DELA: aquela filtra por
+            #  `semestres_presentes`, e numa execução de um semestre só o "atual" viraria
+            #  o próprio semestre do recorte — a coluna diria "Renovação CPD" com a
+            #  FORMATURA já lançada no semestre seguinte, que é exatamente o erro que ela
+            #  existe para corrigir. Esta varredura lê o Parquet inteiro, sempre.
+            atual = (pl.scan_parquet(caminho_beneficiarios)
+                       .select(['codigo_aluno', 'semestre', 'ultimo_motivo', 'ultima_observacao'])
+                       .sort('semestre')
+                       .group_by('codigo_aluno').last()
+                       .collect().to_pandas())
+            atual['codigo_aluno'] = pd.to_numeric(atual['codigo_aluno'], errors='coerce').astype('Int64')
+            atual = atual.dropna(subset=['codigo_aluno']).set_index('codigo_aluno')
+            df_sql['sit_motivos_atual'] = df_sql['uni_codigo'].map(atual['ultimo_motivo'])
+            df_sql['sit_obs_atual'] = df_sql['uni_codigo'].map(atual['ultima_observacao'])
+
         return df_sql
     except Exception as e:
         print(f"[GGCI       | ERRO          | SQL   ] Conexão falhou.")
@@ -1181,7 +1261,8 @@ def mesclar_sql_e_reordenar(df, df_sql, df_pag=None, df_mes_a_mes=None):
             'ins_razao_social': 'Ins. Razão Social',
             'ins_nome_fantasia': 'Ins. Nome Fantasia',
             'ins_mantenedora': 'Ins. Mantenedora',
-            'modalidade': 'Modalidade',
+            'modalidade_aluno': 'Modalidade Aluno',
+            'modalidade_ies': 'Modalidade IES',
             'valor_matricula_com_desconto': 'Matricula C/ Desconto',
             'valor_matricula_sem_desconto': 'Matricula S/ Desconto',
             'qtd_disciplinas_matriculadas': 'Qtd Disciplinas Matriculadas',
@@ -1191,6 +1272,8 @@ def mesclar_sql_e_reordenar(df, df_sql, df_pag=None, df_mes_a_mes=None):
             'situacao': 'Status_Vínculo',
             'sit_obs': 'Observação da Situação',
             'sit_motivos': 'Situação do Motivo',
+            'sit_motivos_atual': 'Situação do Motivo Atual',
+            'sit_obs_atual': 'Observação da Situação Atual',
             'sit_data_atual_sistema': 'data ingresso',
             'valor_beneficio': 'valor_beneficio',
             'qual_beneficio': 'qual_beneficio',
@@ -1222,7 +1305,7 @@ def mesclar_sql_e_reordenar(df, df_sql, df_pag=None, df_mes_a_mes=None):
         df_sql_last = df_sql_sorted.drop_duplicates(subset=['uni_codigo'], keep='last')
             
         df_fallback = pd.merge(df[['Inscrição']], df_sql_last, left_on='Inscrição', right_on='uni_codigo', how='left')
-        
+
         mapping_fallback = {
             'Bolsista_sql': 'Bolsista',
             'UNI_CPF': 'CPF',
@@ -1242,13 +1325,19 @@ def mesclar_sql_e_reordenar(df, df_sql, df_pag=None, df_mes_a_mes=None):
             # vazia no relatorio so pode ser merge sem match — exatamente o que o fallback
             # existe para cobrir. `periodo_atual` propaga o ultimo valor conhecido; o ajuste
             # por diferenca de semestre continua sendo feito no remapeamento acima (calc_diff).
-            'modalidade': 'Modalidade',
+            'modalidade_aluno': 'Modalidade Aluno',
+            'modalidade_ies': 'Modalidade IES',
             'periodo_atual': 'Semestre atual',
             'periodo_quantidade': 'Semestre quantidade',
             'qtd_disciplinas_matriculadas': 'Qtd Disciplinas Matriculadas',
             'qtd_disciplinas_reprovadas': 'Qtd Disciplinas Reprovadas',
             'sit_motivos': 'Situação do Motivo',
             'sit_obs': 'Observação da Situação',
+            #  As duas ATUAIS também aqui: elas não dependem do semestre, então o aluno
+            #  cujo semestre não existe em `beneficiarios` tem a mesma resposta que os
+            #  outros — e é justamente ele que costuma já ter formado.
+            'sit_motivos_atual': 'Situação do Motivo Atual',
+            'sit_obs_atual': 'Observação da Situação Atual',
             'situacao': 'Status_Vínculo',
             'perfil': 'Perfil do Beneficiario'
         }
@@ -1548,12 +1637,16 @@ def mesclar_sql_e_reordenar(df, df_sql, df_pag=None, df_mes_a_mes=None):
         cols_alvo = ['Mensalidade S/ Desconto', 'Gemini Mensalidade S/ Desconto', 'Mensalidade C/ Desconto', 'Gemini Mensalidade C/ Desconto']
         
         for c in cols_alvo:
-            if c not in df.columns: df[c] = 0.0
-            else: df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0.0)
+            if c not in df.columns: 
+                df[c] = np.nan if 'Gemini' in c else 0.0
+            else: 
+                df[c] = pd.to_numeric(df[c], errors='coerce')
+                if 'Gemini' not in c:
+                    df[c] = df[c].fillna(0.0)
             
-        # Ensure Gemini is zeroed out for 'Ausente':
-        df.loc[mask_ausente, 'Gemini Mensalidade S/ Desconto'] = 0.0
-        df.loc[mask_ausente, 'Gemini Mensalidade C/ Desconto'] = 0.0
+        # Ensure Gemini is null for 'Ausente':
+        df.loc[mask_ausente, 'Gemini Mensalidade S/ Desconto'] = np.nan
+        df.loc[mask_ausente, 'Gemini Mensalidade C/ Desconto'] = np.nan
             
     
     if 'Situação do Motivo' in df.columns: df['Situação do Motivo'] = df['Situação do Motivo'].fillna("-")
@@ -1574,8 +1667,10 @@ def mesclar_sql_e_reordenar(df, df_sql, df_pag=None, df_mes_a_mes=None):
     df.insert(idx_curso + 4, 'último_valor_pago_referencia', col_val)
     df.insert(idx_curso + 5, 'total bolsa paga', col_tot)
     
-    if 'modalidade_sql' in df.columns:
-        df['modalidade'] = df['modalidade_sql'].combine_first(df.get('modalidade', pd.NA))
+    if 'modalidade_aluno_sql' in df.columns:
+        df['modalidade_aluno'] = df['modalidade_aluno_sql'].combine_first(df.get('modalidade_aluno', pd.NA))
+    if 'modalidade_ies_sql' in df.columns:
+        df['modalidade_ies'] = df['modalidade_ies_sql'].combine_first(df.get('modalidade_ies', pd.NA))
     
     return df
 
@@ -2351,10 +2446,15 @@ def calcular_auditoria_ia(df):
     ia_status_original = df.get('Status_IA', pd.Series(['']*len(df), index=df.index)).astype(object).fillna('').astype(str).str.strip().replace(['nan', 'None', '<NA>', 'NaN'], '')
     ia_status_upper = ia_status_original.str.upper()
 
-    sys_semestre = df.get('Semestre', pd.Series(['']*len(df), index=df.index)).astype(object).fillna('').astype(str).str.strip().replace(['nan', 'None', '<NA>', 'NaN'], '').str.replace('-', '/')
-    ia_semestre = df.get('Gemini Semestre', pd.Series(['']*len(df), index=df.index)).astype(object).fillna('').astype(str).str.strip().replace(['nan', 'None', '<NA>', 'NaN'], '').str.replace('-', '/')
+    sys_semestre = df.get('Semestre', pd.Series(['']*len(df), index=df.index)).astype(object).fillna('').astype(str).str.strip().replace(['nan', 'None', '<NA>', 'NaN', '-'], '')
+    sys_semestre = sys_semestre.str.replace('-', '/')
+    
+    ia_semestre = df.get('Gemini Semestre', pd.Series(['']*len(df), index=df.index)).astype(object).fillna('').astype(str).str.strip().replace(['nan', 'None', '<NA>', 'NaN', '-'], '')
+    ia_semestre = ia_semestre.str.replace(r'(?i)n[aã]o localizad[ao]', '', regex=True).str.strip()
+    ia_semestre = ia_semestre.str.replace('-', '/')
     sys_cpf = df.get('CPF', pd.Series(['']*len(df), index=df.index)).astype(object).fillna('').astype(str).str.strip().replace(['nan', 'None', '<NA>', 'NaN'], '').str.replace(r'\.0$', '', regex=True)
     ia_cpf = df.get('Gemini CPF', pd.Series(['']*len(df), index=df.index)).astype(object).fillna('').astype(str).str.strip().replace(['nan', 'None', '<NA>', 'NaN'], '').str.replace(r'\.0$', '', regex=True)
+    ia_cpf = ia_cpf.str.replace(r'(?i)n[aã]o localizad[ao]', '', regex=True).str.strip()
     inc_original = df.get('Gemini Inconsistencias', pd.Series(['']*len(df), index=df.index)).astype(object).fillna('').astype(str).str.strip().replace(['nan', 'None', '<NA>', 'NaN'], '')
     dif_s = pd.to_numeric(df.get('Dif. s/Desc.', pd.Series([0]*len(df), index=df.index)), errors='coerce').fillna(0)
     sys_processado = df.get('Processado', pd.Series(['']*len(df), index=df.index)).astype(object).fillna('').astype(str).str.strip().str.upper()
@@ -2397,6 +2497,7 @@ def calcular_auditoria_ia(df):
 
     sys_curso = df.get('Curso', pd.Series(['']*len(df), index=df.index)).astype(object).fillna('').astype(str).str.strip().str.upper().replace(['NAN', 'NONE', '<NA>'], '')
     ia_curso = df.get('Gemini Curso', pd.Series(['']*len(df), index=df.index)).astype(object).fillna('').astype(str).str.strip().str.upper().replace(['NAN', 'NONE', '<NA>'], '')
+    ia_curso = ia_curso.str.replace(r'(?i)N[AÃ]O LOCALIZAD[AO]', '', regex=True).str.strip()
 
     # O CURSO SÓ É COBRADO DE QUEM O CARREGA — Histórico e RIAF.
     #
@@ -2528,6 +2629,108 @@ def calcular_auditoria_ia(df):
     # disse, não uma inferência sobre isso — que era exatamente o defeito a corrigir.
     df['Veredito Documento'] = veredito_documento
 
+    #  O PORQUÊ DO VEREDITO, NA FRASE DO CATÁLOGO.
+    #
+    #  A pergunta que esta coluna responde é a única que a tela ainda não respondia: o
+    #  `Falso Válido` diz QUE a matemática discorda da IA, nunca EM QUE. Numa linha com
+    #  `Gemini Inconsistencias` = "Sem inconsistências" — que é o caso mais comum, porque
+    #  `Falso Válido` é exatamente a IA não ter visto problema — descobrir que o que reprovou
+    #  foi o CPF exigia comparar 63 colunas duas a duas, no olho.
+    #
+    #  AS MÁSCARAS SÃO AS MESMAS, e este bloco não recalcula uma regra sequer: cada pedaço
+    #  elementar de `matematica_invalida` vira uma frase, e quem decide o veredito continua
+    #  sendo `matematica_invalida`. Mudar a regra lá em cima muda o motivo junto, sem que
+    #  ninguém precise lembrar daqui — que é a armadilha de toda segunda implementação.
+    #
+    #  POR QUE NO MOTOR, E NÃO NA TELA: o Parquet de cada aba só carrega as colunas `gemini_*`
+    #  do documento daquela aba. O Contrato não grava `gemini_semestre`, o Histórico não grava
+    #  nada de financeiro — recalcular na leitura produziria tooltip mudo justamente quando o
+    #  motivo fosse um campo que não viajou. Aqui o dado ainda está inteiro.
+    #
+    #  SAI VAZIO onde o veredito não é de leitura (ausente, corrompido, não processado) e no
+    #  inadimplente: ali não houve auditoria do conteúdo, e listar "CPF não localizado" para
+    #  um documento que nunca chegou seria transformar ausência em erro de preenchimento.
+    familia_catalogo = pd.Series(
+        np.where(so_contrato, 'CONTRATO', np.where(is_riaf, 'RIAF', 'PADRAO')), index=df.index)
+
+    inc_msd_nao_loc = inc_original.str.contains('Valor da mensalidade integral não localizado', na=False)
+    inc_assinatura = inc_original.str.contains('Assinatura', case=False, na=False)
+    assinatura_aluno_ausente = ia_assinatura_aluno.str.contains('NÃO LOCALIZADO|NAO LOCALIZADO', regex=True)
+    assinatura_ies_ausente = ia_assinatura_ies.str.contains('NÃO LOCALIZADO|NAO LOCALIZADO', regex=True)
+
+    #  A ORDEM DESTA LISTA É A ORDEM DA LISTINHA NA TELA, e segue a do `catalogo_erros`:
+    #  crítico (CPF), alto (semestre, curso, assinatura), médio (dinheiro). É a mesma
+    #  ordem que o prompt exige da IA ao concatenar inconsistências, então a nossa lista e
+    #  a dela se leem no mesmo sentido.
+    regras_de_motivo = [
+        (ia_cpf == '', 'cpf_ausente'),
+        ((ia_cpf != '') & (sys_cpf != ia_cpf), 'cpf_diverge'),
+        (ia_semestre == '', 'semestre_ausente'),
+        ((ia_semestre != '') & (sys_semestre != ia_semestre), 'semestre_diverge'),
+        (documento_traz_curso & (ia_curso == ''), 'curso_ausente'),
+        (documento_traz_curso & (ia_curso != '') & (sys_curso != ia_curso), 'curso_diverge'),
+        (is_riaf & assinatura_aluno_ausente, 'assinatura_aluno'),
+        (is_riaf & assinatura_ies_ausente, 'assinatura_ies'),
+        #  A IA apontou assinatura na frase sem dizer de quem, e os dois campos vieram
+        #  preenchidos. A linha invalida (`matematica_invalida_assinatura` olha a frase),
+        #  então ficar sem motivo deixaria o tooltip vazio em cima de um `Falso Válido`.
+        (is_riaf & inc_assinatura & ~assinatura_aluno_ausente & ~assinatura_ies_ausente,
+         'assinatura_apontada'),
+        (is_riaf & (sys_beneficio != ia_beneficio), 'beneficio_diverge'),
+        (is_riaf & (sys_financiamento != ia_financiamento), 'financiamento_diverge'),
+        #  `dif_s` é `sistema - IA`: positivo significa documento ABAIXO do esperado. O
+        #  "não localizado" vem antes dos dois porque valor zero também produz diferença,
+        #  e dizer "é MENOR que o esperado" de um campo em branco descreve o campo errado.
+        (~is_historico & (inc_msd_nao_loc | ((dif_s != 0) & (msd_ia == 0))), 'msd_ausente'),
+        (~is_historico & (msd_ia != 0) & (dif_s > 0), 'msd_menor'),
+        (~is_historico & (msd_ia != 0) & (dif_s < 0), 'msd_maior'),
+        (so_contrato & inc_mcd_nao_loc & (mcd_ia > 0), 'catalogo_mcd_nao_loc'),
+        (so_contrato & inc_mcd_menor & (mcd_ia >= mcd_sys), 'catalogo_mcd_menor'),
+        (so_contrato & inc_mcd_maior & (mcd_ia <= mcd_sys), 'catalogo_mcd_maior'),
+        #  A FRASE QUE A IA DEVERIA TER ESCRITO, logo abaixo da que ela escreveu. A pergunta
+        #  é sobre o MESMO campo que a contradisse (mensalidade com desconto), respondida
+        #  pelo valor que ela própria leu — comparar `mcd_ia` com `mcd_sys` é o que o prompt
+        #  manda fazer, e é onde ela falhou. Sem este par a tela diz "está errado" e cala.
+        (cond_erro_inconsistencia & (mcd_ia == 0), 'correto_mcd_nao_loc'),
+        (cond_erro_inconsistencia & (mcd_ia > 0) & (mcd_ia < mcd_sys), 'correto_mcd_menor'),
+        (cond_erro_inconsistencia & (mcd_ia > 0) & (mcd_ia > mcd_sys), 'correto_mcd_maior'),
+        (cond_erro_inconsistencia & (mcd_ia > 0) & (mcd_ia == mcd_sys), 'correto_mcd_conforme'),
+    ]
+
+    #  `map` com dicionário é vetorizado; `fillna` cobre o documento que não tem frase
+    #  própria para aquele motivo. Juntar com uma barra sozinha e só depois trocar as
+    #  barras seguidas pelo separador evita testar "já tem alguma coisa aqui?" por linha.
+    pedacos = []
+    for mascara, chave in regras_de_motivo:
+        frases = CATALOGO_MOTIVOS[chave]
+        texto = familia_catalogo.map(frases).fillna(frases['PADRAO'])
+        pedacos.append(pd.Series(np.where(mascara, texto, ''), index=df.index))
+
+    motivos = pedacos[0]
+    for pedaco in pedacos[1:]:
+        motivos = motivos.str.cat(pedaco, sep='|')
+    motivos = motivos.str.replace(r'\|+', SEPARADOR_MOTIVOS, regex=True).str.strip(' |')
+
+    #  FALSO INVÁLIDO É O ESPELHO, E A LISTA DELE NÃO É NOSSA.
+    #
+    #  Por construção do veredito, nesta linha NENHUMA checagem matemática falhou — se
+    #  uma tivesse falhado, o documento seria `Inválido` e IA e sistema estariam de
+    #  acordo. Logo não existe divergência nossa a listar, e o bloco acima devolve vazio
+    #  aqui SEMPRE: sem este `where`, o `Falso Inválido` ficaria mudo justamente na tela
+    #  que explica vereditos.
+    #
+    #  O que precisa ser revisto são as frases que a IA escreveu, e é só isso que o balão
+    #  mostra — sob outro título, porque a lista não acusa o documento, acusa o prompt.
+    #  Reaproveita `Gemini Inconsistencias` sem reescrever nada: só troca o separador da
+    #  IA (vírgula) pelo nosso, para a tela quebrar em itens do mesmo jeito.
+    frases_da_ia = inc_original.str.replace(r',\s*', SEPARADOR_MOTIVOS, regex=True)
+    frases_da_ia = frases_da_ia.mask(
+        inc_original.str.contains('Sem inconsistências', case=False, na=False), '')
+    motivos = pd.Series(np.where(cond_falso_invalido, frases_da_ia, motivos), index=df.index)
+
+    mask_balao_desnecessario = df['Status_IA'].isin(['Válido', 'Inválido'])
+    df['Motivos Divergência'] = np.where(mask_ignorar_math | cond_inadimplente | mask_balao_desnecessario, '', motivos)
+
     # O INADIMPLENTE QUE NÃO ENTREGOU O DOCUMENTO NÃO CHEGA MAIS ATÉ AQUI.
     #
     # Esta linha já foi descartada duas vezes NESTE ponto, e as duas vezes o descarte estava no
@@ -2574,7 +2777,7 @@ def calcular_auditoria_ia(df):
         
         'valor_beneficio', 'Soma Valor Beneficio', 'qual_beneficio', 'valor_financiamento', 'Soma Valor Financiamento', 'qual_financiamento', 'data_coleta',
         'Documento Tipo', 'Check Contrato', 'Check Financiamento', 'Check Benefícios', 'Check RIAF', 'Check Histórico', 
-        'Processar', 'Processado', 'Documento Ausente', 'Veredito Documento', 'Data Processamento', 'Coleta ID',
+        'Processar', 'Processado', 'Documento Ausente', 'Veredito Documento', 'Motivos Divergência', 'Data Processamento', 'Coleta ID',
         'inscricao_ano', 'uni_deficiencia', 'uni_sexo'
     ]
     
@@ -3423,7 +3626,7 @@ def gerar_aba_relatorio_contratos(writer, df_docs, sems_contratos):
 
     worksheet.write_comment(54, 0, "puxar valores de matriculas das coleta de dados para ajustar 2026-jan, observar se contratos tem valor de matricula pois agora é um requisito necessario para recalculo de bolsas")
 
-def gerar_aba_relatorio_riaf(writer, df_riaf, sems_riaf):
+def gerar_aba_relatorio_riaf(writer, df_riaf, sems_riaf, colunas_da_aba=None):
     """
     O QUE FAZ: Monta a aba "Relatório RIAF", equivalente gerencial da aba de contratos.
     POR QUÊ EXISTE: O RIAF tem conjunto de colunas e regras de aferição próprios e não cabe
@@ -3571,8 +3774,19 @@ def gerar_aba_relatorio_riaf(writer, df_riaf, sems_riaf):
         # Arquivos has subcolumns, so the Variação is merged, meaning it has 6 None below it
         return [(title, fmt_title)] + [("", fmt_cell, 2) for _ in range(len(sems_riaf)*3)] + ([("", fmt_cell, 6)] if has_var else [])
 
-    colunas_riaf_exp = ['status_ia', 'gemini_inconsistencia', 'semestre', 'gemini_semestre', 'bolsista', 'inscricao', 'inscricao_anterior', 'inscricao_posterior', 'cpf', 'gemini_cpf', 'tipo_bolsa_final', 'gemini_tipo_bolsa_final', 'mudou_bolsa', 'bolsa_anterior', 'bolsa_posterior', 'faculdade', 'cnpj_ies', 'mudou_ies', 'ies_anterior', 'ies_posterior', 'curso', 'gemini_assinatura_aluno', 'gemini_assinatura_ies', 'ultimo_valor_pago_ref', 'total_bolsa_paga', 'qtd_pagtos', 'qtd_pagtos_retroativos', 'matricula_sem_desc', 'gemini_matricula_sem_desc', 'matricula_sd_doc', 'matricula_com_desc', 'gemini_matricula_com_desc', 'matricula_cd_doc', 'mensalidade_sem_desc', 'gemini_mensalidade_sem_desc', 'msd_doc', 'mensalidade_com_desc', 'gemini_mensalidade_com_desc', 'mcd_doc', 'valor_beneficio', 'soma_valor_beneficio', 'gemini_valor_beneficio', 'beneficio', 'valor_financiamento', 'soma_valor_financiamento', 'gemini_valor_financiamento', 'financiamento', 'soma_ovg_devia_pagar_sis', 'soma_ovg_devia_pagar_ia', 'soma_prejuizo_ovg', 'soma_economia_ovg', 'diagnostico_financeiro_final', 'data_coleta', 'data_coleta_atual_sistema', 'data_create', 'data_processamento', 'processado', 'processar', 'qtd_token', 'qtd_disciplinas_matriculadas', 'qtd_disciplinas_reprovadas', 'perfil', 'status_vinculo', 'situacao_motivo', 'observacao_situacao', 'email', 'gemini_email', 'telefone_1', 'telefone_2', 'data_nascimento', 'matricula', 'periodo_atual', 'qtd_periodos', 'modalidade', 'documento_ausente', 'veredito_documento']
-    _cols_riaf_final = [c for c in colunas_riaf_exp if c in df_riaf.columns and c not in ['tipo_documento', 'Documento Tipo']]
+    #  A LETRA DE CADA COLUNA VEM DA ORDEM DA ABA `Riaf`, então quem manda é a própria aba.
+    #  Havia aqui uma segunda lista, escrita à mão, com a ordem que se esperava dela — e essa
+    #  lista não tinha `gemini_curso`, que a aba passou a escrever na 22ª posição. Uma coluna
+    #  a menos na contagem empurra em uma casa TODAS as letras dali para a frente, e o
+    #  relatório continua bonito somando a coluna vizinha: `total_bolsa_paga` virava
+    #  `ultimo_valor_pago_ref` (a mensalidade no lugar do semestre inteiro), `status_vinculo`
+    #  virava `perfil` (Ativos e Inativos zerados) e `soma_valor_beneficio` virava
+    #  `valor_beneficio`. Ao contrário do Contrato, que é reordenado por
+    #  `COLUNAS_ABA_DOCUMENTO` antes de ser escrito, a aba `Riaf` sai na ordem do DataFrame
+    #  (ver `montar_abas_de_dados`) — por isso a ordem chega por parâmetro em vez de lista fixa.
+    _cols_riaf_final = [c for c in (list(df_riaf.columns) if colunas_da_aba is None
+                                    else colunas_da_aba)
+                        if c not in ['tipo_documento', 'Documento Tipo']]
     
     def _get_col_r(n):
         if n in _cols_riaf_final: return col_to_letter(_cols_riaf_final.index(n))
@@ -4556,7 +4770,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                 # `qtd_pagtos_retroativos` e `último_valor_pago_referencia` entram por causa de
                 # `sem_repasse_liquido`, logo abaixo: sem elas o filtro só sabe QUANTOS lançamentos
                 # existem, não quanto sobrou depois dos cancelamentos.
-                cols_fin = ['uni_codigo', 'semestre', 'valor_financiamento', 'valor_beneficio', 'qtd_pagtos', 'qtd_pagtos_retroativos', 'último_valor_pago_referencia', 'matricula', 'modalidade', 'email', 'telefone_1', 'telefone_2', 'data_nascimento', 'periodo_atual', 'periodo_quantidade']
+                cols_fin = ['uni_codigo', 'semestre', 'valor_financiamento', 'valor_beneficio', 'qtd_pagtos', 'qtd_pagtos_retroativos', 'último_valor_pago_referencia', 'matricula', 'modalidade_aluno', 'modalidade_ies', 'email', 'telefone_1', 'telefone_2', 'data_nascimento', 'periodo_atual', 'periodo_quantidade']
                 cols_fin = [c for c in cols_fin if c in df_financas.columns and (c not in df_ativos.columns or c in ['uni_codigo', 'semestre'])]
                 df_fin_reduzido = df_financas[cols_fin].drop_duplicates(subset=['uni_codigo', 'semestre'], keep='last').copy()
                 df_fin_reduzido['semestre'] = df_fin_reduzido['semestre'].astype(str).str.strip().str.replace('/', '-')
@@ -4699,7 +4913,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                             'Curso': limpar_texto_geral(row['CUR_NOME']), 'Documento Tipo': row['tipo_original']
                         }
                         for col_orig, col_dest in [
-                            ('matricula', 'Matricula'), ('modalidade', 'modalidade'), 
+                            ('matricula', 'Matricula'), ('modalidade_aluno', 'modalidade_aluno'), ('modalidade_ies', 'modalidade_ies'), 
                             ('email', 'E-mail'), ('telefone_1', 'Telefone 1'), ('telefone_2', 'Telefone 2'),
                             ('data_nascimento', 'Data nascimento'), ('periodo_atual', 'Semestre atual'),
                             ('periodo_quantidade', 'Semestre quantidade')
@@ -4759,7 +4973,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                                 'Curso': limpar_texto_geral(row['CUR_NOME']), 'Documento Tipo': DOC_RIAF
                             }
                             for col_orig, col_dest in [
-                                ('matricula', 'Matricula'), ('modalidade', 'modalidade'), 
+                                ('matricula', 'Matricula'), ('modalidade_aluno', 'modalidade_aluno'), ('modalidade_ies', 'modalidade_ies'), 
                                 ('email', 'E-mail'), ('telefone_1', 'Telefone 1'), ('telefone_2', 'Telefone 2'),
                                 ('data_nascimento', 'Data nascimento'), ('periodo_atual', 'Semestre atual'),
                                 ('periodo_quantidade', 'Semestre quantidade')
@@ -5198,9 +5412,10 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             'Gemini Modalidade', 'Gemini Email', 'Gemini Telefone', 'Gemini Periodo', 'Gemini Quantidade Periodos',
             'Gemini Tipo Bolsa', 'Data nascimento', 'E-mail', 'Telefone 1', 'Telefone 2', 'Semestre atual',
             'Semestre quantidade', 'Matricula', 'Ins. Cnpj', 'Ins. Nome Fantasia', 'Ins. Mantenedora',
-            'Modalidade', 'Matricula C/ Desconto', 'Matricula S/ Desconto', 'data_create', 'Processado',
+            'Modalidade Aluno', 'Modalidade IES', 'Matricula C/ Desconto', 'Matricula S/ Desconto', 'data_create', 'Processado',
             'Documento Ausente',
             'Veredito Documento',
+            'Motivos Divergência',
             'Qtde Token', 'gemini_vigencia', 'gemini_clausulas', 'gemini_recisao', 'gemini_cnpj_mantenedora',
             'gemini_documentos_beneficio', 'gemini_cnpj_banco', 'gemini_numero', 'gemini_numero_semestres',
             'gemini_semestres_feitos', 'gemini_semestres_financiados', 'gemini_valor_limite_credito',
@@ -5273,6 +5488,8 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             'Status_Vínculo': 'status_vinculo',
             'Situação do Motivo': 'situacao_motivo',
             'Observação da Situação': 'observacao_situacao',
+            'Situação do Motivo Atual': 'situacao_motivo_atual',
+            'Observação da Situação Atual': 'observacao_situacao_atual',
             'IES Anterior': 'ies_anterior',
             'IES Posterior': 'ies_posterior',
             'Mudou IES?': 'mudou_ies',
@@ -5281,7 +5498,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             'Semestre': 'semestre',
             'Gemini Semestre': 'gemini_semestre',
             'Semestre atual': 'periodo_atual',
-            'Gemini Semestre': 'gemini_periodo',
+            'Gemini Periodo': 'gemini_periodo',
             'Semestre quantidade': 'qtd_periodos',
             'Gemini Quantidade Periodos': 'gemini_qtd_periodos',
             'gemini_numero_semestres': 'gemini_numero_semestres',
@@ -5297,7 +5514,8 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             'Bolsa Posterior': 'bolsa_posterior',
             'tipo_bolsa_final': 'tipo_bolsa_final',
             'Gemini Tipo Bolsa': 'gemini_tipo_bolsa',
-            'Modalidade': 'modalidade',
+            'Modalidade Aluno': 'modalidade_aluno',
+            'Modalidade IES': 'modalidade_ies',
             'Gemini Modalidade': 'gemini_modalidade',
             'qual_beneficio': 'qual_beneficio',
             'Gemini Beneficio Nome': 'gemini_nome_beneficio',
@@ -5352,6 +5570,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             'Processado': 'processado',
             'Documento Ausente': 'documento_ausente',
             'Veredito Documento': 'veredito_documento',
+            'Motivos Divergência': 'motivos_divergencia',
             'Processar': 'processar',
             'Qtde Token': 'qtd_token',
             'Qtd Disciplinas Matriculadas': 'qtd_disciplinas_matriculadas',
@@ -5371,7 +5590,15 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                     s_nums = df_docs[col_tel].astype(str).str.replace(r'\D', '', regex=True)
                     df_docs[col_tel] = pd.to_numeric(s_nums, errors='coerce').astype('Int64')
                     
-            colunas_finais_docs = [c for c in ordem_finais if c in df_docs.columns]
+            #  AS DUAS COLUNAS DA SITUAÇÃO ATUAL VIAJAM FORA DE `COLUNAS_ABA_DOCUMENTO`,
+            #  de propósito: entrar na lista as colocaria também no Contrato, no Benefício
+            #  e no Financiamento, e lá elas não respondem pergunta nenhuma. Aqui elas
+            #  sobrevivem ao recorte, e mais adiante só o Histórico as pede pelo nome —
+            #  as outras três abas são refatiadas por `COLUNAS_ABA_DOCUMENTO` em
+            #  `montar_abas_de_dados` e as perdem sem que ninguém precise lembrar disso.
+            extras_historico = [c for c in ('situacao_motivo_atual', 'observacao_situacao_atual')
+                                if c in df_docs.columns and c not in ordem_finais]
+            colunas_finais_docs = [c for c in ordem_finais if c in df_docs.columns] + extras_historico
             df_docs = df_docs[colunas_finais_docs]
 
         if not df_riaf.empty:
@@ -5413,7 +5640,8 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                 'processar', 'qtd_token', 'qtd_disciplinas_matriculadas', 'qtd_disciplinas_reprovadas', 
                 'perfil', 'status_vinculo', 'situacao_motivo', 'observacao_situacao', 'email', 
                 'gemini_email', 'telefone_1', 'telefone_2', 'data_nascimento', 'matricula', 
-                'periodo_atual', 'qtd_periodos', 'modalidade', 'documento_ausente', 'veredito_documento'
+                'periodo_atual', 'qtd_periodos', 'modalidade_aluno', 'modalidade_ies', 'documento_ausente', 'veredito_documento',
+                'motivos_divergencia'
             ]
             
             for c in colunas_riaf:
@@ -5444,7 +5672,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
 
                 for c_num in ['gemini_mensalidade_com_desc', 'gemini_mensalidade_sem_desc', 'gemini_valor_beneficio', 'gemini_valor_financiamento']:
                     if c_num in df_saida.columns:
-                        df_saida[c_num] = pd.to_numeric(df_saida[c_num], errors='coerce').fillna(0.0)
+                        df_saida[c_num] = pd.to_numeric(df_saida[c_num], errors='coerce')
         
 
         with cronometrar('title case final'):
@@ -5572,8 +5800,9 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                             'data_processamento', 'processado', 'processar', 'qtd_token', 
                             'qtd_disciplinas_matriculadas', 'qtd_disciplinas_reprovadas', 
                             'perfil', 'status_vinculo', 'situacao_motivo', 'observacao_situacao', 
+                            'situacao_motivo_atual', 'observacao_situacao_atual', 
                             'email', 'telefone_1', 'telefone_2', 'data_nascimento', 'matricula', 
-                            'periodo_atual', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade'
+                            'periodo_atual', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies'
                         ]
                         for c in colunas_historico:
                             if c not in df_tipo.columns:
@@ -5679,7 +5908,10 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             if gerar_relatorio_riaf:
                 print(f"[GGCI       | GERANDO       | RIAF  ] Relatório RIAF IES...")
                 if sems_riaf:
-                    gerar_aba_relatorio_riaf(writer, df_riaf, sems_riaf)
+                    #  A aba `Riaf` sai com as colunas do DataFrame menos as de check, e é
+                    #  dessa ordem que as fórmulas do relatório tiram a letra de cada coluna.
+                    colunas_aba_riaf = [c for c in df_riaf.columns if c not in COLS_CHECK]
+                    gerar_aba_relatorio_riaf(writer, df_riaf, sems_riaf, colunas_aba_riaf)
                 else:
                     print(f"[GGCI       | AVISO         | RIAF  ] Nenhum semestre configurado para RIAF.")
 
