@@ -2491,7 +2491,7 @@ def calcular_auditoria_ia(df):
 
     ordem_desejada = [
         'Status_IA', 'Status_Vínculo', 
-        'Situação do Motivo', 'Observação da Situação',
+        'Situação do Motivo', 'Observação da Situação', 'Situação do Motivo Atual', 'Observação da Situação Atual',
         'Mudou IES?', 'IES Anterior', 'IES Posterior', 'Mudou Bolsa?', 'Bolsa Anterior', 'Bolsa Posterior', 
         'Semestre', 'Gemini Semestre', 'Inscrição', 'Inscrição Anterior', 'Inscrição Posterior', 
         'Bolsista', 'CPF', 'Gemini CPF', 'Gemini Inconsistencias', 'Faculdade', 'Curso', 
@@ -5026,7 +5026,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
 
         # --- LIMPEZA DE COLUNAS LIXO (APENAS AS SOLICITADAS PELO USUÁRIO) ---
         colunas_do_relatorio = [
-            'Status_IA', 'Status_Vínculo', 'Situação do Motivo', 'Observação da Situação', 'Mudou IES?',
+            'Status_IA', 'Status_Vínculo', 'Situação do Motivo', 'Observação da Situação', 'Situação do Motivo Atual', 'Observação da Situação Atual', 'Mudou IES?',
             'IES Anterior', 'IES Posterior', 'Mudou Bolsa?', 'Bolsa Anterior', 'Bolsa Posterior',
             'Semestre', 'Gemini Semestre', 'Inscrição', 'Inscrição Anterior', 'Inscrição Posterior',
             'Bolsista', 'CPF', 'Gemini CPF', 'Gemini Inconsistencias', 'Faculdade', 'Curso', 'Gemini Curso',
