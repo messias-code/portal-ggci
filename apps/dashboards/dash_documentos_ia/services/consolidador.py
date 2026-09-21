@@ -177,17 +177,7 @@ def get_configs(processo_id=None):
                 'Documento Tipo', 'Coleta ID', 'Data Processamento'
             ]
         },
-        {
-            # A LISTA DE COBRANÇA COMO O SITE A ENXERGA — o menu `Relatório de Contratos`,
-            # baixado sem filtro de inscrição. Não é uma fonte de documento: é a única
-            # forma de saber O QUE O SIBU ESTÁ COBRANDO, que nenhuma tabela do banco
-            # responde. O motor cruza esta lista com a nossa para achar a cobrança sem
-            # lançamento no semestre.
-            #
-            # `Lançamento` é a coluna que decide: ela vem do próprio site, que portanto
-            # TEM o dado e cobra assim mesmo.
-            'tipo': 'cobranca',
-            'pasta': f'{base_dir}/cobranca_do_site',
+        /cobranca_do_site',
             'saida': 'consolidado_cobranca_do_site.parquet',
             'aba': 'Cobrança do Site',
             'ext': '.xlsx',

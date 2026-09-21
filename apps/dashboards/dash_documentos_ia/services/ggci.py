@@ -4378,7 +4378,6 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
     arq_agendar = os.path.join(base_dir, "analise_documentos_agendar_processamentos", "CONSOLIDADO", "consolidado_agendar_processamentos.parquet")
     pasta_pag = os.path.join(base_dir, "analise_pagamentos", "CONSOLIDADO")
     arq_pagamentos = os.path.join(pasta_pag, "consolidado_pagamentos.parquet")
-    arq_cobranca_site = os.path.join(base_dir, "cobranca_do_site", "CONSOLIDADO", "consolidado_cobranca_do_site.parquet")
     arquivo_geral_saida = os.path.join(base_dir, f"relatorio_geral.xlsx")
     
 
@@ -5007,102 +5006,6 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             # (a melhor cobria 6.550 de 6.555 e trazia 10.549 a mais). A única fonte fiel é a
             # própria tela, que o extrator agora baixa pelo menu `Relatório de Contratos`.
             #
-            # QUEM DECIDE é a coluna `Lançamento`, que vem do site: `Não` significa que não
-            # houve repasse naquele semestre. O site tem esse dado e cobra assim mesmo.
-            #
-            # `Status_IA = Inadimplente` de propósito, e não um valor novo: as fórmulas do
-            # relatório gerencial filtram `"<>INADIMPLENTE"`, então estas linhas aparecem nas
-            # abas de dados e ficam FORA das somas de cobrança — que é exatamente o que se
-            # quer de uma cobrança indevida. `Documento Ausente` as separa, no dashboard, do
-            # inadimplente que entregou o documento.
-            if os.path.exists(arq_cobranca_site):
-                try:
-                    df_cobranca = pd.read_parquet(arq_cobranca_site)
-                    col_lancamento = next((c for c in df_cobranca.columns
-                                           if c.strip().lower().startswith('lan')), None)
-                    if col_lancamento is None:
-                        raise KeyError("coluna de lançamento não encontrada no relatório do site")
-
-                    sem_lancamento = (df_cobranca[col_lancamento].astype(str).str.strip()
-                                      .str.upper().isin(['NÃO', 'NAO', 'N']))
-                    df_indevidas = df_cobranca[sem_lancamento].copy()
-
-                    # Quem JÁ ESTÁ no relatório sai daqui: a linha dele é a de verdade, com o
-                    # documento e o veredito da IA. Sem esta checagem a mesma inscrição
-                    # apareceria duas vezes no mesmo semestre e a rosca contaria em dobro.
-                    ja_no_relatorio = set(zip(
-                        df_docs['Inscrição'].astype(str).str.split('.').str[0].str.strip(),
-                        df_docs['Semestre'].astype(str).str.strip().str.replace('/', '-'),
-                        aplicar_por_distintos(df_docs['Documento Tipo'], limpar_texto_geral),
-                    )) if not df_docs.empty else set()
-                    
-                    ja_no_relatorio_riaf = set(zip(
-                        df_riaf['Inscrição'].astype(str).str.split('.').str[0].str.strip(),
-                        df_riaf['Semestre'].astype(str).str.strip().str.replace('/', '-'),
-                        aplicar_por_distintos(pd.Series([DOC_RIAF]*len(df_riaf)), limpar_texto_geral),
-                    )) if not df_riaf.empty else set()
-                    
-                    ja_no_relatorio.update(ja_no_relatorio_riaf)
-
-                    # O CONSOLIDADOR NORMALIZA o texto das colunas (sem acento, maiúsculas),
-                    # então o `Documento` chega como `HISTORICO ESCOLAR` e não bateria com o
-                    # `DOC_HISTORICO` do sistema — a linha cairia numa aba que não existe.
-                    # O mapa devolve a constante canônica, comparando pela forma normalizada.
-                    doc_por_forma_limpa = {
-                        limpar_texto_geral(d): d
-                        for d in (DOC_CONTRATO, DOC_FINANC, DOC_BENEF, DOC_RIAF, DOC_HISTORICO)
-                    }
-
-                    novas_cobrancas = []
-                    novas_cobrancas_riaf = []
-                    for row in df_indevidas.to_dict('records'):
-                        semestre_row = str(row.get('Semestre', '')).strip().replace('/', '-')
-                        documento_row = str(row.get('Documento', '')).strip()
-                        inscricao_row = str(row.get('Inscrição', '')).split('.')[0].strip()
-                        if not inscricao_row or not semestre_row or not documento_row:
-                            continue
-                        documento_canonico = doc_por_forma_limpa.get(limpar_texto_geral(documento_row))
-                        if documento_canonico is None:
-                            # Documento que este relatório não cobre: ignorar é mais seguro
-                            # que inventar uma aba nova a partir de texto do site.
-                            continue
-                        if (inscricao_row, semestre_row, limpar_texto_geral(documento_row)) in ja_no_relatorio:
-                            continue
-                            
-                        novo_registro = {
-                            'Status_IA': 'Inadimplente',
-                            'Documento Ausente': 'SIM',
-                            'Inscrição': inscricao_row,
-                            'Semestre': semestre_row,
-                            'Documento Tipo': documento_canonico,
-                            'Bolsista': limpar_texto_geral(str(row.get('Beneficiário', ''))),
-                            'CPF': row.get('CPF', ''),
-                            'Faculdade': limpar_texto_geral(str(row.get('Instituição', ''))),
-                        }
-                        
-                        if documento_canonico == DOC_RIAF:
-                            novas_cobrancas_riaf.append(novo_registro)
-                        else:
-                            novas_cobrancas.append(novo_registro)
-
-                    if novas_cobrancas:
-                        df_docs = pd.concat(
-                            [df_docs, converter_colunas_para_salvamento(pd.DataFrame(novas_cobrancas))],
-                            ignore_index=True)
-                            
-                    if novas_cobrancas_riaf:
-                        df_riaf = pd.concat(
-                            [df_riaf, converter_colunas_para_salvamento(pd.DataFrame(novas_cobrancas_riaf))],
-                            ignore_index=True)
-                            
-                    if novas_cobrancas or novas_cobrancas_riaf:
-                        print(f"[GGCI       | INJETADOS     | COBRANÇA] {len(novas_cobrancas) + len(novas_cobrancas_riaf)} "
-                              f"cobranças do site sem lançamento no semestre.")
-                except Exception as erro_cobranca:
-                    # Falhar aqui não pode derrubar o relatório: a fatia fica vazia e todo o
-                    # resto continua correto. É informação adicional, não a base.
-                    print(f"[GGCI       | AVISO         | COBRANÇA] Relatório do site não pôde "
-                          f"ser cruzado: {erro_cobranca}")
 
     else:
         # Fallback caso não haja pagamentos mas seja necessário sql

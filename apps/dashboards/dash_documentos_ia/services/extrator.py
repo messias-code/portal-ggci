@@ -907,8 +907,6 @@ def executar(docs_selecionados=None, periodos_por_doc=None, processo_id=None, in
         {"nome_menu": "Análise Contratos Processados", "pasta_raiz": f"{base_dir}/analise_documentos_processados"},
         {"nome_menu": "Agendar Processamento", "pasta_raiz": f"{base_dir}/analise_documentos_agendar_processamentos"},
     ]
-    if not inscricoes_forcadas:
-        tarefas_menus.append({"nome_menu": "Relatório de Contratos", "pasta_raiz": f"{base_dir}/cobranca_do_site"})
     pasta_pagamentos = f"{base_dir}/analise_pagamentos"
 
     # // Limpeza da área de staging
