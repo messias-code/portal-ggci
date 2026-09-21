@@ -1201,6 +1201,8 @@ document.addEventListener('turbo:load', () => {
             const checkboxesVinculo = nosFiltros('.filter-vinculo');
             const checkboxesPerfil = nosFiltros('.filter-perfil');
             const checkboxesBolsa = nosFiltros('.filter-bolsa');
+            const checkboxesModalidadeAluno = nosFiltros('.filter-modalidade-aluno');
+            const checkboxesModalidadeIES = nosFiltros('.filter-modalidade-ies');
 
             const marcados = (caixas) => Array.from(caixas)
                 .filter((caixa) => caixa.checked)
@@ -1229,7 +1231,9 @@ document.addEventListener('turbo:load', () => {
                  ['perfil', checkboxesPerfil],
                  ['bolsa', checkboxesBolsa],
                  ['mudou_ies', checkboxesMudouIES],
-                 ['mudou_bolsa', checkboxesMudouBolsa]].forEach(([nome, caixas]) => {
+                 ['mudou_bolsa', checkboxesMudouBolsa],
+                 ['modalidade_aluno', checkboxesModalidadeAluno],
+                 ['modalidade_ies', checkboxesModalidadeIES]].forEach(([nome, caixas]) => {
                     const escolhidos = marcados(caixas);
                     if (escolhidos.length > 0) parametros.append(nome, escolhidos.join(','));
                 });
@@ -1979,6 +1983,8 @@ document.addEventListener('turbo:load', () => {
                                         + marcados(checkboxesPerfil).length],
                     ['contador-mudancas', marcados(checkboxesMudouIES).length
                                         + marcados(checkboxesMudouBolsa).length],
+                    ['contador-modalidade', marcados(checkboxesModalidadeAluno).length
+                                        + marcados(checkboxesModalidadeIES).length],
                     // Mesmo guarda de `parametrosDeFiltro`: o filtro de IES vive no
                     // escopo do modal, que pode não ter sido inicializado ainda.
                     ['contador-ies', typeof activeIESFilters !== 'undefined'
