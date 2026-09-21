@@ -619,6 +619,8 @@ FILTROS_DE_PESSOA = (
     ('bolsa', 'tipo_bolsa_final'),
     ('mudou_ies', 'mudou_ies'),
     ('mudou_bolsa', 'mudou_bolsa'),
+    ('modalidade_aluno', 'modalidade_aluno'),
+    ('modalidade_ies', 'modalidade_ies'),
 )
 
 
@@ -940,7 +942,8 @@ COLUNAS_TABELA = [
     'matricula',
     'periodo_atual',
     'qtd_periodos',
-    'modalidade',
+    'modalidade_aluno',
+    'modalidade_ies',
 ]
 
 # As que realmente existem no Parquet — as duas derivadas saem da leitura.
@@ -2478,7 +2481,7 @@ COLUNAS_ANALISE_IA = {
         'qtd_disciplinas_matriculadas', 'qtd_disciplinas_reprovadas', 'perfil',
         'status_vinculo', 'situacao_motivo', 'observacao_situacao', 'email',
         'telefone_1', 'telefone_2', 'data_nascimento', 'matricula', 'periodo_atual',
-        'qtd_periodos', 'modalidade'
+        'qtd_periodos', 'modalidade_aluno', 'modalidade_ies'
     ],
     'RIAF': [
         'status_ia', 'gemini_inconsistencia', 'semestre', 'bolsista', 'inscricao',
@@ -2503,7 +2506,7 @@ COLUNAS_ANALISE_IA = {
         'status_vinculo', 'situacao_motivo', 'observacao_situacao', 'email',
         'gemini_email',
         'telefone_1', 'telefone_2', 'data_nascimento', 'matricula', 'periodo_atual',
-        'qtd_periodos', 'modalidade'
+        'qtd_periodos', 'modalidade_aluno', 'modalidade_ies'
     ],
     'HISTÓRICO': [
         'status_ia', 'gemini_inconsistencia', 'semestre', 'bolsista', 'inscricao',
@@ -2517,7 +2520,7 @@ COLUNAS_ANALISE_IA = {
         'status_vinculo', 'situacao_motivo', 'observacao_situacao',
         'situacao_motivo_atual', 'observacao_situacao_atual', 'email',
         'telefone_1', 'telefone_2', 'data_nascimento', 'matricula', 'periodo_atual',
-        'qtd_periodos', 'gemini_concluiu_curso', 'modalidade'
+        'qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies'
     ],
 }
 
