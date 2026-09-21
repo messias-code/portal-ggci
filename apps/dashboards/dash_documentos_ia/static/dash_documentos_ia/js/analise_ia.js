@@ -106,6 +106,8 @@
         ['bolsa', 'filter-bolsa', 'Bolsa'],
         ['mudou_ies', 'filter-mudou-ies', 'Mudou IES'],
         ['mudou_bolsa', 'filter-mudou-bolsa', 'Mudou bolsa'],
+        ['modalidade_aluno', 'filter-modalidade-aluno', 'Modalidade Aluno'],
+        ['modalidade_ies', 'filter-modalidade-ies', 'Modalidade IES'],
         ['possui_beneficio', 'filter-possui-beneficio', 'Benefícios'],
         ['possui_financiamento', 'filter-possui-financiamento', 'Financiamentos'],
         ['possui_qualquer', 'filter-possui-qualquer', 'Benefícios e/ou financiamentos'],
@@ -443,6 +445,9 @@
             total += contador('contador-mudancas-ia',
                 marcados(nosFiltros('.filter-mudou-ies')).length
                 + marcados(nosFiltros('.filter-mudou-bolsa')).length);
+            total += contador('contador-modalidade-ia',
+                marcados(nosFiltros('.filter-modalidade-aluno')).length
+                + marcados(nosFiltros('.filter-modalidade-ies')).length);
             total += contador('contador-benef-finan-ia',
                 marcados(nosFiltros('.filter-possui-beneficio')).length
                 + marcados(nosFiltros('.filter-possui-financiamento')).length
