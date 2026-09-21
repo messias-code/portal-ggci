@@ -181,6 +181,50 @@
         const caixasSemestre = nosFiltros('.filter-semestre');
         const caixasDocumento = nosFiltros('.filter-documento-ies');
 
+        /*  O CAMPO DE DATA É O ÚNICO FILTRO DESTA BARRA QUE NÃO É CAIXINHA, e por
+            isso não entra em nenhuma das listas acima: `marcados()` não o alcança e
+            `exclusivo()` não tem par para desfazer. Todo lugar que trata dos outros
+            filtros — a consulta, o contador, a etiqueta e os dois "limpar" — precisa
+            citá-lo NOMINALMENTE. Era assim que `possui_beneficio` tinha sumido.
+
+            O VALOR VIAJA EM ISO (`2026-02-09`), que é o que a view compara;
+            dd/mm/aaaa aparece na etiqueta e no campo, para quem lê.  */
+        const campoDataProc = raizFiltros.querySelector('#filtro-data-proc-ia');
+
+        const dataProcEscolhida = () => ((campoDataProc && campoDataProc.value) || '').trim();
+
+        /*  A DATA QUE A TABELA ESTÁ USANDO, em ISO, que não é a mesma coisa que a
+            do campo: o calendário só aplica no "OK" (ver o bloco do flatpickr), e
+            entre o clique no dia e o OK as duas divergem. É esta que o `onClose`
+            devolve ao campo quando alguém fecha o calendário sem confirmar.  */
+        let dataProcAplicada = '';
+
+        /*  `2026-02-09` -> `09/02/2026`. Só para leitura humana na etiqueta.  */
+        const dataProcLegivel = (iso) => String(iso).split('-').reverse().join('/');
+
+        /*  "SELECIONE UMA DATA" É UM `<span>`, NÃO UM `placeholder`.
+            `<input type="date">` ignora `placeholder` — vazio ele já desenha
+            `dd/mm/aaaa` sozinho. A classe na caixa é o que esconde o molde do
+            navegador e mostra a frase no lugar; some assim que houver valor.  */
+        const caixaDataProc = raizFiltros.querySelector('#campo-data-proc-ia');
+        const sincronizarDataProc = () => {
+            if (caixaDataProc) {
+                caixaDataProc.classList.toggle('docia-campo-data--vazio', !dataProcEscolhida());
+            }
+        };
+
+        const limparDataProc = () => {
+            if (campoDataProc) {
+                if (campoDataProc._flatpickr) {
+                    campoDataProc._flatpickr.clear();
+                } else {
+                    campoDataProc.value = '';
+                }
+            }
+            dataProcAplicada = '';
+            sincronizarDataProc();
+        };
+
         const marcados = (caixas) => Array.from(caixas)
             .filter((caixa) => caixa.checked)
             .map((caixa) => caixa.value);
@@ -256,6 +300,38 @@
         const limparMensalidade = () =>
             CARDS_DE_MENSALIDADE.forEach(([parametro]) => recorteMensalidade[parametro].clear());
 
+        /*  OS DOIS CARDS DO HISTÓRICO, que ocupam a coluna do meio no lugar dos de
+            mensalidade (ver o template e `mostrarCardsDo`).
+
+            O Histórico não carrega mensalidade nenhuma — os dois cards de lá desenhavam
+            "este documento não traz valor de mensalidade" e nada mais. O que ele carrega
+            e nenhum outro documento tem é a resposta da IA sobre a conclusão do curso e a
+            matriz de períodos do cadastro, e é disso que estes dois falam:
+
+              `sit`    — em que ponto da matriz o aluno está (a rosca);
+              `alerta` — o cruzamento dessa posição com o que a IA leu e com o que foi
+                         pago (as barras).
+
+            MESMA GRAMÁTICA DE MENSALIDADE: um conjunto por card, união dentro do card e
+            interseção entre eles, chaves do servidor e não rótulos de tela. O servidor lê
+            exatamente estes dois nomes (ver `PARAMETROS_DO_HISTORICO` em `views.py`).  */
+        const recorteHistorico = { sit: new Set(), alerta: new Set() };
+
+        const CARDS_DO_HISTORICO = [
+            ['sit', 'ia-gr-sit', 'Situação do período'],
+            ['alerta', 'ia-gr-alerta', 'Alerta'],
+        ];
+
+        //  Esvazia os conjuntos sem trocá-los, pelo mesmo motivo de `limparMensalidade`.
+        const limparHistorico = () =>
+            CARDS_DO_HISTORICO.forEach(([parametro]) => recorteHistorico[parametro].clear());
+
+        /*  A FRASE INTEIRA DE CADA ALERTA, guardada da última resposta para a etiqueta do
+            filtro. A barra mostra o nome curto porque a faixa do eixo é estreita, mas a
+            etiqueta mora numa linha larga e ali cabe o que o alerta de fato diz — os dois
+            rótulos vêm do servidor (ver `ALERTAS_DO_HISTORICO`).  */
+        let rotulosDeAlerta = {};
+
         /*  O nome de um documento sai da caixa que o oferece, e não de uma lista aqui:
             uma segunda lista envelheceria calada no dia em que o rótulo da barra
             mudasse, e o título passaria a chamar a tabela de outra coisa.  */
@@ -295,6 +371,18 @@
                 const escolhidos = recorteMensalidade[parametro];
                 if (escolhidos.size) busca.append(parametro, Array.from(escolhidos).join('||'));
             });
+
+            //  `sit` e `alerta`, pelo mesmo `||` e pela mesma razão: "Último período"
+            //  não tem vírgula hoje, mas a lista é do servidor.
+            CARDS_DO_HISTORICO.forEach(([parametro]) => {
+                const escolhidos = recorteHistorico[parametro];
+                if (escolhidos.size) busca.append(parametro, Array.from(escolhidos).join('||'));
+            });
+
+            /*  Vazio é TODOS OS DIAS, e por isso o parâmetro não vai: ausência
+                significa "tudo" do lado do servidor.  */
+            const dia = dataProcEscolhida();
+            if (dia) busca.append('data_proc', dia);
 
             const campoBusca = document.getElementById('ia-tabela-busca');
             const termo = (campoBusca && campoBusca.value || '').trim();
@@ -359,8 +447,10 @@
                 marcados(nosFiltros('.filter-possui-beneficio')).length
                 + marcados(nosFiltros('.filter-possui-financiamento')).length
                 + marcados(nosFiltros('.filter-possui-qualquer')).length);
+            total += contador('contador-data-proc-ia', dataProcEscolhida() ? 1 : 0);
             total += contador('contador-inconsistencias', inconsistenciasEscolhidas.size);
             total += recorteMensalidade.msd.size + recorteMensalidade.mcd.size;
+            total += recorteHistorico.sit.size + recorteHistorico.alerta.size;
             total += contador('contador-ies-ia', iesDaAba().length);
             contador('contador-filtros', total);
         };
@@ -440,7 +530,7 @@
         const rotuloDaFlag = (texto) => texto.toLocaleLowerCase('pt-BR')
             .replace(/(^|\s)(\p{L})/gu, (_, antes, letra) => antes + letra.toLocaleUpperCase('pt-BR'));
 
-        const pintar = (colunas, linhas) => {
+        const pintar = (colunas, linhas, motivos) => {
             el.cabecalho.innerHTML = colunas.map((nome, i) => {
                 const miolo = escaparHtml(rotuloColuna(nome));
                 const abre = '<th class="px-4 py-3 text-[11px] font-extrabold text-gray-600'
@@ -466,20 +556,110 @@
             const comFlag = colunas.map(
                 (nome) => COLUNAS_COM_FLAG.has(String(nome).toLowerCase().replace(/_/g, ' ')));
 
-            el.corpo.innerHTML = linhas.map((linha) =>
-                '<tr class="docia-tr transition-colors group cursor-default">'
+            el.corpo.innerHTML = linhas.map((linha, iLinha) => {
+                /*  O PORQUÊ DAQUELA LINHA, guardado na própria flag. Vem da view numa
+                    lista paralela (`motivos`), e não como coluna, porque a tabela já
+                    tem 63 colunas — a 64ª seria mais uma para varrer com o olho.  */
+                const razoes = (motivos && motivos[iLinha]) || [];
+                const dica = razoes.length
+                    ? ' data-motivos="' + escaparHtml(JSON.stringify(razoes)) + '"'
+                    : '';
+                return '<tr class="docia-tr transition-colors group cursor-default">'
                 + linha.map((valor, i) => {
                     const texto = celula(valor);
                     const miolo = (comFlag[i] && texto !== '-')
-                        ? '<span class="docia-flag docia-flag--' + slugDaFlag(texto) + '">'
+                        ? '<span class="docia-flag docia-flag--' + slugDaFlag(texto)
+                          + (dica ? ' docia-flag--com-motivo' : '') + '"' + dica + '>'
                           + escaparHtml(rotuloDaFlag(texto)) + '</span>'
                         : escaparHtml(texto);
                     return '<td class="px-4 py-2.5 border-b border-gray-100 text-[13px]'
                         + ' text-gray-700 group-hover:text-gray-900 transition-colors'
                         + (i === 0 ? ' font-medium' : '') + '">' + miolo + '</td>';
                 }).join('')
-                + '</tr>').join('');
+                + '</tr>';
+            }).join('');
         };
+
+        /* ------------------------------------------------------------------
+           O BALÃO DOS MOTIVOS
+           ------------------------------------------------------------------
+           `title` nativo resolveria em uma linha, e foi descartado por duas
+           razões: ele só aparece depois de ~1s de espera, e desenha com a
+           fonte do sistema no meio de uma tela inteira desenhada.
+
+           UM BALÃO SÓ, no `<body>`, em vez de um por célula: são até 500
+           linhas, e 500 balões escondidos custam memória sem que nenhum deles
+           chegue a ser visto. `position: fixed` o tira do `overflow` da
+           tabela — dentro dela, a rolagem horizontal o cortaria.
+           ------------------------------------------------------------------ */
+        let balaoMotivos = null;
+
+        const fecharBalao = () => {
+            if (balaoMotivos) balaoMotivos.classList.remove('docia-balao-motivos--aberto');
+        };
+
+        const abrirBalao = (alvo) => {
+            let razoes;
+            try {
+                razoes = JSON.parse(alvo.dataset.motivos || '[]');
+            } catch (erro) {
+                return;
+            }
+            if (!razoes.length) return;
+
+            if (!balaoMotivos) {
+                balaoMotivos = document.createElement('div');
+                balaoMotivos.className = 'docia-balao-motivos';
+                document.body.appendChild(balaoMotivos);
+            }
+
+            /*  O TÍTULO SEGUE O VEREDITO. No `Falso Válido` a lista responde "o que a IA
+                deixou passar". No `Erro na Inconsistência` o documento está certo e quem
+                errou foi a frase da IA — chamar aquilo de divergência do documento
+                acusaria a IES de um problema que é nosso, de prompt.  */
+            const eCatalogacao = alvo.classList.contains('docia-flag--erro-na-inconsistencia');
+            const eFalsoInvalido = alvo.classList.contains('docia-flag--falso-invalido');
+            const titulo = '<div class="docia-balao-motivos__titulo">'
+                + (eCatalogacao ? 'O que a IA apontou, e o correto'
+                    : eFalsoInvalido ? 'Apontado pela IA, não confirmado pelo sistema'
+                    : (razoes.length > 1 ? 'Motivos da divergência' : 'Motivo da divergência'))
+                + '</div>';
+            const corpo = razoes.length > 1
+                ? '<ul class="docia-balao-motivos__lista">'
+                  + razoes.map((frase) => '<li>' + escaparHtml(frase) + '</li>').join('')
+                  + '</ul>'
+                : '<p class="docia-balao-motivos__frase">' + escaparHtml(razoes[0]) + '</p>';
+            balaoMotivos.innerHTML = titulo + corpo;
+            balaoMotivos.classList.add('docia-balao-motivos--aberto');
+
+            /*  Medir DEPOIS de abrir, senão a caixa ainda tem altura zero. O balão
+                nasce acima da flag e cai para baixo dela quando não há teto; nas
+                laterais é preso à janela, que é onde a primeira coluna e a última
+                escapariam.  */
+            const caixa = alvo.getBoundingClientRect();
+            const balao = balaoMotivos.getBoundingClientRect();
+            const folga = 8;
+            let topo = caixa.top - balao.height - folga;
+            if (topo < folga) topo = caixa.bottom + folga;
+            let esquerda = caixa.left + (caixa.width / 2) - (balao.width / 2);
+            esquerda = Math.max(folga, Math.min(esquerda, window.innerWidth - balao.width - folga));
+            balaoMotivos.style.top = topo + 'px';
+            balaoMotivos.style.left = esquerda + 'px';
+        };
+
+        /*  Delegado no corpo da tabela: o `innerHTML` é refeito a cada consulta, e
+            listener preso a cada flag morreria junto com ela.  */
+        if (el.corpo) {
+            el.corpo.addEventListener('mouseover', (evento) => {
+                const alvo = evento.target.closest('[data-motivos]');
+                if (alvo) abrirBalao(alvo);
+            });
+            el.corpo.addEventListener('mouseout', (evento) => {
+                if (evento.target.closest('[data-motivos]')) fecharBalao();
+            });
+        }
+        //  Rolar com o balão aberto o deixaria parado no ar: ele é `fixed`, a tabela não.
+        if (el.rolagem) el.rolagem.addEventListener('scroll', fecharBalao);
 
         /* ==================================================================
            OS GRÁFICOS
@@ -560,6 +740,20 @@
                 + '<span style="opacity:0.7;">' + pct.toFixed(1).replace('.', ',') + '%</span>'
                 + '</div>';
         };
+
+        /*  AS LINHAS DE BAIXO DO MESMO BLOCO: a regra que põe a fatia ali e, quando há,
+            o dinheiro dela. Elas RECUAM 17px — a bolinha (9) mais o vão (8) — para
+            começar debaixo do NOME e não debaixo do marcador; sem o recuo o balão lê
+            como dois blocos empilhados em vez de um nome com suas notas.
+
+            UMA FUNÇÃO SÓ para a barra deitada e para a rosca: as duas passaram a
+            explicar-se no hover no mesmo dia, e dois trechos de HTML inline iguais
+            desencostam na primeira vez que um deles mudar de tamanho de fonte.  */
+        const notasDoBalao = (linhas) => (linhas || [])
+            .filter(Boolean)
+            .map((texto) => '<div style="margin-top:3px;padding-left:17px;font-size:10px;'
+                + 'font-weight:600;color:' + tintaMedia() + ';opacity:0.85;">'
+                + escaparHtml(texto) + '</div>').join('');
 
         /**
          * O QUE FAZ: as opções comuns às três colunas.
@@ -816,7 +1010,18 @@
             constante aqui e não uma conta.  */
         const AR_QUE_O_APEX_GUARDA = 8;
 
-        const opcoesDeBarraHorizontal = (categorias, valores, cores, maximo, altura, faixa, formato, totalParaPct, aoClicar = null, marcados = null) => {
+        /*  `nota` É O QUE A BARRA NÃO CABE DIZER — uma função `(i) => [linhas]` que o
+            balão escreve sob o nome, ou `null` em quem não tem o que acrescentar.
+
+            Nasceu para os alertas do Histórico, onde a barra conta DOCUMENTOS e o que
+            decide a prioridade é o DINHEIRO parado neles: 17 linhas de "formou e seguiu
+            recebendo" pesam mais que 413 de divergência de leitura. Escrever o valor na
+            ponta da barra misturaria duas unidades no mesmo rótulo; no balão ele fica
+            onde já se vai olhar para conferir o número.
+
+            É ali também que mora a frase inteira do alerta, porque o eixo só comporta o
+            nome curto (ver `ALERTAS_DO_HISTORICO`, na view).  */
+        const opcoesDeBarraHorizontal = (categorias, valores, cores, maximo, altura, faixa, formato, totalParaPct, aoClicar = null, marcados = null, nota = null) => {
             /*  A ESCOLHA SE MARCA COMO NO CHIP DA ROSCA, e não só lavando as outras.
 
                 Lavar a barra que ficou de fora é o recado de "esta não", mas ele só se
@@ -988,7 +1193,8 @@
                         const nome = [].concat(w.globals.labels[dataPointIndex])
                             .join(' ').replace(/\s+/g, ' ').trim();
                         const cor = w.globals.colors[dataPointIndex] || w.globals.colors[0];
-                        return balao(conteudoDoBalao(cor, nome, valorReal, soma, formato));
+                        return balao(conteudoDoBalao(cor, nome, valorReal, soma, formato)
+                            + notasDoBalao(nota ? nota(dataPointIndex) : null));
                     },
                 },
                 states: {
@@ -1093,11 +1299,20 @@
            clique recorta a tabela do mesmo jeito.
            ================================================================== */
 
-        /*  `id` VEM DE FORA porque a tela tem DUAS roscas — veredito e
-            inconsistências. Fixo, as duas nasciam com o mesmo `chart.id`, e o Apex
+        /*  `id` VEM DE FORA porque a tela tem TRÊS roscas — veredito, inconsistências e
+            situação do período. Fixo, todas nasciam com o mesmo `chart.id`, e o Apex
             guarda as instâncias por id: a segunda passava a responder pelos eventos
             da primeira.  */
-        const opcoesDeRosca = (id, nomes, valores, cores, altura, valoresCru, rotuloDoCentro) => ({
+
+        /*  AS ROSCAS QUE DIVIDEM A LINHA COM A LEGENDA. A caixa delas é uma coluna
+            estreita ao lado da lista, e não a largura do card: ali o desenho respira
+            por DENTRO (padding positivo) e não é inflado, enquanto o veredito, que tem
+            a legenda embaixo e o card inteiro de largura, faz o contrário.  */
+        const ROSCA_AO_LADO_DA_LISTA = ['ia-gr-inconsistencias', 'ia-gr-sit'];
+
+        /*  `selecionado` É O NÚMERO DO RECORTE, ou `null` quando não há recorte nenhum.
+            Ver a nota do `total`, logo abaixo.  */
+        const opcoesDeRosca = (id, nomes, valores, cores, altura, valoresCru, rotuloDoCentro, selecionado = null) => ({
             chart: {
                 type: 'donut',
                 id: id,
@@ -1121,7 +1336,7 @@
                 dropShadow: { enabled: false },
             },
             grid: {
-                padding: id === 'ia-gr-inconsistencias' ? { left: 15, right: 15, top: 15, bottom: 15 } : { left: -12, right: -12, top: 0, bottom: 0 },
+                padding: ROSCA_AO_LADO_DA_LISTA.includes(id) ? { left: 15, right: 15, top: 15, bottom: 15 } : { left: -12, right: -12, top: 0, bottom: 0 },
             },
             series: valores,
             labels: nomes,
@@ -1129,7 +1344,7 @@
             plotOptions: {
                 pie: {
                     expandOnClick: false,
-                    customScale: id === 'ia-gr-inconsistencias' ? 1.0 : 1.1,
+                    customScale: ROSCA_AO_LADO_DA_LISTA.includes(id) ? 1.0 : 1.1,
                     //  As pontas das fatias são ARREDONDADAS, como no quantitativo da
                     //  outra aba. Sem isto o anel fica com emendas em esquadro.
                     //  12 e não 10: com o anel a 82% o raio 10 ainda lê como
@@ -1166,11 +1381,29 @@
                                 só o do RÓTULO — o número segue o de `value`. Estava em
                                 28px e 800, o que desenhava "Documentos" do tamanho do
                                 total e transbordava o furo.  */
+                            /*  O CENTRO SEGUE O RECORTE, e não a soma de tudo.
+
+                                Com "Válido" marcado na legenda, o anel já mostrava só a
+                                fatia escolhida e o número do meio continuava dizendo
+                                17.465 — a soma do que NÃO está mais sendo perguntado. O
+                                centro de uma rosca é o número que se cita, e ele estava
+                                citando o recorte anterior sobre um desenho novo.
+
+                                O RÓTULO VIRA "de 17.465", sem o substantivo: é o que
+                                diz que 13.629 é uma PARTE e de que todo ele saiu. Sem
+                                ele, "13.629 Documentos" passa por total. E sem o
+                                substantivo porque o furo do anel tem ~85px nas roscas
+                                estreitas — "de 17.465 documentos" sai por cima das
+                                fatias dos dois lados.  */
                             total: {
-                                show: true, showAlways: true, label: rotuloDoCentro,
+                                show: true, showAlways: true,
+                                label: selecionado === null
+                                    ? rotuloDoCentro
+                                    : 'de ' + formatarNumero(valoresCru.reduce((a, b) => a + b, 0)),
                                 fontSize: id === 'ia-gr-veredito' ? '11px' : '12px', fontWeight: 600, color: tintaMedia(),
-                                formatter: (w) => formatarNumero(
-                                    valoresCru.reduce((a, b) => a + b, 0)),
+                                formatter: (w) => formatarNumero(selecionado === null
+                                    ? valoresCru.reduce((a, b) => a + b, 0)
+                                    : selecionado),
                             },
                         },
                     },
@@ -1189,6 +1422,11 @@
                 hover: { filter: { type: 'lighten', value: 0.16 } },
                 active: { filter: { type: 'none' } },
             },
+            /*  O BALÃO DA ROSCA É SÓ NOME, NÚMERO E PERCENTUAL. Chegou a levar embaixo
+                uma nota explicando a fatia, na Situação do Período; a explicação em cima
+                de um anel que já tem a legenda ao lado dizendo os mesmos três números
+                virou ruído, e saiu. Onde a nota faz falta é na BARRA, que não tem legenda
+                nenhuma — lá ela continua (ver `opcoesDeBarraHorizontal`).  */
             tooltip: {
                 custom: ({ seriesIndex, w }) => {
                     const total = valoresCru.reduce((a, b) => a + b, 0);
@@ -1304,6 +1542,20 @@
             });
         }
 
+        /*  A LEGENDA DA SITUAÇÃO, com a mesma mecânica do veredito: a chave é o próprio
+            nome do estado ('Passou do limite'), que é o que o servidor lê em `sit`.  */
+        if (document.getElementById('ia-legenda-sit')) {
+            document.getElementById('ia-legenda-sit').addEventListener('click', (evento) => {
+                const item = evento.target.closest('.docia-legenda__item');
+                if (!item) return;
+                const chave = item.dataset.chave;
+                if (recorteHistorico.sit.has(chave)) recorteHistorico.sit.delete(chave);
+                else recorteHistorico.sit.add(chave);
+                marcarRecorteNaLegenda(item.parentElement, recorteHistorico.sit);
+                recarregar();
+            });
+        }
+
         if (document.getElementById('ia-legenda-inconsistencias')) {
             document.getElementById('ia-legenda-inconsistencias').addEventListener('click', (evento) => {
                 const item = evento.target.closest('.docia-legenda__item');
@@ -1322,7 +1574,7 @@
         }
 
 
-        const desenharRosca = (id, nomes, valores, cores, rotuloDoCentro) => {
+        const desenharRosca = (id, nomes, valores, cores, rotuloDoCentro, selecionado = null) => {
             const alvo = document.getElementById(id);
             if (!alvo || typeof ApexCharts === 'undefined') return;
 
@@ -1332,7 +1584,7 @@
 
             const opcoes = opcoesDeRosca(id, nomes, inflado, cores,
                                          alturaDoDesenho(id, alturaDe(alvo), alvo.clientWidth),
-                                         valores, rotuloDoCentro);
+                                         valores, rotuloDoCentro, selecionado);
             if (graficos[id] && graficos[id].__tipo === 'donut') {
                 graficos[id].updateOptions(opcoes, false, true);
                 return;
@@ -1344,7 +1596,7 @@
             graficos[id].render();
         };
 
-        const desenhar = (id, categorias, valores, cores, base, formato, virada = false, totalParaPct = 0, aoClicar = null, marcados = null) => {
+        const desenhar = (id, categorias, valores, cores, base, formato, virada = false, totalParaPct = 0, aoClicar = null, marcados = null, nota = null) => {
             const alvo = document.getElementById(id);
             if (!alvo || typeof ApexCharts === 'undefined') return;
             /*  A folga sai da BASE quando quem chama informa uma — é o que põe os dois
@@ -1363,7 +1615,7 @@
             const teto = Math.max(base || 0, ...valores, 1)
                 * (virada ? fatorDeitado(alvo, valores, faixa, totalParaPct) : 1.12);
             const opcoes = virada
-                ? opcoesDeBarraHorizontal(categorias, valores, cores, teto, alturaDe(alvo), faixa, formato, totalParaPct, aoClicar, marcados)
+                ? opcoesDeBarraHorizontal(categorias, valores, cores, teto, alturaDe(alvo), faixa, formato, totalParaPct, aoClicar, marcados, nota)
                 : opcoesDeBarra(categorias, valores, cores, teto, alturaDe(alvo), formato);
             if (graficos[id] && graficos[id].__tipo === 'bar') {
                 graficos[id].updateOptions(opcoes, false, true);
@@ -1590,7 +1842,15 @@
                 total passa de 14.766 lidos porque o documento com dois apontamentos
                 entra em dois catálogos; é a linha de base, logo abaixo, que diz sobre
                 quantos documentos o anel fala.  */
-            desenharRosca(id, nomes, valores, cores, 'Catálogos da IA');
+            /*  A SOMA DO RECORTE SAI DA LISTA INTEIRA, e não das fatias desenhadas: a
+                frase escolhida pode estar na cauda ("Outras N") ou ter sido marcada na
+                telinha sem nunca ter virado fatia. Somando só o que está no anel, o
+                centro diria menos do que a tabela ao lado mostra.  */
+            const somaMarcada = inconsistenciasEscolhidas.size
+                ? (corpo.inconsistencias || []).reduce((soma, i) =>
+                    soma + (inconsistenciasEscolhidas.has(i.frase) ? i.linhas : 0), 0)
+                : null;
+            desenharRosca(id, nomes, valores, cores, 'Catálogos da IA', somaMarcada);
             /*  CLICÁVEL: agora os itens da legenda filtram a tabela diretamente,
                 assim como no Veredito. O item "Outras N" é especial e abre a
                 telinha completa quando clicado.  */
@@ -1801,6 +2061,215 @@
             }
         };
 
+        /* ==================================================================
+           OS DOIS CARDS DO HISTÓRICO
+           ==================================================================
+           O QUE ELES RESPONDEM, e por que só aqui: o Histórico é o único documento
+           em que a IA responde se o aluno concluiu o curso, e é o único em que o
+           cadastro traz a matriz do curso — em que período o aluno está, de quantos.
+           Sozinha, cada uma das duas é um número solto; cruzadas, elas dizem se
+           estamos pagando bolsa a quem já não estuda.
+
+           A ROSCA É A POSIÇÃO NA MATRIZ (`periodo_atual` contra `qtd_periodos`) e as
+           BARRAS são o cruzamento dessa posição com a leitura da IA e com o que foi
+           pago. A regra de cada alerta e o que ela vale em 2025-2 estão em
+           `_alerta_do_historico`, na view — aqui só se desenha o que ela devolve.
+
+           POR QUE DOIS DESENHOS DIFERENTES: a situação é uma repartição de cauda
+           longa (14.553 "em curso" contra 79 "excedeu", 88% contra 0,5%) e rosca é o
+           que lê proporção; os alertas são cinco medidas que se comparam entre si e
+           não repartem nada — nem somam o recorte —, e barra deitada é o que lê
+           comparação com o nome escrito por extenso ao lado.
+           ================================================================== */
+
+        /*  QUAL PAR DE CARDS OCUPA A COLUNA DO MEIO. O documento se troca sem recarregar
+            a página, então a troca é de classe e não de template. Esconder e mostrar, e
+            não criar e destruir: o ResizeObserver e o Apex guardam as caixas por id, e
+            recriá-las deixaria os dois observando elementos que saíram do documento.  */
+        const mostrarCardsDo = (historico) => {
+            [['ia-card-msd', !historico], ['ia-card-mcd', !historico],
+             ['ia-card-sit', historico], ['ia-card-alerta', historico]]
+                .forEach(([id, visivel]) => {
+                    const card = document.getElementById(id);
+                    if (card) card.classList.toggle('hidden', !visivel);
+                });
+        };
+
+        /*  A COR DE CADA SITUAÇÃO E DE CADA ALERTA, na ordem em que o servidor as manda.
+
+            A ORDEM É FIXA e nunca gira, como em toda a paleta desta tela: um recorte que
+            zere uma fatia não pode repintar as que sobraram.
+
+            O VERMELHO É O DEGRAU 5 e está reservado ao que é problema — "Passou do limite" na
+            rosca, "a IA diz formado e o cadastro não registra" nas barras. O CINZA É O
+            DEGRAU 4, que a casa reserva para a AUSÊNCIA: "sem período" não é um estado do
+            aluno, é campo em branco no cadastro. Os degraus do meio ficam com o que é
+            normal.
+
+            O DEGRAU 2 É A FORMATURA nos dois cards, e é o único tom que atravessa a
+            fronteira entre eles: a fatia "Formado" do anel e o alerta em que a formatura
+            do cadastro chega depois falam do mesmo fato, e a cor os liga sem legenda.  */
+        const CORES_DA_SITUACAO = (tema) => ({
+            'Formado': PALETA_OVG[tema][2],
+            'Passou do limite': PALETA_OVG[tema][5],
+            'Último período': PALETA_OVG[tema][1],
+            'Em curso': PALETA_OVG[tema][0],
+            'Sem período': PALETA_OVG[tema][4],
+        });
+
+        const CORES_DO_ALERTA = (tema) => ({
+            ia_sem_registro: PALETA_OVG[tema][5],
+            ia_antecipou: PALETA_OVG[tema][2],
+            ia_negou: PALETA_OVG[tema][1],
+            excedeu_cursando: PALETA_OVG[tema][0],
+            sem_matriz: PALETA_OVG[tema][4],
+        });
+
+        const pintarSituacao = (corpo, tema) => {
+            const quadro = corpo.historico || {};
+            const situacao = quadro.situacao || {};
+            const contagem = situacao.contagem || {};
+            const ordem = (quadro.ordem_situacao || []).filter((nome) => contagem[nome]);
+            const legenda = document.getElementById('ia-legenda-sit');
+            const base = document.getElementById('ia-base-sit');
+            const linha = document.getElementById('ia-gr-sit');
+            const caixa = linha ? linha.parentElement : null;
+
+            if (!situacao.total || !ordem.length) {
+                if (legenda) legenda.innerHTML = '';
+                if (caixa) caixa.classList.add('docia-anel-e-lista--sozinho');
+                if (base) base.textContent = '';
+                mostrarVazio('ia-gr-sit', 'fa-hourglass-half',
+                             'A IA ainda não leu nenhum documento neste recorte.');
+                return;
+            }
+            if (caixa) caixa.classList.remove('docia-anel-e-lista--sozinho');
+
+            /*  A BASE DIZ SOBRE QUANTOS O ANEL FALA e, quando for o caso, que a outra
+                metade da pergunta está em branco: em 2026-1 e 2026-2 a IA ainda não leu
+                documento nenhum, a matriz do cadastro continua lá e o anel desenha
+                normalmente — mas o balão de cada fatia viria sem uma única resposta, e
+                os alertas ao lado viriam todos zerados. Sem esta linha, "nenhum formado"
+                se leria como um resultado.  */
+            if (base) {
+                base.innerHTML = formatarNumero(situacao.total) + ' documentos lidos'
+                    + (situacao.tem_dado ? ''
+                        : ' &middot; <span class="text-red-500 font-medium">'
+                          + 'a IA ainda não respondeu sobre a conclusão</span>');
+            }
+
+            const tons = CORES_DA_SITUACAO(tema);
+            const cores = ordem.map((nome) => tons[nome] || PALETA_OVG[tema][4]);
+            const valores = ordem.map((nome) => contagem[nome]);
+            const escolhidas = recorteHistorico.sit;
+            const somaMarcada = escolhidas.size
+                ? ordem.reduce((soma, nome, i) =>
+                    soma + (escolhidas.has(nome) ? valores[i] : 0), 0)
+                : null;
+
+            /*  SEM NOTA NENHUMA NO HOVER, nem no balão da fatia nem no `title` da
+                legenda. As duas existiram: o balão abria a regra do estado e a quebra da
+                resposta da IA, e a legenda repetia o mesmo texto porque a fatia de 0,4%
+                é um traço de dois pixels e o nome ao lado é o alvo grande. Só que este
+                card é o único da tela em que o anel e a lista dizem tudo — nome, número e
+                percentual, os cinco estados visíveis de uma vez —, e o texto que abria
+                por cima disso atrapalhava a leitura em vez de completá-la.
+
+                SÓ AQUI. Nas BARRAS de alerta ao lado a nota fica: lá não há legenda, o
+                nome do eixo é uma frase encurtada e o valor em dinheiro muda de sentido
+                de uma barra para a outra (ver `ALERTAS_DO_HISTORICO`, na view).  */
+            /*  "Lidos" e não "Documentos" como no veredito: este anel divide o card
+                com a lista, sobra-lhe metade do diâmetro, e o miolo não comporta a
+                palavra inteira — ela atravessaria o traço da rosca. */
+            desenharRosca('ia-gr-sit', ordem, valores, cores, 'Lidos', somaMarcada);
+            pintarLegendaRosca('ia-legenda-sit', ordem, valores, cores, ordem, escolhidas);
+        };
+
+        const pintarAlertas = (corpo) => {
+            const quadro = corpo.historico || {};
+            const alertas = quadro.alertas || [];
+            const normais = quadro.normais || {};
+            const base = document.getElementById('ia-base-alerta');
+
+            rotulosDeAlerta = {};
+            alertas.forEach((a) => { rotulosDeAlerta[a.chave] = a.rotulo; });
+
+            if (!normais.total) {
+                if (base) base.textContent = 'nenhum documento processado';
+                mostrarVazio('ia-gr-alerta', 'fa-hourglass-half',
+                             'A IA ainda não leu nenhum documento neste recorte.');
+                return;
+            }
+
+            const emAlerta = alertas.reduce((soma, a) => soma + a.linhas, 0);
+            if (!emAlerta) {
+                if (base) base.textContent = formatarNumero(normais.total) + ' documentos lidos';
+                mostrarVazio('ia-gr-alerta', 'fa-check-circle',
+                             'Nenhum alerta de período neste recorte.');
+                return;
+            }
+
+            /*  A BASE CONTA O QUE FICOU FORA DO GRÁFICO, que é a maior parte do recorte:
+                os alertas não repartem os lidos, eles são o que sobra depois de tirar
+                quem está no caminho normal. Sem esta linha, cinco barras somando 620
+                num recorte de 16.464 pareceriam o recorte inteiro.  */
+            /*  E OS FORMADOS FECHAM A LINHA porque é a pergunta que traz a pessoa a este
+                card: de quantos se tem CERTEZA de que concluíram o curso. O número é o
+                do cadastro, e o entre parênteses é onde a IA disse o mesmo — a distância
+                entre os dois é o tamanho do trabalho que as barras acima descrevem.  */
+            if (base) {
+                base.innerHTML = '<span class="text-red-500 font-medium">'
+                    + formatarNumero(emAlerta) + ' em alerta</span> de '
+                    + formatarNumero(normais.total) + ' lidos &middot; '
+                    + formatarNumero(normais.formados || 0) + ' formaram ('
+                    + formatarNumero(normais.confirmados || 0) + ' confirmados pela IA)';
+            }
+
+            const tema = temaAtual();
+            const tons = CORES_DO_ALERTA(tema);
+            const cats = alertas.map((a) => a.curto || a.rotulo);
+            const vals = alertas.map((a) => a.linhas);
+            const escolhidos = recorteHistorico.alerta;
+            const marcados = escolhidos.size
+                ? alertas.map((a) => escolhidos.has(a.chave))
+                : null;
+            const alvoDaLavagem = tema === 'eleitoral' ? 0 : 255;
+            const cores = alertas.map((a, i) => {
+                const cor = tons[a.chave] || PALETA_OVG[tema][4];
+                return marcados && !marcados[i] ? puxarTom(cor, alvoDaLavagem, 0.6) : cor;
+            });
+
+            /*  A RÉGUA É DESTE CARD, e não a `reguaComum` dos dois de mensalidade: lá os
+                cards são gêmeos e comparáveis lado a lado, aqui não há com quem comparar
+                — o vizinho é uma rosca de outra unidade. O maior alerta desenha até o
+                fim, e a escala em raiz de `opcoesDeBarraHorizontal` mantém os 27 de
+                "passou do limite" visíveis ao lado dos 379 de "a IA nega a formatura".
+
+                O PERCENTUAL SAI DOS LIDOS, e não da soma dos alertas: "42 (0,3%)" diz o
+                que o alerta pesa no recorte, que é a pergunta de quem olha. Sobre a soma
+                dos alertas ele diria 7,4% — uma fração de uma fração, sem denominador
+                visível em lugar nenhum da tela.  */
+            const alvoGr = document.getElementById('ia-gr-alerta');
+            if (alvoGr) alvoGr.style.cursor = 'pointer';
+
+            desenhar('ia-gr-alerta', cats, vals, cores, Math.max(1, ...vals), 'numero',
+                     true, normais.total,
+                     (i) => {
+                         const alerta = alertas[i];
+                         if (!alerta) return;
+                         if (escolhidos.has(alerta.chave)) escolhidos.delete(alerta.chave);
+                         else escolhidos.add(alerta.chave);
+                         recarregar();
+                     }, marcados,
+                     (i) => {
+                         const alerta = alertas[i];
+                         if (!alerta) return null;
+                         return [alerta.rotulo,
+                                 formatarMoeda(alerta.valor).replace('+', '')
+                                 + ' ' + alerta.nota];
+                     });
+        };
+
         const pintarGraficos = (corpo) => {
             const tema = temaAtual();
 
@@ -1844,7 +2313,15 @@
                 chavesDoVeredito = nomes;
                 const rotulos = nomes.map(rotuloDoVeredito);
                 const valores = nomes.map((n) => veredito[n] || 0);
-                desenharRosca('ia-gr-veredito', rotulos, valores, cores, 'Documentos');
+                /*  O QUE ESTÁ MARCADO NA LEGENDA, somado, para o centro do anel — ver
+                    a nota do `total` em `opcoesDeRosca`. A soma sai das fatias
+                    desenhadas porque aqui elas são TODAS: a legenda do veredito não
+                    tem cauda nem telinha por trás.  */
+                const somaMarcada = recorteVereditos.size
+                    ? nomes.reduce((soma, nome, i) =>
+                        soma + (recorteVereditos.has(nome) ? valores[i] : 0), 0)
+                    : null;
+                desenharRosca('ia-gr-veredito', rotulos, valores, cores, 'Documentos', somaMarcada);
                 pintarLegendaRosca('ia-legenda-veredito', rotulos, valores, cores, chavesDoVeredito, recorteVereditos);
             }
 
@@ -1934,6 +2411,22 @@
                     }
                 });
 
+            /*  A COLUNA DO MEIO TROCA DE INQUILINO NO HISTÓRICO. Lá a mensalidade não
+                existe (`tem_dado` falso nos dois cards), e o que sobrava eram dois
+                avisos de "este documento não traz valor de mensalidade" ocupando o
+                melhor terço da faixa. O lugar passa a ser dos dois cards de período —
+                ver `mostrarCardsDo` e o bloco que os desenha.
+
+                `corpo.historico` NULO É O CONTRATO E OS DEMAIS: a view só monta o quadro
+                na aba do Histórico, e checar o quadro em vez de só o nome do documento
+                cobre também a resposta antiga, de antes dele.  */
+            const noHistorico = corpo.documento === 'HISTÓRICO' && !!corpo.historico;
+            mostrarCardsDo(noHistorico);
+            if (noHistorico) {
+                pintarSituacao(corpo, tema);
+                pintarAlertas(corpo);
+            }
+
             /*  MENSALIDADE — só dos PROCESSADOS. `tem_dado` falso é o documento que
                 não carrega esse valor (o histórico), e ali desenhar uma barra de
                 "não localizado" em 100% acusaria a IA de não achar o que não existe.  */
@@ -1964,6 +2457,9 @@
                 }));
 
             CARDS_DE_MENSALIDADE.forEach(([parametro, idGr, chave]) => {
+                //  Escondidos no Histórico: desenhar dentro de um `display: none` faz
+                //  o Apex medir zero de largura e travar a caixa nisso.
+                if (noHistorico) return;
                 const idBase = idGr.replace('ia-gr-', 'ia-base-');
                 const medida = (corpo.mensalidade || {})[chave] || {};
                 const contagem = medida.contagem || {};
@@ -2086,26 +2582,36 @@
                         resposta ao filtro que acabou de ser clicado. A tabela ao lado
                         já marca "falhou" no selo; os gráficos precisavam do mesmo.  */
                     ultimoResumo = null;
+                    /*  OS SEIS CARDS, e não os quatro visíveis: os do Histórico e os de
+                        mensalidade se revezam na coluna do meio, e escrever só nos que
+                        estão à vista deixaria o par escondido com os números do recorte
+                        anterior, prontos para reaparecer como se fossem a resposta ao
+                        documento novo.  */
                     ['ia-base-veredito', 'ia-base-msd', 'ia-base-mcd',
+                     'ia-base-sit', 'ia-base-alerta',
                      'ia-base-inconsistencias'].forEach((id) => {
                         const alvo = document.getElementById(id);
                         if (alvo) alvo.textContent = 'não foi possível atualizar';
                     });
                     ['ia-gr-veredito', 'ia-gr-msd', 'ia-gr-mcd',
+                     'ia-gr-sit', 'ia-gr-alerta',
                      'ia-gr-inconsistencias'].forEach((id) =>
                         mostrarVazio(id, 'fa-triangle-exclamation',
                                      'Erro ao carregar. Refaça o filtro para tentar de novo.'));
-                    /*  As duas legendas nomeiam fatias que já não estão na tela. A
-                        de inconsistências leva junto a coluna dela, para o recado de
-                        erro ficar centrado no card e não na fatia de 28% do anel.  */
-                    ['ia-legenda-veredito', 'ia-legenda-inconsistencias'].forEach((id) => {
+                    /*  As legendas nomeiam fatias que já não estão na tela. As duas que
+                        ficam ao lado do anel levam junto a coluna delas, para o recado
+                        de erro ficar centrado no card e não na fatia estreita do anel.  */
+                    ['ia-legenda-veredito', 'ia-legenda-sit',
+                     'ia-legenda-inconsistencias'].forEach((id) => {
                         const alvo = document.getElementById(id);
                         if (alvo) alvo.innerHTML = '';
                     });
-                    const linhaInc = document.getElementById('ia-gr-inconsistencias');
-                    if (linhaInc && linhaInc.parentElement) {
-                        linhaInc.parentElement.classList.add('docia-anel-e-lista--sozinho');
-                    }
+                    ['ia-gr-inconsistencias', 'ia-gr-sit'].forEach((id) => {
+                        const anel = document.getElementById(id);
+                        if (anel && anel.parentElement) {
+                            anel.parentElement.classList.add('docia-anel-e-lista--sozinho');
+                        }
+                    });
                 });
         };
 
@@ -2160,7 +2666,7 @@
                           + `<span class="docia-contagem__de">de</span><b>${formatarNumero(total)}</b>`);
 
                     if (el.rolagem) el.rolagem.scrollTop = 0;
-                    pintar(corpo.colunas || [], linhas);
+                    pintar(corpo.colunas || [], linhas, corpo.motivos || []);
                 })
                 .catch((erro) => {
                     if (minhaVez !== pedidoAtual) return;
@@ -2215,6 +2721,14 @@
                     (v) => etiquetas.push(chip(rotulo, v, acao + ':' + v)));
             });
 
+            /*  A ETIQUETA MOSTRA dd/mm/aaaa, nunca o ISO: o valor que viaja é
+                `2026-02-09`, e uma faixa que anuncia o recorte numa grafia diferente
+                da do campo logo acima lê como dois filtros, e não um.  */
+            const diaEscolhido = dataProcEscolhida();
+            if (diaEscolhido) {
+                etiquetas.push(chip('Processado em', dataProcLegivel(diaEscolhido), 'data_proc:*'));
+            }
+
             const iesEscolhidas = iesDaAba();
             if (iesEscolhidas.length) {
                 etiquetas.push(chip('IES', iesEscolhidas.length === 1
@@ -2241,6 +2755,17 @@
                 recorteMensalidade[parametro].forEach((balde) => etiquetas.push(
                     chip(rotulo, ROTULO_MENSALIDADE[balde] || balde,
                          parametro + ':' + balde)));
+            });
+
+            /*  A ETIQUETA DO ALERTA TRAZ A FRASE INTEIRA, e não o nome curto da barra:
+                aqui a linha é larga e "Formado x matriz" só existe porque o eixo do
+                gráfico é estreito. O `||` cobre o instante entre um clique e a resposta
+                que traz os rótulos, e a troca de documento, que esvazia o mapa.  */
+            CARDS_DO_HISTORICO.forEach(([parametro, , rotulo]) => {
+                recorteHistorico[parametro].forEach((chave) => etiquetas.push(
+                    chip(rotulo, parametro === 'alerta'
+                        ? (rotulosDeAlerta[chave] || chave) : chave,
+                         parametro + ':' + chave)));
             });
 
             const campo = document.getElementById('ia-tabela-busca');
@@ -2283,6 +2808,8 @@
                     atualizarRotuloInc();
                 } else if (tipo === 'veredito') recorteVereditos.delete(valor);
                 else if (recorteMensalidade[tipo]) recorteMensalidade[tipo].delete(valor);
+                else if (recorteHistorico[tipo]) recorteHistorico[tipo].delete(valor);
+                else if (tipo === 'data_proc') limparDataProc();
                 else if (tipo === 'busca') {
                     const campo = document.getElementById('ia-tabela-busca');
                     if (campo) campo.value = '';
@@ -2296,10 +2823,12 @@
                         .forEach((classe) => nosFiltros('.' + classe)
                             .forEach((caixa) => (caixa.checked = false)));
                     if (typeof window.resetFiltroIES === 'function') window.resetFiltroIES();
+                    limparDataProc();
                     inconsistenciasEscolhidas.clear();
                     atualizarRotuloInc();
                     recorteVereditos.clear();
                     limparMensalidade();
+                    limparHistorico();
                     const campo = document.getElementById('ia-tabela-busca');
                     if (campo) campo.value = '';
                     const limpar = document.getElementById('ia-btn-limpar-busca');
@@ -2555,6 +3084,11 @@
                 nenhuma (`tem_dado` falso) — levar "Não localizado" para lá devolveria
                 a aba inteira ou nada, sem nada na barra explicando por quê.  */
             limparMensalidade();
+            /*  E o caminho de volta, pela mesma razão exata: "Passou do limite" e os alertas de
+                período só existem no Histórico, e o contrato não tem matriz de curso
+                nenhuma para eles recortarem.  */
+            limparHistorico();
+            rotulosDeAlerta = {};
             recarregar();
         }));
 
@@ -2585,6 +3119,173 @@
 
         CLASSES_DE_PESSOA.forEach(exclusivo);
 
+        /*  O CALENDÁRIO É O DO FLATPICKR, e não mais o popup nativo do
+            `type="date"`: o miolo do nativo é desenhado pelo navegador e não
+            aceita CSS nenhum — nem a borda, nem o corpo da letra, nem um rodapé
+            com botão. O widget devolve todas as três coisas, e o desenho dele
+            está em `.docia-calendario` (ver `dash_documentos_ia.css`).
+
+            DOIS CAMINHOS PARA A MESMA DATA: o calendário, para quem está
+            procurando o dia, e o teclado, para quem já sabe qual é — voltar do
+            arquivo até `07/06/2002` na seta do mês são dezenas de cliques. O que
+            se digita passa pela máscara (`comBarras`) e pela conferência de data
+            real (`isoDigitado`), que é o que separa "digitação livre" de campo
+            que aceita `31/02`.
+
+            O "OK" É QUEM APLICA, e por isso `closeOnSelect: false`: clicar num
+            dia agora só o acende no calendário: quem vai ao servidor é o botão
+            do rodapé. Sem ele, cada dia tocado no caminho até o certo — inclusive
+            os que a pessoa atravessa mudando de mês — disparava uma consulta.
+
+            FECHAR SEM CONFIRMAR DESFAZ (`onClose`): o dia aceso volta a ser o
+            que está valendo na tela, senão o campo mostraria uma data que a
+            tabela atrás dele não usou.  */
+        if (campoDataProc) {
+            /*  `0706` -> `07/06/`. A BARRA ENTRA SOZINHA e já fica à frente do
+                próximo número, para quem digita seguir sem procurar a tecla: dois
+                dígitos e a barra aparece, mais dois e aparece a segunda. Só número
+                entra — letra e a própria barra digitada caem no `replace`, e o
+                oitavo dígito é o último que cabe numa data.  */
+            const comBarras = (texto) => {
+                const digitos = String(texto).replace(/\D/g, '').slice(0, 8);
+                if (digitos.length >= 4) return digitos.slice(0, 2) + '/' + digitos.slice(2, 4) + '/' + digitos.slice(4);
+                if (digitos.length >= 2) return digitos.slice(0, 2) + '/' + digitos.slice(2);
+                return digitos;
+            };
+
+            /*  `07/06/2002` -> `2002-06-07`, e `null` para o que não é dia de
+                calendário. A conferência do dia e do mês DEPOIS de montar a data é
+                o que pega `31/02`: o `Date` do JavaScript não recusa, ele rola para
+                o dia seguinte do mês que vem — e o filtro aplicaria 03/03 calado.  */
+            const isoDigitado = (texto) => {
+                const partes = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(texto).trim());
+                if (!partes) return null;
+                const [, dia, mes, ano] = partes;
+                const data = new Date(Number(ano), Number(mes) - 1, Number(dia));
+                if (data.getDate() !== Number(dia) || data.getMonth() !== Number(mes) - 1) return null;
+                return ano + '-' + mes + '-' + dia;
+            };
+
+            /*  O ÚNICO CAMINHO QUE VAI AO SERVIDOR, venha o dia do calendário ou do
+                teclado. Ler o texto do campo em vez do estado do widget é o que faz
+                os dois caminhos valerem igual: digitar e clicar direto no OK não
+                passa por `blur` nenhum, e o widget ainda estaria no dia anterior.
+
+                DATA IMPOSSÍVEL NÃO APLICA e não fecha: o campo volta ao que está
+                valendo na tela e o calendário continua aberto, que é onde a pessoa
+                está olhando quando erra o dia.  */
+            const aplicarDataProc = (fp) => {
+                const digitado = (fp.altInput.value || '').trim();
+                if (digitado) {
+                    const iso = isoDigitado(digitado);
+                    if (!iso) {
+                        fp.setDate(dataProcAplicada, false);
+                        return;
+                    }
+                    fp.setDate(iso, false);
+                } else {
+                    fp.clear(false);
+                }
+                dataProcAplicada = campoDataProc.value || '';
+                sincronizarDataProc();
+                fp.close();
+                recarregar();
+            };
+
+            flatpickr(campoDataProc, {
+                locale: 'pt',
+                dateFormat: 'Y-m-d',
+                altInput: true,
+                altFormat: 'd/m/Y',
+                /*  Substitui o `form-control input` que o flatpickr põe por padrão no
+                    campo visível — classe de Bootstrap, que este portal não carrega.  */
+                altInputClass: 'docia-campo-data__entrada',
+                allowInput: true,
+                closeOnSelect: false,
+                /*  `type="date"` faz o flatpickr devolver o popup NATIVO no celular, que
+                    é justamente o que este bloco existe para não usar.  */
+                disableMobile: true,
+                onReady: (datas, texto, fp) => {
+                    fp.calendarContainer.classList.add('docia-calendario');
+
+                    const rodape = document.createElement('div');
+                    rodape.className = 'docia-calendario__rodape';
+                    const ok = document.createElement('button');
+                    ok.type = 'button';
+                    ok.className = 'docia-calendario__ok';
+                    ok.textContent = 'OK';
+                    ok.addEventListener('click', () => aplicarDataProc(fp));
+                    rodape.appendChild(ok);
+                    fp.calendarContainer.appendChild(rodape);
+
+                    const alvo = fp.altInput;
+
+                    alvo.addEventListener('input', (evento) => {
+                        let texto = comBarras(alvo.value);
+                        /*  APAGAR TEM QUE APAGAR. Sem esta saída, o backspace que come o
+                            dígito logo depois de uma barra vê a máscara devolvê-la na
+                            mesma tecla, e o campo trava com o cursor preso na barra.  */
+                        if (evento.inputType && evento.inputType.indexOf('delete') === 0
+                            && texto.charAt(texto.length - 1) === '/') {
+                            texto = texto.slice(0, -1);
+                        }
+                        alvo.value = texto;
+                    });
+
+                    /*  O MOLDE `dd/mm/aaaa` SÓ APARECE COM O CAMPO EM FOCO: em repouso
+                        a frase diz o que o campo faz, e no foco o molde diz em que
+                        ordem os números entram. Placeholder e não valor: o molde é
+                        cinza de fundo e não vai ao servidor por engano.  */
+                    /*  O TEXTO INTEIRO NASCE SELECIONADO, para a primeira tecla trocar
+                        a data em vez de tentar somar dígitos a uma que já está
+                        completa — a máscara para no oitavo, e sem isto digitar por
+                        cima de `07/06/2002` não mudava nada.
+
+                        NO QUADRO SEGUINTE: é o `mouseup` do clique que põe o cursor
+                        onde se clicou, e ele desfaria uma seleção feita agora.
+
+                        NO `click` TAMBÉM, e não só no `focus`: depois de um Esc o
+                        widget devolve o foco ao campo sozinho, e o clique seguinte
+                        não é mais um `focus` — era o caso em que a data velha ficava
+                        de pé engolindo tudo que se digitava.  */
+                    const selecionarTudo = () => setTimeout(() => alvo.select(), 0);
+                    alvo.addEventListener('focus', () => {
+                        alvo.placeholder = 'dd/mm/aaaa';
+                        selecionarTudo();
+                    });
+                    alvo.addEventListener('click', selecionarTudo);
+                    alvo.addEventListener('blur', () => { alvo.placeholder = 'Selecione uma data'; });
+
+                    /*  ENTER É O OK DE QUEM ESTÁ DIGITANDO — e para ser o OK ele
+                        precisa chegar antes do Enter DO WIDGET, que faz outra coisa:
+                        absorve o texto, fecha o calendário e tira o foco do campo. Era
+                        ele quem fazia a data velha voltar depois de apagada, porque o
+                        fechamento dele é fechar-sem-confirmar e o `onClose` desfaz.
+
+                        POR ISSO O OUVINTE FICA NA CAIXA, EM CAPTURA, e não no campo: o
+                        flatpickr registra o dele NO PRÓPRIO CAMPO e antes deste — no
+                        alvo, quem registra primeiro corre primeiro, e nem `capture` nem
+                        `stopImmediatePropagation` mudam essa ordem. Um degrau acima, a
+                        captura acontece antes de o evento chegar ao campo, e aí o
+                        `stopPropagation` faz o Enter do widget não existir.
+
+                        O `preventDefault` é por causa do `<form>` da barra de filtros,
+                        onde Enter num campo recarrega a página inteira.  */
+                    if (caixaDataProc) {
+                        caixaDataProc.addEventListener('keydown', (evento) => {
+                            if (evento.key !== 'Enter' || evento.target !== alvo) return;
+                            evento.preventDefault();
+                            evento.stopPropagation();
+                            aplicarDataProc(fp);
+                        }, true);
+                    }
+                },
+                onClose: (datas, texto, fp) => {
+                    if (texto !== dataProcAplicada) fp.setDate(dataProcAplicada, false);
+                },
+            });
+        }
+
         /*  "RESTAURAR PADRÃO" É DA ABA QUE ESTÁ NA TELA. O botão é um só, no
             cabeçalho da barra, e os dois módulos o escutam — sem esta saída, um
             clique aqui zeraria também o recorte da aba vizinha, que a pessoa não
@@ -2596,12 +3297,11 @@
                 nosFiltros(
                     CLASSES_DE_PESSOA.map((classe) => '.' + classe).join(', ')
                 ).forEach((caixa) => (caixa.checked = false));
-                // O documento não zera: volta ao padrão, que é o CONTRATO.
-                caixasDocumento.forEach((caixa) =>
-                    (caixa.checked = caixa.value === 'CONTRATO'));
+                limparDataProc();
                 inconsistenciasEscolhidas.clear();
                 atualizarRotuloInc();
                 limparMensalidade();
+                limparHistorico();
                 /*  O RECORTE CLICADO NA ROSCA TAMBÉM É FILTRO, e era o único que
                     sobrevivia ao botão: quem escolhia "Falso válido" na legenda e
                     depois pedia o padrão de volta continuava vendo só aquela fatia,
@@ -2720,7 +3420,8 @@
                 pendente = setTimeout(ajustarAlturasIA, 250);
             });
             if (vistaPerformance) observador.observe(vistaPerformance);
-            ['ia-gr-veredito', 'ia-gr-msd', 'ia-gr-mcd', 'ia-gr-inconsistencias'].forEach((id) => {
+            ['ia-gr-veredito', 'ia-gr-msd', 'ia-gr-mcd', 'ia-gr-sit', 'ia-gr-alerta',
+             'ia-gr-inconsistencias'].forEach((id) => {
                 const caixa = document.getElementById(id);
                 if (caixa) observador.observe(caixa);
             });

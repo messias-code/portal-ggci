@@ -3081,15 +3081,15 @@ document.addEventListener('turbo:load', () => {
                         intacto, esperando para ressuscitar na próxima troca — que é o
                         filtro esquecido de novo, agora escondido atrás de um botão que
                         prometeu tê-lo apagado.  */
-                    estadoPorModo.beneficiarios = null;
-                    estadoPorModo.ies = null;
+                    /*  Preserva o Semestre e Documento selecionados atualmente, limpando
+                        apenas os demais filtros, para não frustrar o usuário retornando a 
+                        2025-1 e Contrato a cada reset.  */
+                    const semsAtuais = marcados(checkboxesSemestre);
+                    const docsAtuais = marcados(checkboxesDocumento);
 
-                    /*  O padrão do filtro de documento varia: no IES é 'CONTRATO' para
-                        não quebrar a leitura percentual. Em beneficiários o padrão é
-                        vazio (as cinco roscas com a legenda inteira acesa). */
-                    const emIES = modoSelecionado() === 'ies';
-                    checkboxesDocumento.forEach((caixa) =>
-                        (caixa.checked = emIES ? caixa.value === 'CONTRATO' : false));
+                    estadoPorModo.beneficiarios = { semestres: semsAtuais, documentos: docsAtuais, ies: [], recortes: [] };
+                    estadoPorModo.ies = { semestres: semsAtuais, documentos: docsAtuais, ies: [], recortes: [] };
+
                     if (elIES.busca) elIES.busca.value = '';
                     if (elIES.limparBusca) elIES.limparBusca.classList.add('hidden');
                     window.__ordemIES = Object.assign({}, ORDEM_PADRAO_IES);
@@ -3098,6 +3098,7 @@ document.addEventListener('turbo:load', () => {
                     marcarBotaoDeLimpar();
                     window.__recortesDocIA.length = 0;
                     repintarLegendas();
+
                     /*  O usuário pediu expressamente para que "Restaurar Padrão" não troque a aba.
                         Se ele estiver na vista IES, a chamada `aplicarModo(modoAtual)` se encarregará
                         de forçar os defaults obrigatórios daquela vista (2025-1 e CONTRATO).  */
@@ -4347,4 +4348,38 @@ document.addEventListener('turbo:load', () => {
         card.style.removeProperty('--px');
         card.style.removeProperty('--py');
     }, { passive: true });
+}());
+
+
+/* ==========================================================================
+   O ANEL DE FOCO É DO TECLADO, NÃO DO MOUSE
+   --------------------------------------------------------------------------
+   `:focus-visible` deveria resolver isto sozinho, e quase resolve: a regra do
+   navegador é "mostra o anel quando o foco não veio de um apontador". O quase
+   está na HEURÍSTICA — basta uma tecla antes do clique (um Shift, um Tab, uma
+   busca na tabela) para o Chrome passar a tratar os cliques seguintes como
+   interação de teclado, e aí o botão clicado fica com o anel aceso por cima,
+   sem que ninguém tenha navegado por teclado.
+
+   O QUE ESTE BLOCO FAZ é anotar no `<html>` de onde veio a última interação.
+   O CSS (ver `dash_documentos_ia.css`) apaga o anel enquanto a anotação disser
+   "mouse", e o devolve inteiro no primeiro Tab — quem navega por teclado
+   continua vendo onde está, que é a razão de o anel existir.
+
+   SÓ O TAB E AS SETAS acendem a anotação de teclado. Digitar num campo de
+   busca é teclado também, mas não é NAVEGAÇÃO: se qualquer tecla contasse, o
+   primeiro caractere digitado traria o anel de volta e o clique seguinte
+   apareceria destacado — que é exatamente a queixa.
+   ========================================================================== */
+(function () {
+    const anotar = (modo) => document.documentElement.setAttribute('data-entrada', modo);
+    const TECLAS_DE_NAVEGACAO = ['Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+
+    anotar('mouse');
+    //  Na fase de captura: o anel precisa estar decidido ANTES de o clique
+    //  chegar ao controle e o foco mudar, senão ele pisca por um quadro.
+    document.addEventListener('pointerdown', () => anotar('mouse'), true);
+    document.addEventListener('keydown', (evento) => {
+        if (TECLAS_DE_NAVEGACAO.includes(evento.key)) anotar('teclado');
+    }, true);
 }());

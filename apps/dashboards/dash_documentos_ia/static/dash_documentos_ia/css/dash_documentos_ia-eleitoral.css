@@ -445,6 +445,99 @@ html[data-tema="eleitoral"] .docia-filtro-contador {
 }
 
 
+/*  O CAMPO DE DATA segue o selo do contador: no claro o roxo `#6B007B` está
+    fixo na folha base, e sobre o fundo escuro ele fica quase preto. O token da
+    primária é a mesma intenção medida para este tema.  */
+html[data-tema="eleitoral"] .docia-campo-data__icone {
+    color: var(--tema-primaria);
+}
+
+html[data-tema="eleitoral"] .docia-campo-data:hover,
+html[data-tema="eleitoral"] .docia-campo-data:focus-within {
+    border-color: var(--tema-primaria);
+}
+
+html[data-tema="eleitoral"] .docia-campo-data:focus-within {
+    box-shadow: 0 0 0 3px var(--tema-primaria-lavada);
+}
+
+/*  `tema-conteudo.css` pinta todo `input[type="text"]` de `.area-trabalho` com
+    fundo, borda e cor próprios — e aqui a moldura é a `<div>` de fora, não o
+    campo. Sem esta regra o input desenha um retângulo `--tema-superficie-3`
+    DENTRO da caixa, com cantos retos por cima dos arredondados dela.
+
+    O `[type=...]` está aqui só para somar especificidade: a regra de lá é
+    `html[data-tema] .area-trabalho input[type="date"]`, e sem ele esta empata
+    por baixo. Os DOIS tipos aparecem porque o flatpickr mantém o `date`
+    original escondido e põe no lugar um `text` com a mesma classe — o que se
+    vê na barra é o `text`.  */
+html[data-tema="eleitoral"] .area-trabalho .docia-campo-data__entrada[type="date"],
+html[data-tema="eleitoral"] .area-trabalho .docia-campo-data__entrada[type="text"] {
+    background-color: transparent;
+    border: 0;
+}
+
+/*  A CAIXA SOBE UM DEGRAU no escuro. A barra de filtros inteira é
+    `--tema-superficie`, e um campo na mesma tinta do painel vira um retângulo
+    de borda solta. `--tema-superficie-3` é o fundo de campo de formulário
+    declarado em `tema.css`, e é o que a regra global já tentava dar ao input.  */
+html[data-tema="eleitoral"] .docia-campo-data {
+    background-color: var(--tema-superficie-3);
+}
+
+/*  O TEXTO DO CAMPO — a data escolhida, ou a frase de vazio no
+    `::placeholder`. Sem isto ele herda o preto do tema claro e some no fundo
+    escuro.  */
+html[data-tema="eleitoral"] .docia-campo-data__entrada {
+    color: var(--tema-texto-forte);
+}
+
+
+/*  O CALENDÁRIO no escuro. O desenho inteiro está em `dash_documentos_ia.css`
+    sobre tokens de tema, que já trocam sozinhos; o que sobra aqui é o roxo
+    `#6B007B` da marca, escrito literal lá e quase preto sobre o fundo escuro —
+    a mesma correção que o ícone e a borda do campo recebem acima.
+
+    A SOMBRA também vem junto: a do claro é preta translúcida, medida para
+    cair sobre um painel claro, e sobre o grafite ela não separa o calendário
+    de nada. No escuro quem separa é a borda, e a sombra só ganha corpo.  */
+html[data-tema="eleitoral"] .docia-calendario.flatpickr-calendar {
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.45);
+}
+
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day:hover,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-months .flatpickr-prev-month:hover,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-months .flatpickr-next-month:hover,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-current-month .flatpickr-monthDropdown-months:hover {
+    background-color: var(--tema-primaria-lavada);
+}
+
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-months .flatpickr-prev-month:hover svg,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-months .flatpickr-next-month:hover svg {
+    fill: var(--tema-primaria);
+}
+
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.today {
+    box-shadow: inset 0 0 0 1px var(--tema-primaria);
+}
+
+/*  O DIA ESCOLHIDO E O BOTÃO SÃO ÁREA SÓLIDA, e área sólida no eleitoral é
+    `--tema-primaria-forte`, não `--tema-primaria`: a primária é o teal claro
+    dos traços finos (texto, ícone, borda), e o branco por cima dela não se lê.
+    A forte é o tom medido para levar branco em cima (ver `tema.css`).  */
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.selected,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.selected:hover,
+html[data-tema="eleitoral"] .docia-calendario__ok {
+    background-color: var(--tema-primaria-forte);
+    color: #FFFFFF;
+}
+
+html[data-tema="eleitoral"] .docia-calendario__ok:hover {
+    background-color: var(--tema-primaria);
+    color: var(--tema-superficie);
+}
+
+
 /* ==========================================================================
    VISÃO POR IES E O FILTRO DE DOCUMENTO
    --------------------------------------------------------------------------

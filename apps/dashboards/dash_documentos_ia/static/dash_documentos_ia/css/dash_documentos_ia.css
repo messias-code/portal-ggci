@@ -1013,6 +1013,78 @@ body { font-family: 'Poppins', sans-serif; }
 
 
 /* ==========================================================================
+   CAMPO DE DATA DA BARRA (Análise IA)
+   --------------------------------------------------------------------------
+   Escrito à mão, e não em utilitária do Tailwind, pela razão de sempre nesta
+   folha: o bundle é purgado e não há build no repositório — classe nova não
+   chega ao `output.css` e falha calada. As cores saem dos tokens de tema mais
+   o roxo da marca, e o eleitoral corrige o roxo nominalmente em
+   `dash_documentos_ia-eleitoral.css`, como já faz com o selo do contador.
+
+   A CAIXA É A `<div>`, NÃO O `<input>`: a borda, o fundo e o foco vivem no
+   invólucro, e o campo por dentro fica transparente e sem borda. É o que
+   permite pôr o ícone e a frase de vazio DENTRO da mesma moldura sem que eles
+   disputem espaço com o texto — e é por isso que o foco é `:focus-within`.
+
+   A ALTURA É A MESMA DAS GRADES SEGMENTADAS (2.5rem) de propósito: esta seção
+   fica entre "Documento" e "Situação do aluno", e um campo mais baixo abriria
+   um degrau no meio da régua vertical em que a coluna inteira se apoia.
+   ========================================================================== */
+
+.docia-campo-data {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    height: 2.5rem;
+    border: 1px solid var(--tema-borda-forte);
+    border-radius: 0.75rem;
+    background-color: var(--tema-superficie);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.docia-campo-data:hover {
+    border-color: #6B007B;
+}
+
+.docia-campo-data:focus-within {
+    border-color: #6B007B;
+    box-shadow: 0 0 0 3px rgba(107, 0, 123, 0.1);
+}
+
+/*  DECORATIVO, e por isso `pointer-events: none`: quem abre o calendário é o
+    indicador nativo esticado por cima de tudo (abaixo). Um ícone clicável aqui
+    roubaria o clique dele e não abriria nada.  */
+.docia-campo-data__icone {
+    position: absolute;
+    left: 0.875rem;
+    font-size: 0.8125rem;
+    color: #6B007B;
+    pointer-events: none;
+}
+
+.docia-campo-data__entrada {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    padding: 0 0.875rem 0 2.375rem;
+    border: 0;
+    border-radius: inherit;
+    background: transparent;
+    color: var(--tema-texto-forte);
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.docia-campo-data__entrada:focus {
+    outline: none;
+}
+
+
+
+
+/* ==========================================================================
    GRADE DO FILTRO DE DOCUMENTO
    --------------------------------------------------------------------------
    As demais grades da barra (período, vínculo, perfil) usam a receita do
@@ -1901,6 +1973,84 @@ html[data-tela-cheia="1"] .docia-legenda__pct { width: 44px; }
     background-color: rgba(220, 38, 38, 0.10);
     border-color: rgba(220, 38, 38, 0.26);
     color: #B91C1C;
+}
+
+
+/* ==========================================================================
+   O BALÃO DOS MOTIVOS
+   ==========================================================================
+   `Falso Válido` diz que a matemática discorda da IA, e nunca em QUE campo. Com
+   `Gemini Inconsistencias` lendo "Sem inconsistências" — que é o caso normal,
+   porque `Falso Válido` é justamente a IA não ter visto problema — só restava
+   comparar as 63 colunas duas a duas até achar o CPF que não bate.
+
+   O CURSOR É O AVISO. A flag com motivo ganha `cursor: help` e um sublinhado
+   pontilhado discreto: sem isso não há como saber que ali existe algo a ler, e
+   um balão que ninguém descobre é o mesmo que não existir.
+
+   `position: fixed` PORQUE A TABELA ROLA. A caixa da tabela tem `overflow` nos
+   dois eixos; um balão posicionado dentro dela seria cortado na primeira e na
+   última coluna, que são exatamente as pontas onde ele mais aparece.
+   ========================================================================== */
+.docia-flag--com-motivo {
+    cursor: help;
+    text-decoration: underline dotted currentColor;
+    text-underline-offset: 2px;
+}
+
+.docia-balao-motivos {
+    position: fixed;
+    z-index: 70;
+    max-width: 22rem;
+    padding: 0.625rem 0.75rem;
+    border: 1px solid var(--tema-borda-forte);
+    border-radius: 0.75rem;
+    background-color: var(--tema-superficie);
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+    /*  FORA DO ALCANCE DO PONTEIRO: o balão nasce a 8px da flag e, sem isto,
+        bastaria ele cobrir a própria flag para o `mouseout` disparar, fechar o
+        balão, o ponteiro voltar à flag e tudo recomeçar — a piscada clássica.  */
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(2px);
+    transition: opacity 0.12s ease, transform 0.12s ease, visibility 0.12s;
+}
+
+.docia-balao-motivos--aberto {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.docia-balao-motivos__titulo {
+    margin-bottom: 0.25rem;
+    font-size: 0.625rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--tema-texto-fraco);
+}
+
+.docia-balao-motivos__frase,
+.docia-balao-motivos__lista {
+    margin: 0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.45;
+    color: var(--tema-texto-forte);
+}
+
+/*  A lista só aparece quando há mais de um motivo, e aí ela precisa parecer
+    lista: marcador para dentro, para o texto de duas linhas não invadir a
+    bolinha do item seguinte.  */
+.docia-balao-motivos__lista {
+    padding-left: 1.05rem;
+    list-style: disc;
+}
+
+.docia-balao-motivos__lista li + li {
+    margin-top: 0.2rem;
 }
 
 
@@ -3422,6 +3572,40 @@ html[data-tela-cheia="1"] .docia-legenda--lado {
 .docia-anel-e-lista--sozinho > .docia-legenda { display: none; }
 .docia-anel-e-lista--sozinho > .docia-grafico-ia { flex: 1 1 0; }
 
+/*  O MESMO ARRANJO NUM CARD DE MEIA ALTURA — a situação do período, que divide a
+    coluna do meio com os alertas.
+
+    Os 210px FIXOS do anel são a medida do card de inconsistências, que tem a faixa
+    inteira de altura e ~700px de largura. Este card muda de largura com a janela: a
+    1920px a coluna do meio mede ~680px e a 1280px mede ~330px. Fixo nos dois, o anel
+    ou sobra de um lado ou come a legenda do outro — e "Último período 1.762 10,7%"
+    não cabe no que sobraria a 1280px.
+
+    ENTÃO O ANEL TEM TETO E PISO, e é ele quem cede: `0 1 220px` não cresce além do
+    que a altura do card aproveita (o desenho é o menor entre largura e altura, ver
+    `alturaDoDesenho`) e encolhe até 120px quando a janela aperta. A legenda fica com
+    o resto, que é o que ela precisa — ela é a metade do card que se lê. */
+.docia-anel-e-lista--estreito { flex: 1 1 0; min-height: 0; }
+.docia-anel-e-lista--estreito > .docia-grafico-ia {
+    flex: 0 1 220px; width: auto; min-width: 120px; min-height: 0;
+}
+/*  O `min-width` é o que decide quem perde espaço quando a coluna aperta. Sem ele
+    o anel fica com os 220px do `flex-basis` e a lista herda só o resto: a 1280px
+    sobram ~180px e "Último período" vira "Últim...". Com o piso, quem encolhe é o
+    anel (até os 120px acima), que continua legível pequeno — o nome cortado não. */
+.docia-anel-e-lista--estreito > .docia-legenda { flex: 1 1 0; min-width: 244px; }
+/*  A altura fixa de `--ia` é a das oito linhas do veredito e estoura este card; aqui
+    quem manda na altura é a linha, como em `--lado`. */
+/*  O seletor de tela cheia repete aqui porque ele pesa mais que uma classe só
+    (`html[data-tela-cheia]` soma elemento e atributo), e sem ele o F11 devolveria os
+    193px que esta regra existe para desfazer. */
+.docia-anel-e-lista--estreito > .docia-legenda--ia,
+html[data-tela-cheia="1"] .docia-anel-e-lista--estreito > .docia-legenda--ia {
+    height: auto; font-size: 11px;
+}
+.docia-anel-e-lista--estreito > .docia-legenda--ia .docia-legenda__valor { width: 42px; }
+.docia-anel-e-lista--estreito > .docia-legenda--ia .docia-legenda__pct { width: 36px; }
+
 
 /* ==========================================================================
    SISTEMA DE ACABAMENTO — TOKENS, ELEVAÇÃO, VIDRO E ESTADOS
@@ -4183,4 +4367,293 @@ html:not([data-tema="eleitoral"]) #tabela-detalhamento thead th,
 html:not([data-tema="eleitoral"]) #tabela-ies thead th,
 html:not([data-tema="eleitoral"]) #ia-tabela-rolagem thead th {
     background-color: var(--docia-superficie);
+}
+
+
+/* ==========================================================================
+   O CALENDÁRIO DO FILTRO DE DATA (FLATPICKR)
+   --------------------------------------------------------------------------
+   TUDO AQUI PENDURADO EM `.docia-calendario`, a classe que o JS põe no
+   contêiner no `onReady`. O flatpickr solta o calendário no `<body>`, fora da
+   barra de filtros e fora de qualquer escopo desta tela — sem a classe, o
+   desenho valeria para todo calendário de qualquer tela que um dia carregue a
+   mesma folha.
+
+   A CLASSE TAMBÉM É O QUE DISPENSA `!important`: a folha original do widget
+   vem do CDN no `<head>`, ANTES desta, e `.docia-calendario .flatpickr-day`
+   pesa mais que o `.flatpickr-day` de lá. A versão anterior deste bloco
+   mexia só em medidas e precisava de `!important` em cada linha.
+
+   O QUE O WIDGET TRAZ DE FÁBRICA e não serve: 308px de largura (a barra tem
+   335px, com 8rem de respiro nas laterais), letra de 14px num painel escrito
+   em 12, cantos de 5px onde o resto da tela usa 12, e um vermelho `#f64747`
+   no hover das setas de mês que não existe em lugar nenhum do portal.
+
+   AS CORES SAEM DOS TOKENS DE TEMA mais o roxo da marca — mesma receita do
+   campo logo acima, e o eleitoral corrige o roxo em
+   `dash_documentos_ia-eleitoral.css`.
+   ========================================================================== */
+
+.docia-calendario.flatpickr-calendar {
+    width: 272px;
+    padding: 0;
+    border: 1px solid var(--tema-borda-forte);
+    border-radius: 0.875rem;
+    background-color: var(--tema-superficie);
+    box-shadow: 0 14px 34px rgba(17, 12, 27, 0.16);
+    /*  A RAIZ DESTA TELA É 90% (14,4px), e por isso o corpo da letra aqui sobe um
+        degrau em relação ao do campo: `0,75rem` dá 10,8px, que é legível numa
+        etiqueta de uma palavra e não numa grade de 42 números.  */
+    font-size: 0.8125rem;
+}
+
+/*  O BICO SOME. O flatpickr desenha o triângulo com `::before`/`::after` em
+    branco fixo e borda cinza — no eleitoral ele viraria uma lasca clara
+    grudada no painel escuro, e repintar dois pseudo-elementos por posição
+    (`arrowTop`, `arrowBottom`) é mais linha de CSS do que o bico vale. Sem ele
+    o calendário é uma cápsula solta, que é como o resto da tela desenha o que
+    flutua.  */
+.docia-calendario.flatpickr-calendar::before,
+.docia-calendario.flatpickr-calendar::after {
+    display: none;
+}
+
+/*  CABEÇALHO ESTÁTICO, e não o absoluto de fábrica: lá as setas e o nome do
+    mês são três caixas posicionadas por cima de uma faixa de 34px de altura
+    fixa, medida para a letra de 14px. Numa linha flex os três se alinham
+    sozinhos em qualquer corpo de letra.  */
+.docia-calendario .flatpickr-months {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.625rem 0.625rem 0.25rem;
+}
+
+.docia-calendario .flatpickr-months .flatpickr-month {
+    flex: 1 1 auto;
+    height: auto;
+    color: var(--tema-texto-forte);
+    fill: var(--tema-texto-forte);
+}
+
+.docia-calendario .flatpickr-current-month {
+    position: static;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    width: auto;
+    height: auto;
+    padding: 0;
+    font-size: 0.875rem;
+    font-weight: 700;
+}
+
+.docia-calendario .flatpickr-current-month .cur-month {
+    margin: 0;
+    font-weight: 700;
+}
+
+/*  O MÊS É UM `<select>` de verdade — é assim que se anda doze meses de uma
+    vez sem doze cliques na seta. O que sai é a APARÊNCIA nativa: a setinha do
+    sistema dentro de um calendário desenhado à mão é o pedaço que denuncia o
+    widget de fora. O hover é o que sobrou dizendo "isto abre".  */
+.docia-calendario .flatpickr-current-month .flatpickr-monthDropdown-months {
+    appearance: none;
+    -webkit-appearance: none;
+    height: 1.625rem;
+    padding: 0 0.5rem;
+    border-radius: 0.5rem;
+    background: transparent;
+    font-size: 0.875rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.docia-calendario .flatpickr-current-month .flatpickr-monthDropdown-months:hover {
+    background-color: rgba(107, 0, 123, 0.08);
+}
+
+/*  As opções caem no menu do SISTEMA, fora do alcance do CSS da página: só o
+    fundo e a tinta passam, e sem eles o menu do escuro abre branco.  */
+.docia-calendario .flatpickr-monthDropdown-months .flatpickr-monthDropdown-month {
+    background-color: var(--tema-superficie);
+    color: var(--tema-texto-forte);
+}
+
+.docia-calendario .flatpickr-current-month input.cur-year {
+    padding: 0;
+    font-size: 0.875rem;
+    font-weight: 700;
+}
+
+.docia-calendario .flatpickr-months .flatpickr-prev-month,
+.docia-calendario .flatpickr-months .flatpickr-next-month {
+    position: static;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0;
+    border-radius: 0.5rem;
+    color: var(--tema-texto-medio);
+    fill: var(--tema-texto-medio);
+    transition: background-color 0.15s ease, fill 0.15s ease;
+}
+
+.docia-calendario .flatpickr-months .flatpickr-prev-month svg,
+.docia-calendario .flatpickr-months .flatpickr-next-month svg {
+    width: 0.625rem;
+    height: 0.625rem;
+}
+
+/*  O `svg:hover` repete o seletor do botão porque a folha original pinta a
+    seta de `#f64747` no hover — um vermelho de alerta para um controle que só
+    vira o mês.  */
+.docia-calendario .flatpickr-months .flatpickr-prev-month:hover,
+.docia-calendario .flatpickr-months .flatpickr-next-month:hover {
+    background-color: rgba(107, 0, 123, 0.08);
+}
+
+.docia-calendario .flatpickr-months .flatpickr-prev-month:hover svg,
+.docia-calendario .flatpickr-months .flatpickr-next-month:hover svg {
+    fill: #6B007B;
+}
+
+.docia-calendario .flatpickr-weekdays {
+    height: 1.75rem;
+    background: transparent;
+}
+
+.docia-calendario span.flatpickr-weekday {
+    background: transparent;
+    color: var(--tema-texto-fraco);
+    font-size: 0.6875rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+/*  AS TRÊS LARGURAS FIXAS DO WIDGET (308px em `flatpickr-days`, no
+    `dayContainer` e no `min/max` dele) viram uma só medida elástica: a largura
+    do calendário menos o respiro lateral. Os dias já são `14,2857%` de fábrica
+    e se ajustam sozinhos.  */
+.docia-calendario .flatpickr-days {
+    width: 100%;
+}
+
+.docia-calendario .flatpickr-days .dayContainer {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    padding: 0 0.5rem;
+}
+
+.docia-calendario .flatpickr-day {
+    max-width: none;
+    height: 2.125rem;
+    line-height: 2.125rem;
+    margin: 0;
+    border: 0;
+    border-radius: 0.5rem;
+    color: var(--tema-texto-forte);
+    font-size: 0.8125rem;
+    font-weight: 600;
+}
+
+.docia-calendario .flatpickr-day:hover {
+    background-color: rgba(107, 0, 123, 0.08);
+}
+
+.docia-calendario .flatpickr-day.prevMonthDay,
+.docia-calendario .flatpickr-day.nextMonthDay {
+    color: var(--tema-texto-fraco);
+    opacity: 0.6;
+}
+
+/*  HOJE É UM ARO, não um fundo: o fundo é a marca de ESCOLHIDO, e as duas
+    coisas juntas na mesma célula dizem a mesma coisa duas vezes. `inset` para
+    não empurrar a grade.  */
+.docia-calendario .flatpickr-day.today {
+    box-shadow: inset 0 0 0 1px #6B007B;
+}
+
+.docia-calendario .flatpickr-day.selected,
+.docia-calendario .flatpickr-day.selected:hover {
+    background-color: #6B007B;
+    border-color: transparent;
+    color: #FFFFFF;
+}
+
+.docia-calendario .flatpickr-day.flatpickr-disabled,
+.docia-calendario .flatpickr-day.flatpickr-disabled:hover {
+    color: var(--tema-texto-fraco);
+    opacity: 0.35;
+}
+
+/*  O RODAPÉ É NOSSO, montado no `onReady` — o widget não tem botão de
+    confirmar. Ele existe porque escolher um dia e a tabela inteira recarregar
+    no mesmo instante não deixa ninguém atravessar o calendário até o dia certo
+    sem disparar uma consulta por parada no caminho.  */
+.docia-calendario__rodape {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0.5rem 0.625rem 0.625rem;
+    border-top: 1px solid var(--tema-borda);
+}
+
+.docia-calendario__ok {
+    height: 1.875rem;
+    padding: 0 1.25rem;
+    border: 0;
+    border-radius: 0.625rem;
+    background-color: #6B007B;
+    color: #FFFFFF;
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.docia-calendario__ok:hover {
+    background-color: #540060;
+}
+
+
+/* ==========================================================================
+   O ANEL DE FOCO SOME NO CLIQUE
+   --------------------------------------------------------------------------
+   Quem anota `data-entrada` no `<html>` é `dash_documentos_ia.js` — o cabeçalho
+   de lá explica por que `:focus-visible` sozinho não basta: uma tecla qualquer
+   antes do clique faz o Chrome tratar os cliques seguintes como navegação de
+   teclado, e o controle clicado fica com o anel aceso por cima.
+
+   OS SELETORES SÃO REPETIDOS UM A UM, e não resolvidos por uma regra curta
+   como `html[data-entrada="mouse"] :focus-visible`: essa pesa (0,2,1) e perde
+   para `.menu-shell :is(button, a[href], [tabindex]):focus-visible`, que pesa
+   (0,3,1). Repetindo o seletor original com o prefixo, cada anel é desligado
+   por uma regra que pesa exatamente o dele mais o atributo — sempre ganha, e
+   sem `!important`.
+
+   `outline`, e não `box-shadow`: o foco desta tela é anel de `outline` em todo
+   lugar (ver o bloco do modal de instituições). O realce de HOVER continua de
+   pé — ele responde ao mouse, que é justamente de onde a interação veio.
+   ========================================================================== */
+
+html[data-entrada="mouse"] .cfgx__fechar:focus-visible,
+html[data-entrada="mouse"] .cfgx__mini:focus-visible,
+html[data-entrada="mouse"] .cfgx-acao:focus-visible,
+html[data-entrada="mouse"] .cfgx__btn:focus-visible,
+html[data-entrada="mouse"] .cfg-periodo:focus-visible + .cfgx-periodo__caixa,
+html[data-entrada="mouse"] .filter-documento-ies:focus-visible + .docia-grade-doc__caixa,
+html[data-entrada="mouse"] .docia-inc-item input:focus-visible + .docia-inc-item__caixa,
+html[data-entrada="mouse"] .docia-ies-link:focus-visible,
+html[data-entrada="mouse"] .menu-shell :is(button, a[href], [tabindex]):focus-visible,
+html[data-entrada="mouse"] .tema-toggle:focus-visible,
+html[data-entrada="mouse"] .area-trabalho :focus-visible {
+    outline: none;
 }
