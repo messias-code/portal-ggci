@@ -115,7 +115,8 @@
       "matricula",
       "periodo_atual",
       "qtd_periodos",
-      "modalidade"
+      "modalidade_aluno",
+      "modalidade_ies"
     ],
     "Riaf": [
       "status_ia",
@@ -191,7 +192,8 @@
       "matricula",
       "periodo_atual",
       "qtd_periodos",
-      "modalidade"
+      "modalidade_aluno",
+      "modalidade_ies"
     ],
     "Benefício": [
       "status_ia",
@@ -254,7 +256,8 @@
       "matricula",
       "periodo_atual",
       "qtd_periodos",
-      "modalidade"
+      "modalidade_aluno",
+      "modalidade_ies"
     ],
     "Financiamento": [
       "status_ia",
@@ -317,7 +320,8 @@
       "matricula",
       "periodo_atual",
       "qtd_periodos",
-      "modalidade"
+      "modalidade_aluno",
+      "modalidade_ies"
     ],
     "Histórico": [
       "status_ia",
@@ -380,7 +384,8 @@
       "matricula",
       "periodo_atual",
       "qtd_periodos",
-      "modalidade"
+      "modalidade_aluno",
+      "modalidade_ies"
     ],
     "Pagamentos": [
       "codigo_aluno",

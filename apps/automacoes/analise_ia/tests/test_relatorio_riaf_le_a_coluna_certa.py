@@ -55,7 +55,7 @@ COLUNAS_DA_ABA_RIAF = [
     'processar', 'qtd_token', 'qtd_disciplinas_matriculadas', 'qtd_disciplinas_reprovadas',
     'perfil', 'status_vinculo', 'situacao_motivo', 'observacao_situacao', 'email',
     'gemini_email', 'telefone_1', 'telefone_2', 'data_nascimento', 'matricula',
-    'periodo_atual', 'qtd_periodos', 'modalidade',
+    'periodo_atual', 'qtd_periodos', 'modalidade_aluno', 'modalidade_ies',
 ]
 
 #  O que cada linha do relatório promete somar/contar. A chave é o começo do rótulo que a
