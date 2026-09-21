@@ -3254,7 +3254,28 @@
                         selecionarTudo();
                     });
                     alvo.addEventListener('click', selecionarTudo);
-                    alvo.addEventListener('blur', () => { alvo.placeholder = 'Selecione uma data'; });
+                    /*  O MOLDE SÓ CAI QUANDO O CALENDÁRIO FECHA. Clicar numa seta de mês
+                        tira o foco do campo e disparava este `blur` com o calendário
+                        ainda aberto: o `dd/mm/aaaa` virava `Selecione uma data` no meio
+                        do preenchimento, como se a escolha tivesse sido descartada.  */
+                    alvo.addEventListener('blur', () => {
+                        if (fp.isOpen) return;
+                        alvo.placeholder = 'Selecione uma data';
+                    });
+
+                    /*  CLICAR NO CALENDÁRIO NÃO PODE TIRAR O CURSOR DO CAMPO. As setas de
+                        mês recebem o foco ao serem clicadas, e depois delas o que a pessoa
+                        digitasse caía no botão, não no campo — tinha de clicar no campo de
+                        novo para continuar. `preventDefault` no `mousedown` segura o foco
+                        onde ele está e não atrapalha o `click`, que é o evento que o
+                        widget escuta para trocar de mês e escolher o dia.
+
+                        O `<select>` do mês e o `<input>` do ano ficam de fora: esses dois
+                        PRECISAM do foco para funcionar.  */
+                    fp.calendarContainer.addEventListener('mousedown', (evento) => {
+                        if (evento.target.closest('select, input')) return;
+                        evento.preventDefault();
+                    });
 
                     /*  ENTER É O OK DE QUEM ESTÁ DIGITANDO — e para ser o OK ele
                         precisa chegar antes do Enter DO WIDGET, que faz outra coisa:
@@ -3271,17 +3292,40 @@
 
                         O `preventDefault` é por causa do `<form>` da barra de filtros,
                         onde Enter num campo recarrega a página inteira.  */
+                    /*  ESC DESISTE: devolve o campo à data que a tabela está usando e
+                        fecha o calendário. Mora aqui pelo mesmo motivo do Enter, e com um
+                        agravante — com `allowInput` ligado o widget IGNORA as teclas que
+                        vêm do campo, de propósito, para não atrapalhar quem digita. O Esc
+                        dele simplesmente não existe neste modo, e o calendário ficava
+                        aberto por cima da tabela até um clique fora.  */
                     if (caixaDataProc) {
                         caixaDataProc.addEventListener('keydown', (evento) => {
-                            if (evento.key !== 'Enter' || evento.target !== alvo) return;
-                            evento.preventDefault();
-                            evento.stopPropagation();
-                            aplicarDataProc(fp);
+                            if (evento.target !== alvo) return;
+                            if (evento.key === 'Enter') {
+                                evento.preventDefault();
+                                evento.stopPropagation();
+                                aplicarDataProc(fp);
+                                return;
+                            }
+                            if (evento.key === 'Escape') {
+                                evento.preventDefault();
+                                evento.stopPropagation();
+                                fp.setDate(dataProcAplicada, false);
+                                fp.close();
+                            }
                         }, true);
                     }
                 },
                 onClose: (datas, texto, fp) => {
                     if (texto !== dataProcAplicada) fp.setDate(dataProcAplicada, false);
+                    /*  O `blur` de quem clica fora corre ANTES deste fechamento, e sai sem
+                        fazer nada porque o calendário ainda estava aberto. O molde volta a
+                        ser o texto de repouso aqui — salvo quando o foco ficou no campo,
+                        que é o caso do OK e do Enter: ali a pessoa continua no campo, e
+                        trocar o molde por baixo dela seria a mesma piscada.  */
+                    if (document.activeElement !== fp.altInput) {
+                        fp.altInput.placeholder = 'Selecione uma data';
+                    }
                 },
             });
         }
