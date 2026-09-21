@@ -66,7 +66,7 @@ COLUNAS_NO_PARQUET_RIAF = [
     'processar', 'qtd_token', 'qtd_disciplinas_matriculadas',
     'qtd_disciplinas_reprovadas', 'perfil', 'status_vinculo', 'situacao_motivo',
     'observacao_situacao', 'email', 'gemini_email', 'telefone_1', 'telefone_2',
-    'data_nascimento', 'matricula', 'periodo_atual', 'qtd_periodos', 'modalidade',
+    'data_nascimento', 'matricula', 'periodo_atual', 'qtd_periodos', 'modalidade_aluno', 'modalidade_ies',
     'documento_ausente', 'veredito_documento',
 ]
 
@@ -86,7 +86,7 @@ COLUNAS_NO_PARQUET_CONTRATO = [
     'processar', 'qtd_token', 'qtd_disciplinas_matriculadas',
     'qtd_disciplinas_reprovadas', 'perfil', 'status_vinculo', 'situacao_motivo',
     'observacao_situacao', 'email', 'telefone_1', 'telefone_2', 'data_nascimento',
-    'matricula', 'periodo_atual', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade',
+    'matricula', 'periodo_atual', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies',
     'documento_ausente', 'veredito_documento',
 ]
 
@@ -105,7 +105,7 @@ COLUNAS_NO_PARQUET_HISTORICO = [
     'qtd_disciplinas_reprovadas', 'perfil', 'status_vinculo', 'situacao_motivo',
     'observacao_situacao', 'situacao_motivo_atual', 'observacao_situacao_atual',
     'email', 'telefone_1', 'telefone_2', 'data_nascimento',
-    'matricula', 'periodo_atual', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade',
+    'matricula', 'periodo_atual', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies',
 ]
 
 
@@ -140,7 +140,7 @@ class TestRecorteDoRiaf(unittest.TestCase):
             'qtd_disciplinas_matriculadas', 'qtd_disciplinas_reprovadas', 'perfil',
             'status_vinculo', 'situacao_motivo', 'observacao_situacao', 'email',
             'gemini_email', 'telefone_1', 'telefone_2', 'data_nascimento', 'matricula',
-            'periodo_atual', 'qtd_periodos', 'modalidade',
+            'periodo_atual', 'qtd_periodos', 'modalidade_aluno', 'modalidade_ies',
         ])
 
     def test_toda_coluna_da_ia_do_riaf_esta_na_tela(self):
@@ -210,7 +210,7 @@ class TestNaoMisturaComOsOutrosDocumentos(unittest.TestCase):
             'inscricao_anterior', 'inscricao_posterior', 'cpf', 'gemini_cpf',
             'bolsa', 'mudou_bolsa',
         ])
-        self.assertEqual(list(saida.columns)[-1], 'modalidade')
+        self.assertEqual(list(saida.columns)[-2:], ['modalidade_aluno', 'modalidade_ies'])
         self.assertIn('qtd_pagtos_retroativos_(100%)', saida.columns)
 
     def test_documento_sem_recorte_passa_inteiro(self):
@@ -242,7 +242,7 @@ class TestNaoMisturaComOsOutrosDocumentos(unittest.TestCase):
                          ['mudou_ies', 'ies_anterior', 'ies_posterior', 'faculdade',
                           'curso'])
         self.assertEqual(ordem[-3:],
-                         ['qtd_periodos', 'gemini_concluiu_curso', 'modalidade'])
+                         ['qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies'])
         #  AS QUATRO EM SEQUÊNCIA: a do período e a de hoje, lado a lado, que é o
         #  contraste que a tela existe para mostrar.
         i = ordem.index('situacao_motivo_no_periodo')
