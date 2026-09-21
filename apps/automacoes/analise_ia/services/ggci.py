@@ -3358,7 +3358,7 @@ def gerar_aba_relatorio_contratos(writer, df_docs, sems_contratos):
 
     worksheet.write_comment(54, 0, "puxar valores de matriculas das coleta de dados para ajustar 2026-jan, observar se contratos tem valor de matricula pois agora é um requisito necessario para recalculo de bolsas")
 
-def gerar_aba_relatorio_riaf(writer, df_riaf, sems_riaf):
+def gerar_aba_relatorio_riaf(writer, df_riaf, sems_riaf, colunas_da_aba=None):
     """
     O QUE FAZ: Monta a aba "Relatório RIAF", equivalente gerencial da aba de contratos.
     POR QUÊ EXISTE: O RIAF tem conjunto de colunas e regras de aferição próprios e não cabe
@@ -3506,8 +3506,19 @@ def gerar_aba_relatorio_riaf(writer, df_riaf, sems_riaf):
         # Arquivos has subcolumns, so the Variação is merged, meaning it has 6 None below it
         return [(title, fmt_title)] + [("", fmt_cell, 2) for _ in range(len(sems_riaf)*3)] + ([("", fmt_cell, 6)] if has_var else [])
 
-    colunas_riaf_exp = ['status_ia', 'gemini_inconsistencia', 'semestre', 'gemini_semestre', 'bolsista', 'inscricao', 'inscricao_anterior', 'inscricao_posterior', 'cpf', 'gemini_cpf', 'tipo_bolsa_final', 'gemini_tipo_bolsa_final', 'mudou_bolsa', 'bolsa_anterior', 'bolsa_posterior', 'faculdade', 'cnpj_ies', 'mudou_ies', 'ies_anterior', 'ies_posterior', 'curso', 'gemini_assinatura_aluno', 'gemini_assinatura_ies', 'ultimo_valor_pago_ref', 'total_bolsa_paga', 'qtd_pagtos', 'qtd_pagtos_retroativos', 'matricula_sem_desc', 'gemini_matricula_sem_desc', 'matricula_sd_doc', 'matricula_com_desc', 'gemini_matricula_com_desc', 'matricula_cd_doc', 'mensalidade_sem_desc', 'gemini_mensalidade_sem_desc', 'msd_doc', 'mensalidade_com_desc', 'gemini_mensalidade_com_desc', 'mcd_doc', 'valor_beneficio', 'soma_valor_beneficio', 'gemini_valor_beneficio', 'beneficio', 'valor_financiamento', 'soma_valor_financiamento', 'gemini_valor_financiamento', 'financiamento', 'soma_ovg_devia_pagar_sis', 'soma_ovg_devia_pagar_ia', 'soma_prejuizo_ovg', 'soma_economia_ovg', 'diagnostico_financeiro_final', 'data_coleta', 'data_coleta_atual_sistema', 'data_create', 'data_processamento', 'processado', 'processar', 'qtd_token', 'qtd_disciplinas_matriculadas', 'qtd_disciplinas_reprovadas', 'perfil', 'status_vinculo', 'situacao_motivo', 'observacao_situacao', 'email', 'gemini_email', 'telefone_1', 'telefone_2', 'data_nascimento', 'matricula', 'periodo_atual', 'qtd_periodos', 'modalidade']
-    _cols_riaf_final = [c for c in colunas_riaf_exp if c in df_riaf.columns and c not in ['tipo_documento', 'Documento Tipo']]
+    #  A LETRA DE CADA COLUNA VEM DA ORDEM DA ABA `Riaf`, então quem manda é a própria aba.
+    #  Havia aqui uma segunda lista, escrita à mão, com a ordem que se esperava dela — e essa
+    #  lista não tinha `gemini_curso`, que a aba passou a escrever na 22ª posição. Uma coluna
+    #  a menos na contagem empurra em uma casa TODAS as letras dali para a frente, e o
+    #  relatório continua bonito somando a coluna vizinha: `total_bolsa_paga` virava
+    #  `ultimo_valor_pago_ref` (a mensalidade no lugar do semestre inteiro), `status_vinculo`
+    #  virava `perfil` (Ativos e Inativos zerados) e `soma_valor_beneficio` virava
+    #  `valor_beneficio`. Ao contrário do Contrato, que é reordenado por
+    #  `COLUNAS_ABA_DOCUMENTO` antes de ser escrito, a aba `Riaf` sai na ordem do DataFrame
+    #  (ver `montar_abas_de_dados`) — por isso a ordem chega por parâmetro em vez de lista fixa.
+    _cols_riaf_final = [c for c in (list(df_riaf.columns) if colunas_da_aba is None
+                                    else colunas_da_aba)
+                        if c not in ['tipo_documento', 'Documento Tipo']]
     
     def _get_col_r(n):
         if n in _cols_riaf_final: return col_to_letter(_cols_riaf_final.index(n))
@@ -5509,7 +5520,10 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             if gerar_relatorio_riaf:
                 print(f"[GGCI       | GERANDO       | RIAF  ] Relatório RIAF IES...")
                 if sems_riaf:
-                    gerar_aba_relatorio_riaf(writer, df_riaf, sems_riaf)
+                    #  A aba `Riaf` sai com as colunas do DataFrame menos as de check, e é
+                    #  dessa ordem que as fórmulas do relatório tiram a letra de cada coluna.
+                    colunas_aba_riaf = [c for c in df_riaf.columns if c not in COLS_CHECK]
+                    gerar_aba_relatorio_riaf(writer, df_riaf, sems_riaf, colunas_aba_riaf)
                 else:
                     print(f"[GGCI       | AVISO         | RIAF  ] Nenhum semestre configurado para RIAF.")
 
