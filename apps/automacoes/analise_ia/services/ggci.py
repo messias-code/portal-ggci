@@ -128,7 +128,7 @@ COLUNAS_ABA_DOCUMENTO = [
     'data_processamento', 'processado', 'processar', 'qtd_token', 'qtd_disciplinas_matriculadas',
     'qtd_disciplinas_reprovadas', 'perfil', 'status_vinculo', 'situacao_motivo',
     'observacao_situacao', 'email', 'telefone_1', 'telefone_2', 'data_nascimento', 'matricula',
-    'periodo_atual', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies'
+    'periodo_atual', 'periodo_no_semestre', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies'
 ]
 
 
@@ -936,6 +936,23 @@ def buscar_dados_financeiros_sql(semestres_presentes, inscricoes=None):
             # Sort by uni_codigo and semestre to ensure chronological order before ffill/bfill
             df_merged = df_merged.sort_values(by=['uni_codigo', 'semestre']).reset_index(drop=True)
             
+            agrupador = df_merged['uni_codigo']
+            pagos = pd.to_numeric(df_merged['qtd_pagtos'], errors='coerce').fillna(0)
+            devolvidos = pd.to_numeric(df_merged['qtd_pagtos_retroativos'], errors='coerce').fillna(0)
+            cursou_no_semestre = (pagos > devolvidos).astype('int64')
+            semestres_cursados = cursou_no_semestre.groupby(agrupador).cumsum()
+
+            declarado = pd.to_numeric(df_merged['periodo_atual'], errors='coerce')
+            declarado = declarado.where(declarado > 0)
+            cursados_na_declaracao = semestres_cursados.where(declarado.notna())
+            ancora = declarado.groupby(agrupador).ffill()
+            ancora = ancora.fillna(declarado.groupby(agrupador).bfill())
+            ancora_cursados = cursados_na_declaracao.groupby(agrupador).ffill()
+            ancora_cursados = ancora_cursados.fillna(cursados_na_declaracao.groupby(agrupador).bfill())
+
+            periodo_no_semestre = ancora + (semestres_cursados - ancora_cursados)
+            df_merged['periodo_no_semestre'] = periodo_no_semestre.where(periodo_no_semestre > 0)
+
             if 'tipo_bolsa_final' in df_merged.columns:
                 df_merged['tipo_bolsa_final'] = df_merged.groupby('uni_codigo')['tipo_bolsa_final'].ffill().bfill()
                 
@@ -947,7 +964,7 @@ def buscar_dados_financeiros_sql(semestres_presentes, inscricoes=None):
                 'situacao_atual_sistema', 'sit_data_atual_sistema', 'data_coleta_atual_sistema', 
                 'sit_obs_atual_sistema', 'inscricao_ano_semestre', 'uni_deficiencia', 'uni_sexo', 
                 'tipo_bolsista_renovacao', 'perfil', 'data_nascimento', 'email', 'telefone_1', 
-                'telefone_2', 'periodo_atual', 'periodo_quantidade', 'matricula', 'modalidade_aluno', 'modalidade_ies', 
+                'telefone_2', 'periodo_atual', 'periodo_no_semestre', 'periodo_quantidade', 'matricula', 'modalidade_aluno', 'modalidade_ies', 
                 'ins_cnpj', 'ins_razao_social', 'ins_nome_fantasia', 'ins_mantenedora', 
                 'Bolsista_sql', 'UNI_CPF', 'CUR_NOME', 'qtd_disciplinas_matriculadas', 
                 'qtd_disciplinas_reprovadas'
@@ -969,7 +986,7 @@ def buscar_dados_financeiros_sql(semestres_presentes, inscricoes=None):
                 'qual_beneficio': 'Sem Benefícios', 'qual_financiamento': 'Sem Financiamento',
                 'data_coleta': '',
                 'inscricao_ano_semestre': '', 'uni_deficiencia': '', 'uni_sexo': '', 'tipo_bolsista_renovacao': '', 'perfil': '',
-                'data_nascimento': '', 'email': '', 'telefone_1': '', 'telefone_2': '', 'periodo_atual': '', 'periodo_quantidade': '', 'matricula': '', 'modalidade_aluno': '', 'modalidade_ies': '',
+                'data_nascimento': '', 'email': '', 'telefone_1': '', 'telefone_2': '', 'periodo_atual': '', 'periodo_no_semestre': '', 'periodo_quantidade': '', 'matricula': '', 'modalidade_aluno': '', 'modalidade_ies': '',
                 'ins_cnpj': '', 'ins_razao_social': '', 'ins_nome_fantasia': '', 'ins_mantenedora': '', 'valor_matricula_sem_desconto': 0.0, 'valor_matricula_com_desconto': 0.0
             }
             df_merged.fillna(valores_para_zerar, inplace=True)
@@ -1164,6 +1181,7 @@ def mesclar_sql_e_reordenar(df, df_sql, df_pag=None, df_mes_a_mes=None):
             'telefone_1': 'Telefone 1',
             'telefone_2': 'Telefone 2',
             'periodo_atual': 'Período atual',
+            'periodo_no_semestre': 'Período no semestre',
             'periodo_quantidade': 'Período quantidade',
             'matricula': 'Matricula',
             #  O CURSO DO PRÓPRIO SEMESTRE, e não o do último. `CUR_NOME` sempre esteve
@@ -1243,6 +1261,7 @@ def mesclar_sql_e_reordenar(df, df_sql, df_pag=None, df_mes_a_mes=None):
             'modalidade_aluno': 'Modalidade Aluno',
             'modalidade_ies': 'Modalidade IES',
             'periodo_atual': 'Período atual',
+            'periodo_no_semestre': 'Período no semestre',
             'periodo_quantidade': 'Período quantidade',
             'qtd_disciplinas_matriculadas': 'Qtd Disciplinas Matriculadas',
             'qtd_disciplinas_reprovadas': 'Qtd Disciplinas Reprovadas',
@@ -5129,6 +5148,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             'Semestre': 'semestre',
             'Gemini Semestre': 'gemini_semestre',
             'Período atual': 'periodo_atual',
+            'Período no semestre': 'periodo_no_semestre',
             'Gemini Período': 'gemini_periodo',
             'Período quantidade': 'qtd_periodos',
             'Gemini Quantidade Periodos': 'gemini_qtd_periodos',
@@ -5255,7 +5275,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                 'processar', 'qtd_token', 'qtd_disciplinas_matriculadas', 'qtd_disciplinas_reprovadas', 
                 'perfil', 'status_vinculo', 'situacao_motivo', 'observacao_situacao', 'email', 
                 'gemini_email', 'telefone_1', 'telefone_2', 'data_nascimento', 'matricula', 
-                'periodo_atual', 'qtd_periodos', 'modalidade_aluno', 'modalidade_ies'
+                'periodo_atual', 'periodo_no_semestre', 'qtd_periodos', 'modalidade_aluno', 'modalidade_ies'
             ]
             
             for c in colunas_riaf:
@@ -5319,7 +5339,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             'qtd_disciplinas_matriculadas', 'qtd_disciplinas_reprovadas', 
             'perfil', 'status_vinculo', 'situacao_motivo', 'observacao_situacao', 
             'email', 'telefone_1', 'telefone_2', 'data_nascimento', 'matricula', 
-            'periodo_atual', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies'
+            'periodo_atual', 'periodo_no_semestre', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies'
         ]
         
         AVISO_VAZIO = "Nenhum documento encontrado ou processado para este tipo"
