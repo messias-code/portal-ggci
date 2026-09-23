@@ -45,6 +45,9 @@ contexto: |
     VAR_H: Possui campo de 'Situacao', 'Status do Aluno' ou 'Vinculo'? (Ex: Ativo, Trancado, Evadido, Cancelado, Concluido, Aguardando Colacao)
     VAR_I: Possui pendencias explicitas de 'ENADE', 'Atividades Complementares', 'TCC' ou 'Estagio'?
   
+  REGRA CRONOLOGICA DE CONCLUSAO (TRAVA DO SEMESTRE AUDITADO): 
+  Se o documento possui data de conclusao, colacao ou diploma (VAR_A, VAR_B, VAR_C), mas essa data e de um semestre/ano POSTERIOR ao semestre que esta sendo auditado (Input), isso significa que o aluno ainda nao era formado naquele semestre. Portanto, voce DEVE avaliar VAR_A, VAR_B e VAR_C como "Nao" para fins da arvore de decisao. (Exemplo: Input = 2025-2, mas colacao foi em 2026. Entao VAR_A = Nao).
+  
   REGRA: Documente o resultado de CADA variavel no campo raciocinio_diagnostico. Nao pule nenhuma.
 
   ---
