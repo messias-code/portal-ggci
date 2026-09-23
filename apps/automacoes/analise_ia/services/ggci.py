@@ -2094,6 +2094,30 @@ def calcular_auditoria_ia(df):
     
     final_st = np.where(ia_st.str.contains('CORROMPIDO', case=False, na=False), 'Corrompido',
                np.where(cond_falso_ausente, 'Falso Ausente', ia_st))
+               
+    # REGRA: Falso Válido de Conclusão de Curso (Históricos)
+    # Se periodo_no_semestre < periodo_quantidade, a pessoa não pode ter se formado. 
+    # A IA extraiu uma formatura no futuro, mas validou para este semestre auditado.
+    if 'Período no semestre' in df.columns and 'Período quantidade' in df.columns and 'Gemini Concluiu Curso' in df.columns:
+        p_sem = pd.to_numeric(df['Período no semestre'], errors='coerce')
+        p_qtd = pd.to_numeric(df['Período quantidade'], errors='coerce')
+        gemini_concluiu = df['Gemini Concluiu Curso'].astype(str).str.strip().str.upper() == 'SIM'
+        
+        mask_falso_concluinte = (p_sem.notna()) & (p_qtd.notna()) & (p_sem < p_qtd) & gemini_concluiu
+        
+        if mask_falso_concluinte.any():
+            df.loc[mask_falso_concluinte, 'Gemini Concluiu Curso'] = 'NÃO'
+            final_st = np.where(mask_falso_concluinte, 'Inválido', final_st)
+            
+            if 'Gemini Inconsistencias' in df.columns:
+                inconsistencias = df['Gemini Inconsistencias'].astype(str).replace('nan', '').str.strip()
+                novo_texto = "Situação acadêmica diverge do semestre auditado (Falso Válido corrigido via sistema)."
+                inconsistencias = np.where(
+                    mask_falso_concluinte,
+                    np.where(inconsistencias != '', inconsistencias + ", " + novo_texto, novo_texto),
+                    inconsistencias
+                )
+                df['Gemini Inconsistencias'] = inconsistencias
     
     df['Status_IA'] = final_st
     
