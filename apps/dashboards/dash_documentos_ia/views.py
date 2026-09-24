@@ -495,10 +495,12 @@ STATUS_POR_ROTULO = {
 }
 
 # Colunas mínimas para qualquer resposta: são as que os filtros e os baldes usam.
-# `documento_ausente` e `veredito_documento` entram na base porque são os dois desempates
-# do INADIMPLENTE — ver `_balde_do_documento`. Sem eles, a regra teria de adivinhar pelo
-# conteúdo. `processado` fica como o desempate de reserva, para o Parquet que ainda não
-# tem `veredito_documento`; assim que o motor rodar, ela deixa de ser consultada.
+# `veredito_documento` entra na base porque é o desempate do INADIMPLENTE — ver
+# `_balde_do_documento`. Sem ela, a regra teria de adivinhar pelo conteúdo. `processado`
+# fica como o desempate de reserva, para o Parquet que ainda não tem `veredito_documento`;
+# assim que o motor rodar, ela deixa de ser consultada. `documento_ausente` continua na
+# lista por ser barata e estar no Parquet, mas não decide mais fatia nenhuma: quem a lia
+# era a injeção de cobranças, que saiu do motor.
 COLUNAS_BASE = ['inscricao', 'cpf', 'semestre', 'faculdade', 'status_vinculo', 'status_ia', 'mudou_ies', 'mudou_bolsa', 'perfil',
                 'processado', 'documento_ausente', 'veredito_documento', 'tipo_bolsa_final', 'beneficio', 'financiamento']
 
@@ -728,11 +730,11 @@ def _kpis_de(recorte):
 def _resumo_por_documento(df):
     """
     O QUE FAZ: monta, para CADA tipo de documento, tudo o que a aba dele precisa —
-        os seis baldes da rosca, os KPIs do topo e a classificação da IA.
+        os cinco baldes da rosca, os KPIs do topo e a classificação da IA.
     POR QUÊ TUDO DE UMA VEZ: a tela tem uma aba por documento, e trocar de aba não
         pode ir ao servidor. Uma resposta serve as cinco abas, e a troca é instantânea.
 
-    OS SEIS BALDES são mutuamente exclusivos e cobrem 100% das linhas — assim a rosca
+    OS CINCO BALDES são mutuamente exclusivos e cobrem 100% das linhas — assim a rosca
     sempre soma o total de documentos daquele tipo. Status novo que apareça no Parquet
     cai em "Processados" por padrão: aparece na tela em vez de sumir.
 
@@ -746,7 +748,7 @@ def _resumo_por_documento(df):
         if len(recorte) == 0:
             resumo[rotulo] = {
                 'Processados': 0, 'NaoProcessados': 0, 'NaoEnviados': 0,
-                'InadProc': 0, 'InadNaoProc': 0, 'Inadimplentes': 0,
+                'InadProc': 0, 'InadNaoProc': 0,
                 'beneficiarios': 0, 'ativos': 0, 'inativos': 0,
                 'total': 0,
             }
@@ -764,7 +766,6 @@ def _resumo_por_documento(df):
             'NaoEnviados': nao_enviados,
             'InadProc': int((baldes == BALDE_INAD_PROC).sum()),
             'InadNaoProc': int((baldes == BALDE_INAD_NAO_PROC).sum()),
-            'Inadimplentes': int((baldes == BALDE_INAD).sum()),
             'total': int(len(recorte)),
             **_kpis_de(recorte),
         }
@@ -1015,10 +1016,9 @@ BALDE_NAO_PROCESSADOS = 'Não Processados'
 BALDE_PENDENTES = 'Pendentes'
 BALDE_INAD_PROC = 'Inadimplentes Proc.'
 BALDE_INAD_NAO_PROC = 'Inadimplentes Não Proc.'
-BALDE_INAD = 'Inadimplentes'
 # A ORDEM é a das fatias na tela, e é a ordem em que o documento caminha.
 BALDES = (BALDE_PROCESSADOS, BALDE_NAO_PROCESSADOS, BALDE_PENDENTES,
-          BALDE_INAD_PROC, BALDE_INAD_NAO_PROC, BALDE_INAD)
+          BALDE_INAD_PROC, BALDE_INAD_NAO_PROC)
 
 # Como cada balde aparece na COLUNA `Status Doc`, que descreve UMA linha — daí o
 # singular. Antes essa coluna era binária (`Enviado`/`Pendente`) e o filtro tinha três
@@ -1031,7 +1031,6 @@ STATUS_DOC_POR_BALDE = {
     BALDE_PENDENTES: 'Pendente',
     BALDE_INAD_PROC: 'Inadimplente Proc.',
     BALDE_INAD_NAO_PROC: 'Inadimplente Não Proc.',
-    BALDE_INAD: 'Inadimplente',
 }
 
 
@@ -1046,23 +1045,24 @@ def _balde_do_documento(df):
       PROCESSADO      todo o resto — de propósito, para que um status novo que apareça
                       no Parquet caia numa fatia visível em vez de sumir da conta.
 
-    E as três da INADIMPLÊNCIA, que não são estados do documento — são do dinheiro:
+    E as duas da INADIMPLÊNCIA, que não são estados do documento — são do dinheiro:
 
       INADIMPLENTES PROC.      entregou e a IA leu.
       INADIMPLENTES NÃO PROC.  entregou e a IA não leu.
-      INADIMPLENTES            o SIBU cobra e não deveria.
 
-    A TERCEIRA NÃO VEM DO NOSSO UNIVERSO. As duas primeiras são documentos que existem no
-    espelho; a terceira é injetada do relatório do site (`Relatório de Contratos`), e são
-    cobranças de semestre em que o aluno não teve lançamento nenhum — 5.551 das 6.555 que a
-    tela pedia no histórico de 2025-2. Nenhuma delas passa pela lista de pendências, porque
-    nossas views exigem lançamento; é justamente essa exigência que nos protege do erro que
-    a fatia denuncia.
+    HOUVE UMA TERCEIRA, `INADIMPLENTES`, e ela saiu junto com o que a alimentava: era
+    injetada do relatório do site (`Relatório de Contratos`) e contava as cobranças de
+    semestre em que o aluno não teve lançamento nenhum. O motor deixou de raspar o site e
+    de injetar essas linhas, e uma fatia sem origem é uma fatia que diz zero como se
+    fosse resposta.
 
-    SÃO DOIS DESEMPATES, nesta ordem, e nenhum é inferência: `documento_ausente` responde
-    "esta linha é cobrança do site?" (o motor só a marca `SIM` na injeção) e vem primeiro,
-    porque cobrança sem lastro não tem leitura de IA para desempatar. `veredito_documento`
-    responde "a IA leu?" para as demais.
+    `documento_ausente` SAIU DO DESEMPATE COM ELA. Era a coluna que respondia "esta linha
+    é cobrança do site?", e o motor só a marcava `SIM` na injeção — hoje ela chega `NÃO`
+    em todas as linhas. Enquanto ela continuou aqui, o `~cobranca_do_site` não excluía
+    ninguém, mas num Parquet ANTIGO ele tirava a cobrança das duas fatias de
+    inadimplência sem ter para onde mandá-la: ela caía em `Processados`, que é a fatia de
+    quem entregou e foi lido. Agora o desempate é um só: `veredito_documento`, que
+    responde "a IA leu?".
 
     POR QUE `INADIMPLENTE` PRECISA DE DESEMPATE: ele não é um veredito de leitura, é um
     estado financeiro. O motor o escreve com precedência MÁXIMA sobre qualquer resultado
@@ -1090,8 +1090,9 @@ def _balde_do_documento(df):
     83 linhas, mas estável — em vez de mandar todo inadimplente para uma fatia só. O
     fallback se apaga sozinho na primeira execução do motor com a coluna nova.
 
-    PARQUET ANTERIOR A `documento_ausente` se comporta como antes: sem a coluna, a fatia
-    `Inadimplentes` fica em zero e nada é classificado errado.
+    PARQUET ANTIGO, COM A INJEÇÃO DENTRO, cai nas duas fatias de inadimplência conforme
+    a IA tenha lido ou não — que é o que elas dizem de si. Nenhuma linha se perde e
+    nenhuma vai para `Processados` por engano.
     """
     import numpy as np
     import pandas as pd
@@ -1119,16 +1120,9 @@ def _balde_do_documento(df):
     # com NA não indexa Series — a tela quebraria em vez de errar de fatia.
     leu = leu.fillna(False).astype(bool)
 
-    if 'documento_ausente' in df.columns:
-        cobranca_do_site = (df['documento_ausente'].astype('string')
-                            .str.strip().str.upper().eq('SIM').fillna(False))
-    else:
-        cobranca_do_site = pd.Series(False, index=df.index)
-
     e_inadimplente = status.isin(STATUS_INADIMPLENTE)
-    e_inad = e_inadimplente & cobranca_do_site
-    e_inad_proc = e_inadimplente & ~cobranca_do_site & leu
-    e_inad_nao_proc = e_inadimplente & ~cobranca_do_site & ~leu
+    e_inad_proc = e_inadimplente & leu
+    e_inad_nao_proc = e_inadimplente & ~leu
     e_nao_processado = status.isin(STATUS_NAO_PROCESSADO_PURO)
     e_ausente = status.isin(STATUS_AUSENTE)
 
@@ -1136,7 +1130,6 @@ def _balde_do_documento(df):
     balde[e_nao_processado] = BALDE_NAO_PROCESSADOS
     balde[e_inad_proc] = BALDE_INAD_PROC
     balde[e_inad_nao_proc] = BALDE_INAD_NAO_PROC
-    balde[e_inad] = BALDE_INAD
     balde[e_ausente] = BALDE_PENDENTES
 
     return balde
@@ -1482,13 +1475,13 @@ ORDEM_MENSALIDADE = ['Bateu', 'Maior', 'Menor', 'Não localizado']
 # A ORDEM É A DO CAMINHO DO DOCUMENTO: os seis vereditos que só existem depois de a IA
 # ler o arquivo, depois os dois que descrevem a ausência de leitura, e por último a
 # cobrança, que não é veredito nenhum — é estado financeiro escrito por cima.
-# Os seis baldes da rosca, na ordem em que a outra aba os desenha. Os nomes são os
+# Os cinco baldes da rosca, na ordem em que a outra aba os desenha. Os nomes são os
 # mesmos de `_balde_do_documento` porque é ELA quem os produz: contados de outro jeito,
 # a fatia "Inadimplentes Proc." desta aba não bateria com a de lá e não haveria como
 # saber qual das duas está certa.
 BALDES_DA_ROSCA = [
     BALDE_PROCESSADOS, BALDE_NAO_PROCESSADOS, BALDE_PENDENTES,
-    BALDE_INAD_PROC, BALDE_INAD_NAO_PROC, BALDE_INAD,
+    BALDE_INAD_PROC, BALDE_INAD_NAO_PROC,
 ]
 
 # Os vereditos que vivem DENTRO de `Processados` — o detalhe de que aquele balde é feito.
@@ -2265,7 +2258,7 @@ def _aplicar_mensalidade(df, request, ignorar=None):
 
 def _recorte_da_rosca(df, request):
     """
-    O QUE FAZ: aplica o recorte clicado na legenda da rosca — os BALDES (as seis fatias,
+    O QUE FAZ: aplica o recorte clicado na legenda da rosca — os BALDES (as cinco fatias,
         pela mesma regra de `_balde_do_documento`) e os VEREDITOS (os seis status que a
         IA escreve dentro de `Processados`).
 
@@ -2339,10 +2332,9 @@ def api_resumo_ia(request):
         veredito = {nome: int(contagem_ia.get(nome, 0)) for nome in VEREDITOS_DO_GRAFICO}
         if 'PENDENTE' in VEREDITOS_DO_GRAFICO:
             veredito['PENDENTE'] = int(contagem_ia.get('AUSENTE', 0)) + int(contagem_ia.get('INADIMPLENTE', 0))
-        #  OS SEIS BALDES, pela MESMA função da outra aba. É isso que faz o número da
-        #  fatia "Inadimplentes Proc." daqui ser o mesmo de lá — inclusive os dois
-        #  desempates (`documento_ausente` e `veredito_documento`), que são a única
-        #  forma de separar cobrança sem lastro de documento lido.
+        #  OS CINCO BALDES, pela MESMA função da outra aba. É isso que faz o número da
+        #  fatia "Inadimplentes Proc." daqui ser o mesmo de lá — inclusive o desempate
+        #  por `veredito_documento`, que é o que separa documento lido de não lido.
         contagem_balde = _balde_do_documento(df_para_rosca).value_counts()
         baldes = {nome: int(contagem_balde.get(nome, 0)) for nome in BALDES_DA_ROSCA}
     else:
@@ -2967,7 +2959,7 @@ def api_exportar(request):
 # ══════════════════════════════════════════════════════════════════════════════
 # A mesma pergunta do Detalhamento, com outro sujeito: em vez de "esta pessoa está
 # enviando o que deve?", "esta instituição está?". Por isso os números são OS MESMOS
-# SEIS BALDES de `_balde_do_documento` — se aqui fossem contados de outro jeito, a
+# CINCO BALDES de `_balde_do_documento` — se aqui fossem contados de outro jeito, a
 # soma da coluna não bateria com a rosca da vista ao lado e não haveria como saber
 # qual das duas está certa.
 #
@@ -2983,7 +2975,7 @@ def api_exportar(request):
 # com um só conjunto de chaves.
 # Os três baldes da inadimplência, juntos. Eles saem da contagem de BENEFICIÁRIOS —
 # ver `_resumo_por_ies`.
-BALDES_INADIMPLENTES = (BALDE_INAD_PROC, BALDE_INAD_NAO_PROC, BALDE_INAD)
+BALDES_INADIMPLENTES = (BALDE_INAD_PROC, BALDE_INAD_NAO_PROC)
 
 CHAVE_DO_BALDE = {
     BALDE_PROCESSADOS: 'Processados',
@@ -2991,7 +2983,6 @@ CHAVE_DO_BALDE = {
     BALDE_PENDENTES: 'NaoEnviados',
     BALDE_INAD_PROC: 'InadProc',
     BALDE_INAD_NAO_PROC: 'InadNaoProc',
-    BALDE_INAD: 'Inadimplentes',
 }
 
 
@@ -3115,11 +3106,15 @@ def api_resumo_ies(request):
 # são os da tela, e não as chaves do JSON: quem abre a planilha não tem o dashboard
 # ao lado para traduzir `NaoEnviados`.
 #
-# AS DUAS BASES VÃO JUNTO (`Esperados` e `Enviados`) — elas não são colunas da tela,
-# onde os percentuais já saem calculados ao lado de cada número. No arquivo, sem elas,
-# as fórmulas de quem for conferir teriam de reconstruir a regra de cabeça: `Esperados`
-# tira a cobrança sem lastro do que a IES realmente deve, e é justamente o passo que
-# não se adivinha olhando as outras colunas.
+# `ENVIADOS` VAI JUNTO — não é coluna da tela, onde os percentuais já saem calculados ao
+# lado de cada número. No arquivo, sem ela, quem for conferir o `% processado` teria de
+# reconstruir a base de cabeça (é o total menos as pendências), e esse é o único passo
+# que não se lê direto das outras colunas.
+#
+# `ESPERADOS` ERA A OUTRA BASE e saiu daqui: ela existia para tirar do denominador a
+# cobrança sem lastro, a fatia `Inadimplentes` que vinha injetada do relatório do site.
+# Sem a injeção, o que sobra no total é documento que a IES de fato deve, e `Esperados`
+# viraria uma cópia da coluna ao lado.
 COLUNAS_EXPORTACAO_IES = [
     ('ies', 'Instituição'),
     ('beneficiarios', 'Beneficiários'),
@@ -3128,9 +3123,7 @@ COLUNAS_EXPORTACAO_IES = [
     ('NaoEnviados', 'Pendentes'),
     ('InadProc', 'Inadimplentes Proc.'),
     ('InadNaoProc', 'Inadimplentes Não Proc.'),
-    ('Inadimplentes', 'Inadimplentes'),
     ('total', 'Total de Documentos'),
-    ('esperados', 'Esperados'),
     ('enviados', 'Enviados'),
 ]
 
@@ -3164,10 +3157,9 @@ def api_exportar_ies(request):
     linhas = sorted(_resumo_por_ies(df), key=lambda linha: linha['ies'])
 
     for linha in linhas:
-        # As duas bases dos percentuais da tela, calculadas aqui pela mesma regra:
-        # a cobrança sem lastro (`Inadimplentes`) não é documento que a IES deva.
-        linha['esperados'] = linha['total'] - linha['Inadimplentes']
-        linha['enviados'] = linha['esperados'] - linha['NaoEnviados']
+        # A base do `% processado` da tela, pela MESMA regra de lá (`enviadosDe`): o que
+        # chegou é o total menos o que não chegou.
+        linha['enviados'] = linha['total'] - linha['NaoEnviados']
 
     buffer = _io.BytesIO()
     livro = xlsxwriter.Workbook(buffer, {'in_memory': True, 'strings_to_formulas': False, 'strings_to_urls': False})

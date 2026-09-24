@@ -372,8 +372,8 @@
                     VISÃO POR IES — a mesma pergunta do Detalhamento, com outro sujeito.
 
                     Lá cada linha é um documento de uma PESSOA; aqui cada linha é uma
-                    INSTITUIÇÃO, e as colunas são os seis baldes de `_balde_do_documento`
-                    — os mesmos seis da legenda das roscas, contados pela mesma regra. Se
+                    INSTITUIÇÃO, e as colunas são os cinco baldes de `_balde_do_documento`
+                    — os mesmos cinco da legenda das roscas, contados pela mesma regra. Se
                     fossem contados de outro jeito, a coluna "Pendentes" daqui não bateria
                     com a fatia "Pendentes" de lá e não haveria como saber qual está certa.
 
@@ -385,13 +385,13 @@
                     NÃO TEM ROSCA. Cinco roscas comparam cinco documentos, que é a pergunta
                     da outra vista. Aqui o que se compara são ~110 instituições, e isso é
                     uma tabela ordenável — nenhum gráfico de setor mostra 110 categorias.
-                    Os seis chips do topo fazem o papel da rosca: a proporção do recorte
+                    Os cinco chips do topo fazem o papel da rosca: a proporção do recorte
                     inteiro, com o número ao lado.
                 -->
                 <div id="vista-ies" class="flex-1 flex flex-col overflow-hidden" style="display: none; min-width: 0; min-height: 0;">
 
                     <!--
-                        OS SEIS CHIPS — o recorte inteiro, somando todas as instituições.
+                        OS CINCO CHIPS — o recorte inteiro, somando todas as instituições.
 
                         São a mesma leitura da legenda das roscas (mesmo nome, mesma cor,
                         mesma ordem), e clicar num deles ORDENA a tabela por aquela coluna.
@@ -1125,7 +1125,7 @@
 
                             NA VISTA DE BENEFICIÁRIOS é atalho de fatia. Os cinco documentos estão
                             lado a lado, um card cada, e a comparação entre eles É a tela — esconder
-                            quatro deles tirava justamente isso. Marcar "Contratos" acende as seis
+                            quatro deles tirava justamente isso. Marcar "Contratos" acende as cinco
                             fatias do card do contrato e apaga as dos outros quatro, que continuam no
                             ar dizendo de si mesmos que ficaram de fora. Marcar nenhum é a legenda
                             inteira acesa. Ver `aplicarDocumentosNasFatias` no JS.
@@ -2312,7 +2312,7 @@
     -->
     <script src="{% static 'js/motor-ocupado.js' %}?v=1"></script>
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-    <script src="{% static 'dash_documentos_ia/js/dash_documentos_ia.js' %}?v=20260916b"></script>
+    <script src="{% static 'dash_documentos_ia/js/dash_documentos_ia.js' %}?v=20260924b"></script>
     <!--
         A ABA ANÁLISE IA. Depois de `dash_documentos_ia.js` porque o filtro de
         instituições e o console de atualização vivem lá e são compartilhados; este
