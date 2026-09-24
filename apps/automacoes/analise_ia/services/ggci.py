@@ -4707,7 +4707,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                             ('matricula', 'Matricula'), ('modalidade_aluno', 'modalidade_aluno'), ('modalidade_ies', 'modalidade_ies'), 
                             ('email', 'E-mail'), ('telefone_1', 'Telefone 1'), ('telefone_2', 'Telefone 2'),
                             ('data_nascimento', 'Data nascimento'), ('periodo_atual', 'Período atual'),
-                            ('periodo_quantidade', 'Período quantidade')
+                            ('periodo_no_semestre', 'Período no semestre'), ('periodo_quantidade', 'Período quantidade')
                         ]:
                             if col_orig in row and pd.notna(row[col_orig]):
                                 novo_ausente[col_dest] = row[col_orig]
@@ -5090,7 +5090,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             'Gemini Beneficio Nome', 'Gemini Valor Beneficio', 'Gemini Valor Financiado', 'Gemini Nome Financiamento',
             'Gemini Modalidade', 'Gemini Email', 'Gemini Telefone', 'Gemini Periodo', 'Gemini Quantidade Periodos',
             'Gemini Tipo Bolsa', 'Data nascimento', 'E-mail', 'Telefone 1', 'Telefone 2', 'Período atual',
-            'Período quantidade', 'Matricula', 'Ins. Cnpj', 'Ins. Nome Fantasia', 'Ins. Mantenedora',
+            'Período no semestre', 'Período quantidade', 'Matricula', 'Ins. Cnpj', 'Ins. Nome Fantasia', 'Ins. Mantenedora',
             'Modalidade Aluno', 'Modalidade IES', 'Matricula C/ Desconto', 'Matricula S/ Desconto', 'data_create', 'Processado',
             'Qtde Token', 'gemini_vigencia', 'gemini_clausulas', 'gemini_recisao', 'gemini_cnpj_mantenedora',
             'gemini_documentos_beneficio', 'gemini_cnpj_banco', 'gemini_numero', 'gemini_numero_semestres',
