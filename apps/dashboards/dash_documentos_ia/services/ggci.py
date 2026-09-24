@@ -5838,7 +5838,12 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                             'perfil', 'status_vinculo', 'situacao_motivo', 'observacao_situacao', 
                             'situacao_motivo_atual', 'observacao_situacao_atual', 
                             'email', 'telefone_1', 'telefone_2', 'data_nascimento', 'matricula', 
-                            'periodo_atual', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies'
+                            'periodo_atual', 'periodo_no_semestre', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies',
+                            # As três últimas de `COLUNAS_ABA_DOCUMENTO`, que esta lista não
+                            # tinha: sem `motivos_divergencia` o balão do Status IA ficava mudo
+                            # no Histórico (4.079 `Falso Válido` na proc_184, nenhum com motivo),
+                            # e sem `veredito_documento` a tela adivinhava o inadimplente lido.
+                            'documento_ausente', 'veredito_documento', 'motivos_divergencia'
                         ]
                         for c in colunas_historico:
                             if c not in df_tipo.columns:
