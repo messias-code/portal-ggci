@@ -944,6 +944,9 @@ def buscar_dados_financeiros_sql(semestres_presentes, inscricoes=None):
 
             declarado = pd.to_numeric(df_merged['periodo_atual'], errors='coerce')
             declarado = declarado.where(declarado > 0)
+            if 'periodo_quantidade' in df_merged.columns:
+                qtd_periodos = pd.to_numeric(df_merged['periodo_quantidade'], errors='coerce')
+                declarado = declarado.where(declarado <= qtd_periodos)
             cursados_na_declaracao = semestres_cursados.where(declarado.notna())
             ancora = declarado.groupby(agrupador).ffill()
             ancora = ancora.fillna(declarado.groupby(agrupador).bfill())
