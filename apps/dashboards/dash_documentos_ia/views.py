@@ -1704,7 +1704,7 @@ def _contagem_de_mensalidade(processados, coluna):
 #
 # A PERGUNTA QUE O HISTÓRICO RESPONDE é outra: o aluno concluiu o curso, e quando. Três
 # fontes que não dependem uma da outra: o PONTO DA MATRIZ (`periodo_atual` e
-# `qtd_periodos`), a FORMATURA NO CADASTRO (`situacao_motivo_atual`, cruzada com o
+# `qtd_periodos`), a FORMATURA NO CADASTRO (`situacao_motivo`, cruzada com o
 # repasse posterior) e a LEITURA DA IA (`gemini_concluiu_curso`).
 #
 # A ORDEM ENTRE ELAS É ESTA, e é o que organiza os dois cards: a formatura no cadastro é
@@ -1715,20 +1715,24 @@ def _contagem_de_mensalidade(processados, coluna):
 
 # OS TRÊS ESTADOS DA FORMATURA NO CADASTRO, na ordem da certeza.
 #
-# O PROBLEMA QUE ELES RESOLVEM: a FORMATURA quase nunca é lançada no semestre em que o
-# aluno concluiu. No Histórico de 2025-2, o motivo DAQUELE semestre é FORMATURA em 14
-# linhas; a situação ATUAL do mesmo aluno é FORMATURA em 2.401 delas. Quem lê só a coluna
-# do período vê "Renovação CPD" de gente que terminou o curso há um semestre.
+# SÓ O CADASTRO DO PERÍODO CONTA, e as duas colunas ATUAIS (`situacao_motivo_atual`,
+# `observacao_situacao_atual`) ficam FORA desta conta de propósito. Elas descrevem o aluno
+# HOJE, não o semestre da linha — e o semestre da linha é a pergunta inteira desta aba.
+# Usá-las carimbava o estado de hoje num semestre passado, que é o mesmo defeito que a
+# Faculdade e o Curso já tiveram. Elas continuam VISÍVEIS na tabela, onde servem de
+# consulta ao lado das do período; o que não fazem é decidir gráfico.
 #
-# O CASO QUE ENSINOU A REGRA, a inscrição 2043562: em 2025-2 o cadastro diz "Renovação
-# CPD", vínculo ATIVO, seis pagamentos até dezembro; a formatura foi lançada em 04/02/2026,
-# já no semestre seguinte. Ela não estudou 2026-1 e formou depois — não houve repasse
-# nenhum em 2026-1. O lançamento atrasou, e a conclusão é de 2025-2.
+# AS DUAS COLUNAS DO PERÍODO SÃO LIDAS JUNTAS. A formatura chega no motivo
+# (`situacao_motivo`), mas a IES também a escreve na observação — e uma coluna só
+# deixaria de fora o que estiver escrito na outra. Medido no relatório de 22/09/2026:
+# em 2025-2 são 14 linhas com FORMATURA no motivo e 3 na observação, e as 3 são as
+# mesmas 14 — a observação não acrescenta nenhuma hoje, e é justamente por isso que ela
+# entra barata agora, antes de fazer falta.
 #
-# É ISSO QUE O DINHEIRO DECIDE. `pagou_depois` é a única evidência independente que temos
-# de que o aluno seguiu estudando: se a formatura está no cadastro e o repasse parou neste
-# semestre, ele concluiu aqui; se o repasse continuou, neste semestre ele ainda cursava e
-# a formatura é de verdade posterior.
+# É O DINHEIRO QUE DECIDE O RESTO. `pagou_depois` é a única evidência independente que
+# temos de que o aluno seguiu estudando: se a formatura está no cadastro e o repasse parou
+# neste semestre, ele concluiu aqui; se o repasse continuou, neste semestre ele ainda
+# cursava e a formatura é de verdade posterior.
 FORMATURA_CONFIRMADA = 'Formou'
 FORMATURA_POSTERIOR = 'Formou depois'
 FORMATURA_AUSENTE = 'Não consta'
@@ -1739,29 +1743,45 @@ def _formatura_no_cadastro(df):
     O QUE FAZ: por linha, o que o CADASTRO diz sobre a formatura naquele semestre —
         'Formou', 'Formou depois' ou 'Não consta'.
 
-    A CONTA, medida no Histórico de 2025-2 (22.391 linhas): 1.670 'Formou', 731 'Formou
-    depois' e 19.990 'Não consta'.
+    A CONTA, medida no relatório de 22/09/2026: em 2025-2 (17.695 linhas) são 14 'Formou',
+    nenhum 'Formou depois' e 17.681 'Não consta'. A IA concorda em 11 dos 14.
 
-    "FORMOU" É A CERTEZA DA TELA, e não uma inferência sobre o documento: ela não depende
-    de o Gemini ter lido coisa alguma. Das 1.590 linhas lidas em 'Formou', a IA concorda
-    em 1.192 — as outras 398 são divergência que vira alerta.
+    "FORMOU" É O QUE O CADASTRO LANÇOU NAQUELE SEMESTRE, e não uma inferência sobre o
+    documento: não depende de o Gemini ter lido coisa alguma.
 
-    SÓ VALE COM A COLUNA `situacao_motivo_atual` NO RELATÓRIO. Sem ela — relatório gerado
-    antes de o motor passar a gravá-la — todas as linhas voltam para 'Não consta' e os
-    alertas que dependem dela ficam zerados, sem derrubar o resto da tela.
+    E É POUCO PORQUE A IES LANÇA POUCO: a formatura quase nunca chega no semestre em que
+    o aluno concluiu. Este número não é o de quem formou — é o de quem formou E teve a
+    formatura registrada a tempo. Quem concluiu sem esse registro aparece nos ALERTAS,
+    que é onde esta tela transforma o silêncio do cadastro em pergunta para a IES.
+
+    SÓ VALE COM AS COLUNAS DO PERÍODO NO RELATÓRIO. Sem nenhuma das duas — relatório
+    gerado antes de o motor passar a gravá-las — todas as linhas voltam para 'Não consta'
+    e os alertas que dependem dela ficam zerados, sem derrubar o resto da tela.
 
     O ÚLTIMO SEMESTRE DA ABA NÃO TEM FUTURO para olhar, então nele 'Formou depois' não
     existe — é a mesma ressalva de `_pagamentos_posteriores`, e vale para as duas.
     """
     import pandas as pd
 
-    if len(df) == 0 or 'situacao_motivo_atual' not in df.columns:
+    colunas = [c for c in ('situacao_motivo', 'observacao_situacao') if c in df.columns]
+    if len(df) == 0 or not colunas:
         return pd.Series(FORMATURA_AUSENTE, index=df.index, dtype='string')
 
     #  MAIÚSCULA NA COMPARAÇÃO: o motor passa o relatório inteiro por Title Case antes de
     #  gravar, então o que está no Parquet é "Formatura" e não "FORMATURA".
-    motivo = df['situacao_motivo_atual'].astype('string').str.strip().str.upper()
-    formou = (motivo == 'FORMATURA').fillna(False)
+    #
+    #  IGUALDADE NO MOTIVO, TRECHO NA OBSERVAÇÃO, e a diferença não é descuido: o motivo é
+    #  uma LISTA FECHADA de 31 valores, em que "Formatura" é um deles inteiro; a observação
+    #  é texto livre de 1.314 redações diferentes, onde a palavra vem no meio de uma frase
+    #  ("Correção desligamento formatura"). Procurar trecho no motivo casaria vizinhos que
+    #  não são formatura nenhuma, e exigir igualdade na observação não acharia nada.
+    formou = pd.Series(False, index=df.index)
+    for coluna in colunas:
+        texto = df[coluna].astype('string').str.strip().str.upper()
+        casou = (texto == 'FORMATURA') if coluna == 'situacao_motivo' \
+            else texto.str.contains('FORMATURA', na=False)
+        formou = formou | casou.fillna(False)
+
     depois = (df['pagou_depois'].fillna(False).astype(bool)
               if 'pagou_depois' in df.columns else pd.Series(False, index=df.index))
 
@@ -1771,62 +1791,249 @@ def _formatura_no_cadastro(df):
     return estado
 
 
+def _formatura_atual(df):
+    """
+    O QUE FAZ: por linha, se o cadastro registra formatura HOJE — o estado de agora,
+        igual em todas as linhas do mesmo aluno.
+
+    É O PAR DE `_formatura_no_cadastro`, e as duas juntas são o que separa "o sistema
+    nunca disse que formou" de "o sistema disse, só que tarde". Sem a de hoje, os dois
+    casos caem na mesma barra e a lista mistura quem precisa de cobrança à IES com quem
+    precisa de retroativo no financeiro.
+
+    LÊ AS COLUNAS "_ATUAL" DE PROPÓSITO, e só aqui. A rosca ao lado está proibida de
+    tocá-las — ela descreve um semestre, e o estado de hoje escrito na linha de 2025-2
+    seria o presente contado como passado. O alerta é o contrário: ele existe justamente
+    para comparar os dois momentos.
+
+    MESMA GRAMÁTICA DA IRMÃ: igualdade no motivo (lista fechada), trecho na observação
+    (texto livre). Sem nenhuma das duas colunas — relatório antigo — devolve tudo falso, e
+    os dois alertas "(atualmente)" ficam zerados sem derrubar o resto da tela.
+    """
+    import pandas as pd
+
+    colunas = [c for c in ('situacao_motivo_atual', 'observacao_situacao_atual')
+               if c in df.columns]
+    if len(df) == 0 or not colunas:
+        return pd.Series(False, index=df.index)
+
+    formou = pd.Series(False, index=df.index)
+    for coluna in colunas:
+        texto = df[coluna].astype('string').str.strip().str.upper()
+        casou = (texto == 'FORMATURA') if coluna == 'situacao_motivo_atual' \
+            else texto.str.contains('FORMATURA', na=False)
+        formou = formou | casou.fillna(False)
+    return formou
+
+
 # A REPARTIÇÃO DA ROSCA, na ordem em que a legenda a lê.
 #
-# MEDIDO NO HISTÓRICO DE 2025-2 (16.464 lidos): 1.590 formados, 32 passados do limite,
-# 448 no último período, 14.338 em curso e 56 sem período no cadastro.
+# MEDIDO NO HISTÓRICO DE 2025-2 (17.695 linhas): 1.088 formados, 656 desligados, 34
+# passados do limite, 801 no último período, 15.047 estudando e 69 sem período.
 #
 # "SEM PERÍODO" E NÃO "SEM MATRIZ", que era o nome antigo: matriz é a palavra de dentro
 # de casa para a grade do curso, e quem abre a tela lê o que falta — o período do
 # cadastro. É o mesmo grupo, com o nome que se entende sem perguntar.
 #
 # "FORMADO" VEM NA FRENTE DE TODOS, e é o único que não sai da matriz: os outros quatro
-# comparam `periodo_atual` com `qtd_periodos`, e este é o cadastro DIZENDO que o curso
-# acabou (ver `_formatura_no_cadastro`). Fato ganha de estimativa: as 1.590 linhas
-# formadas de 2025-2 estavam espalhadas pelas outras quatro fatias — 1.312 em "Último
-# período", 217 em "Em curso", 47 em "Passou do limite" e 14 em "Sem período" —, cada uma
-# delas descrevendo como promessa um curso que já tinha terminado.
-SITUACOES_DO_PERIODO = ['Formado', 'Passou do limite', 'Último período', 'Em curso',
-                        'Sem período']
+# comparam `periodo_atual` com `qtd_periodos`, e este é o curso DIZENDO que acabou.
+# Fato ganha de estimativa: cada linha formada que ficasse nas outras quatro fatias estaria
+# descrevendo como promessa um curso que já terminou.
+#
+# "ESTUDANDO" E NÃO "EM CURSO": o nome antigo descrevia o CURSO ("o curso está em
+# andamento"), e a rosca conta ALUNOS. Quem lê a tela quer saber quem está estudando.
+#
+# "DESLIGADO" É FATIA E NÃO SILÊNCIO. Antes ele estava espalhado dentro de "Em curso",
+# "Passou do limite" e "Último período" — a tela dizia que o aluno seguia na matriz
+# enquanto o vínculo com a OVG tinha acabado. É a mesma correção que "Formado" trouxe:
+# quem não está mais estudando não pode ser descrito por onde ele PARARIA de estudar.
+SITUACOES_DO_PERIODO = ['Formado', 'Desligado', 'Passou do limite', 'Último período',
+                        'Estudando', 'Sem período']
+
+# O QUE CADA FATIA QUER DIZER, em uma frase — é o texto que o balão e a legenda da rosca
+# abrem ao passar o mouse.
+#
+# EXISTE PORQUE A FATIA SÓ TEM UM NOME: "Último período" e "Passou do limite" são
+# conclusões sobre uma comparação que quem lê a tela não viu acontecer, e "Formado" mudou
+# de definição — hoje ele inclui quem o cadastro não lançou. Sem a frase, a única saída de
+# quem não sabe a regra é perguntar a quem escreveu o código.
+#
+# AQUI E NÃO NO JS pelo mesmo motivo do `rotulo` dos alertas: a frase e a regra que ela
+# descreve moram no mesmo arquivo, e assim envelhecem juntas.
+DESCRICOES_DA_SITUACAO = {
+    'Formado': 'Concluiu o curso neste semestre — pela formatura lançada no cadastro ou '
+               'pelas três evidências juntas (IA, fim da matriz e repasse encerrado).',
+    'Desligado': 'O vínculo com a OVG tinha acabado neste semestre, e não por formatura — '
+                 'onde ele pararia na matriz não descreve mais o aluno.',
+    'Passou do limite': 'O período do semestre já passou do total de períodos da matriz e '
+                        'o curso não consta como concluído.',
+    'Último período': 'O período do semestre é o último da matriz, e não há conclusão '
+                      'registrada nem evidência suficiente dela.',
+    'Estudando': 'O período do semestre ainda está dentro da matriz do curso, sem '
+                 'formatura e sem desligamento.',
+    'Sem período': 'O cadastro está sem período no semestre ou sem total de períodos — '
+                   'nenhuma conta de matriz pode ser feita sobre estas linhas.',
+}
 
 
-def _situacao_do_periodo(df):
+# OS DOIS PONTOS DA MATRIZ EM QUE O CURSO JÁ DEVIA TER ACABADO. Ficam numa constante
+# porque a conclusão por evidência os consulta, e repetir a dupla em dois lugares é como
+# ela envelheceria pela metade.
+FIM_DA_MATRIZ = ('Último período', 'Passou do limite')
+
+
+def _ponto_na_matriz(df):
     """
-    O QUE FAZ: devolve um dos cinco estados de `SITUACOES_DO_PERIODO`, um por linha — a
-        formatura do cadastro quando ela existe, e a comparação entre `periodo_atual` e
-        `qtd_periodos` para todo o resto.
+    O QUE FAZ: só a comparação entre o período DAQUELE SEMESTRE e `qtd_periodos`, sem
+        nenhuma notícia de formatura — 'Passou do limite', 'Último período', 'Estudando'
+        ou 'Sem período'.
 
-    OS CINCO COBREM TUDO, sem sobra: é o que deixa a rosca somar exatamente o total de
-    lidos do card e dispensa a ressalva que o Veredito precisa ter.
+    `periodo_no_semestre` E NÃO `periodo_atual`, e é a correção que mudou esta rosca.
+    `periodo_atual` é o último período que a IES declarou — o de HOJE, o mesmo número
+    repetido em toda a linha do tempo do aluno. Olhando 2025-2 de quem hoje está no 12º,
+    a tela dizia "passou do limite" sobre um semestre em que ele estava no 9º. Comparar o
+    presente com a matriz e escrever a conclusão na linha do passado é a tela contando
+    como excesso o que era percurso normal.
+
+    `periodo_atual` FICA COMO RESERVA, e não por indecisão: relatório gerado antes de o
+    motor passar a gravar `periodo_no_semestre` não tem a coluna, e sem a reserva ele
+    viraria uma tela inteira de "Sem período". A reserva é por LINHA e não pelo arquivo —
+    o período do semestre nasce de pagamento, e quem não recebeu naquele semestre não tem
+    de onde tirá-lo.
+
+    SEPARADO DE `_situacao_do_periodo` PORQUE A CONCLUSÃO DEPENDE DELE: quem decide se o
+    aluno formou precisa saber se a matriz tinha acabado, e a situação final já traz
+    'Formado' escrito por cima. Sem esta função a pergunta se morderia — 'Formado'
+    consultando 'Formado'.
 
     "SEM PERÍODO" É O CADASTRO INCOMPLETO, e não um erro de leitura: são as linhas em que
-    um dos dois lados é zero ou não é número (70 em 2025-2, e em 69 delas o zero está em
-    `qtd_periodos`). Comparar período com zero diria "excedeu o limite" de todas elas —
-    um alerta de dinheiro nascido de um campo em branco.
+    um dos dois lados é zero ou não é número. Comparar período com zero diria "excedeu o
+    limite" de todas elas — um alerta de dinheiro nascido de um campo em branco.
     """
     import pandas as pd
 
     if len(df) == 0:
         return pd.Series([], index=df.index, dtype='string')
-    if not {'periodo_atual', 'qtd_periodos'} <= set(df.columns):
+    colunas_periodo = [c for c in ('periodo_no_semestre', 'periodo_atual')
+                       if c in df.columns]
+    if 'qtd_periodos' not in df.columns or not colunas_periodo:
         return pd.Series('Sem período', index=df.index, dtype='string')
 
-    #  `to_numeric` e não leitura direta: `periodo_atual` chega como TEXTO no Parquet
-    #  ("10.0"), com uma linha em branco em 2025-2. Comparar texto com número aqui
-    #  ordenaria "12" antes de "9".
-    atual = pd.to_numeric(df['periodo_atual'], errors='coerce')
+    #  `to_numeric` e não leitura direta: o período chega como TEXTO no Parquet ("10.0"),
+    #  com uma linha em branco em 2025-2. Comparar texto com número aqui ordenaria "12"
+    #  antes de "9".
+    atual = pd.to_numeric(df[colunas_periodo[0]], errors='coerce')
+    for reserva in colunas_periodo[1:]:
+        atual = atual.fillna(pd.to_numeric(df[reserva], errors='coerce'))
     total = pd.to_numeric(df['qtd_periodos'], errors='coerce')
 
-    situacao = pd.Series('Em curso', index=df.index, dtype='string')
-    situacao[(atual == total).fillna(False)] = 'Último período'
-    situacao[(atual > total).fillna(False)] = 'Passou do limite'
-    #  POR ÚLTIMO ENTRE OS DA MATRIZ, para cobrir os três de cima: sem período não é
-    #  nenhum dos outros.
-    situacao[(atual.isna() | total.isna() | (atual <= 0) | (total <= 0))] = 'Sem período'
-    #  E A FORMATURA POR CIMA DE TODOS, "Sem período" inclusive: o cadastro pode estar sem
-    #  a matriz e ter a formatura lançada — é o caso da 2043562, que aparecia como "Sem
-    #  período" com o curso concluído e o repasse encerrado em dezembro.
-    situacao[_formatura_no_cadastro(df) == FORMATURA_CONFIRMADA] = 'Formado'
+    ponto = pd.Series('Estudando', index=df.index, dtype='string')
+    ponto[(atual == total).fillna(False)] = 'Último período'
+    ponto[(atual > total).fillna(False)] = 'Passou do limite'
+    #  POR ÚLTIMO, para cobrir os três de cima: sem período não é nenhum dos outros.
+    ponto[(atual.isna() | total.isna() | (atual <= 0) | (total <= 0))] = 'Sem período'
+    return ponto
+
+
+def _desligado_no_semestre(df):
+    """
+    O QUE FAZ: por linha, se o vínculo com a OVG já estava DESLIGADO naquele semestre.
+
+    SAI DE `status_vinculo`, que é por semestre e não de hoje — a extração o calcula
+    dentro do recorte de cada linha. No relatório de 22/09/2026 são 1.269 desligados em
+    50.193 linhas, 673 deles em 2025-2.
+
+    E ELE ENGLOBA A FORMATURA: o `CASE` da extração escreve 'Desligado' para toda coleta
+    cuja situação não seja 'S' (matriculado), e formatura é 'F'. Por isso esta função
+    NUNCA é a última palavra — quem chama precisa escrever 'Formado' por cima, senão cada
+    formando da tela vira um desligado. Ver `_situacao_do_periodo`.
+    """
+    import pandas as pd
+
+    if 'status_vinculo' not in df.columns:
+        return pd.Series(False, index=df.index)
+    texto = df['status_vinculo'].astype('string').str.strip().str.upper()
+    return (texto == 'DESLIGADO').fillna(False)
+
+
+def _repasse_parou(df):
+    """O repasse acabou NESTE semestre — a evidência de dinheiro de que o curso acabou."""
+    import pandas as pd
+
+    if 'pagou_depois' not in df.columns:
+        return pd.Series(True, index=df.index)
+    return ~df['pagou_depois'].fillna(False).astype(bool)
+
+
+def _concluiu_no_semestre(df):
+    """
+    O QUE FAZ: por linha, se ESTE é o semestre em que o curso acabou — o booleano que
+        pinta a fatia "Formado" e que os alertas usam para saber o que perguntar.
+
+    DUAS PORTAS, E A SEGUNDA É A QUE MUDOU A TELA.
+
+      1. O CADASTRO LANÇOU A FORMATURA naquele semestre (`_formatura_no_cadastro`). É o
+         fato, e ele não depende de a IA ter lido nada.
+
+      2. AS TRÊS EVIDÊNCIAS INDEPENDENTES DIZEM O MESMO: a IA leu "concluiu o curso" no
+         documento, a matriz do cadastro diz que o curso chegou ao fim (`FIM_DA_MATRIZ`)
+         e o repasse parou aqui. Nenhuma das três sozinha bastaria; as três juntas são
+         mais do que o lançamento que falta.
+
+    POR QUE A SEGUNDA PORTA EXISTE: a IES quase não lança a formatura no semestre em que
+    o aluno conclui. No relatório de 22/09/2026, 2025-2 tem 17.695 linhas, a IA deu 1.532
+    como formadas e o cadastro registrou formatura em 14. Sem a segunda porta, "Formado"
+    é uma fatia de 0,08% e a tela afirma que ninguém termina o curso — uma conclusão sobre
+    o CADASTRO servida como se fosse sobre os alunos.
+
+    E O DINHEIRO É QUEM SEGURA A PORTA: das 1.532 leituras "Sim" de 2025-2, 209 seguiram
+    recebendo no semestre seguinte. Essas ficam de fora daqui e viram alerta próprio — ter
+    continuado na folha é a prova de que o curso não acabou.
+    """
+    import pandas as pd
+
+    if len(df) == 0:
+        return pd.Series([], index=df.index, dtype=bool)
+
+    pelo_cadastro = _formatura_no_cadastro(df) == FORMATURA_CONFIRMADA
+    pelas_evidencias = ((_concluiu_curso(df) == 'Sim')
+                        & _ponto_na_matriz(df).isin(FIM_DA_MATRIZ).fillna(False)
+                        & _repasse_parou(df))
+    return (pelo_cadastro | pelas_evidencias).fillna(False)
+
+
+def _situacao_do_periodo(df):
+    """
+    O QUE FAZ: devolve um dos seis estados de `SITUACOES_DO_PERIODO`, um por linha — o
+        ponto na matriz para todas, com "Desligado" e depois "Formado" escritos por cima.
+
+    OS SEIS COBREM TUDO, sem sobra: é o que deixa a rosca somar exatamente o total de
+    lidos do card e dispensa a ressalva que o Veredito precisa ter.
+
+    SÃO TRÊS PERGUNTAS DIFERENTES, e é por isso que são três funções. `_ponto_na_matriz`
+    responde "onde o cadastro diz que o aluno está"; `_desligado_no_semestre`, "ele ainda
+    estava na OVG"; `_concluiu_no_semestre`, "o curso acabou aqui". As duas últimas ganham
+    da primeira porque um curso concluído — ou um vínculo encerrado — descrito como
+    "estudando" é a tela contando o passado como promessa.
+
+    A ORDEM DAS DUAS DE CIMA NÃO É NEGOCIÁVEL: "FORMADO" DEPOIS DE "DESLIGADO". O
+    `status_vinculo` da extração chama de desligada TODA coleta que não seja 'S'
+    (matriculado), e formatura é 'F' — invertendo a ordem, os 1.088 formados de 2025-2
+    somem dentro de "Desligado" e a tela passa a dizer que ninguém termina o curso, que é
+    exatamente o defeito que a fatia "Formado" nasceu para corrigir. Dos 673 desligados do
+    semestre, 17 são formandos e ficam na fatia certa por causa dessa ordem.
+
+    "FORMADO" POR CIMA DE "SEM PERÍODO" TAMBÉM: o cadastro pode estar sem a matriz e ter a
+    formatura lançada — é o caso da 2043562, que aparecia como "Sem período" com o curso
+    concluído e o repasse encerrado em dezembro.
+    """
+    if len(df) == 0:
+        import pandas as pd
+        return pd.Series([], index=df.index, dtype='string')
+
+    situacao = _ponto_na_matriz(df)
+    situacao[_desligado_no_semestre(df)] = 'Desligado'
+    situacao[_concluiu_no_semestre(df)] = 'Formado'
     return situacao
 
 
@@ -1932,25 +2139,30 @@ def _pagamentos_posteriores(df):
 # OS ALERTAS, na ordem da GRAVIDADE e não da frequência — é a ordem em que se decide o
 # que fazer primeiro, e o tamanho de cada um já está escrito na barra.
 #
-# OS TRÊS PRIMEIROS SÃO O MESMO CONFRONTO: o que a IA leu no documento contra o que o
-# cadastro registrou (ver `_formatura_no_cadastro`). Eles não existiam enquanto a única
-# medida de conclusão era a matriz do curso, e é neles que está o dinheiro — R$ 2,88
-# milhões nas 708 linhas de 2025-2, contra R$ 327 mil nos dois últimos.
+# CINCO DOS SETE SÃO O MESMO CONFRONTO: o que a IA leu no documento contra o que o
+# cadastro registrou e contra o que a folha de pagamento mostra. Eles não existiam
+# enquanto a única medida de conclusão era a matriz do curso, e é neles que está o
+# dinheiro.
 #
-# CADA LINHA CAI EM NO MÁXIMO UM. Os três de cima são recortes de estados diferentes da
-# formatura, então já não se cruzam entre si; os dois de baixo são fatias inteiras da
-# rosca ao lado, e a escada de `_alerta_do_historico` decide as poucas linhas que caem nos
-# dois lugares. É isso que deixa o clique filtrar a tabela sem ambiguidade e as barras se
-# somarem.
+# OS TRÊS PRIMEIROS SEPARAM O QUE ERA UM SÓ, e a separação é a razão de existirem sete.
+# "A IA disse formado e o cadastro não lançou" juntava três perguntas diferentes: a de
+# quem de fato terminou e a IES não informou, a de quem continuou recebendo depois (e
+# portanto não terminou) e a de quem foi dado como formado no meio da matriz. Cada uma
+# vai para uma área diferente — IES, financeiro e revisão da leitura — e numa barra só
+# nenhuma delas era acionável.
 #
-# O QUE NÃO É ALERTA FICA FORA DO GRÁFICO e vai para a linha de base: em 2025-2 são 15.674
-# dos 16.464 lidos, e entre eles os 1.590 que formaram — 1.192 deles com a IA dizendo o
-# mesmo. Numa régua comum, os 27 de "passou do limite" mediriam 0,2% da faixa.
+# CADA LINHA CAI EM NO MÁXIMO UM, garantido pela escada de `_alerta_do_historico`. É isso
+# que deixa o clique filtrar a tabela sem ambiguidade e as barras se somarem.
 #
-# `nota` é o que o valor em dinheiro SIGNIFICA naquele alerta. Hoje os cinco falam da
-# bolsa paga no próprio semestre do recorte, mas o campo continua por alerta e não um
-# rótulo só para todos: o alerta que nasceu de dinheiro pago DEPOIS já existiu aqui, e
-# ressuscitá-lo com a legenda errada seria um número certo mentindo.
+# O QUE NÃO É ALERTA FICA FORA DO GRÁFICO e vai para a linha de base: é a maioria larga
+# do recorte, e numa régua comum as barras pequenas mediriam frações de por cento da
+# faixa.
+#
+# `nota` é o que o valor em dinheiro SIGNIFICA naquele alerta, e por isso ele é por
+# alerta e não um rótulo só para todos: só o `ia_antecipou` mede o que saiu DEPOIS do
+# semestre (`valor_pago_depois`), porque só nele o valor é o que se recupera; os outros
+# sete medem a bolsa do próprio semestre. Um número certo com a legenda do vizinho seria
+# uma mentira bem formatada.
 #
 # DOIS RÓTULOS: o do eixo e o que o balão abre. No gráfico deitado o nome mora numa faixa
 # à esquerda das barras, e a faixa sai da medida do maior nome (ver `larguraDaFaixa` no
@@ -1965,20 +2177,48 @@ def _pagamentos_posteriores(df):
 # O BALÃO CONTINUA COM A REGRA, porque ela é o que responde "por que esta linha caiu
 # aqui" na hora de trabalhar a lista. Os dois saem daqui, e não um de cada lado: rótulo
 # de tela em dois arquivos envelhece metade de cada vez.
+#
+# OS QUATRO PRIMEIROS SÃO DOIS PARES, e é o par que responde a pergunta — nenhum deles
+# sozinho. "IA formou, sistema não" e "Sistema formou, IA não" são as duas direções da
+# mesma discordância; dentro de cada direção, "(no semestre)" e "(atualmente)" dizem se o
+# sistema chegou a se corrigir depois. Cruzando os dois eixos é que aparece o caso que
+# custa dinheiro — formou, a IES só informou meses depois e a bolsa continuou saindo no
+# intervalo. Esse é o `ia_antecipou`, e é o único que manda alguém ao financeiro.
+#
+# O NOME DO EIXO FICOU MAIS LONGO DO QUE A CASA GOSTARIA — "IA formou, sistema não (no
+# semestre)" tem 35 caracteres contra os 23 de "IA formou, cadastro não", e a faixa da
+# esquerda sai da medida do maior nome (ver `larguraDaFaixa` no JS). Foi escolha
+# deliberada: sem o "(no semestre)"/"(atualmente)" as quatro barras viram duas frases
+# indistinguíveis, e a pessoa não tem como saber qual clicar.
+#
+# "SISTEMA" E NÃO "CADASTRO" nos rótulos novos: é a palavra que quem trabalha a lista usa
+# para o SIBU. "Cadastro" continua nos balões, onde há espaço para a frase inteira.
 ALERTAS_DO_HISTORICO = [
-    ('ia_sem_registro', 'A IA diz formado e o cadastro não registra formatura',
-     'IA formou, cadastro não', 'pago no semestre', 'total_bolsa_paga'),
-    ('ia_antecipou', 'A IA diz formado, mas a formatura do cadastro é posterior',
-     'Formatura veio depois', 'pago no semestre', 'total_bolsa_paga'),
-    ('ia_negou', 'Formatura no cadastro e a IA leu que não concluiu',
-     'IA nega a formatura', 'pago no semestre', 'total_bolsa_paga'),
-    ('excedeu_cursando', 'Passou do limite de períodos sem formatura no cadastro',
-     'Passou do limite e cursa', 'pago no semestre', 'total_bolsa_paga'),
-    #  "Sem período" e não "Sem período no cadastro": é o mesmo grupo de 56 da fatia
-    #  homônima da rosca ao lado, e dois nomes para a mesma população em cards vizinhos
-    #  fazem parecer que são coisas diferentes. A frase inteira fica no balão.
-    ('sem_matriz', 'Cadastro sem período atual ou sem total de períodos', 'Sem período',
-     'pago no semestre', 'total_bolsa_paga'),
+    ('ia_sem_registro', 'A IA leu curso concluído e o cadastro daquele semestre não '
+     'registra formatura — pode ter sido desligado, ou ainda estar estudando',
+     'IA formou, sistema não (no semestre)', 'pago no semestre', 'total_bolsa_paga'),
+    ('ia_sem_registro_hoje', 'A IA leu curso concluído e o cadastro não registra '
+     'formatura nem hoje — pode ter sido desligado, ou ainda estar estudando',
+     'IA formou, sistema não (atualmente)', 'pago no semestre', 'total_bolsa_paga'),
+    ('ia_negou', 'Na coleta o aluno formou naquele semestre, mas o documento informa '
+     'que não concluiu',
+     'Sistema formou, IA não (no semestre)', 'pago no semestre', 'total_bolsa_paga'),
+    ('ia_negou_hoje', 'Na coleta o aluno formou só depois daquele semestre, mas o '
+     'documento informa que não concluiu',
+     'Sistema formou, IA não (atualmente)', 'pago no semestre', 'total_bolsa_paga'),
+    ('ia_antecipou', 'A IA leu formado, a IES só lançou a formatura depois e a bolsa '
+     'continuou saindo no intervalo — há repasse a recuperar',
+     'Formou e demorou informar - realizar retroativo', 'pago depois do semestre',
+     'valor_pago_depois'),
+    ('ia_fora_da_matriz', 'A IA leu formado em quem ainda tinha períodos da matriz a '
+     'cumprir', 'IA formou no meio do período', 'pago no semestre', 'total_bolsa_paga'),
+    ('excedeu_cursando', 'Passou do limite de períodos sem ter concluído e sem ter sido '
+     'desligado', 'Passou do limite e cursa', 'pago no semestre', 'total_bolsa_paga'),
+    #  "Sem período" e não "Sem período no cadastro": é o nome da fatia homônima da rosca
+    #  ao lado, e dois nomes para a mesma população em cards vizinhos fazem parecer que
+    #  são coisas diferentes. A frase inteira fica no balão.
+    ('sem_matriz', 'Cadastro sem período no semestre ou sem total de períodos',
+     'Sem período', 'pago no semestre', 'total_bolsa_paga'),
 ]
 
 
@@ -1986,53 +2226,118 @@ def _alerta_do_historico(df):
     """
     O QUE FAZ: devolve a chave do alerta de cada linha, ou vazio para a linha sem alerta.
 
-    A REGRA DE CADA UM, e o que ela vale em 2025-2 (16.464 lidos):
+    A REGRA DE CADA UM:
 
-      `ia_sem_registro` (287, R$ 1,05 mi) — a IA leu "concluiu o curso" e o cadastro não
-          tem formatura nenhuma para este aluno, nem neste semestre nem depois. Ou a IES
-          não informou a conclusão, ou a IA alucinou — e as duas hipóteses se resolvem do
-          mesmo jeito: perguntando à IES. É o alerta que mais vale a pena trabalhar.
+      `ia_sem_registro` — a IA leu "concluiu o curso" e o cadastro DAQUELE SEMESTRE não
+          registra formatura. Depois da escada, o que sobra nesta barra é quem o sistema
+          acabou registrando mais tarde SEM que a bolsa continuasse saindo: a IES informou
+          com atraso, mas o atraso não custou repasse. Não há retroativo a fazer — há uma
+          data a acertar. É a barra GRANDE: 1.037 das 1.091 linhas em que a IA formou sem
+          o semestre registrar, ou seja, o atraso é a regra e não a exceção.
 
-      `ia_antecipou` (42, R$ 167 mil) — a IA diz formado, o cadastro registra a formatura
-          SÓ DEPOIS e o repasse continuou (ver 'Formou depois'). Neste semestre o aluno
-          ainda cursava: a IA leu como conclusão um documento que não a provava. São
-          poucos, e é o grupo que mede o quanto a leitura se adianta.
+      `ia_sem_registro_hoje` — o mesmo, e o cadastro não registra formatura NEM HOJE. Ou a
+          IES nunca informou a conclusão, ou a IA alucinou, e as duas hipóteses se
+          resolvem do mesmo jeito: perguntando à IES. São 54 linhas em 2025-2 — pouco
+          justamente porque o sistema quase sempre se corrige, e é esse "quase" que esta
+          barra isola.
 
-      `ia_negou` (379, R$ 1,66 mi) — o caminho inverso: a formatura está no cadastro, o
-          repasse parou aqui, e a IA leu "não concluiu". A conclusão é fato; o que está em
-          xeque é a leitura. Sem esta barra, o erro da IA que custa mais caro seria
-          justamente o único invisível — dizer que não formou não gera pergunta nenhuma.
+      `ia_negou` — o caminho inverso: a formatura está no cadastro DAQUELE SEMESTRE e a IA
+          leu "não concluiu". A conclusão é fato; o que está em xeque é a leitura. Sem
+          esta barra, o erro da IA que custa mais caro seria justamente o único invisível
+          — dizer que não formou não gera pergunta nenhuma.
 
-      `excedeu_cursando` (27, R$ 105 mil) — passou do limite de períodos da matriz e o
-          cadastro não registra formatura. Aqui se investiga, e as disciplinas NÃO
-          explicam. Antes da formatura do cadastro este grupo tinha 33 linhas e um irmão
-          de 46 ("já formou e passou do limite") que hoje não existe mais: aqueles 46
-          ESTAVAM formados, e o cadastro diz isso sem precisar da matriz.
+      `ia_negou_hoje` — a formatura não estava lançada naquele semestre, está lançada
+          HOJE, e a IA leu "não concluiu". Aqui a discordância é mais fraca de propósito:
+          o documento daquele semestre pode estar certo e a formatura ser mesmo posterior.
+          É lista de revisão, não de cobrança.
 
-      `sem_matriz` (55, R$ 221 mil) — cadastro sem período ou sem total de períodos, e sem
-          formatura lançada. Nenhuma pergunta de matriz pode ser feita sobre eles enquanto
-          o campo estiver em branco. A chave guarda o nome antigo de propósito: ela viaja
-          na URL do filtro, e trocá-la quebraria todo link já salvo (o rótulo, esse, é
-          "Sem período" — ver `ALERTAS_DO_HISTORICO`).
+      `ia_antecipou` — O ÚNICO QUE VAI AO FINANCEIRO. A IA leu formado, o cadastro daquele
+          semestre não registrava, o de hoje registra E o repasse continuou depois. Os
+          três juntos dizem que o aluno já tinha concluído, a IES demorou a informar e nós
+          pagamos no intervalo. Por isso a coluna é `valor_pago_depois` e não a bolsa do
+          próprio semestre: o que se quer ver é quanto saiu DEPOIS da conclusão, que é o
+          que se recupera — 42 linhas e R$ 174.192,18 em 2025-2. A chave guarda o nome
+          antigo porque viaja na URL do filtro.
 
-    A ESCADA, de cima para baixo, atribui e a de baixo prevalece: os dois alertas de
-    matriz entram primeiro e os três da IA passam por cima deles. São 6 linhas em 2025-2 e
-    a escolha é deliberada — "a IA diz formado e o cadastro não registra" é uma pergunta
-    para a IES, e "passou do limite" é a mesma pergunta com menos informação.
+      `ia_fora_da_matriz` — a IA diz formado em quem ainda tinha períodos da matriz a
+          cumprir. Não é o fim do curso nem a evasão declarada: é um documento lido como
+          diploma longe de onde o diploma caberia. Passa na frente dos dois de cadastro
+          porque, quando a matriz contradiz a leitura, o que se revisa é a leitura — não
+          adianta perguntar à IES sobre uma formatura no 3º de 10 períodos.
+
+      `excedeu_cursando` — passou do limite de períodos da matriz, NÃO concluiu por
+          nenhuma das duas portas e NÃO estava desligado. O desligado entrou nessa conta
+          por anos e não devia: o período dele parou de andar quando o vínculo acabou, e
+          cobrar excesso de matriz de quem saiu é cobrar o tempo em que ele não era nosso.
+          Quem sobra aqui se investiga, e as disciplinas não explicam.
+
+      `sem_matriz` — cadastro sem período ou sem total de períodos, e sem desligamento.
+          Nenhuma pergunta de matriz pode ser feita sobre eles enquanto o campo estiver em
+          branco — e sobre quem saiu da OVG não há sequer a quem perguntar. A chave guarda
+          o nome antigo de propósito: ela viaja na URL do filtro, e trocá-la quebraria
+          todo link já salvo (o rótulo, esse, é "Sem período").
+
+    A ESCADA VAI DO MENOS PARA O MAIS ESPECÍFICO, e a de baixo prevalece. É o que garante
+    que cada linha caia em NO MÁXIMO UM alerta — sem isso as barras não se somariam e o
+    clique filtraria a tabela com ambiguidade. Os dois de matriz entram primeiro porque
+    são a pergunta com MENOS informação: quando existe leitura da IA sobre o mesmo aluno,
+    é ela que diz o que perguntar à IES.
+
+    O QUE NÃO É ALERTA FICA FORA DO GRÁFICO e vai para a linha de base do card: são as
+    linhas em que cadastro, matriz e IA não se contradizem.
     """
     import pandas as pd
 
-    situacao = _situacao_do_periodo(df)
+    if len(df) == 0:
+        return pd.Series([], index=df.index, dtype='string')
+
+    ponto = _ponto_na_matriz(df)
     formatura = _formatura_no_cadastro(df)
     concluiu = _concluiu_curso(df)
-
+    concluiu_aqui = _concluiu_no_semestre(df)
+    parou = _repasse_parou(df)
     diz_formado = concluiu == 'Sim'
+    #  BOOLEANO E NÃO IGUALDADE COM 'Formou': o que importa nos quatro primeiros alertas é
+    #  se o cadastro daquele semestre registra a formatura, e não se o repasse parou junto
+    #  — essa segunda pergunta é a que separa 'Formou' de 'Formou depois', e ela só é
+    #  feita lá embaixo, no `ia_antecipou`.
+    form_sem = formatura != FORMATURA_AUSENTE
+    form_hoje = _formatura_atual(df)
+
     alerta = pd.Series(pd.NA, index=df.index, dtype='string')
-    alerta[situacao == 'Sem período'] = 'sem_matriz'
-    alerta[situacao == 'Passou do limite'] = 'excedeu_cursando'
-    alerta[(formatura == FORMATURA_CONFIRMADA) & (concluiu == 'Não')] = 'ia_negou'
-    alerta[(formatura == FORMATURA_POSTERIOR) & diz_formado] = 'ia_antecipou'
-    alerta[(formatura == FORMATURA_AUSENTE) & diz_formado] = 'ia_sem_registro'
+    #  OS DOIS DE MATRIZ SÓ VALEM PARA QUEM NÃO CONCLUIU, e é o que mantém cada barra
+    #  DENTRO da fatia homônima da rosca ao lado: lá "Formado" é escrito por cima de
+    #  "Passou do limite" e de "Sem período", e uma barra contando quem a rosca já tirou
+    #  faria os dois cards discordarem sobre as mesmas linhas. É o caso da 2043562 —
+    #  cadastro sem matriz, formatura lançada e repasse encerrado: ela não tem alerta
+    #  nenhum, porque não há o que perguntar sobre um curso que o cadastro diz que acabou.
+    #
+    #  DENTRO E NÃO IGUAL: os alertas de IA passam na frente, então quem a IA deu como
+    #  formado sai da barra de matriz e vai para a barra de leitura — continua na fatia,
+    #  deixa a barra. O contrário é que não pode: barra contando o que a fatia não tem.
+    #
+    #  E O DESLIGADO SAI DAS DUAS: a rosca ao lado agora tem fatia própria para ele, então
+    #  contá-lo em `excedeu_cursando` seria a barra falando de quem a fatia não tem — o
+    #  mesmo erro, pelo outro lado.
+    desligado = _desligado_no_semestre(df)
+    alerta[(ponto == 'Sem período') & ~concluiu_aqui & ~desligado] = 'sem_matriz'
+    alerta[(ponto == 'Passou do limite') & ~concluiu_aqui & ~desligado] = 'excedeu_cursando'
+    diz_nao = concluiu == 'Não'
+    alerta[diz_nao & form_sem] = 'ia_negou'
+    alerta[diz_nao & ~form_sem & form_hoje] = 'ia_negou_hoje'
+    #  OS DOIS PARES SÃO ESCADA DENTRO DA ESCADA: "(atualmente)" é subconjunto de "(no
+    #  semestre)" e por isso vem depois. O que fica na barra de cima é o complemento — os
+    #  que o sistema registrou, só que tarde.
+    alerta[diz_formado & ~form_sem] = 'ia_sem_registro'
+    alerta[diz_formado & ~form_sem & ~form_hoje] = 'ia_sem_registro_hoje'
+    #  "ESTUDANDO" E NÃO "SEM PERÍODO": a matriz em branco não contradiz leitura nenhuma,
+    #  ela só não responde — essas linhas ficam no `sem_matriz`, que é o alerta de campo
+    #  vazio. Aqui a matriz está preenchida e DIZ outra coisa.
+    alerta[diz_formado & (ponto == 'Estudando') & ~concluiu_aqui] = 'ia_fora_da_matriz'
+    #  O DINHEIRO FECHA A ESCADA, e é o único alerta que sai daqui com valor a recuperar.
+    #  As quatro condições juntas não sobram em nenhuma outra barra: leitura, silêncio do
+    #  semestre, confissão de hoje e repasse que continuou.
+    alerta[diz_formado & ~form_sem & form_hoje & ~parou] = 'ia_antecipou'
     return alerta
 
 
@@ -2105,21 +2410,27 @@ def _quadro_do_historico(frente_sit, frente_alerta):
                         'linhas': int(dentro.sum()),
                         'valor': round(float(_dinheiro(coluna)[dentro].sum()), 2)})
 
-    #  O QUE NÃO É ALERTA, para a linha de base do card: são 15.674 dos 16.464 lidos de
-    #  2025-2, e sem esta linha as cinco barras somando 790 passariam pelo recorte
-    #  inteiro. Elas não repartem os lidos — são o que sobra depois de tirar quem está no
-    #  caminho normal (ver a nota de `ALERTAS_DO_HISTORICO`).
+    #  O QUE NÃO É ALERTA, para a linha de base do card: é a maioria larga do recorte, e
+    #  sem esta linha as sete barras passariam pelo recorte inteiro. Elas não repartem os
+    #  lidos — são o que sobra depois de tirar quem está no caminho normal (ver a nota de
+    #  `ALERTAS_DO_HISTORICO`).
     #
-    #  E OS FORMADOS AO LADO, que é a pergunta que abriu este card: de quantos temos
-    #  CERTEZA de que concluíram. Certeza é o cadastro, não a IA — por isso são os 1.590
-    #  de `FORMATURA_CONFIRMADA` e não os que a IA deu como formados, e por isso eles
-    #  contam mesmo estando em alerta: os 379 de `ia_negou` formaram, e o alerta ali é
-    #  sobre a LEITURA. `confirmados` é onde os dois lados dizem a mesma coisa.
+    #  E OS FORMADOS AO LADO, que é a pergunta que abriu este card: quantos concluíram o
+    #  curso neste semestre. É `_concluiu_no_semestre` e não a formatura do cadastro
+    #  sozinha — o cadastro lança tarde, e medir só por ele dizia que 14 em 17.695 tinham
+    #  terminado o curso. Eles contam mesmo estando em alerta: quem cai em `ia_negou`
+    #  formou, e o alerta ali é sobre a LEITURA.
+    #
+    #  `confirmados` É ONDE O CADASTRO E A IA DIZEM A MESMA COISA, e é ele que separa o
+    #  que sabemos do que apenas deduzimos: a diferença entre os dois números é o tamanho
+    #  do que a IES ainda não lançou.
     sem_alerta = alerta.isna() if len(frente_alerta) else pd.Series([], dtype=bool)
-    formatura = _formatura_no_cadastro(frente_alerta)
-    formou = (formatura == FORMATURA_CONFIRMADA) if len(frente_alerta) else pd.Series([], dtype=bool)
+    formou = (_concluiu_no_semestre(frente_alerta) if len(frente_alerta)
+              else pd.Series([], dtype=bool))
     formados = int(formou.sum())
-    confirmados = int((formou & (_concluiu_curso(frente_alerta) == 'Sim')).sum())
+    confirmados = int((formou
+                       & (_formatura_no_cadastro(frente_alerta) == FORMATURA_CONFIRMADA)
+                       & (_concluiu_curso(frente_alerta) == 'Sim')).sum())
 
     return {
         'ordem_situacao': SITUACOES_DO_PERIODO,
@@ -2127,6 +2438,7 @@ def _quadro_do_historico(frente_sit, frente_alerta):
         #  dela: ela existia para o balão de cada fatia, e esse balão foi embora (ver
         #  `pintarSituacao`, no JS). A bandeira, sim, continua escrita na base do card.
         'situacao': {'contagem': contagem,
+                     'descricao': DESCRICOES_DA_SITUACAO,
                      'total': int(len(frente_sit)),
                      'tem_dado': any(quebra[s]['Sim'] or quebra[s]['Não']
                                      for s in SITUACOES_DO_PERIODO)},
