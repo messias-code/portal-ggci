@@ -78,7 +78,20 @@ coleta_mes AS (
         b.ano_mes_pagto,
         cd.qtde_disciplina_matriculada,
         cd.qtde_disciplina_reprovadas,
-        cd.periodo
+        -- PERÍODO NÃO ANDA PARA TRÁS. Quando a IES declara um número e depois declara um
+        -- MENOR, o segundo é correção do primeiro, e tem de valer também para o semestre
+        -- onde o número errado foi gravado — senão o relatório eterniza o erro que a
+        -- própria IES já consertou. Caso real: a inscrição 2053340 (BIOMEDICINA, matriz 9)
+        -- declarou 7 em 2025/1, 10 em 08/2025 e 9 em 01/2026; o relatório de 2025/2 dizia
+        -- 10 de 9 períodos e caía em "Passou do limite" por causa de um dígito.
+        --   A GUARDA DE 2 PERÍODOS separa correção de recomeço: transferir de curso zera a
+        -- contagem legitimamente, e sem ela uma queda dessas arrastaria a vida inteira do
+        -- aluno para baixo. A inscrição 2021171 é o contra-exemplo que a exige: tinha 12,
+        -- uma coleta de 31/01/2026 gravou 5 (queda de 7) e a coleta seguinte, de 02/02,
+        -- voltou a gravar 12 — os 12 dela são verdade e precisam sobreviver. Medido em
+        -- 22/09/2026: a regra mexe em 4.180 semestres-aluno (2,46%) e tira 104 deles de
+        -- "Passou do limite"; sem a guarda, mexeria em 10.917 e estragaria os formandos.
+        CASE WHEN cdp.periodo - cdm.piso <= 2 THEN cdm.piso ELSE cdp.periodo END AS periodo
     FROM base_uniao_limpa b
     LEFT JOIN LATERAL (
         SELECT * FROM sibu.coleta_dados cd_int
@@ -86,6 +99,35 @@ coleta_mes AS (
           AND ((b.coleta_id IS NOT NULL AND cd_int.id = b.coleta_id) OR (b.coleta_id IS NULL AND DATE(cd_int.data_create) <= COALESCE(DATE(b.data_ref), CURRENT_DATE())))
         ORDER BY cd_int.data_create DESC LIMIT 1
     ) cd ON true
+    -- O PERÍODO SÓ EXISTE NA COLETA DE QUEM ESTÁ ESTUDANDO. O campo `periodo` vinha da
+    -- mesma coleta das disciplinas (`cd`), e é aí que a série quebrava: quando a coleta
+    -- mais recente do mês não é de aluno matriculado, o SIBU grava o período ZERADO, e o
+    -- aluno que estava no 8º aparecia no 0º ou no 1º. Medido na base inteira em 22/09/2026:
+    -- das 7.584 coletas de FORMATURA (`situacao = 'F'`), 5.746 (75,8%) trazem período 0 ou
+    -- 1 — e em 5.686 delas (99,0%) o aluno JÁ TINHA declarado período >= 4 antes, ou seja,
+    -- é reset de campo, não calouro. O mesmo vale para 'V' (98,2% zeradas), 'A' (74,4%),
+    -- 'C' (68,2%) e 'T' (52,4%). Só 'S' (matriculado, 0 zeros) e 'N' (não matriculado,
+    -- 25,4%) declaram período de verdade. As disciplinas NÃO sofrem esse reset ('F' tem
+    -- 11,7% de zeros contra 22,4% de 'S'), por isso `cd` continua servindo a elas.
+    -- Conferido contra o marco dos formandos (o período na formatura tem de bater com a
+    -- matriz do curso, n = 6.585): o erro absoluto médio cai de 1,12 para 0,50 período e
+    -- os acertos dentro de +-1 sobem de 82,5% para 90,1%. O grosso do ganho é embaixo:
+    -- 1.582 formandos apareciam com período ABAIXO da matriz, contra 1.204 depois.
+    LEFT JOIN LATERAL (
+        SELECT cd_per.periodo, cd_per.data_create FROM sibu.coleta_dados cd_per
+        WHERE cd_per.uni_codigo = b.uni_codigo
+          AND cd_per.situacao IN ('S', 'N')
+          AND cd_per.periodo > 0
+          AND DATE(cd_per.data_create) <= COALESCE(DATE(b.data_ref), CURRENT_DATE())
+        ORDER BY cd_per.data_create DESC LIMIT 1
+    ) cdp ON true
+    LEFT JOIN LATERAL (
+        SELECT MIN(cd_min.periodo) AS piso FROM sibu.coleta_dados cd_min
+        WHERE cd_min.uni_codigo = b.uni_codigo
+          AND cd_min.situacao IN ('S', 'N')
+          AND cd_min.periodo > 0
+          AND cd_min.data_create >= cdp.data_create
+    ) cdm ON true
 )
 
 /* =========================================================================================
@@ -99,7 +141,7 @@ SELECT
     u_final.uni_cpf AS cpf_aluno,
     c_final.cur_nome AS curso_aluno,
     
-    COALESCE(cf.qtde_periodo, 0) AS periodo_quantidade,
+    COALESCE(cfp.qtde_periodo, 0) AS periodo_quantidade,
     
     MAX(c.qtde_disciplina_matriculada) AS qtd_disciplinas_matriculadas,
     MAX(c.qtde_disciplina_reprovadas) AS qtd_disciplinas_reprovadas,
@@ -199,6 +241,22 @@ LEFT JOIN sibu.instituicao inst ON inst.ins_codigo = COALESCE(ies_sem.ins_codigo
 LEFT JOIN sibu.cursos c_final ON c_final.cur_codigo = COALESCE(ies_sem.cur_codigo, u_final.cur_codigo)
 LEFT JOIN sibu.cursos_faculdades cf ON u_final.ins_codigo = cf.ins_codigo AND u_final.cur_codigo = cf.cur_codigo
 LEFT JOIN sibu.cursos_modalidade cmod ON cf.cursos_modalidade_id = cmod.id
+-- A MATRIZ TAMBÉM É DO CURSO DO SEMESTRE, pelo mesmo motivo do `ies_sem` logo acima. O
+-- tamanho do curso saía de `cf`, que casa pelo par de HOJE (`u_final`), enquanto o nome do
+-- curso já vinha do semestre — quem transferiu comparava o período cursado na faculdade
+-- antiga com a quantidade de períodos da faculdade nova. Medido em 22/09/2026 na janela do
+-- relatório: 426 linhas de 122 alunos recebem matriz diferente. É esta coluna que vira
+-- "Último período" e "Passou do limite" no gráfico SITUAÇÃO DO PERÍODO.
+--   JOIN SEPARADO, e não a correção do `cf`: `cf` também alimenta `modalidade_ies` via
+-- `cursos_modalidade`, e a modalidade é atributo da oferta ATUAL do aluno — mexer no `cf`
+-- arrastaria junto o filtro de Modalidade da tela. O LATERAL ainda resolve os 9 pares
+-- (ins, cur) duplicados em `cursos_faculdades`, que num LEFT JOIN simples duplicariam a
+-- linha do aluno.
+LEFT JOIN LATERAL (
+    SELECT cf_per.qtde_periodo FROM sibu.cursos_faculdades cf_per
+    WHERE cf_per.ins_codigo = COALESCE(ies_sem.ins_codigo, u_final.ins_codigo)
+      AND cf_per.cur_codigo = COALESCE(ies_sem.cur_codigo, u_final.cur_codigo)
+    ORDER BY cf_per.qtde_periodo DESC LIMIT 1) cfp ON true
 
 -- O MESMO TESTE DO `status_vinculo` LOGO ACIMA, e tem de continuar sendo o mesmo: este
 -- filtro derruba a linha de PREVISÃO de quem está desligado. Com o LIKE aqui dentro, o
@@ -214,7 +272,7 @@ WHERE NOT (
 )
 
 GROUP BY 
-    b.uni_codigo, u_final.uni_nome, u_final.uni_cpf, c_final.cur_nome, b.semestre, b.tipo_bolsa, cf.qtde_periodo, u_final.uni_dtnasc, u_final.email, u_final.uni_tel, 
+    b.uni_codigo, u_final.uni_nome, u_final.uni_cpf, c_final.cur_nome, b.semestre, b.tipo_bolsa, cfp.qtde_periodo, u_final.uni_dtnasc, u_final.email, u_final.uni_tel, 
     u_final.uni_tel2, u_final.uni_deficiencia, u_final.uni_sexo, u_final.uni_matricula, 
     u_final.uni_tipo_curso, cmod.descricao, u_final.inscricao_ano, u_final.data_importacao, h_ingresso.data_ingresso,
     inst.ins_cnpj, inst.ins_razao_social, inst.ins_nome_fantasia, inst.mantenedora, inst.ins_nome,
