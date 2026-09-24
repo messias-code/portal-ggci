@@ -350,11 +350,15 @@ class TestIntegridadeDoTemplate(BaseTelas):
 
         Os semestres NÃO entram: ali marcar dois soma, e é pergunta legítima.
 
-        São CINCO grupos na barra de Envios — Vínculo, Perfil, Bolsa, Mudou de IES e
-        Mudou de bolsa. A bateria da aba Análise IA tem a sua própria conta e fica fora
-        daqui, senão o número diria só que existem duas barras.
+        São SETE grupos na barra de Envios — Vínculo, Perfil, Bolsa, Mudou de IES,
+        Mudou de bolsa, Modalidade do aluno e Modalidade da IES. Os dois de modalidade
+        têm TRÊS opções e não duas, e entram aqui pela mesma razão: presencial e EAD se
+        excluem, e marcar os dois é o mesmo recorte de não marcar nenhum.
+
+        A bateria da aba Análise IA tem a sua própria conta e fica fora daqui, senão o
+        número diria só que existem duas barras.
         """
-        self.assertEqual(self.barra_envios.count("docia-grupo-exclusivo"), 5)
+        self.assertEqual(self.barra_envios.count("docia-grupo-exclusivo"), 7)
         semestres = self.barra_envios.split('class="filter-semestre', 1)[0]
         self.assertNotIn("docia-grupo-exclusivo", semestres.rsplit("<section", 1)[-1])
 
