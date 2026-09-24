@@ -944,6 +944,7 @@ COLUNAS_TABELA = [
     'telefone_2',
     'data_nascimento',
     'matricula',
+    'periodo_no_semestre',
     'periodo_atual',
     'qtd_periodos',
     'modalidade_aluno',
@@ -966,7 +967,7 @@ COLUNAS_DE_BUSCA = ['inscricao', 'inscricao_anterior', 'inscricao_posterior',
 # servidor, comparando contra o valor cru, nunca encontraria. Quem copia o que vê tem
 # de conseguir colar no campo de busca.
 COLUNAS_IDENTIFICADORAS = ['inscricao', 'inscricao_anterior', 'inscricao_posterior', 'cpf', 'gemini_cpf', 'matricula', 'gemini_matricula', 'telefone_1', 'telefone_2', 'gemini_telefone']
-COLUNAS_INTEIRAS = ['periodo_atual', 'qtd_periodos']
+COLUNAS_INTEIRAS = ['periodo_no_semestre', 'periodo_atual', 'qtd_periodos']
 
 # Colunas que são SEMPRE texto, mesmo parecendo número. Inscrição, CPF, matrícula e
 # telefone são identificadores: ninguém soma dois CPFs, e tratá-los como número perde o
@@ -2484,8 +2485,8 @@ COLUNAS_ANALISE_IA = {
         'data_create', 'data_processamento', 'processado', 'processar', 'qtd_token',
         'qtd_disciplinas_matriculadas', 'qtd_disciplinas_reprovadas', 'perfil',
         'status_vinculo', 'situacao_motivo', 'observacao_situacao', 'email',
-        'telefone_1', 'telefone_2', 'data_nascimento', 'matricula', 'periodo_atual',
-        'qtd_periodos', 'modalidade_aluno', 'modalidade_ies'
+        'telefone_1', 'telefone_2', 'data_nascimento', 'matricula',
+        'periodo_no_semestre', 'periodo_atual', 'qtd_periodos', 'modalidade_aluno', 'modalidade_ies'
     ],
     'RIAF': [
         'status_ia', 'gemini_inconsistencia', 'semestre', 'bolsista', 'inscricao',
@@ -2509,8 +2510,8 @@ COLUNAS_ANALISE_IA = {
         'qtd_disciplinas_matriculadas', 'qtd_disciplinas_reprovadas', 'perfil',
         'status_vinculo', 'situacao_motivo', 'observacao_situacao', 'email',
         'gemini_email',
-        'telefone_1', 'telefone_2', 'data_nascimento', 'matricula', 'periodo_atual',
-        'qtd_periodos', 'modalidade_aluno', 'modalidade_ies'
+        'telefone_1', 'telefone_2', 'data_nascimento', 'matricula',
+        'periodo_no_semestre', 'periodo_atual', 'qtd_periodos', 'modalidade_aluno', 'modalidade_ies'
     ],
     'HISTÓRICO': [
         'status_ia', 'gemini_inconsistencia', 'semestre', 'bolsista', 'inscricao',
@@ -2523,8 +2524,8 @@ COLUNAS_ANALISE_IA = {
         'qtd_disciplinas_matriculadas', 'qtd_disciplinas_reprovadas', 'perfil',
         'status_vinculo', 'situacao_motivo', 'observacao_situacao',
         'situacao_motivo_atual', 'observacao_situacao_atual', 'email',
-        'telefone_1', 'telefone_2', 'data_nascimento', 'matricula', 'periodo_atual',
-        'qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies'
+        'telefone_1', 'telefone_2', 'data_nascimento', 'matricula',
+        'periodo_no_semestre', 'periodo_atual', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies'
     ],
 }
 

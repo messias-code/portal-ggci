@@ -127,7 +127,7 @@ COLUNAS_ABA_DOCUMENTO = [
     'data_processamento', 'processado', 'processar', 'qtd_token', 'qtd_disciplinas_matriculadas',
     'qtd_disciplinas_reprovadas', 'perfil', 'status_vinculo', 'situacao_motivo',
     'observacao_situacao', 'email', 'telefone_1', 'telefone_2', 'data_nascimento', 'matricula',
-    'periodo_atual', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies', 'documento_ausente',
+    'periodo_atual', 'periodo_no_semestre', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies', 'documento_ausente',
     'veredito_documento', 'motivos_divergencia'
 ]
 
@@ -921,6 +921,121 @@ def get_engine():
         )
     return _ENGINE_CACHE
 
+def resolver_periodos(df_merged):
+    """
+    O QUE FAZ: preenche `periodo_no_semestre` e troca `periodo_atual` pelo último período
+    que a IES informou. Recebe o `df_merged` de `buscar_dados_financeiros_sql`, ordenado
+    por aluno e semestre, e devolve outro DataFrame com as mesmas linhas.
+    """
+    # O PERÍODO **DAQUELE** SEMESTRE, que é outra pergunta que `periodo_atual`.
+    #
+    # `periodo_atual` é o que a IES DECLAROU na coleta amarrada ao semestre — e ela
+    # nem sempre declara. Há semestre sem coleta nenhuma e há semestre em que a IES
+    # repete o número do anterior sem atualizar. Quem responde pelo buraco é o
+    # DINHEIRO: cada semestre efetivamente pago é um semestre cursado, então a
+    # partir da última declaração o período anda +1 por semestre pago.
+    #
+    # SEMESTRE 100% DEVOLVIDO NÃO CONTA. `qtd_pagtos == qtd_pagtos_retroativos`
+    # significa que todo o repasse do semestre foi cancelado e devolvido (ver o
+    # comentário da query de `buscar_dados_financeiros_sql`, e note que o nome da
+    # coluna engana). O aluno não cursou aquele semestre na bolsa, e contá-lo
+    # empurraria o período para a frente sem que ninguém tivesse estudado.
+    #
+    # A DECLARAÇÃO GANHA DA PROJEÇÃO onde as duas existem, e não o contrário: a IES
+    # é quem sabe em que período o aluno está. A projeção só preenche o que ela
+    # deixou em branco — por isso a âncora é a declaração MAIS PRÓXIMA, e não a
+    # primeira. Contar pagamento desde o início da bolsa daria TEMPO DE BOLSA, não
+    # período: quem entra na OVG já no 4º período nunca chegaria ao fim da matriz.
+    #
+    # PARA TRÁS TAMBÉM (o `bfill` do par âncora): o semestre anterior à primeira
+    # declaração recebe o mesmo cálculo com sinal invertido. Sem isso ele cairia em
+    # "Sem período" por um campo que a IES só foi preencher depois.
+    #
+    # UMA CONTA POR ALUNO E SEMESTRE, não por linha. O SQL devolve duas ou três linhas
+    # para o mesmo semestre quando o aluno troca de bolsa ou de perfil nele, e em 242
+    # delas cada linha declara um período diferente. Contando por linha, o semestre
+    # duplicado andava o período duas vezes e o vizinho do `shift` era a linha gêmea;
+    # e qual das duas sobrevivia ao `drop_duplicates` do relatório mudava a cada
+    # execução.
+    chaves = ['uni_codigo', 'semestre']
+    pagos = pd.to_numeric(df_merged['qtd_pagtos'], errors='coerce').fillna(0)
+    devolvidos = pd.to_numeric(df_merged['qtd_pagtos_retroativos'], errors='coerce').fillna(0)
+    declarado_bruto = pd.to_numeric(df_merged['periodo_atual'], errors='coerce')
+    declarado_bruto = declarado_bruto.where(declarado_bruto > 0)
+    # Declaração acima do total do curso vira o total do curso, e não é descartada.
+    # Descartar apagava a âncora: a 2023018 declarou 12, 12 e 3 num curso de 10, e
+    # o 3 de 2026/1 era projetado para trás até virar "período 2" no semestre da
+    # formatura. Quem declara acima do total está no fim do curso. Um dígito errado
+    # isolado (a 2053340: 7, 10, 9 num curso de 9) vira 7, 9, 9, e o espremido
+    # logo abaixo corrige o do meio para 8.
+    declarado = declarado_bruto
+    if 'periodo_quantidade' in df_merged.columns:
+        qtd_periodos = pd.to_numeric(df_merged['periodo_quantidade'], errors='coerce')
+        qtd_periodos = qtd_periodos.where(qtd_periodos > 0)  # 0 = curso sem total cadastrado
+        declarado = declarado.clip(upper=qtd_periodos)
+
+    por_semestre = pd.DataFrame({
+        'uni_codigo': df_merged['uni_codigo'], 'semestre': df_merged['semestre'],
+        'cursou': (pagos > devolvidos).astype('int64'),
+        'declarado': declarado, 'declarado_bruto': declarado_bruto,
+    }).groupby(chaves, sort=True).agg(
+        cursou=('cursou', 'max'),
+        declarado=('declarado', 'max'),
+        versoes=('declarado', 'nunique'),
+        declarado_bruto=('declarado_bruto', 'max'),
+    ).reset_index()
+
+    # DUAS DECLARAÇÕES DIFERENTES NO MESMO SEMESTRE: nenhuma vale, e o semestre é
+    # projetado pelos vizinhos, como se a IES não tivesse declarado. Não dá para
+    # escolher uma: a 2138609 declarou 4 e 6 em 2025/1, com 4 em 2024/2 e 6 em
+    # 2025/2, e o certo é 5. A 2029310 declarou 6 e 7 em 2026/2, depois de 6 em
+    # 2026/1, e o certo é 7.
+    conflito = por_semestre['versoes'] > 1
+    por_semestre.loc[conflito, 'declarado'] = np.nan
+
+    agrupador = por_semestre['uni_codigo']
+    cursou_no_semestre = por_semestre['cursou']
+    semestres_cursados = cursou_no_semestre.groupby(agrupador).cumsum()
+    declarado = por_semestre['declarado']
+    cursados_na_declaracao = semestres_cursados.where(declarado.notna())
+    ancora = declarado.groupby(agrupador).ffill()
+    ancora = ancora.fillna(declarado.groupby(agrupador).bfill())
+    ancora_cursados = cursados_na_declaracao.groupby(agrupador).ffill()
+    ancora_cursados = ancora_cursados.fillna(cursados_na_declaracao.groupby(agrupador).bfill())
+
+    periodo_no_semestre = ancora + (semestres_cursados - ancora_cursados)
+    por_semestre['periodo_no_semestre'] = periodo_no_semestre.where(periodo_no_semestre > 0)
+
+    # SEMESTRE ESPREMIDO ENTRE VIZINHOS QUE O DESMENTEM. Anterior N, seguinte N+2 e os
+    # dois semestres pagos: o do meio só pode ser N+1, diga a IES o que disser. Aqui a
+    # declaração perde para a projeção. É um dígito errado (7 → 9 → 9 ou 6 → 6 → 8),
+    # não um aproveitamento de disciplinas, que continuaria subindo. Caso real: a 2053340
+    # declarou 7, 10 e 9 em 2025/1, 2025/2 e 2026/1; o certo em 2025/2 é 8. Medido em
+    # 24/09/2026: mexe em 693 semestres (0,61%). A regra ampla ("no máximo +1 por
+    # semestre") mexeria em 2.688, e em 95% deles a IES mantém o número alto depois.
+    anterior = por_semestre['periodo_no_semestre'].groupby(agrupador).shift(1)
+    seguinte = por_semestre['periodo_no_semestre'].groupby(agrupador).shift(-1)
+    cursou_o_seguinte = cursou_no_semestre.groupby(agrupador).shift(-1).fillna(0).astype(bool)
+    espremido = cursou_no_semestre.astype(bool) & cursou_o_seguinte & (seguinte - anterior == 2)
+    por_semestre.loc[espremido, 'periodo_no_semestre'] = anterior[espremido] + 1
+
+    # PERIODO ATUAL É O ÚLTIMO QUE A IES INFORMOU, o mesmo em toda a linha do tempo
+    # do aluno (é o que `views.py` já supunha dele). Vinha o declarado de cada
+    # semestre, e isso é o `periodo_no_semestre`: a 2069118 mostrava 7 em 2026/1 e 8
+    # em 2026/2, quando hoje ela está no 8. Vale o número como veio, sem o teto do
+    # curso, porque "Passou do limite" costuma ser verdade (ver a 2021171). Se o
+    # último semestre informado é um dos conflitantes, vale o período resolvido dele.
+    informado = por_semestre[por_semestre['declarado_bruto'].notna()]
+    ultimo = informado.groupby('uni_codigo').tail(1)
+    atual = ultimo['declarado_bruto'].where(ultimo['versoes'] <= 1, ultimo['periodo_no_semestre'])
+    atual = pd.Series(atual.values, index=ultimo['uni_codigo'].values)
+
+    df_merged = df_merged.merge(por_semestre[chaves + ['periodo_no_semestre']], on=chaves, how='left')
+    tem_atual = df_merged['uni_codigo'].isin(atual.index)
+    df_merged.loc[tem_atual, 'periodo_atual'] = df_merged.loc[tem_atual, 'uni_codigo'].map(atual)
+    return df_merged
+
+
 def buscar_dados_financeiros_sql(semestres_presentes, inscricoes=None):
     """
     O QUE FAZ: Busca a situação cadastral cruzando via Polars SQLContext no Parquet Local (Stateless Database).
@@ -992,7 +1107,9 @@ def buscar_dados_financeiros_sql(semestres_presentes, inscricoes=None):
             df_merged = pd.merge(df_skeleton, df_sql, on=['uni_codigo', 'semestre'], how='outer')
             # Sort by uni_codigo and semestre to ensure chronological order before ffill/bfill
             df_merged = df_merged.sort_values(by=['uni_codigo', 'semestre']).reset_index(drop=True)
-            
+
+            df_merged = resolver_periodos(df_merged)
+
             if 'tipo_bolsa_final' in df_merged.columns:
                 df_merged['tipo_bolsa_final'] = df_merged.groupby('uni_codigo')['tipo_bolsa_final'].ffill().bfill()
                 
@@ -1247,6 +1364,7 @@ def mesclar_sql_e_reordenar(df, df_sql, df_pag=None, df_mes_a_mes=None):
             'telefone_1': 'Telefone 1',
             'telefone_2': 'Telefone 2',
             'periodo_atual': 'Semestre atual',
+            'periodo_no_semestre': 'Período no semestre',
             'periodo_quantidade': 'Semestre quantidade',
             'matricula': 'Matricula',
             #  O CURSO DO PRÓPRIO SEMESTRE, e não o do último. `CUR_NOME` sempre esteve
@@ -4915,7 +5033,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                             ('matricula', 'Matricula'), ('modalidade_aluno', 'modalidade_aluno'), ('modalidade_ies', 'modalidade_ies'), 
                             ('email', 'E-mail'), ('telefone_1', 'Telefone 1'), ('telefone_2', 'Telefone 2'),
                             ('data_nascimento', 'Data nascimento'), ('periodo_atual', 'Semestre atual'),
-                            ('periodo_quantidade', 'Semestre quantidade')
+                            ('periodo_no_semestre', 'Período no semestre'), ('periodo_quantidade', 'Semestre quantidade')
                         ]:
                             if col_orig in row and pd.notna(row[col_orig]):
                                 novo_ausente[col_dest] = row[col_orig]
@@ -4975,7 +5093,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                                 ('matricula', 'Matricula'), ('modalidade_aluno', 'modalidade_aluno'), ('modalidade_ies', 'modalidade_ies'), 
                                 ('email', 'E-mail'), ('telefone_1', 'Telefone 1'), ('telefone_2', 'Telefone 2'),
                                 ('data_nascimento', 'Data nascimento'), ('periodo_atual', 'Semestre atual'),
-                                ('periodo_quantidade', 'Semestre quantidade')
+                                ('periodo_no_semestre', 'Período no semestre'), ('periodo_quantidade', 'Semestre quantidade')
                             ]:
                                 if col_orig in row and pd.notna(row[col_orig]):
                                     novo_ausente[col_dest] = row[col_orig]
@@ -5314,7 +5432,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             'Gemini Beneficio Nome', 'Gemini Valor Beneficio', 'Gemini Valor Financiado', 'Gemini Nome Financiamento',
             'Gemini Modalidade', 'Gemini Email', 'Gemini Telefone', 'Gemini Periodo', 'Gemini Quantidade Periodos',
             'Gemini Tipo Bolsa', 'Data nascimento', 'E-mail', 'Telefone 1', 'Telefone 2', 'Semestre atual',
-            'Semestre quantidade', 'Matricula', 'Ins. Cnpj', 'Ins. Nome Fantasia', 'Ins. Mantenedora',
+            'Período no semestre', 'Semestre quantidade', 'Matricula', 'Ins. Cnpj', 'Ins. Nome Fantasia', 'Ins. Mantenedora',
             'Modalidade Aluno', 'Modalidade IES', 'Matricula C/ Desconto', 'Matricula S/ Desconto', 'data_create', 'Processado',
             'Documento Ausente',
             'Veredito Documento',
@@ -5401,6 +5519,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             'Semestre': 'semestre',
             'Gemini Semestre': 'gemini_semestre',
             'Semestre atual': 'periodo_atual',
+            'Período no semestre': 'periodo_no_semestre',
             'Gemini Periodo': 'gemini_periodo',
             'Semestre quantidade': 'qtd_periodos',
             'Gemini Quantidade Periodos': 'gemini_qtd_periodos',
@@ -5543,7 +5662,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                 'processar', 'qtd_token', 'qtd_disciplinas_matriculadas', 'qtd_disciplinas_reprovadas', 
                 'perfil', 'status_vinculo', 'situacao_motivo', 'observacao_situacao', 'email', 
                 'gemini_email', 'telefone_1', 'telefone_2', 'data_nascimento', 'matricula', 
-                'periodo_atual', 'qtd_periodos', 'modalidade_aluno', 'modalidade_ies', 'documento_ausente', 'veredito_documento',
+                'periodo_atual', 'periodo_no_semestre', 'qtd_periodos', 'modalidade_aluno', 'modalidade_ies', 'documento_ausente', 'veredito_documento',
                 'motivos_divergencia'
             ]
             

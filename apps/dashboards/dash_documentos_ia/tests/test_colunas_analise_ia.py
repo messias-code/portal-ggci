@@ -66,7 +66,8 @@ COLUNAS_NO_PARQUET_RIAF = [
     'processar', 'qtd_token', 'qtd_disciplinas_matriculadas',
     'qtd_disciplinas_reprovadas', 'perfil', 'status_vinculo', 'situacao_motivo',
     'observacao_situacao', 'email', 'gemini_email', 'telefone_1', 'telefone_2',
-    'data_nascimento', 'matricula', 'periodo_atual', 'qtd_periodos', 'modalidade_aluno', 'modalidade_ies',
+    'data_nascimento', 'matricula', 'periodo_atual', 'periodo_no_semestre',
+    'qtd_periodos', 'modalidade_aluno', 'modalidade_ies',
     'documento_ausente', 'veredito_documento',
 ]
 
@@ -86,7 +87,8 @@ COLUNAS_NO_PARQUET_CONTRATO = [
     'processar', 'qtd_token', 'qtd_disciplinas_matriculadas',
     'qtd_disciplinas_reprovadas', 'perfil', 'status_vinculo', 'situacao_motivo',
     'observacao_situacao', 'email', 'telefone_1', 'telefone_2', 'data_nascimento',
-    'matricula', 'periodo_atual', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies',
+    'matricula', 'periodo_atual', 'periodo_no_semestre', 'qtd_periodos',
+    'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies',
     'documento_ausente', 'veredito_documento',
 ]
 
@@ -105,7 +107,8 @@ COLUNAS_NO_PARQUET_HISTORICO = [
     'qtd_disciplinas_reprovadas', 'perfil', 'status_vinculo', 'situacao_motivo',
     'observacao_situacao', 'situacao_motivo_atual', 'observacao_situacao_atual',
     'email', 'telefone_1', 'telefone_2', 'data_nascimento',
-    'matricula', 'periodo_atual', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies',
+    'matricula', 'periodo_atual', 'periodo_no_semestre', 'qtd_periodos',
+    'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies',
 ]
 
 
@@ -140,7 +143,8 @@ class TestRecorteDoRiaf(unittest.TestCase):
             'qtd_disciplinas_matriculadas', 'qtd_disciplinas_reprovadas', 'perfil',
             'status_vinculo', 'situacao_motivo', 'observacao_situacao', 'email',
             'gemini_email', 'telefone_1', 'telefone_2', 'data_nascimento', 'matricula',
-            'periodo_atual', 'qtd_periodos', 'modalidade_aluno', 'modalidade_ies',
+            'periodo_no_semestre', 'periodo_atual', 'qtd_periodos', 'modalidade_aluno',
+            'modalidade_ies',
         ])
 
     def test_toda_coluna_da_ia_do_riaf_esta_na_tela(self):
@@ -230,7 +234,7 @@ class TestNaoMisturaComOsOutrosDocumentos(unittest.TestCase):
 
         RENOMEIA DUAS, e só renomeia: `situacao_motivo` e `observacao_situacao` ganham o
         sufixo "no período" para não serem lidas como a situação de hoje, que chegou nas
-        duas colunas ao lado. Nenhuma das 46 fica pelo caminho.
+        duas colunas ao lado. Nenhuma das 47 fica pelo caminho.
         """
         saida = _formatar_colunas_analise_ia(
             aba_falsa(COLUNAS_NO_PARQUET_HISTORICO), 'HISTÓRICO')
@@ -241,8 +245,11 @@ class TestNaoMisturaComOsOutrosDocumentos(unittest.TestCase):
         self.assertEqual(ordem[13:18],
                          ['mudou_ies', 'ies_anterior', 'ies_posterior', 'faculdade',
                           'curso'])
-        self.assertEqual(ordem[-3:],
-                         ['qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies'])
+        #  Quatro nomes, quatro posições: a lista cresceu de três para quatro com as
+        #  duas de modalidade e o recorte ficou para trás.
+        self.assertEqual(ordem[-4:],
+                         ['qtd_periodos', 'gemini_concluiu_curso',
+                          'modalidade_aluno', 'modalidade_ies'])
         #  AS QUATRO EM SEQUÊNCIA: a do período e a de hoje, lado a lado, que é o
         #  contraste que a tela existe para mostrar.
         i = ordem.index('situacao_motivo_no_periodo')
