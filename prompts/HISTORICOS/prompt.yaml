@@ -47,7 +47,11 @@ contexto: |
   
   REGRA CRONOLOGICA DE CONCLUSAO (TRAVA DO SEMESTRE AUDITADO): 
   Se o documento possui data de conclusao, colacao ou diploma (VAR_A, VAR_B, VAR_C), mas essa data e de um semestre/ano POSTERIOR ao semestre que esta sendo auditado (Input), isso significa que o aluno ainda nao era formado naquele semestre. Portanto, voce DEVE avaliar VAR_A, VAR_B e VAR_C como "Nao" para fins da arvore de decisao. (Exemplo: Input = 2025-2, mas colacao foi em 2026. Entao VAR_A = Nao).
-  
+
+  REGRA DOS SEMESTRES POSTERIORES (TRAVA ABSOLUTA DE CONCLUSAO):
+  A pergunta de conclusao e SEMPRE "o aluno concluiu o curso NO semestre auditado (Input)?", e NUNCA "o aluno concluiu o curso algum dia?". O historico costuma ser emitido depois do semestre auditado e pode trazer semestres seguintes ate a formatura. Se o documento mostrar QUALQUER disciplina (aprovada, reprovada, cursando ou matriculada) em um semestre POSTERIOR ao semestre auditado, o aluno ainda tinha curso a cumprir depois dele e, portanto, NAO concluiu no semestre auditado. Neste caso concluiu_curso = 'não', OBRIGATORIAMENTE, mesmo que o documento traga colacao, diploma, conclusao, carga horaria integralizada ou situacao 'Concluido'/'Formado'. Esses indicadores descrevem o fim do curso, que aconteceu depois do semestre auditado. (Exemplo: Input = 2025-2; o documento mostra disciplinas em 2025/2 e em 2026/1 e colacao em 2026. Entao concluiu_curso = 'não'. Se o Input fosse 2026-1, o ultimo semestre cursado, a resposta seria 'sim'.)
+  Esta trava vale somente para concluiu_curso. Ela NAO invalida o semestre esperado (ver Mentalidade 4) e NAO gera inconsistencia por si so.
+
   REGRA: Documente o resultado de CADA variavel no campo raciocinio_diagnostico. Nao pule nenhuma.
 
   ---
@@ -269,6 +273,7 @@ logica_de_campo:
   6_concluiu_curso:
     tipo: OBRIGATORIO
     regra: 'Execute OBRIGATORIAMENTE os Subpassos 4.1 (extracao de variaveis) e 4.2 (arvore de decisao de 10 cenarios). Identifique o cenario aplicavel e retorne "sim" ou "não" conforme o veredito do cenario.'
+    trava_semestre_auditado: 'Antes de responder "sim", confirme que o semestre auditado e o ULTIMO semestre com disciplinas no documento. Se houver disciplinas em semestre posterior ao auditado, responda "não" (Regra dos Semestres Posteriores, Subpasso 4.1).'
 
 # CATALOGO DE INCONSISTENCIAS (Copie a frase EXATA)
 catalogo_erros:
@@ -358,3 +363,12 @@ exemplos_saida:
     concluiu_curso: 'não'
     inconsistencias: { conteudo: 'Tipo de Documento inválido', valido: 0 }
     status: { conteudo: 'invalido', valido: 0 }
+  aluno_formado_depois_do_semestre_auditado_cenario_2:
+    raciocinio_diagnostico: "PASSO 1: MENTALIDADE DE IDENTIDADE. CPF '22233344455' localizado. Correspondencia exata.\nPASSO 2: MENTALIDADE DE CURSO. Sistema espera 'BIOMEDICINA'. Documento aponta 'Bacharelado em Biomedicina'. Nucleo: 'BIOMEDICINA'. Equivalencia validada.\nPASSO 3: MENTALIDADE CRONOLOGICA. Sistema espera 2025-2. Documento possui disciplinas aprovadas em 2025/2 e tambem em 2026/1. Semestre 2025-2 localizado e valido (semestre posterior nao invalida o esperado).\nPASSO 4: MENTALIDADE DE SITUACAO E CONCLUSAO.\n  Subpasso 4.1 - Extracao de Variaveis Probatorias:\n    Regra dos Semestres Posteriores: o documento mostra disciplinas em 2026/1, POSTERIOR ao semestre auditado 2025-2. O aluno ainda tinha curso a cumprir depois de 2025-2.\n    VAR_A (Data Colacao): Nao - colacao em 03/2026, posterior ao semestre auditado (Trava do Semestre Auditado)\n    VAR_B (Data Diploma): Nao\n    VAR_C (Data Conclusao): Nao - conclusao em 07/2026, posterior ao semestre auditado\n    VAR_D (CHE): Sim - 3.600h\n    VAR_E (CHC): Sim - 3.600h (inclui as disciplinas de 2026/1)\n    VAR_F (Materias a cursar): Sim - disciplinas de 2026/1, ainda nao cursadas em 2025-2\n    VAR_G (100% integralizacao): Nao\n    VAR_H (Situacao/Status): Sim - 'Concluído'\n    VAR_I (Pendencias ENADE/TCC/Estagio): Nao\n  Subpasso 4.2 - Arvore de Decisao:\n    Bloco A - Cenario 1: Nao se aplica (as datas de finalizacao sao posteriores ao semestre auditado, logo VAR_A, VAR_B e VAR_C = Nao).\n    Cenario 2 corresponde: CHC (3.600h) >= CHE (3.600h) E materias a cursar (VAR_F = Sim, disciplinas de 2026/1). A formatura existe, mas aconteceu depois de 2025-2.\n    Cenario Aplicado: 2.\n    Veredito: concluiu_curso = 'não'. (Se o Input fosse 2026-1, o ultimo semestre com disciplinas, a resposta seria 'sim'.)\n  Subpasso 4.3 - Validacao de Situacao:\n    Documento indica 'Concluído', situacao emitida apos a formatura. Em 2025-2 o aluno cursava disciplinas (= Ativo). Sistema espera 'Ativo'. Equivalencia validada.\nPASSO 5: MENTALIDADE DE DIAGNOSTICO. Nenhuma inconsistencia de validacao entre sistema e documento."
+    cpf: { conteudo: '22233344455', valido: 1 }
+    curso: { conteudo: 'BIOMEDICINA', valido: 1 }
+    semestre: { conteudo: '2025-2', valido: 1 }
+    situacao: { conteudo: 'Ativo', valido: 1 }
+    concluiu_curso: 'não'
+    inconsistencias: { conteudo: 'Sem inconsistências', valido: 1 }
+    status: { conteudo: 'valido', valido: 1 }

@@ -159,6 +159,7 @@ CATALOGO_MOTIVOS = {
     'semestre_diverge':      {'PADRAO': 'Semestre diverge com sistema'},
     'curso_ausente':         {'PADRAO': 'Curso não localizado no documento'},
     'curso_diverge':         {'PADRAO': 'Curso diverge do sistema'},
+    'concluiu_antes_do_fim': {'PADRAO': 'Situação acadêmica do documento diverge da esperada pelo sistema'},
     'msd_ausente':           {'PADRAO': 'Valor da mensalidade sem desconto não localizado no documento'},
     'msd_menor':             {'PADRAO': 'Valor da mensalidade sem desconto é MENOR que o esperado no documento'},
     'msd_maior':             {'PADRAO': 'Valor da mensalidade sem desconto é MAIOR que o esperado no documento'},
@@ -2639,7 +2640,19 @@ def calcular_auditoria_ia(df):
     documento_traz_curso = is_historico | doc_tipo.str.contains('RIAF', case=False, na=False)
     curso_invalido = documento_traz_curso & ((ia_curso == '') | (sys_curso != ia_curso))
 
-    matematica_invalida_geral = (ia_cpf == '') | (sys_cpf != ia_cpf) | (ia_semestre == '') | (sys_semestre != ia_semestre) | curso_invalido
+    # FORMOU CEDO DEMAIS — só Histórico. A IA diz que o aluno concluiu o curso, mas no
+    # semestre auditado ele ainda não estava no último período. O histórico é enviado
+    # depois do semestre e costuma trazer os semestres seguintes até a formatura: a
+    # 2053340 mandou, para 2025/2, um histórico que cursa 2025/2 e 2026/1 e só então
+    # cola grau. A IA leu a formatura e respondeu "Sim" para 2025/2, no período 8 de 9.
+    # A coluna `Gemini Concluiu Curso` continua com o que a IA disse. O erro é dela, e
+    # quem explica a divergência é o motivo.
+    periodo_no_semestre = pd.to_numeric(df.get('Período no semestre', pd.Series([np.nan]*len(df), index=df.index)), errors='coerce')
+    periodos_do_curso = pd.to_numeric(df.get('Semestre quantidade', pd.Series([np.nan]*len(df), index=df.index)), errors='coerce')
+    ia_concluiu_curso = df.get('Gemini Concluiu Curso', pd.Series(['']*len(df), index=df.index)).astype(object).fillna('').astype(str).str.strip().str.upper() == 'SIM'
+    concluiu_antes_do_fim = is_historico & ia_concluiu_curso & (periodo_no_semestre < periodos_do_curso)
+
+    matematica_invalida_geral = (ia_cpf == '') | (sys_cpf != ia_cpf) | (ia_semestre == '') | (sys_semestre != ia_semestre) | curso_invalido | concluiu_antes_do_fim
     matematica_invalida_financeiro = (inc_original.str.contains('Valor da mensalidade integral não localizado', na=False)) | (dif_s != 0)
 
     is_riaf = doc_tipo.str.contains('RIAF', case=False, na=False)
@@ -2787,6 +2800,7 @@ def calcular_auditoria_ia(df):
         ((ia_semestre != '') & (sys_semestre != ia_semestre), 'semestre_diverge'),
         (documento_traz_curso & (ia_curso == ''), 'curso_ausente'),
         (documento_traz_curso & (ia_curso != '') & (sys_curso != ia_curso), 'curso_diverge'),
+        (concluiu_antes_do_fim, 'concluiu_antes_do_fim'),
         (is_riaf & assinatura_aluno_ausente, 'assinatura_aluno'),
         (is_riaf & assinatura_ies_ausente, 'assinatura_ies'),
         #  A IA apontou assinatura na frase sem dizer de quem, e os dois campos vieram

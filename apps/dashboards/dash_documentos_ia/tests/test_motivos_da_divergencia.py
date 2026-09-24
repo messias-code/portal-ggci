@@ -229,6 +229,30 @@ class MotivosDaDivergenciaTests(SimpleTestCase):
         self.assertEqual(status, ['Válido'])
         self.assertEqual(motivos, [''])
 
+    def test_historico_que_forma_antes_do_ultimo_periodo_e_falso_valido(self):
+        """
+        A 2053340 em 2025-2: período 8 de 9 e a IA disse que concluiu, porque o histórico
+        trazia 2026-1 e a formatura logo depois. No último período a formatura é legítima,
+        e sem período conhecido não há como acusar.
+        """
+        motivos, status = self._motivos(
+            documento=ggci.DOC_HISTORICO,
+            Inscrição=[2053340, 2200011, 2200012, 2200013],
+            **{'Período no semestre': [8, 9, None, 8],
+               'Semestre quantidade': [9, 9, 9, 9],
+               'Gemini Concluiu Curso': ['Sim', 'Sim', 'Sim', 'Não']},
+        )
+        self.assertEqual(status, ['Falso Válido', 'Válido', 'Válido', 'Válido'])
+        self.assertEqual(motivos[0], 'Situação acadêmica do documento diverge da esperada pelo sistema')
+
+    def test_formou_cedo_so_vale_para_historico(self):
+        """O contrato não responde se o aluno concluiu; a coluna ali é resto de outro documento."""
+        _, status = self._motivos(
+            Inscrição=[2200014],
+            **{'Período no semestre': [3], 'Semestre quantidade': [9], 'Gemini Concluiu Curso': ['Sim']},
+        )
+        self.assertEqual(status, ['Válido'])
+
     def test_documento_nao_lido_nao_ganha_motivo(self):
         """
         Não processado, ausente e corrompido não passaram por auditoria de conteúdo. Listar
