@@ -3643,6 +3643,14 @@ document.addEventListener('turbo:load', () => {
              * O QUE FAZ: Move a barra em direção ao progresso real, em vez de saltar.
              * POR QUÊ EXISTE: o backend reporta em degraus largos (2% → 15% → 25%…),
              * e a barra pulando dá a impressão de travamento entre um degrau e outro.
+             *
+             * A BARRA NUNCA PASSA DO QUE O SERVIDOR DISSE. Havia aqui um "movimento
+             * perpétuo" de 0,03 a cada 40ms — 0,75% por segundo, andando mesmo com o
+             * servidor parado. Sem os Parquets do dia, o SQL leva minutos com o servidor
+             * reportando 2%, e a barra chegava sozinha a 99% em pouco mais de dois minutos
+             * e ficava lá até o fim. O servidor agora reporta o andamento de cada etapa
+             * (tabelas do SQL, arquivos do ScriptCase), então a animação só suaviza o
+             * caminho até o valor real.
              */
             function animarProgresso() {
                 if (animProgresso) return;
@@ -3651,20 +3659,11 @@ document.addEventListener('turbo:load', () => {
                         if (progressoAlvo === 100) {
                             // Se terminou, preenche o restante rapidamente
                             progressoExibido = Math.min(progressoExibido + 2.0, 100);
-                        } else {
-                            // Base constante para não travar (movimento perpétuo e suave)
-                            let incremento = 0.03; 
-                            
-                            // Se o servidor mandou um progresso maior, acelera suavemente para alcançá-lo
-                            if (progressoAlvo > progressoExibido) {
-                                let velAlcance = (progressoAlvo - progressoExibido) / 60;
-                                // Limita a velocidade máxima para evitar "saltos" visuais
-                                incremento = Math.max(0.03, Math.min(velAlcance, 0.15));
-                            }
-                            
-                            progressoExibido += incremento;
-                            // Previne que ultrapasse 99% artificialmente antes do servidor finalizar
-                            if (progressoExibido > 99) progressoExibido = 99;
+                        } else if (progressoAlvo > progressoExibido) {
+                            // Acelera suavemente para alcançar o servidor, sem "saltos" visuais
+                            const velAlcance = (progressoAlvo - progressoExibido) / 60;
+                            const incremento = Math.max(0.03, Math.min(velAlcance, 0.15));
+                            progressoExibido = Math.min(progressoExibido + incremento, progressoAlvo, 99);
                         }
                     } else if (progressoExibido >= 100) {
                         clearInterval(animProgresso);
@@ -3814,7 +3813,13 @@ document.addEventListener('turbo:load', () => {
                 });
             }
 
+            /*  Um 502 isolado do túnel (24/09) derrubava o acompanhamento no meio de
+                um motor de 10 minutos. Só desistimos depois de ~1 minuto seguido sem
+                resposta; antes disso o próximo ciclo simplesmente tenta de novo. */
+            const FALHAS_ATE_DESISTIR = 30;
+
             function acompanhar(processoId) {
+                let falhasSeguidas = 0;
                 pollConsole = setInterval(() => {
                     fetch(`/dashboards/documentos-ia/api/status/${processoId}/`)
                         .then((r) => {
@@ -3822,6 +3827,7 @@ document.addEventListener('turbo:load', () => {
                             return r.json();
                         })
                         .then((data) => {
+                            falhasSeguidas = 0;
                             if (consoleStatus) consoleStatus.innerText = ROTULO_STATUS[data.status] || data.status;
                             progressoAlvo = Math.max(progressoAlvo, data.progresso || 0);
 
@@ -3859,6 +3865,12 @@ document.addEventListener('turbo:load', () => {
                             }
                         })
                         .catch((erro) => {
+                            if (!pollConsole) return;  // já encerrado por outra resposta
+                            falhasSeguidas += 1;
+                            if (falhasSeguidas < FALHAS_ATE_DESISTIR) {
+                                if (consoleStatus) consoleStatus.innerText = 'Reconectando…';
+                                return;
+                            }
                             encerrarAcompanhamento();
                                 sessionStorage.removeItem('__processo_id_docia');
                                 window.__processo_id_docia = null;

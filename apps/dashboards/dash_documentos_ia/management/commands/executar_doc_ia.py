@@ -136,7 +136,15 @@ MAX_PASTAS_PROCESSAMENTO = 2
 # Agora a extração ocupa a faixa 4→78 e caminha por CONTAGEM DE ARQUIVOS
 # (`[EXTRACAO_PROGRESSO] n/total`, emitido pelo extrator), que é andamento real. Os
 # marcos abaixo cobrem o resto, distribuídos pelo peso medido de cada bloco do GGCI.
-FAIXA_EXTRACAO = (4, 78)
+#
+# A "extração" daquela medição ESCONDIA O SQL. Com timestamp (cron de 24/09/2026), os
+# 882s eram 688s de ETL das tabelas `PY_ggci_*` e 48s de ScriptCase, mais 4,5 min de
+# retentativas de duas tarefas. O ETL não emitia marcador nenhum, então a barra ficava
+# em 2% por 11 minutos. Ele agora tem faixa própria e anda por CONTAGEM DE TABELAS
+# (`[ETL_PROGRESSO] n/total`). Com o Parquet do dia em disco as tabelas são puladas e
+# a faixa inteira passa num instante — o que também é andamento real.
+FAIXA_ETL = (3, 35)
+FAIXA_EXTRACAO = (35, 78)
 
 def _teto_da_etapa(progresso):
     """
@@ -148,7 +156,7 @@ def _teto_da_etapa(progresso):
     modo que a barra caminhe DENTRO da etapa e só a cruze quando o log disser que
     cruzou.
     """
-    degraus = (FAIXA_EXTRACAO[0], FAIXA_EXTRACAO[1], 82, 92, 99)
+    degraus = (FAIXA_ETL[0], FAIXA_ETL[1], FAIXA_EXTRACAO[1], 82, 92, 99)
     for degrau in degraus:
         if progresso < degrau:
             return degrau - 1
@@ -163,15 +171,25 @@ def _progresso_da_extracao(texto):
         movimento que ela fizesse ali seria invenção.
     RETORNO: o percentual dentro de `FAIXA_EXTRACAO`, ou None se não houver marcador.
     """
+    return _andamento_do_marcador(texto, "EXTRACAO_PROGRESSO", FAIXA_EXTRACAO)
+
+
+def _progresso_do_etl(texto):
+    """Mesmo contrato de `_progresso_da_extracao`, para `[ETL_PROGRESSO] n/total`."""
+    return _andamento_do_marcador(texto, "ETL_PROGRESSO", FAIXA_ETL)
+
+
+def _andamento_do_marcador(texto, marcador, faixa):
+    """Último `[<marcador>] n/total` do texto, projetado na faixa; None sem marcador."""
     import re
 
     ultimo = None
-    for feitos, total in re.findall(r"\[EXTRACAO_PROGRESSO\]\s*(\d+)/(\d+)", texto):
+    for feitos, total in re.findall(r"\[" + marcador + r"\]\s*(\d+)/(\d+)", texto):
         ultimo = (int(feitos), int(total))
     if not ultimo or ultimo[1] <= 0:
         return None
 
-    inicio, fim = FAIXA_EXTRACAO
+    inicio, fim = faixa
     return int(inicio + (fim - inicio) * min(ultimo[0] / ultimo[1], 1.0))
 
 
@@ -224,7 +242,8 @@ class LogCapture:
 
     def _detectar_bloco(self, msg):
         blocos = [
-            ("processamento massivo",   "EXTRAÇÃO"),
+            ("processamento massivo",   "ETL_SQL"),
+            ("Baixando planilhas do ScriptCase", "EXTRAÇÃO"),
             ("Consolidando e limpando", "CONSOLIDAÇÃO"),
             ("Analisando regras",       "GGCI_INICIO"),
             ("IDENTIFICAR   | AUSENTES","GGCI_PENDENCIAS"),
@@ -239,10 +258,11 @@ class LogCapture:
             ("SALVANDO      | ARQUIV",  "GGCI_SAVE"),
             ("Regras aplicadas:",       "GGCI_FIM"),
         ]
-        for trigger, nome_bloco in blocos:
-            if trigger in msg:
-                return nome_bloco
-        return None
+        # O buffer junta tudo desde o último flush: com o SQL em cache, a abertura do
+        # ETL e a do ScriptCase caem no mesmo trecho. Vale a etapa que aparece por
+        # ÚLTIMO — a primeira da lista rotulava o ScriptCase inteiro como ETL_SQL.
+        achados = [(msg.rfind(trigger), nome_bloco) for trigger, nome_bloco in blocos if trigger in msg]
+        return max(achados)[1] if achados else None
 
     def _registrar_timing(self, novo_bloco):
         agora = time.time()
@@ -302,6 +322,9 @@ class LogCapture:
                 # Andamento REAL da extração, que é 90% do tempo do ciclo: o extrator
                 # emite `[EXTRACAO_PROGRESSO] n/total` a cada arquivo concluído.
                 medido = _progresso_da_extracao(msg_str)
+                if medido is not None:
+                    novo_progresso = max(novo_progresso, medido)
+                medido = _progresso_do_etl(msg_str)
                 if medido is not None:
                     novo_progresso = max(novo_progresso, medido)
                 

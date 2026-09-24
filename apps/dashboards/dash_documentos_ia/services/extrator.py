@@ -50,6 +50,9 @@ SUFIXO_TABELAS = f"{SUFIXO_APP}{env_suffix}"
 # MAS: Adicionada trava inteligente de exportação (export_lock) para evitar ataque de negação de serviço (DDoS) no Scriptcase
 export_lock = threading.Semaphore(3)
 
+# Quantas tabelas `PY_ggci_*` materializar ao mesmo tempo no SIBU (ver `atualizar_cache_parquets`).
+ETL_PARALELO = 4
+
 # ==========================================
 # 1. CONFIGURAÇÕES GERAIS DE EXTRAÇÃO
 # ==========================================
@@ -768,8 +771,8 @@ def atualizar_cache_parquets(docs_selecionados=None):
         for nome, sql, categorias in mapa_tabelas:
             if not docs_selecionados or "TODOS" in categorias or any(c in docs_selecionados for c in categorias):
                 tabelas_pendentes.append((nome, sql))
-        
-        for nome_tabela, caminho_sql in tabelas_pendentes:
+
+        def materializar(nome_tabela, caminho_sql):
             caminho_parquet = os.path.join(pasta_parquets, f"{nome_tabela}.parquet")
             caminho_lock = os.path.join(pasta_parquets, f".lock_{nome_tabela}")
             
@@ -807,15 +810,15 @@ def atualizar_cache_parquets(docs_selecionados=None):
                     break
             
             if cache_valido:
-                continue
-                
+                return
+
             # Adquire Lock
             try:
                 with open(caminho_lock, "w") as f_lock:
                     f_lock.write(str(time.time()))
             except Exception as e:
                 print(f"⚠️ Erro ao criar lock para {nome_tabela}: {e}")
-                continue
+                return
                 
             print(f"[EXTRATOR   | INFO          | BD SIBU    ] Executando ETL para Tabela {nome_tabela}...")
             try:
@@ -864,6 +867,30 @@ def atualizar_cache_parquets(docs_selecionados=None):
                         os.remove(caminho_lock)
                 except OSError:
                     pass
+
+        # AS TABELAS RODAM EM PARALELO, e esta é a maior economia do ciclo. Medido em
+        # 24/09/2026, sem Parquet do dia: as 16 consultas em fila levavam 10,5 a 11,5 min —
+        # 70% da atualização inteira —, enquanto o ScriptCase baixava 32 de 34 arquivos em
+        # 48s. Cada consulta cria e lê a PRÓPRIA tabela a partir das tabelas-base do SIBU,
+        # e nenhuma lê a tabela de outra, então a ordem não muda nada no resultado.
+        #
+        # QUATRO, E NÃO DEZESSEIS: o tempo é dominado por seis consultas de 1 a 3 min
+        # (beneficiários, pagamentos e quatro de pendentes), e quatro vagas já cabem o
+        # caminho crítico. Mais que isso só divide o mesmo servidor em mais pedaços — e o
+        # `read_timeout` de 300s vale por consulta: a mais lenta (pendentes de contrato,
+        # 177s sozinha) não pode ficar lenta a ponto de estourar por disputa.
+        #
+        # `as_completed` dá o andamento REAL: o marcador é lido por `executar_doc_ia` para
+        # mover a barra. Sem ele a tela ficava em 2% durante os 11 minutos de SQL.
+        total_tabelas = len(tabelas_pendentes)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=ETL_PARALELO) as executor_sql:
+            futuros = [executor_sql.submit(materializar, nome, sql) for nome, sql in tabelas_pendentes]
+            for concluidas, futuro in enumerate(concurrent.futures.as_completed(futuros), start=1):
+                try:
+                    futuro.result()
+                except Exception as e:
+                    print(f"⚠️ Erro não tratado no ETL de uma tabela: {e}")
+                print(f"[ETL_PROGRESSO] {concluidas}/{total_tabelas}")
 
     except Exception as e:
         print(f"⚠️ Erro grave no Cache Manager (Parquet): {e}")
@@ -998,6 +1025,10 @@ def executar(docs_selecionados=None, periodos_por_doc=None, processo_id=None, in
     if arquivos_estimados == 0:
         print(f"⚠️ EXTRAÇÃO VAZIA: Nenhum arquivo corresponde aos filtros (Bloqueio por Regras).")
         return 0
+
+    # Marco de início da fase do ScriptCase. Sem ele o "Timing por bloco" somava os
+    # minutos de SQL à EXTRAÇÃO, e a conta apontava o gargalo para o lugar errado.
+    print(f"🌐 Baixando planilhas do ScriptCase ({arquivos_estimados * len(tarefas_menus)} tarefas)...")
 
     # Inicialização assíncrona usando um ÚNICO pool global
     # Mantido max_workers=8 a pedido do usuário
