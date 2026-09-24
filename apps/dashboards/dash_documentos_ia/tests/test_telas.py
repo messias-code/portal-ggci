@@ -466,9 +466,14 @@ class TestApiDeAcompanhamento(BaseTelas):
         )
 
     def test_parar_marca_falha(self):
-        self.cliente.post(reverse("dash_documentos_ia_parar", args=[self.processo.id]))
+        # O `os.system` é simulado: de verdade, ele roda `pkill` na máquina. Em 24/09/2026
+        # esta suíte matou uma atualização real e todos os Chromium do servidor.
+        with patch("apps.dashboards.dash_documentos_ia.views.os.system") as sistema:
+            self.cliente.post(reverse("dash_documentos_ia_parar", args=[self.processo.id]))
         self.processo.refresh_from_db()
         self.assertEqual(self.processo.status, "FALHA")
+        # Âncora no fim: parar o 18 não pode casar com o 181.
+        self.assertIn(f"executar_doc_ia {self.processo.id}$'", sistema.call_args_list[0].args[0])
 
     def test_parar_processo_inexistente_nao_estoura(self):
         resposta = self.cliente.post(reverse("dash_documentos_ia_parar", args=[999999]))

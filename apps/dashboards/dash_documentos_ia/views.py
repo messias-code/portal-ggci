@@ -379,7 +379,11 @@ def parar_atualizacao_docia(request, processo_id):
     processo.save()
 
     try:
-        os.system(f"pkill -f 'executar_doc_ia {processo_id}'")
+        # O `$` é o que faz o alvo ser ESTE processo. O `pkill -f` casa por trecho da
+        # linha de comando, então sem âncora parar o 18 também matava o 181 e o 1810. Foi
+        # assim que, em 24/09/2026, a suíte de testes (processo de teste com id pequeno)
+        # derrubou a execução 181 no meio, deixando-a EXTRAINDO no banco para sempre.
+        os.system(f"pkill -f 'executar_doc_ia {processo_id}$'")
         os.system("pkill -f chromium")
         os.system("pkill -f playwright")
     except Exception:
