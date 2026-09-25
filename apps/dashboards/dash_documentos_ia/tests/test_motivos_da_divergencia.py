@@ -168,16 +168,43 @@ class MotivosDaDivergenciaTests(SimpleTestCase):
         self.assertEqual(status, ['Válido'])
         self.assertEqual(motivos, [''])
 
-    # --- falso inválido: a lista é da IA ------------------------------------------
+    # --- falso inválido: a frase que a IA deveria ter escrito ---------------------
 
-    def test_falso_invalido_lista_o_que_a_ia_apontou(self):
+    def test_falso_invalido_do_historico_diz_que_o_correto_era_sem_inconsistencias(self):
         """
-        A IA reprovou um documento que o sistema confere. Não há divergência NOSSA a
-        listar — se houvesse, o veredito seria `Inválido`. O que o balão mostra são as
-        frases da própria IA, que são o que precisa ser revisto no prompt.
+        A IA reprovou por uma situação esperada que nunca veio no input. O Histórico tem
+        todo o catálogo conferido pela matemática, então a frase certa é conhecida — e
+        repetir a da IA só copiaria a coluna ao lado.
         """
         motivos, status = self._motivos(
+            documento=ggci.DOC_HISTORICO,
             Inscrição=[2200011],
+            **{'Status_IA': ['Inválido'],
+               'Gemini Inconsistencias': ['Situação acadêmica do documento diverge da esperada pelo sistema']},
+        )
+        self.assertEqual(status, ['Falso Inválido'])
+        self.assertEqual(motivos, ["O Correto Seria: 'Sem inconsistências'"])
+
+    def test_falso_invalido_do_contrato_aponta_o_desconto_que_divergia(self):
+        """No contrato sobra o desconto, que não invalida: o certo é a frase dele, pelo valor lido."""
+        motivos, status = self._motivos(
+            Inscrição=[2200012],
+            **{'Status_IA': ['Inválido'],
+               'Gemini Inconsistencias': ['Mensalidade integral no contrato é maior que o esperado'],
+               'Gemini Mensalidade C/ Desconto': [400.0]},
+        )
+        self.assertEqual(status, ['Falso Inválido'])
+        self.assertEqual(motivos, ["O Correto Seria: 'Valor da mensalidade com desconto é MENOR"
+                                   " que o esperado no documento'"])
+
+    def test_falso_invalido_do_riaf_lista_o_que_a_ia_apontou(self):
+        """
+        O catálogo do RIAF cobra campos que a matemática não confere (nome, mantenedora,
+        CNPJ). Sem como afirmar a frase certa, o balão mostra a da IA para revisão.
+        """
+        motivos, status = self._motivos(
+            documento=ggci.DOC_RIAF,
+            Inscrição=[2200015],
             **{'Status_IA': ['Inválido'],
                'Gemini Inconsistencias': ['Nome do aluno diverge do sistema,'
                                           ' Mantenedora da IES diverge do sistema']},
@@ -186,17 +213,18 @@ class MotivosDaDivergenciaTests(SimpleTestCase):
         self.assertEqual(motivos, ['Nome do aluno diverge do sistema'
                                    ' | Mantenedora da IES diverge do sistema'])
 
-    def test_falso_invalido_sem_frase_nao_inventa_lista(self):
+    def test_documento_ilegivel_e_invalido_e_nunca_falso_invalido(self):
         """
-        `Inválido` com "Sem inconsistências" é a IA se contradizendo no veredito, e não
-        uma lista vazia a exibir — repetir a frase como se fosse motivo diria ao operador
-        que o documento foi reprovado por não ter problema nenhum.
+        A 2071813 em 2025-2: CPF e curso preenchidos, mas a IA disse que não conseguiu
+        ler. Não há o que auditar — é `Inválido`, com IA e matemática de acordo.
         """
         motivos, status = self._motivos(
-            Inscrição=[2200012],
-            **{'Status_IA': ['Inválido'], 'Gemini Inconsistencias': ['Sem inconsistências']},
+            documento=ggci.DOC_HISTORICO,
+            Inscrição=[2071813],
+            **{'Status_IA': ['Inválido'],
+               'Gemini Inconsistencias': ['Documento ilegível ou sem informações curriculares suficientes']},
         )
-        self.assertEqual(status, ['Falso Inválido'])
+        self.assertEqual(status, ['Inválido'])
         self.assertEqual(motivos, [''])
 
     # --- a frase segue o documento ------------------------------------------------

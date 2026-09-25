@@ -624,8 +624,12 @@
                 acusaria a IES de um problema que é nosso, de prompt.  */
             const eCatalogacao = alvo.classList.contains('docia-flag--erro-na-inconsistencia');
             const eFalsoInvalido = alvo.classList.contains('docia-flag--falso-invalido');
+            //  O motor manda a frase certa ("O Correto Seria: ...") no Histórico e no
+            //  Contrato; no RIAF manda o que a IA apontou, por falta de como conferir.
+            const trazOCorreto = razoes.every((frase) => frase.startsWith('O Correto Seria'));
             const titulo = '<div class="docia-balao-motivos__titulo">'
                 + (eCatalogacao ? 'O que a IA apontou, e o correto'
+                    : eFalsoInvalido && trazOCorreto ? 'O que a IA deveria ter apontado'
                     : eFalsoInvalido ? 'Apontado pela IA, não confirmado pelo sistema'
                     : (razoes.length > 1 ? 'Motivos da divergência' : 'Motivo da divergência'))
                 + '</div>';

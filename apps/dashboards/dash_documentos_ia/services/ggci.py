@@ -159,7 +159,10 @@ CATALOGO_MOTIVOS = {
     'semestre_diverge':      {'PADRAO': 'Semestre diverge com sistema'},
     'curso_ausente':         {'PADRAO': 'Curso não localizado no documento'},
     'curso_diverge':         {'PADRAO': 'Curso diverge do sistema'},
+    #  Frase que saiu do catálogo do Histórico em 24/09/2026 (a IA a usava contra uma
+    #  situação esperada que nunca vinha no input). Aqui ela segue: é o nosso motivo, não o dela.
     'concluiu_antes_do_fim': {'PADRAO': 'Situação acadêmica do documento diverge da esperada pelo sistema'},
+    'documento_ilegivel':    {'PADRAO': 'Documento ilegível ou sem informações curriculares suficientes'},
     'msd_ausente':           {'PADRAO': 'Valor da mensalidade sem desconto não localizado no documento'},
     'msd_menor':             {'PADRAO': 'Valor da mensalidade sem desconto é MENOR que o esperado no documento'},
     'msd_maior':             {'PADRAO': 'Valor da mensalidade sem desconto é MAIOR que o esperado no documento'},
@@ -177,7 +180,8 @@ CATALOGO_MOTIVOS = {
     'correto_mcd_nao_loc':   {'PADRAO': "O Correto Seria: 'Valor da mensalidade com desconto não localizado no documento'"},
     'correto_mcd_menor':     {'PADRAO': "O Correto Seria: 'Valor da mensalidade com desconto é MENOR que o esperado no documento'"},
     'correto_mcd_maior':     {'PADRAO': "O Correto Seria: 'Valor da mensalidade com desconto é MAIOR que o esperado no documento'"},
-    'correto_mcd_conforme':  {'PADRAO': "O Correto Seria: 'Valor da mensalidade com desconto está CONFORME o esperado no documento'"}
+    'correto_mcd_conforme':  {'PADRAO': "O Correto Seria: 'Valor da mensalidade com desconto está CONFORME o esperado no documento'"},
+    'correto_sem_inconsistencias': {'PADRAO': "O Correto Seria: 'Sem inconsistências'"}
 }
 
 #  Como os motivos viajam dentro da célula: uma frase por motivo, nesta ordem. A barra foi
@@ -2652,7 +2656,12 @@ def calcular_auditoria_ia(df):
     ia_concluiu_curso = df.get('Gemini Concluiu Curso', pd.Series(['']*len(df), index=df.index)).astype(object).fillna('').astype(str).str.strip().str.upper() == 'SIM'
     concluiu_antes_do_fim = is_historico & ia_concluiu_curso & (periodo_no_semestre < periodos_do_curso)
 
-    matematica_invalida_geral = (ia_cpf == '') | (sys_cpf != ia_cpf) | (ia_semestre == '') | (sys_semestre != ia_semestre) | curso_invalido | concluiu_antes_do_fim
+    # ILEGÍVEL É A IA DIZENDO QUE NÃO LEU — não há o que auditar, então o documento é
+    # `Inválido` e nunca `Falso Inválido`. A 2071813 (2025-2) veio com CPF e curso
+    # preenchidos e esta frase: a matemática, que só olha os campos, dava Válido.
+    documento_ilegivel = inc_original.str.contains('Documento ileg[ií]vel', case=False, regex=True, na=False)
+
+    matematica_invalida_geral = (ia_cpf == '') | (sys_cpf != ia_cpf) | (ia_semestre == '') | (sys_semestre != ia_semestre) | curso_invalido | concluiu_antes_do_fim | documento_ilegivel
     matematica_invalida_financeiro = (inc_original.str.contains('Valor da mensalidade integral não localizado', na=False)) | (dif_s != 0)
 
     is_riaf = doc_tipo.str.contains('RIAF', case=False, na=False)
@@ -2801,6 +2810,7 @@ def calcular_auditoria_ia(df):
         (documento_traz_curso & (ia_curso == ''), 'curso_ausente'),
         (documento_traz_curso & (ia_curso != '') & (sys_curso != ia_curso), 'curso_diverge'),
         (concluiu_antes_do_fim, 'concluiu_antes_do_fim'),
+        (documento_ilegivel, 'documento_ilegivel'),
         (is_riaf & assinatura_aluno_ausente, 'assinatura_aluno'),
         (is_riaf & assinatura_ies_ausente, 'assinatura_ies'),
         #  A IA apontou assinatura na frase sem dizer de quem, e os dois campos vieram
@@ -2851,14 +2861,24 @@ def calcular_auditoria_ia(df):
     #  aqui SEMPRE: sem este `where`, o `Falso Inválido` ficaria mudo justamente na tela
     #  que explica vereditos.
     #
-    #  O que precisa ser revisto são as frases que a IA escreveu, e é só isso que o balão
-    #  mostra — sob outro título, porque a lista não acusa o documento, acusa o prompt.
-    #  Reaproveita `Gemini Inconsistencias` sem reescrever nada: só troca o separador da
-    #  IA (vírgula) pelo nosso, para a tela quebrar em itens do mesmo jeito.
+    #  O BALÃO DIZ A FRASE QUE A IA DEVERIA TER ESCRITO. Repetir `Gemini Inconsistencias`
+    #  só copiava a coluna ao lado. No Histórico a matemática confere todo o catálogo, então
+    #  o certo é "Sem inconsistências". No Contrato sobra o desconto, que nunca invalida:
+    #  o certo é a frase de mcd pelo valor que a própria IA leu, quando ele diverge.
+    #
+    #  O RIAF FICA COM AS FRASES DA IA: o catálogo dele cobra CNPJ, matrícula, modalidade e
+    #  tipo de bolsa, que a matemática não confere. Dizer "Sem inconsistências" ali seria
+    #  afirmar o que ninguém checou.
+    correto = np.select(
+        [so_contrato & (mcd_ia == 0),
+         so_contrato & (mcd_ia < mcd_sys),
+         so_contrato & (mcd_ia > mcd_sys)],
+        [CATALOGO_MOTIVOS[chave]['PADRAO'] for chave in ('correto_mcd_nao_loc', 'correto_mcd_menor', 'correto_mcd_maior')],
+        default=CATALOGO_MOTIVOS['correto_sem_inconsistencias']['PADRAO'])
     frases_da_ia = inc_original.str.replace(r',\s*', SEPARADOR_MOTIVOS, regex=True)
     frases_da_ia = frases_da_ia.mask(
         inc_original.str.contains('Sem inconsistências', case=False, na=False), '')
-    motivos = pd.Series(np.where(cond_falso_invalido, frases_da_ia, motivos), index=df.index)
+    motivos = pd.Series(np.where(cond_falso_invalido, np.where(is_riaf, frases_da_ia, correto), motivos), index=df.index)
 
     mask_balao_desnecessario = df['Status_IA'].isin(['Válido', 'Inválido'])
     df['Motivos Divergência'] = np.where(mask_ignorar_math | cond_inadimplente | mask_balao_desnecessario, '', motivos)
