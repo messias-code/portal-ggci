@@ -268,6 +268,7 @@ logica_de_campo:
     tipo: OBRIGATORIO
     referencia: 'Deve bater com o semestre esperado.'
     estrategia_busca: 'Verifique a presenca do semestre esperado no historico. Se ele constar (mesmo que haja semestres mais recentes), valide como correto e retorne o semestre esperado. Marque como Nao Localizado APENAS se o historico parar no tempo antes do esperado.'
+    regra_saida: 'Se o semestre esperado NÃO constar nos registros de disciplinas do documento, defina valido: 0, registre a inconsistência correspondente (Nível Alto) e OBRIGATORIAMENTE defina semestre.conteudo = "" (string vazia). É estritamente proibido retornar o semestre esperado em semestre.conteudo se ele não foi localizado no documento.'
 
   5_situacao:
     tipo: OBRIGATORIO
@@ -288,7 +289,7 @@ catalogo_erros:
   nivel_alto:
     - 'Curso não localizado no documento'
     - 'Curso diverge do sistema'
-    - ''
+    - 'Semestre esperado não localizado nos registros de disciplinas'
     - 'Semestre diverge com sistema'
   nivel_medio:
     - 'Documento ilegível ou sem informações curriculares suficientes'
@@ -375,3 +376,13 @@ exemplos_saida:
     concluiu_curso: 'não'
     inconsistencias: { conteudo: 'Sem inconsistências', valido: 1 }
     status: { conteudo: 'valido', valido: 1 }
+
+  aluno_semestre_nao_localizado:
+    raciocinio_diagnostico: "PASSO 1: MENTALIDADE DE IDENTIDADE. CPF confere com o sistema.\nPASSO 2: MENTALIDADE DE CURSO. Equivalencia validada.\nPASSO 3: MENTALIDADE CRONOLOGICA. Sistema espera 2025-2. O documento nao possui nenhum registro de disciplinas para este semestre. Inconsistencia detectada.\nPASSO 4: MENTALIDADE DE SITUACAO E CONCLUSAO.\n  Subpasso 4.1 - Extracao de Variaveis Probatorias: Nao\n  Subpasso 4.2 - Arvore de Decisao: Cenario 3.\n  Subpasso 4.3 - Registro de Situacao: Desligado.\nPASSO 5: MENTALIDADE DE DIAGNOSTICO. Inconsistencia de semestre nao localizado (Nivel Alto)."
+    cpf: { conteudo: '11122233344', valido: 1 }
+    curso: { conteudo: 'FISIOTERAPIA', valido: 1 }
+    semestre: { conteudo: '', valido: 0 }
+    situacao: { conteudo: 'Desligado', valido: 1 }
+    concluiu_curso: 'não'
+    inconsistencias: { conteudo: 'Semestre esperado não localizado nos registros de disciplinas', valido: 0 }
+    status: { conteudo: 'invalido', valido: 0 }
