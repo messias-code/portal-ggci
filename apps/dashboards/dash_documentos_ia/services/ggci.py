@@ -5580,6 +5580,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             'Soma Valor Beneficio': 'soma_valor_beneficio',
             'qual_financiamento': 'qual_financiamento',
             'Gemini Nome Financiamento': 'gemini_nome_financiamento',
+            'Gemini Financiamento Nome': 'gemini_nome_financiamento',
             'valor_financiamento': 'valor_financiamento',
             'Gemini Valor Financiado': 'gemini_valor_financiamento',
             'Soma Valor Financiamento': 'soma_valor_financiamento',
@@ -5688,8 +5689,8 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                 'gemini_matricula_com_desc', 'matricula_cd_doc', 'mensalidade_sem_desc', 
                 'gemini_mensalidade_sem_desc', 'msd_doc', 'mensalidade_com_desc', 
                 'gemini_mensalidade_com_desc', 'mcd_doc', 'valor_beneficio', 'soma_valor_beneficio', 
-                'gemini_valor_beneficio', 'beneficio', 'valor_financiamento', 'soma_valor_financiamento', 
-                'gemini_valor_financiamento', 'financiamento', 
+                'gemini_valor_beneficio', 'beneficio', 'gemini_nome_beneficio', 'valor_financiamento', 'soma_valor_financiamento', 
+                'gemini_valor_financiamento', 'financiamento', 'gemini_nome_financiamento', 
                 'soma_ovg_devia_pagar_sis', 'soma_ovg_devia_pagar_ia', 'soma_prejuizo_ovg', 
                 'soma_economia_ovg', 'diagnostico_financeiro_final', 'data_coleta', 
                 'data_coleta_atual_sistema', 'data_create', 'data_processamento', 'processado', 
@@ -5846,7 +5847,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                     print(f"[GGCI       | GERANDO       | DOCS  ] {tab_name} ({len(df_tipo)} linhas)...")
                     if doc_original == DOC_HISTORICO:
                         colunas_historico = [
-                            'status_ia', 'gemini_inconsistencia', 'semestre', 'bolsista', 
+                            'status_ia', 'gemini_inconsistencia', 'semestre', 'gemini_semestre', 'bolsista', 
                             'inscricao', 'inscricao_anterior', 'inscricao_posterior', 'cpf', 
                             'gemini_cpf', 'tipo_bolsa_final', 'mudou_bolsa', 'bolsa_anterior', 
                             'bolsa_posterior', 'faculdade', 'mudou_ies', 'ies_anterior', 

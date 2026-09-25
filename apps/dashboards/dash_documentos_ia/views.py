@@ -920,6 +920,7 @@ COLUNAS_TABELA = [
     COLUNA_STATUS_DOC,
     'status_ia',
     'semestre',
+    'gemini_semestre',
     'bolsista',
     'inscricao',
     'inscricao_anterior',
@@ -2805,9 +2806,9 @@ COLUNAS_ANALISE_IA = {
         'matricula_sd_doc', 'matricula_com_desc', 'gemini_matricula_com_desc',
         'matricula_cd_doc', 'mensalidade_sem_desc', 'gemini_mensalidade_sem_desc',
         'msd_doc', 'mensalidade_com_desc', 'gemini_mensalidade_com_desc', 'mcd_doc',
-        'valor_beneficio', 'gemini_valor_beneficio', 'soma_valor_beneficio', 'beneficio',
+        'valor_beneficio', 'gemini_valor_beneficio', 'soma_valor_beneficio', 'beneficio', 'gemini_nome_beneficio',
         'valor_financiamento', 'gemini_valor_financiamento',
-        'soma_valor_financiamento', 'financiamento', 'soma_ovg_devia_pagar_sis',
+        'soma_valor_financiamento', 'financiamento', 'gemini_nome_financiamento', 'soma_ovg_devia_pagar_sis',
         'soma_ovg_devia_pagar_ia', 'soma_prejuizo_ovg', 'soma_economia_ovg',
         'diagnostico_financeiro_final', 'data_coleta', 'data_coleta_atual_sistema',
         'data_create', 'data_processamento', 'processado', 'processar', 'qtd_token',
@@ -2818,7 +2819,7 @@ COLUNAS_ANALISE_IA = {
         'periodo_no_semestre', 'periodo_atual', 'qtd_periodos', 'modalidade_aluno', 'modalidade_ies'
     ],
     'HISTÓRICO': [
-        'status_ia', 'gemini_inconsistencia', 'semestre', 'bolsista', 'inscricao',
+        'status_ia', 'gemini_inconsistencia', 'semestre', 'gemini_semestre', 'bolsista', 'inscricao',
         'inscricao_anterior', 'inscricao_posterior', 'cpf', 'gemini_cpf',
         'tipo_bolsa_final', 'mudou_bolsa', 'bolsa_anterior', 'bolsa_posterior',
         'mudou_ies', 'ies_anterior', 'ies_posterior', 'faculdade', 'curso', 'gemini_curso',

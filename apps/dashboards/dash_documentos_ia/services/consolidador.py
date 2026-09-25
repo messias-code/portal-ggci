@@ -117,7 +117,7 @@ def get_configs(processo_id=None):
             'ext': '.xlsx',
             'cols_num': ['Inscrição', 'CPF', 'Coleta ID', 'Gemini CPF', 'Gemini Matricula', 'Gemini Telefone', 'Gemini Cnpj Faculdade'],
             'cols_moeda': ['Mensalidade S/ Desconto', 'Mensalidade C/ Desconto', 'Gemini Mensalidade S/ Desconto', 'Gemini Mensalidade C/ Desconto', 'Gemini Valor Beneficio', 'Gemini Valor Financiado', 'Gemini Matricula Sem Desconto', 'Gemini Matricula Com Desconto'],
-            'cols_txt': ['Faculdade', 'Curso', 'Bolsista', 'Bolsistas', 'Gemini Razao Social', 'Gemini Nome Faculdade', 'Gemini Beneficio Nome', 'Gemini Nome Mantenedora', 'Gemini Nome Financiamento', 'Documento Tipo'],
+            'cols_txt': ['Faculdade', 'Curso', 'Bolsista', 'Bolsistas', 'Gemini Razao Social', 'Gemini Nome Faculdade', 'Gemini Beneficio Nome', 'Gemini Nome Mantenedora', 'Gemini Nome Financiamento', 'Gemini Financiamento Nome', 'Documento Tipo'],
             'ordem_colunas': [
                 'Status_IA', 'Gemini Inconsistencias', 'Perfil do Beneficiario', 'Inscrição', 'Gemini Matricula', 'Bolsista', 'Bolsistas', 'CPF', 
                 'Gemini CPF', 'Semestre', 'Gemini Semestre', 'Faculdade', 'Gemini Nome Faculdade', 
@@ -126,7 +126,7 @@ def get_configs(processo_id=None):
                 'Gemini Matricula Com Desconto', 'Matricula_CD_Doc', 'Gemini Razao Social', 'Gemini Cnpj Faculdade', 
                 'Gemini Nome Mantenedora', 'Gemini Assinatura Aluno', 'Gemini Assinatura Ies', 
                 'Gemini Beneficio Nome', 'Gemini Valor Beneficio', 'Gemini Valor Financiado', 
-                'Gemini Nome Financiamento', 'Gemini Modalidade', 'Gemini Email', 'Gemini Telefone', 
+                'Gemini Nome Financiamento', 'Gemini Financiamento Nome', 'Gemini Modalidade', 'Gemini Email', 'Gemini Telefone', 
                 'Gemini Tipo Bolsa', 
                 'Documento Tipo', 'Coleta ID', 'Data Processamento'
             ]
@@ -140,7 +140,7 @@ def get_configs(processo_id=None):
             'ext': '.xlsx',
             'cols_num': ['Inscrição', 'CPF', 'Coleta ID', 'Gemini CPF', 'Gemini Matricula', 'Gemini Telefone', 'Gemini Cnpj Faculdade'],
             'cols_moeda': ['Mensalidade S/ Desconto', 'Mensalidade C/ Desconto', 'Gemini Mensalidade S/ Desconto', 'Gemini Mensalidade C/ Desconto', 'Gemini Valor Beneficio', 'Gemini Valor Financiado', 'Gemini Matricula Sem Desconto', 'Gemini Matricula Com Desconto'],
-            'cols_txt': ['Faculdade', 'Curso', 'Bolsista', 'Bolsistas', 'Gemini Razao Social', 'Gemini Nome Faculdade', 'Gemini Beneficio Nome', 'Gemini Nome Mantenedora', 'Gemini Nome Financiamento', 'Documento Tipo'],
+            'cols_txt': ['Faculdade', 'Curso', 'Bolsista', 'Bolsistas', 'Gemini Razao Social', 'Gemini Nome Faculdade', 'Gemini Beneficio Nome', 'Gemini Nome Mantenedora', 'Gemini Nome Financiamento', 'Gemini Financiamento Nome', 'Documento Tipo'],
             'ordem_colunas': [
                 'Status_IA', 'Gemini Inconsistencias', 'Perfil do Beneficiario', 'Inscrição', 'Gemini Matricula', 'Bolsista', 'Bolsistas', 'CPF', 
                 'Gemini CPF', 'Semestre', 'Gemini Semestre', 'Faculdade', 'Gemini Nome Faculdade', 
@@ -149,7 +149,7 @@ def get_configs(processo_id=None):
                 'Gemini Matricula Com Desconto', 'Matricula_CD_Doc', 'Gemini Razao Social', 'Gemini Cnpj Faculdade', 
                 'Gemini Nome Mantenedora', 'Gemini Assinatura Aluno', 'Gemini Assinatura Ies', 
                 'Gemini Beneficio Nome', 'Gemini Valor Beneficio', 'Gemini Valor Financiado', 
-                'Gemini Nome Financiamento', 'Gemini Modalidade', 'Gemini Email', 'Gemini Telefone', 
+                'Gemini Nome Financiamento', 'Gemini Financiamento Nome', 'Gemini Modalidade', 'Gemini Email', 'Gemini Telefone', 
                 'Gemini Tipo Bolsa', 
                 'Documento Tipo', 'Coleta ID', 'Data Processamento'
             ]
@@ -163,7 +163,7 @@ def get_configs(processo_id=None):
             'ext': '.xlsx',
             'cols_num': ['Inscrição', 'CPF', 'Coleta ID', 'Gemini CPF', 'Gemini Matricula', 'Gemini Telefone', 'Gemini Cnpj Faculdade'],
             'cols_moeda': ['Mensalidade S/ Desconto', 'Mensalidade C/ Desconto', 'Gemini Mensalidade S/ Desconto', 'Gemini Mensalidade C/ Desconto', 'Gemini Valor Beneficio', 'Gemini Valor Financiado', 'Gemini Matricula Sem Desconto', 'Gemini Matricula Com Desconto'],
-            'cols_txt': ['Faculdade', 'Curso', 'Bolsista', 'Bolsistas', 'Gemini Razao Social', 'Gemini Nome Faculdade', 'Gemini Beneficio Nome', 'Gemini Nome Mantenedora', 'Gemini Nome Financiamento', 'Documento Tipo'],
+            'cols_txt': ['Faculdade', 'Curso', 'Bolsista', 'Bolsistas', 'Gemini Razao Social', 'Gemini Nome Faculdade', 'Gemini Beneficio Nome', 'Gemini Nome Mantenedora', 'Gemini Nome Financiamento', 'Gemini Financiamento Nome', 'Documento Tipo'],
             'ordem_colunas': [
                 'Status_IA', 'Gemini Inconsistencias', 'Perfil do Beneficiario', 'Inscrição', 'Gemini Matricula', 'Bolsista', 'Bolsistas', 'CPF', 
                 'Gemini CPF', 'Semestre', 'Gemini Semestre', 'Faculdade', 'Gemini Nome Faculdade', 
@@ -172,7 +172,7 @@ def get_configs(processo_id=None):
                 'Gemini Matricula Com Desconto', 'Matricula_CD_Doc', 'Gemini Razao Social', 'Gemini Cnpj Faculdade', 
                 'Gemini Nome Mantenedora', 'Gemini Assinatura Aluno', 'Gemini Assinatura Ies', 
                 'Gemini Beneficio Nome', 'Gemini Valor Beneficio', 'Gemini Valor Financiado', 
-                'Gemini Nome Financiamento', 'Gemini Modalidade', 'Gemini Email', 'Gemini Telefone', 
+                'Gemini Nome Financiamento', 'Gemini Financiamento Nome', 'Gemini Modalidade', 'Gemini Email', 'Gemini Telefone', 
                 'Gemini Tipo Bolsa', 
                 'Documento Tipo', 'Coleta ID', 'Data Processamento'
             ]
@@ -343,7 +343,7 @@ def consolidar(processo_id=None):
                            'Gemini Matricula Com Desconto', 'Gemini Razao Social', 'Gemini Nome Faculdade', 
                            'Gemini Cnpj Faculdade', 'Gemini Nome Mantenedora', 'Gemini Assinatura Aluno', 
                            'Gemini Assinatura Ies', 'Gemini Beneficio Nome', 'Gemini Valor Beneficio', 
-                           'Gemini Valor Financiado', 'Gemini Nome Financiamento', 'Gemini Modalidade', 
+                           'Gemini Valor Financiado', 'Gemini Nome Financiamento', 'Gemini Financiamento Nome', 'Gemini Modalidade', 
                            'Gemini Email', 'Gemini Telefone', 'Gemini Tipo Bolsa']
                 df_final.drop(columns=col_rem, errors='ignore', inplace=True)
                 
