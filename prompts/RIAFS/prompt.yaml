@@ -27,6 +27,9 @@ contexto: |
   - Telefones: Remova parênteses, espaços e traços, deixando apenas números.
   - E-mails: Converta para MAIÚSCULAS.
   - Essa limpeza não é considerada divergência, mas sim obrigação de formatação.
+  - CURSO (Equivalência e Nome do Sistema): A normalização acima serve SÓ para COMPARAR. Ignore prefixos e sufixos como "Bacharelado em", "Licenciatura em", "Tecnólogo em", "Curso de", "Formação de...", turno ou ano, e compare o núcleo do curso por equivalência semântica ("Ciências Biológicas" é equivalente a "BIOMEDICINA"). Se for equivalente, `curso.conteudo` DEVE ser o `curso` do Input COPIADO CARACTERE A CARACTERE, com os mesmos acentos (ou a falta deles). É PROIBIDO devolver o nome do documento, ou o nome sem acento, quando ele for equivalente. O nome do documento só é devolvido quando o núcleo DIVERGIR.
+    * Exemplo: Input "FARMÁCIA", documento "Farmacia - Bacharelado" -> curso.conteudo = "FARMÁCIA".
+    * Exemplo: Input "BIOMEDICINA", documento "Ciências Biológicas" -> curso.conteudo = "BIOMEDICINA".
 
   5. MENTALIDADE TEMPORAL E ACADÊMICA:
   - O Input (sistema) é a ÚNICA verdade para campos que possuem comparação.
@@ -65,7 +68,7 @@ logica_de_campo:
     lista:
       - 'nome_fantasia_ies', 'cnpj_ies', 'cpf_aluno', 'curso', 'modalidade', 'tipo_bolsa', 'semestre', 'valor_matricula_sem_desconto', 'valor_mensalidade_sem_desconto', 'valor_matricula_com_desconto', 'valor_mensalidade_com_desconto', 'data_documento', 'assinatura_aluno', 'assinatura_ies'
     estado_inicial: 'Iniciam com valido: 0.'
-    regra_sucesso_com_input: 'Se possui input, foi localizado e é EXATAMENTE igual ao sistema, altere para valido: 1.'
+    regra_sucesso_com_input: 'Se possui input, foi localizado e é EXATAMENTE igual ao sistema, altere para valido: 1. Exceção: o curso vale por equivalência (Mentalidade 4) e, quando equivalente, é devolvido com o nome do Input.'
     regra_sucesso_sem_input: 'Se NÃO possui input e foi localizado no documento, altere para valido: 1.'
     regra_falha: 'Se não localizado ou divergente, MANTENHA valido: 0. O status global fica travado em "invalido". Registre o erro no catálogo.'
 
@@ -208,6 +211,10 @@ exemplos_saida:
     raciocinio_diagnostico: 'PASSO 1: CPF validado.\nPASSO 2: Documento é um RIAF.\nPASSO 3: Matrícula encontrada RA392-2024 normalizada para 3922024, que bate com o input. Demais campos válidos.'
     matricula_aluno: { conteudo: '3922024', valido: 1 } # Input era RA392-2024, limpo virou 3922024. Sucesso.
     status: { conteudo: 'valido', valido: 1 }
+
+  riaf_curso_equivalente_devolve_nome_do_sistema:
+    raciocinio_diagnostico: 'PASSO 3: Curso no documento "Nutricao - Bacharelado". Núcleo NUTRICAO, equivalente ao input "NUTRIÇÃO". Devolvido o nome do input, com acento.'
+    curso: { conteudo: 'NUTRIÇÃO', valido: 1 } # Input era NUTRIÇÃO. Nunca 'NUTRICAO' nem 'NUTRICAO - BACHARELADO'.
 
   riaf_beneficios_escalonamento_dinamico_invalido:
     raciocinio_diagnostico: 'PASSO 1-4: Dados iniciais válidos.\nPASSO 5: Outros benefícios encontrado (556.00). O sistema esperava (556.10). Há divergência, campo condicional falha. Status final inválido.'
