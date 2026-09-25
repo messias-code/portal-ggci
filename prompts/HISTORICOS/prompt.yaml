@@ -19,7 +19,12 @@ contexto: |
   - Regra de Equivalência Semântica (A Essência): Foque no núcleo/raiz do curso. Se a essência acadêmica for a mesma, CONSIDERE VÁLIDO. 
     * Exemplo 1: "Psicologia - Formação de Psicólogo" é equivalente a "PSICOLOGIA".
     * Exemplo 2: "SUP TEC GESTAO TECN DA INFORMACAO" é equivalente a "GESTAO EM TECNOLOGIA DA INFORMACAO".
-  - Regra de Extração Limpa: Se a equivalência semântica for validada como válida, extraia e retorne em `curso.conteudo` o nome padronizado/esperado pelo sistema.
+    * Exemplo 3: "Ciências Biológicas - Modalidade Médica" ou "Ciências Biológicas" é equivalente a "BIOMEDICINA".
+  - Regra de Extração Limpa (Nome do Sistema): Se a equivalência semântica for validada, `curso.conteudo` DEVE ser o `curso_esperado` COPIADO CARACTERE A CARACTERE, exatamente como veio no Input — mesma grafia, mesmos acentos (ou a falta deles), sem "Bacharelado", "Licenciatura", "Curso de", turno ou ano. É PROIBIDO devolver o nome como está escrito no documento quando ele for equivalente.
+    * Exemplo: Input "BIOMEDICINA", documento "Ciências Biológicas" -> curso.conteudo = "BIOMEDICINA".
+    * Exemplo: Input "MEDICINA VETERINARIA", documento "Medicina Veterinária Bacharelado" -> curso.conteudo = "MEDICINA VETERINARIA".
+    * Exemplo: Input "DIREITO", documento "Curso de Direito - Bacharelado" -> curso.conteudo = "DIREITO".
+  - O nome do documento so e devolvido em `curso.conteudo` quando o nucleo DIVERGIR do esperado (ex: Input "ENGENHARIA CIVIL", documento "Engenharia de Produção").
 
   4. MENTALIDADE CRONOLOGICA (Semestre - Contexto Direcional):
   - O Input (sistema) define qual semestre estamos auditando.
@@ -136,11 +141,11 @@ contexto: |
   REGRA DE PRECEDENCIA: Os cenarios do BLOCO A (1-2) SEMPRE prevalecem sobre os cenarios dos BLOCOS B e C. Mesmo que o aluno tenha data de conclusao, se houver materias a cursar, aplica-se o Cenario 1.
 
   ---
-  SUBPASSO 4.3: VALIDACAO DA SITUACAO ACADEMICA
+  SUBPASSO 4.3: REGISTRO DA SITUACAO ACADEMICA
   
-  Apos determinar concluiu_curso, valide a situacao do aluno comparando com a situacao_esperada do sistema:
-  
-  - Regra de Equivalencia Semantica para Validacao:
+  Apos determinar concluiu_curso, registre a situacao do aluno. O sistema NAO envia situacao esperada: este subpasso e SOMENTE de extracao, NUNCA de comparacao, e NUNCA gera inconsistencia nem invalida o status.
+
+  - Vocabulario de Situacao:
     * STATUS ATIVO: Termos como "Cursando", "Matriculado", "Ativo", "Estudando" sao equivalentes.
     * STATUS INATIVO: Termos como "Trancado", "Cancelado", "Evadido", "Desligado", "Parou", "Afastado" sao equivalentes.
     * STATUS FORMADO: Termos como "Concluido", "Formado", "Curriculo Integralizado", "Colacao de Grau", "Formatura", "Aguardando Colacao", "Concluinte" sao equivalentes.
@@ -149,8 +154,6 @@ contexto: |
     * Se concluiu_curso = "sim" (por qualquer cenario), deduza situacao como "Concluído".
     * Se VAR_F = Sim e VAR_H nao indica inatividade, deduza situacao como "Cursando".
     * Se VAR_H indica Trancado/Evadido/etc., use o termo exato do documento.
-  
-  - Compare a situacao deduzida/extraida com a situacao_esperada usando a equivalencia semantica acima.
 
   6. MENTALIDADE DE DIAGNOSTICO (Como preencher inconsistencias):
   - NUNCA invente frases de erro. Use APENAS as frases da secao 'catalogo_erros'.
@@ -171,7 +174,6 @@ dados_esperados:
   cpf: '(uni_cpf)'
   curso_esperado: '(cur_nome)'
   semestre_esperado: '(semestre)'
-  situacao_esperada: '(situacao)'
 
 # REGRAS GERAIS DE EXECUCAO
 regras_gerais:
@@ -193,7 +195,8 @@ contrato_tipagem:
     campos:
       - curso.conteudo
     tipo_permitido:
-      - 'STRING extraida e limpa do documento'
+      - 'STRING_EXATA: curso_esperado do Input (quando equivalente)'
+      - 'STRING extraida do documento (SOMENTE quando divergir do curso_esperado)'
       - 'STRING_EXATA: ""'
 
   campo_situacao:
@@ -258,6 +261,7 @@ logica_de_campo:
     tipo: OBRIGATORIO
     referencia: 'Deve corresponder ao curso_esperado.'
     regra_comparacao: 'Aplique normalizacao textual e a Regra de Equivalencia Semantica (A Essencia). Ignore prefixos/sufixos como "Formacao de...", "Sup Tec", etc. Se o nucleo for igual, marque valido: 1.'
+    regra_saida: 'Se valido: 1, curso.conteudo = curso_esperado copiado EXATAMENTE como veio no Input (Regra de Extracao Limpa). Nunca o nome do documento.'
     regra_bloqueio: 'Se o nucleo do curso efetivamente divergir do esperado ou nao for localizado, defina valido: 0 e registre a inconsistencia correspondente (Nivel Alto).'
 
   4_semestre:
@@ -267,8 +271,8 @@ logica_de_campo:
 
   5_situacao:
     tipo: OBRIGATORIO
-    referencia: 'Avalie o status atual do aluno no documento (ativo, inativo, formado). Compare com a situacao_esperada usando as regras de equivalencia semantica do Subpasso 4.3.'
-    regra_bloqueio: 'Se a situacao deduzida do documento for divergente (ex: sistema espera Ativo, documento diz Trancado), defina valido: 0.'
+    referencia: 'Extraia ou deduza o status do aluno no documento (ativo, inativo, formado) pelo Subpasso 4.3. NAO existe situacao esperada no Input: nao compare.'
+    regra_validade: 'valido: 1 se a situacao foi localizada ou deduzida; valido: 0 se nao. Em nenhum dos dois casos registre inconsistencia ou altere o status.'
 
   6_concluiu_curso:
     tipo: OBRIGATORIO
@@ -286,7 +290,6 @@ catalogo_erros:
     - 'Curso diverge do sistema'
     - ''
     - 'Semestre diverge com sistema'
-    - 'Situação acadêmica do documento diverge da esperada pelo sistema'
   nivel_medio:
     - 'Documento ilegível ou sem informações curriculares suficientes'
 
@@ -305,7 +308,7 @@ saida_json:
 exemplos_saida:
 
   aluno_formado_cenario_7:
-    raciocinio_diagnostico: "PASSO 1: MENTALIDADE DE IDENTIDADE (CPF - Critico). O CPF '123.456.789-01' foi localizado no documento. Limpo para '12345678901'. Correspondencia exata com o sistema.\nPASSO 2: MENTALIDADE DE CURSO. O sistema espera 'PSICOLOGIA'. O documento aponta 'Psicologia - Formação de Psicólogo'. Normalizando: 'PSICOLOGIA - FORMACAO DE PSICOLOGO'. Aplicando regra de tolerancia (removendo 'Formação de...'): nucleo = 'PSICOLOGIA'. Equivalencia semantica validada.\nPASSO 3: MENTALIDADE CRONOLOGICA (Semestre). Sistema espera 2025-2. Documento possui disciplinas concluidas em 2025/2. Semestre localizado e valido.\nPASSO 4: MENTALIDADE DE SITUACAO E CONCLUSAO.\n  Subpasso 4.1 - Extracao de Variaveis Probatorias:\n    VAR_A (Data Colacao): Sim - 15/12/2025\n    VAR_B (Data Diploma): Nao\n    VAR_C (Data Conclusao): Sim - 10/12/2025\n    VAR_D (CHE): Sim - 4.052h\n    VAR_E (CHC): Sim - 4.052h\n    VAR_F (Materias a cursar): Nao\n    VAR_G (100% integralizacao): Nao\n    VAR_H (Situacao/Status): Sim - 'Concluído'\n    VAR_I (Pendencias ENADE/TCC/Estagio): Nao\n  Subpasso 4.2 - Arvore de Decisao:\n    Bloco A - Cenario 1: Nao se aplica (ha datas, mas NAO ha materias a cursar).\n    Cenario 7 corresponde: Data de colacao (VAR_A) preenchida, sem materias a cursar (VAR_F = Nao). Conclusao Explicita Comprovada (Padrao Ouro).\n    Cenario Aplicado: 7.\n    Veredito: concluiu_curso = 'sim'.\n  Subpasso 4.3 - Validacao de Situacao:\n    Documento indica 'Concluído'. Sistema espera situacao compativel com formado. Equivalencia semantica validada.\nPASSO 5: MENTALIDADE DE DIAGNOSTICO. Nenhuma inconsistencia detectada."
+    raciocinio_diagnostico: "PASSO 1: MENTALIDADE DE IDENTIDADE (CPF - Critico). O CPF '123.456.789-01' foi localizado no documento. Limpo para '12345678901'. Correspondencia exata com o sistema.\nPASSO 2: MENTALIDADE DE CURSO. O sistema espera 'PSICOLOGIA'. O documento aponta 'Psicologia - Formação de Psicólogo'. Normalizando: 'PSICOLOGIA - FORMACAO DE PSICOLOGO'. Aplicando regra de tolerancia (removendo 'Formação de...'): nucleo = 'PSICOLOGIA'. Equivalencia semantica validada.\nPASSO 3: MENTALIDADE CRONOLOGICA (Semestre). Sistema espera 2025-2. Documento possui disciplinas concluidas em 2025/2. Semestre localizado e valido.\nPASSO 4: MENTALIDADE DE SITUACAO E CONCLUSAO.\n  Subpasso 4.1 - Extracao de Variaveis Probatorias:\n    VAR_A (Data Colacao): Sim - 15/12/2025\n    VAR_B (Data Diploma): Nao\n    VAR_C (Data Conclusao): Sim - 10/12/2025\n    VAR_D (CHE): Sim - 4.052h\n    VAR_E (CHC): Sim - 4.052h\n    VAR_F (Materias a cursar): Nao\n    VAR_G (100% integralizacao): Nao\n    VAR_H (Situacao/Status): Sim - 'Concluído'\n    VAR_I (Pendencias ENADE/TCC/Estagio): Nao\n  Subpasso 4.2 - Arvore de Decisao:\n    Bloco A - Cenario 1: Nao se aplica (ha datas, mas NAO ha materias a cursar).\n    Cenario 7 corresponde: Data de colacao (VAR_A) preenchida, sem materias a cursar (VAR_F = Nao). Conclusao Explicita Comprovada (Padrao Ouro).\n    Cenario Aplicado: 7.\n    Veredito: concluiu_curso = 'sim'.\n  Subpasso 4.3 - Registro de Situacao:\n    Documento indica 'Concluído'. Situacao registrada.\nPASSO 5: MENTALIDADE DE DIAGNOSTICO. Nenhuma inconsistencia detectada."
     cpf: { conteudo: '12345678901', valido: 1 }
     curso: { conteudo: 'PSICOLOGIA', valido: 1 }
     semestre: { conteudo: '2025-2', valido: 1 }
@@ -315,7 +318,7 @@ exemplos_saida:
     status: { conteudo: 'valido', valido: 1 }
 
   aluno_excedente_incompleto_cenario_2:
-    raciocinio_diagnostico: "PASSO 1: MENTALIDADE DE IDENTIDADE. CPF '98765432100' localizado. Correspondencia exata.\nPASSO 2: MENTALIDADE DE CURSO. Sistema espera 'ADMINISTRACAO'. Documento aponta 'Bacharelado em Administração'. Nucleo: 'ADMINISTRACAO'. Equivalencia validada.\nPASSO 3: MENTALIDADE CRONOLOGICA. Semestre 2025-1 localizado.\nPASSO 4: MENTALIDADE DE SITUACAO E CONCLUSAO.\n  Subpasso 4.1 - Extracao de Variaveis Probatorias:\n    VAR_A (Data Colacao): Nao\n    VAR_B (Data Diploma): Nao\n    VAR_C (Data Conclusao): Nao\n    VAR_D (CHE): Sim - 3.200h\n    VAR_E (CHC): Sim - 3.280h\n    VAR_F (Materias a cursar): Sim - 2 disciplinas com status 'A cursar'\n    VAR_G (100% integralizacao): Nao\n    VAR_H (Situacao/Status): Sim - 'Matriculado'\n    VAR_I (Pendencias ENADE/TCC/Estagio): Nao\n  Subpasso 4.2 - Arvore de Decisao:\n    Bloco A - Cenario 1: Nao se aplica (nao ha datas de finalizacao).\n    Cenario 2 corresponde: CHC (3.280h) >= CHE (3.200h) E materias a cursar (VAR_F = Sim). O Excedente Incompleto.\n    Cenario Aplicado: 2.\n    Veredito: concluiu_curso = 'não'.\n  Subpasso 4.3 - Validacao de Situacao:\n    Documento indica 'Matriculado' (= Ativo). Sistema espera 'Ativo'. Equivalencia semantica validada.\nPASSO 5: MENTALIDADE DE DIAGNOSTICO. Nenhuma inconsistencia de validacao entre sistema e documento."
+    raciocinio_diagnostico: "PASSO 1: MENTALIDADE DE IDENTIDADE. CPF '98765432100' localizado. Correspondencia exata.\nPASSO 2: MENTALIDADE DE CURSO. Sistema espera 'ADMINISTRACAO'. Documento aponta 'Bacharelado em Administração'. Nucleo: 'ADMINISTRACAO'. Equivalencia validada.\nPASSO 3: MENTALIDADE CRONOLOGICA. Semestre 2025-1 localizado.\nPASSO 4: MENTALIDADE DE SITUACAO E CONCLUSAO.\n  Subpasso 4.1 - Extracao de Variaveis Probatorias:\n    VAR_A (Data Colacao): Nao\n    VAR_B (Data Diploma): Nao\n    VAR_C (Data Conclusao): Nao\n    VAR_D (CHE): Sim - 3.200h\n    VAR_E (CHC): Sim - 3.280h\n    VAR_F (Materias a cursar): Sim - 2 disciplinas com status 'A cursar'\n    VAR_G (100% integralizacao): Nao\n    VAR_H (Situacao/Status): Sim - 'Matriculado'\n    VAR_I (Pendencias ENADE/TCC/Estagio): Nao\n  Subpasso 4.2 - Arvore de Decisao:\n    Bloco A - Cenario 1: Nao se aplica (nao ha datas de finalizacao).\n    Cenario 2 corresponde: CHC (3.280h) >= CHE (3.200h) E materias a cursar (VAR_F = Sim). O Excedente Incompleto.\n    Cenario Aplicado: 2.\n    Veredito: concluiu_curso = 'não'.\n  Subpasso 4.3 - Registro de Situacao:\n    Documento indica 'Matriculado' (= Ativo). Situacao registrada.\nPASSO 5: MENTALIDADE DE DIAGNOSTICO. Nenhuma inconsistencia de validacao entre sistema e documento."
     cpf: { conteudo: '98765432100', valido: 1 }
     curso: { conteudo: 'ADMINISTRACAO', valido: 1 }
     semestre: { conteudo: '2025-1', valido: 1 }
@@ -325,33 +328,33 @@ exemplos_saida:
     status: { conteudo: 'valido', valido: 1 }
 
   aluno_falso_concluinte_cenario_1:
-    raciocinio_diagnostico: "PASSO 1: MENTALIDADE DE IDENTIDADE. CPF '11122233344' localizado. Correspondencia exata.\nPASSO 2: MENTALIDADE DE CURSO. Sistema espera 'DIREITO'. Documento aponta 'Direito'. Nucleo identico.\nPASSO 3: MENTALIDADE CRONOLOGICA. Semestre 2025-1 localizado.\nPASSO 4: MENTALIDADE DE SITUACAO E CONCLUSAO.\n  Subpasso 4.1 - Extracao de Variaveis Probatorias:\n    VAR_A (Data Colacao): Sim - 20/07/2025\n    VAR_B (Data Diploma): Nao\n    VAR_C (Data Conclusao): Sim - 30/06/2025\n    VAR_D (CHE): Sim - 3.700h\n    VAR_E (CHC): Sim - 3.500h\n    VAR_F (Materias a cursar): Sim - 3 disciplinas com status 'Cursando'\n    VAR_G (100% integralizacao): Nao\n    VAR_H (Situacao/Status): Sim - 'Concluído'\n    VAR_I (Pendencias ENADE/TCC/Estagio): Nao\n  Subpasso 4.2 - Arvore de Decisao:\n    Bloco A - Cenario 1 corresponde: Datas de finalizacao preenchidas (VAR_A e VAR_C) E materias a cursar (VAR_F = Sim). O Falso Concluinte — erro estrutural do documento.\n    Cenario Aplicado: 1.\n    Veredito: concluiu_curso = 'não'.\n  Subpasso 4.3 - Validacao de Situacao:\n    Documento indica 'Concluído', porem a arvore de decisao detectou erro estrutural (Cenario 1). Situacao real deduzida: 'Cursando'. Sistema espera 'Formado'. Divergencia detectada.\nPASSO 5: MENTALIDADE DE DIAGNOSTICO. Inconsistencia de situacao aplicada."
+    raciocinio_diagnostico: "PASSO 1: MENTALIDADE DE IDENTIDADE. CPF '11122233344' localizado. Correspondencia exata.\nPASSO 2: MENTALIDADE DE CURSO. Sistema espera 'DIREITO'. Documento aponta 'Direito'. Nucleo identico.\nPASSO 3: MENTALIDADE CRONOLOGICA. Semestre 2025-1 localizado.\nPASSO 4: MENTALIDADE DE SITUACAO E CONCLUSAO.\n  Subpasso 4.1 - Extracao de Variaveis Probatorias:\n    VAR_A (Data Colacao): Sim - 20/07/2025\n    VAR_B (Data Diploma): Nao\n    VAR_C (Data Conclusao): Sim - 30/06/2025\n    VAR_D (CHE): Sim - 3.700h\n    VAR_E (CHC): Sim - 3.500h\n    VAR_F (Materias a cursar): Sim - 3 disciplinas com status 'Cursando'\n    VAR_G (100% integralizacao): Nao\n    VAR_H (Situacao/Status): Sim - 'Concluído'\n    VAR_I (Pendencias ENADE/TCC/Estagio): Nao\n  Subpasso 4.2 - Arvore de Decisao:\n    Bloco A - Cenario 1 corresponde: Datas de finalizacao preenchidas (VAR_A e VAR_C) E materias a cursar (VAR_F = Sim). O Falso Concluinte — erro estrutural do documento.\n    Cenario Aplicado: 1.\n    Veredito: concluiu_curso = 'não'.\n  Subpasso 4.3 - Registro de Situacao:\n    Documento indica 'Concluído', porem a arvore de decisao detectou erro estrutural (Cenario 1). Situacao real deduzida: 'Cursando'. Situacao registrada.\nPASSO 5: MENTALIDADE DE DIAGNOSTICO. Nenhuma inconsistencia detectada: o erro estrutural ja esta expresso em concluiu_curso = 'não'."
     cpf: { conteudo: '11122233344', valido: 1 }
     curso: { conteudo: 'DIREITO', valido: 1 }
     semestre: { conteudo: '2025-1', valido: 1 }
-    situacao: { conteudo: 'Cursando', valido: 0 }
+    situacao: { conteudo: 'Cursando', valido: 1 }
     concluiu_curso: 'não'
-    inconsistencias: { conteudo: 'Situação acadêmica do documento diverge da esperada pelo sistema', valido: 0 }
-    status: { conteudo: 'invalido', valido: 0 }
+    inconsistencias: { conteudo: 'Sem inconsistências', valido: 1 }
+    status: { conteudo: 'valido', valido: 1 }
 
   aluno_com_divergencia_de_curso:
-    raciocinio_diagnostico: "PASSO 1: MENTALIDADE DE IDENTIDADE. CPF corresponde ao esperado.\nPASSO 2: MENTALIDADE DE CURSO. O sistema espera 'Engenharia Civil', mas o documento aponta 'Engenharia de Producao'. O nucleo do curso diverge.\nPASSO 3: MENTALIDADE CRONOLOGICA. Semestre 2025-1 localizado corretamente.\nPASSO 4: MENTALIDADE DE SITUACAO E CONCLUSAO.\n  Subpasso 4.1 - Extracao de Variaveis Probatorias:\n    VAR_A (Data Colacao): Nao\n    VAR_B (Data Diploma): Nao\n    VAR_C (Data Conclusao): Nao\n    VAR_D (CHE): Sim - 4.000h\n    VAR_E (CHC): Sim - 2.400h\n    VAR_F (Materias a cursar): Sim - 15 disciplinas pendentes\n    VAR_G (100% integralizacao): Nao\n    VAR_H (Situacao/Status): Sim - 'Trancado'\n    VAR_I (Pendencias ENADE/TCC/Estagio): Nao\n  Subpasso 4.2 - Arvore de Decisao:\n    Cenario 10 corresponde: Materias a cursar (VAR_F = Sim) e CHC < CHE. Curso em Andamento Classico (embora trancado).\n    Cenario Aplicado: 10.\n    Veredito: concluiu_curso = 'não'.\n  Subpasso 4.3 - Validacao de Situacao:\n    Documento indica 'Trancado' (= Inativo). Sistema espera 'Ativo'. Divergencia de situacao.\nPASSO 5: MENTALIDADE DE DIAGNOSTICO. Inconsistencias de nivel alto aplicadas."
+    raciocinio_diagnostico: "PASSO 1: MENTALIDADE DE IDENTIDADE. CPF corresponde ao esperado.\nPASSO 2: MENTALIDADE DE CURSO. O sistema espera 'Engenharia Civil', mas o documento aponta 'Engenharia de Producao'. O nucleo do curso diverge.\nPASSO 3: MENTALIDADE CRONOLOGICA. Semestre 2025-1 localizado corretamente.\nPASSO 4: MENTALIDADE DE SITUACAO E CONCLUSAO.\n  Subpasso 4.1 - Extracao de Variaveis Probatorias:\n    VAR_A (Data Colacao): Nao\n    VAR_B (Data Diploma): Nao\n    VAR_C (Data Conclusao): Nao\n    VAR_D (CHE): Sim - 4.000h\n    VAR_E (CHC): Sim - 2.400h\n    VAR_F (Materias a cursar): Sim - 15 disciplinas pendentes\n    VAR_G (100% integralizacao): Nao\n    VAR_H (Situacao/Status): Sim - 'Trancado'\n    VAR_I (Pendencias ENADE/TCC/Estagio): Nao\n  Subpasso 4.2 - Arvore de Decisao:\n    Cenario 10 corresponde: Materias a cursar (VAR_F = Sim) e CHC < CHE. Curso em Andamento Classico (embora trancado).\n    Cenario Aplicado: 10.\n    Veredito: concluiu_curso = 'não'.\n  Subpasso 4.3 - Registro de Situacao:\n    Documento indica 'Trancado' (= Inativo). Situacao registrada.\nPASSO 5: MENTALIDADE DE DIAGNOSTICO. Inconsistencia de curso (nivel alto) aplicada."
     cpf: { conteudo: '12345678901', valido: 1 }
     curso: { conteudo: 'Engenharia de Produção', valido: 0 }
     semestre: { conteudo: '2025-1', valido: 1 }
-    situacao: { conteudo: 'Trancado', valido: 0 }
+    situacao: { conteudo: 'Trancado', valido: 1 }
     concluiu_curso: 'não'
-    inconsistencias: { conteudo: 'Curso do documento diverge do sistema, Situação acadêmica do documento diverge da esperada pelo sistema', valido: 0 }
+    inconsistencias: { conteudo: 'Curso diverge do sistema', valido: 0 }
     status: { conteudo: 'invalido', valido: 0 }
 
   aluno_omissao_inconclusiva_cenario_6:
-    raciocinio_diagnostico: "PASSO 1: MENTALIDADE DE IDENTIDADE. CPF '55566677788' localizado. Correspondencia exata.\nPASSO 2: MENTALIDADE DE CURSO. Sistema espera 'PEDAGOGIA'. Documento aponta 'Licenciatura em Pedagogia'. Nucleo: 'PEDAGOGIA'. Equivalencia validada.\nPASSO 3: MENTALIDADE CRONOLOGICA. Semestre 2024-2 localizado.\nPASSO 4: MENTALIDADE DE SITUACAO E CONCLUSAO.\n  Subpasso 4.1 - Extracao de Variaveis Probatorias:\n    VAR_A (Data Colacao): Nao\n    VAR_B (Data Diploma): Nao\n    VAR_C (Data Conclusao): Nao\n    VAR_D (CHE): Nao\n    VAR_E (CHC): Nao\n    VAR_F (Materias a cursar): Nao\n    VAR_G (100% integralizacao): Nao\n    VAR_H (Situacao/Status): Nao\n    VAR_I (Pendencias ENADE/TCC/Estagio): Nao\n  Subpasso 4.2 - Arvore de Decisao:\n    Bloco A: Nao se aplica.\n    Bloco B - Cenario 6 corresponde: Apenas dados basicos do aluno. Nenhuma variavel probatoria disponivel. A Omissao Inconclusiva.\n    Cenario Aplicado: 6.\n    Veredito: concluiu_curso = 'não'.\n  Subpasso 4.3 - Validacao de Situacao:\n    Nenhum campo de situacao localizado no documento. Situacao = 'Não localizado'.\nPASSO 5: MENTALIDADE DE DIAGNOSTICO. Documento com informacoes insuficientes."
+    raciocinio_diagnostico: "PASSO 1: MENTALIDADE DE IDENTIDADE. CPF '55566677788' localizado. Correspondencia exata.\nPASSO 2: MENTALIDADE DE CURSO. Sistema espera 'PEDAGOGIA'. Documento aponta 'Licenciatura em Pedagogia'. Nucleo: 'PEDAGOGIA'. Equivalencia validada.\nPASSO 3: MENTALIDADE CRONOLOGICA. Semestre 2024-2 localizado.\nPASSO 4: MENTALIDADE DE SITUACAO E CONCLUSAO.\n  Subpasso 4.1 - Extracao de Variaveis Probatorias:\n    VAR_A (Data Colacao): Nao\n    VAR_B (Data Diploma): Nao\n    VAR_C (Data Conclusao): Nao\n    VAR_D (CHE): Nao\n    VAR_E (CHC): Nao\n    VAR_F (Materias a cursar): Nao\n    VAR_G (100% integralizacao): Nao\n    VAR_H (Situacao/Status): Nao\n    VAR_I (Pendencias ENADE/TCC/Estagio): Nao\n  Subpasso 4.2 - Arvore de Decisao:\n    Bloco A: Nao se aplica.\n    Bloco B - Cenario 6 corresponde: Apenas dados basicos do aluno. Nenhuma variavel probatoria disponivel. A Omissao Inconclusiva.\n    Cenario Aplicado: 6.\n    Veredito: concluiu_curso = 'não'.\n  Subpasso 4.3 - Registro de Situacao:\n    Nenhum campo de situacao localizado no documento. Situacao = 'Não localizado'.\nPASSO 5: MENTALIDADE DE DIAGNOSTICO. Documento com informacoes insuficientes."
     cpf: { conteudo: '55566677788', valido: 1 }
     curso: { conteudo: 'PEDAGOGIA', valido: 1 }
     semestre: { conteudo: '2024-2', valido: 1 }
     situacao: { conteudo: '', valido: 0 }
     concluiu_curso: 'não'
-    inconsistencias: { conteudo: 'Situação acadêmica do documento diverge da esperada pelo sistema, Documento ilegível ou sem informações curriculares suficientes', valido: 0 }
+    inconsistencias: { conteudo: 'Documento ilegível ou sem informações curriculares suficientes', valido: 0 }
     status: { conteudo: 'invalido', valido: 0 }
 
   historico_tipo_invalido:
@@ -364,7 +367,7 @@ exemplos_saida:
     inconsistencias: { conteudo: 'Tipo de Documento inválido', valido: 0 }
     status: { conteudo: 'invalido', valido: 0 }
   aluno_formado_depois_do_semestre_auditado_cenario_2:
-    raciocinio_diagnostico: "PASSO 1: MENTALIDADE DE IDENTIDADE. CPF '22233344455' localizado. Correspondencia exata.\nPASSO 2: MENTALIDADE DE CURSO. Sistema espera 'BIOMEDICINA'. Documento aponta 'Bacharelado em Biomedicina'. Nucleo: 'BIOMEDICINA'. Equivalencia validada.\nPASSO 3: MENTALIDADE CRONOLOGICA. Sistema espera 2025-2. Documento possui disciplinas aprovadas em 2025/2 e tambem em 2026/1. Semestre 2025-2 localizado e valido (semestre posterior nao invalida o esperado).\nPASSO 4: MENTALIDADE DE SITUACAO E CONCLUSAO.\n  Subpasso 4.1 - Extracao de Variaveis Probatorias:\n    Regra dos Semestres Posteriores: o documento mostra disciplinas em 2026/1, POSTERIOR ao semestre auditado 2025-2. O aluno ainda tinha curso a cumprir depois de 2025-2.\n    VAR_A (Data Colacao): Nao - colacao em 03/2026, posterior ao semestre auditado (Trava do Semestre Auditado)\n    VAR_B (Data Diploma): Nao\n    VAR_C (Data Conclusao): Nao - conclusao em 07/2026, posterior ao semestre auditado\n    VAR_D (CHE): Sim - 3.600h\n    VAR_E (CHC): Sim - 3.600h (inclui as disciplinas de 2026/1)\n    VAR_F (Materias a cursar): Sim - disciplinas de 2026/1, ainda nao cursadas em 2025-2\n    VAR_G (100% integralizacao): Nao\n    VAR_H (Situacao/Status): Sim - 'Concluído'\n    VAR_I (Pendencias ENADE/TCC/Estagio): Nao\n  Subpasso 4.2 - Arvore de Decisao:\n    Bloco A - Cenario 1: Nao se aplica (as datas de finalizacao sao posteriores ao semestre auditado, logo VAR_A, VAR_B e VAR_C = Nao).\n    Cenario 2 corresponde: CHC (3.600h) >= CHE (3.600h) E materias a cursar (VAR_F = Sim, disciplinas de 2026/1). A formatura existe, mas aconteceu depois de 2025-2.\n    Cenario Aplicado: 2.\n    Veredito: concluiu_curso = 'não'. (Se o Input fosse 2026-1, o ultimo semestre com disciplinas, a resposta seria 'sim'.)\n  Subpasso 4.3 - Validacao de Situacao:\n    Documento indica 'Concluído', situacao emitida apos a formatura. Em 2025-2 o aluno cursava disciplinas (= Ativo). Sistema espera 'Ativo'. Equivalencia validada.\nPASSO 5: MENTALIDADE DE DIAGNOSTICO. Nenhuma inconsistencia de validacao entre sistema e documento."
+    raciocinio_diagnostico: "PASSO 1: MENTALIDADE DE IDENTIDADE. CPF '22233344455' localizado. Correspondencia exata.\nPASSO 2: MENTALIDADE DE CURSO. Sistema espera 'BIOMEDICINA'. Documento aponta 'Bacharelado em Biomedicina'. Nucleo: 'BIOMEDICINA'. Equivalencia validada.\nPASSO 3: MENTALIDADE CRONOLOGICA. Sistema espera 2025-2. Documento possui disciplinas aprovadas em 2025/2 e tambem em 2026/1. Semestre 2025-2 localizado e valido (semestre posterior nao invalida o esperado).\nPASSO 4: MENTALIDADE DE SITUACAO E CONCLUSAO.\n  Subpasso 4.1 - Extracao de Variaveis Probatorias:\n    Regra dos Semestres Posteriores: o documento mostra disciplinas em 2026/1, POSTERIOR ao semestre auditado 2025-2. O aluno ainda tinha curso a cumprir depois de 2025-2.\n    VAR_A (Data Colacao): Nao - colacao em 03/2026, posterior ao semestre auditado (Trava do Semestre Auditado)\n    VAR_B (Data Diploma): Nao\n    VAR_C (Data Conclusao): Nao - conclusao em 07/2026, posterior ao semestre auditado\n    VAR_D (CHE): Sim - 3.600h\n    VAR_E (CHC): Sim - 3.600h (inclui as disciplinas de 2026/1)\n    VAR_F (Materias a cursar): Sim - disciplinas de 2026/1, ainda nao cursadas em 2025-2\n    VAR_G (100% integralizacao): Nao\n    VAR_H (Situacao/Status): Sim - 'Concluído'\n    VAR_I (Pendencias ENADE/TCC/Estagio): Nao\n  Subpasso 4.2 - Arvore de Decisao:\n    Bloco A - Cenario 1: Nao se aplica (as datas de finalizacao sao posteriores ao semestre auditado, logo VAR_A, VAR_B e VAR_C = Nao).\n    Cenario 2 corresponde: CHC (3.600h) >= CHE (3.600h) E materias a cursar (VAR_F = Sim, disciplinas de 2026/1). A formatura existe, mas aconteceu depois de 2025-2.\n    Cenario Aplicado: 2.\n    Veredito: concluiu_curso = 'não'. (Se o Input fosse 2026-1, o ultimo semestre com disciplinas, a resposta seria 'sim'.)\n  Subpasso 4.3 - Registro de Situacao:\n    Documento indica 'Concluído', situacao emitida apos a formatura. Em 2025-2 o aluno cursava disciplinas (= Ativo). Situacao registrada: 'Ativo'.\nPASSO 5: MENTALIDADE DE DIAGNOSTICO. Nenhuma inconsistencia de validacao entre sistema e documento."
     cpf: { conteudo: '22233344455', valido: 1 }
     curso: { conteudo: 'BIOMEDICINA', valido: 1 }
     semestre: { conteudo: '2025-2', valido: 1 }
