@@ -2484,7 +2484,7 @@ def calcular_auditoria_ia(df):
     mcd_sys = pd.to_numeric(df.get('Mensalidade C/ Desconto', pd.Series([0]*len(df), index=df.index)), errors='coerce').fillna(0)
     mcd_lida, mcd_esperada = mcd_ia.round(2), mcd_sys.round(2)
 
-matematica_invalida_riaf_extra = is_riaf & (
+    matematica_invalida_riaf_extra = is_riaf & (
         (sys_beneficio != ia_beneficio) | (sys_financiamento != ia_financiamento) |
         (ia_cnpj == '') | ((ia_cnpj != '') & (sys_cnpj != '') & (ia_cnpj != sys_cnpj)) |
         (ia_bolsa == '') | ((ia_bolsa != '') & sys_bolsa.isin(['PARCIAL', 'INTEGRAL']) & (ia_bolsa != sys_bolsa)) |
