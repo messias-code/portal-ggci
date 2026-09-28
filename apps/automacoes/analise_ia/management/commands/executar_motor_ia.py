@@ -72,7 +72,8 @@ class LogCapture:
     def _detectar_bloco(self, msg):
         """Avalia que parte do macroprocesso está sendo ativada para tracking de duração (APM)."""
         blocos = [
-            ("processamento massivo",   "EXTRAÇÃO"),
+            ("processamento massivo",   "ETL_SQL"),
+            ("Baixando planilhas do ScriptCase", "EXTRAÇÃO"),
             ("Consolidando e limpando", "CONSOLIDAÇÃO"),
             ("Analisando regras",       "GGCI_INICIO"),
             ("IDENTIFICAR   | AUSENTES","GGCI_PENDENCIAS"),
@@ -87,10 +88,11 @@ class LogCapture:
             ("SALVANDO      | ARQUIV",  "GGCI_SAVE"),
             ("Regras aplicadas:",       "GGCI_FIM"),
         ]
-        for trigger, nome_bloco in blocos:
-            if trigger in msg:
-                return nome_bloco
-        return None
+        # O buffer junta tudo desde o último flush: com o SQL em cache, a abertura do
+        # ETL e a do ScriptCase caem no mesmo trecho. Vale a etapa que aparece por
+        # ÚLTIMO — a primeira da lista rotulava o ScriptCase inteiro como ETL_SQL.
+        achados = [(msg.rfind(trigger), nome_bloco) for trigger, nome_bloco in blocos if trigger in msg]
+        return max(achados)[1] if achados else None
 
     def _registrar_timing(self, novo_bloco):
         agora = time.time()

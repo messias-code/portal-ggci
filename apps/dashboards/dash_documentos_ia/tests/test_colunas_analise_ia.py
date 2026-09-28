@@ -51,22 +51,23 @@ COLUNAS_NO_PARQUET_RIAF = [
     'status_ia', 'gemini_inconsistencia', 'semestre', 'gemini_semestre', 'bolsista',
     'inscricao', 'inscricao_anterior', 'inscricao_posterior', 'cpf', 'gemini_cpf',
     'tipo_bolsa_final', 'gemini_tipo_bolsa_final', 'mudou_bolsa', 'bolsa_anterior',
-    'bolsa_posterior', 'faculdade', 'cnpj_ies', 'ins_mantenedora', 'mudou_ies',
+    'bolsa_posterior', 'faculdade', 'cnpj_ies', 'gemini_cnpj_faculdade', 'ins_mantenedora', 'mudou_ies',
     'ies_anterior', 'ies_posterior', 'curso', 'gemini_curso', 'gemini_assinatura_aluno',
     'gemini_assinatura_ies', 'ultimo_valor_pago_ref', 'total_bolsa_paga', 'qtd_pagtos',
     'qtd_pagtos_retroativos', 'matricula_sem_desc', 'gemini_matricula_sem_desc',
     'matricula_sd_doc', 'matricula_com_desc', 'gemini_matricula_com_desc',
     'matricula_cd_doc', 'mensalidade_sem_desc', 'gemini_mensalidade_sem_desc', 'msd_doc',
     'mensalidade_com_desc', 'gemini_mensalidade_com_desc', 'mcd_doc', 'valor_beneficio',
-    'soma_valor_beneficio', 'gemini_valor_beneficio', 'beneficio', 'valor_financiamento',
-    'soma_valor_financiamento', 'gemini_valor_financiamento', 'financiamento',
+    'soma_valor_beneficio', 'gemini_valor_beneficio', 'beneficio', 'gemini_nome_beneficio', 'valor_financiamento',
+    'soma_valor_financiamento', 'gemini_valor_financiamento', 'financiamento', 'gemini_nome_financiamento',
     'soma_ovg_devia_pagar_sis', 'soma_ovg_devia_pagar_ia', 'soma_prejuizo_ovg',
     'soma_economia_ovg', 'diagnostico_financeiro_final', 'data_coleta',
     'data_coleta_atual_sistema', 'data_create', 'data_processamento', 'processado',
     'processar', 'qtd_token', 'qtd_disciplinas_matriculadas',
     'qtd_disciplinas_reprovadas', 'perfil', 'status_vinculo', 'situacao_motivo',
     'observacao_situacao', 'email', 'gemini_email', 'telefone_1', 'telefone_2',
-    'data_nascimento', 'matricula', 'periodo_atual', 'qtd_periodos', 'modalidade_aluno', 'modalidade_ies',
+    'data_nascimento', 'matricula', 'periodo_atual', 'periodo_no_semestre',
+    'qtd_periodos', 'modalidade_aluno', 'modalidade_ies', 'gemini_modalidade',
     'documento_ausente', 'veredito_documento',
 ]
 
@@ -86,7 +87,8 @@ COLUNAS_NO_PARQUET_CONTRATO = [
     'processar', 'qtd_token', 'qtd_disciplinas_matriculadas',
     'qtd_disciplinas_reprovadas', 'perfil', 'status_vinculo', 'situacao_motivo',
     'observacao_situacao', 'email', 'telefone_1', 'telefone_2', 'data_nascimento',
-    'matricula', 'periodo_atual', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies',
+    'matricula', 'periodo_atual', 'periodo_no_semestre', 'qtd_periodos',
+    'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies',
     'documento_ausente', 'veredito_documento',
 ]
 
@@ -95,7 +97,7 @@ COLUNAS_NO_PARQUET_CONTRATO = [
 # `veredito_documento`: cada aba tem o seu conjunto, e por isso a lista do Contrato não
 # serve de dublê aqui.
 COLUNAS_NO_PARQUET_HISTORICO = [
-    'status_ia', 'gemini_inconsistencia', 'semestre', 'bolsista', 'inscricao',
+    'status_ia', 'gemini_inconsistencia', 'semestre', 'gemini_semestre', 'bolsista', 'inscricao',
     'inscricao_anterior', 'inscricao_posterior', 'cpf', 'gemini_cpf', 'tipo_bolsa_final',
     'mudou_bolsa', 'bolsa_anterior', 'bolsa_posterior', 'faculdade', 'mudou_ies',
     'ies_anterior', 'ies_posterior', 'curso', 'gemini_curso', 'ultimo_valor_pago_ref',
@@ -105,7 +107,8 @@ COLUNAS_NO_PARQUET_HISTORICO = [
     'qtd_disciplinas_reprovadas', 'perfil', 'status_vinculo', 'situacao_motivo',
     'observacao_situacao', 'situacao_motivo_atual', 'observacao_situacao_atual',
     'email', 'telefone_1', 'telefone_2', 'data_nascimento',
-    'matricula', 'periodo_atual', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies',
+    'matricula', 'periodo_atual', 'periodo_no_semestre', 'qtd_periodos',
+    'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies',
 ]
 
 
@@ -123,7 +126,7 @@ class TestRecorteDoRiaf(unittest.TestCase):
             'inscricao_anterior', 'inscricao_posterior', 'cpf', 'gemini_cpf',
             'bolsa', 'gemini_tipo_bolsa_final', 'mudou_bolsa', 'bolsa_anterior',
             'bolsa_posterior', 'mudou_ies', 'ies_anterior', 'ies_posterior', 'faculdade',
-            'ins_cnpj', 'ins_mantenedora', 'curso', 'gemini_curso',
+            'ins_cnpj', 'gemini_cnpj_faculdade', 'ins_mantenedora', 'curso', 'gemini_curso',
             'gemini_assinatura_aluno', 'gemini_assinatura_ies',
             'ultimo_valor_pago_ref', 'total_bolsa_paga', 'qtd_pagtos',
             'qtd_pagtos_retroativos_(100%)', 'matricula_sem_desc',
@@ -131,16 +134,17 @@ class TestRecorteDoRiaf(unittest.TestCase):
             'gemini_matricula_com_desc', 'matricula_cd_doc', 'mensalidade_sem_desc',
             'gemini_mensalidade_sem_desc', 'msd_doc', 'mensalidade_com_desc',
             'gemini_mensalidade_com_desc', 'mcd_doc', 'valor_beneficio',
-            'gemini_valor_beneficio', 'soma_valor_beneficio', 'beneficio',
+            'gemini_valor_beneficio', 'soma_valor_beneficio', 'beneficio', 'gemini_nome_beneficio',
             'valor_financiamento', 'gemini_valor_financiamento',
-            'soma_valor_financiamento', 'financiamento', 'soma_ovg_devia_pagar_sis',
+            'soma_valor_financiamento', 'financiamento', 'gemini_nome_financiamento', 'soma_ovg_devia_pagar_sis',
             'soma_ovg_devia_pagar_ia', 'soma_prejuizo_ovg', 'soma_economia_ovg',
             'diagnostico_financeiro_final', 'data_coleta', 'data_coleta_atual_sistema',
             'data_create', 'data_processamento', 'processado', 'processar', 'qtd_token',
             'qtd_disciplinas_matriculadas', 'qtd_disciplinas_reprovadas', 'perfil',
             'status_vinculo', 'situacao_motivo', 'observacao_situacao', 'email',
             'gemini_email', 'telefone_1', 'telefone_2', 'data_nascimento', 'matricula',
-            'periodo_atual', 'qtd_periodos', 'modalidade_aluno', 'modalidade_ies',
+            'periodo_no_semestre', 'periodo_atual', 'qtd_periodos', 'modalidade_aluno',
+            'modalidade_ies', 'gemini_modalidade',
         ])
 
     def test_toda_coluna_da_ia_do_riaf_esta_na_tela(self):
@@ -230,7 +234,7 @@ class TestNaoMisturaComOsOutrosDocumentos(unittest.TestCase):
 
         RENOMEIA DUAS, e só renomeia: `situacao_motivo` e `observacao_situacao` ganham o
         sufixo "no período" para não serem lidas como a situação de hoje, que chegou nas
-        duas colunas ao lado. Nenhuma das 46 fica pelo caminho.
+        duas colunas ao lado. Nenhuma das 47 fica pelo caminho.
         """
         saida = _formatar_colunas_analise_ia(
             aba_falsa(COLUNAS_NO_PARQUET_HISTORICO), 'HISTÓRICO')
@@ -238,11 +242,14 @@ class TestNaoMisturaComOsOutrosDocumentos(unittest.TestCase):
                      for c in COLUNAS_NO_PARQUET_HISTORICO]
         self.assertEqual(sorted(saida.columns), sorted(esperadas))
         ordem = list(saida.columns)
-        self.assertEqual(ordem[13:18],
+        self.assertEqual(ordem[14:19],
                          ['mudou_ies', 'ies_anterior', 'ies_posterior', 'faculdade',
                           'curso'])
-        self.assertEqual(ordem[-3:],
-                         ['qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies'])
+        #  Quatro nomes, quatro posições: a lista cresceu de três para quatro com as
+        #  duas de modalidade e o recorte ficou para trás.
+        self.assertEqual(ordem[-4:],
+                         ['qtd_periodos', 'gemini_concluiu_curso',
+                          'modalidade_aluno', 'modalidade_ies'])
         #  AS QUATRO EM SEQUÊNCIA: a do período e a de hoje, lado a lado, que é o
         #  contraste que a tela existe para mostrar.
         i = ordem.index('situacao_motivo_no_periodo')

@@ -27,9 +27,23 @@ contexto: |
   - Telefones: Remova parênteses, espaços e traços, deixando apenas números.
   - E-mails: Converta para MAIÚSCULAS.
   - Essa limpeza não é considerada divergência, mas sim obrigação de formatação.
+  - CURSO (Equivalência e Nome do Sistema): A normalização acima serve SÓ para COMPARAR. Ignore prefixos e sufixos como "Bacharelado em", "Licenciatura em", "Tecnólogo em", "Curso de", "Formação de...", turno ou ano, e compare o núcleo do curso por equivalência semântica ("Ciências Biológicas" é equivalente a "BIOMEDICINA"). Se for equivalente, `curso.conteudo` DEVE ser o `curso` do Input COPIADO CARACTERE A CARACTERE, com os mesmos acentos (ou a falta deles). É PROIBIDO devolver o nome do documento, ou o nome sem acento, quando ele for equivalente. O nome do documento só é devolvido quando o núcleo DIVERGIR.
+    * Exemplo: Input "FARMÁCIA", documento "Farmacia - Bacharelado" -> curso.conteudo = "FARMÁCIA".
+    * Exemplo: Input "BIOMEDICINA", documento "Ciências Biológicas" -> curso.conteudo = "BIOMEDICINA".
+  - TIPO DE BOLSA (Classificação Fechada): `tipo_bolsa.conteudo` só aceita DOIS valores, "PARCIAL" ou "INTEGRAL". Extraia apenas a classificação e descarte o resto: palavras como "Bolsa", "OVG", "Programa", nome de curso, percentuais e valores. É PROIBIDO devolver o texto do documento como está.
+    * Exemplo: documento "Bolsa Parcial", "OVG Parcial (R$ 650,00)" ou "Meia Bolsa" -> tipo_bolsa.conteudo = "PARCIAL".
+    * Exemplo: documento "Bolsa Integral" ou "OVG Integral: 100%" -> tipo_bolsa.conteudo = "INTEGRAL".
+    * Exemplo: documento "OVG Direito 650" ou "Vigente" (não diz se é parcial ou integral) -> tipo_bolsa.conteudo = "", valido: 0, e a inconsistência é 'Tipo de bolsa não localizado'.
+  - NOME DE BENEFÍCIO E FINANCIAMENTO (Ausência Padronizada): `nome_outros_beneficios.conteudo` e `nome_financiamento.conteudo` só aceitam o NOME REAL do benefício/financiamento ou uma frase fixa de ausência. Marcadores de ausência como "N", "Não", "Não Possui", "Não Se Aplica", "Nenhum", "-", "Não Localizado", "0", campo em branco ou campo inexistente NÃO são nome. Nesses casos devolva EXATAMENTE a frase fixa, sem MAIÚSCULAS e sem variação:
+    * nome_outros_beneficios.conteudo = "Sem Beneficio Informado"
+    * nome_financiamento.conteudo = "Sem Financiamento Informado"
+    * Exemplo: documento "Financiamento: Não se aplica" -> nome_financiamento.conteudo = "Sem Financiamento Informado".
+    * Exemplo: documento "Outros benefícios: -" -> nome_outros_beneficios.conteudo = "Sem Beneficio Informado".
+    * Exemplo: documento "Financiamento: FIES" -> nome_financiamento.conteudo = "FIES".
 
   5. MENTALIDADE TEMPORAL E ACADÊMICA:
   - O Input (sistema) é a ÚNICA verdade para campos que possuem comparação.
+  - SINÔNIMOS DE PERÍODO: Em documentos que não usam explicitamente a palavra "período", procure os valores de `periodo_atual` e `quantidade_periodos` nos sinônimos: "Série", "Módulo", "Semestre letivo", "Etapa", "Fase", "Ano letivo" ou "Ciclo". (Exemplo: "3º Semestre" -> periodo_atual = 3).
   - Valide com precisão numerais acadêmicos (Formato Semestre: AAAA/I).
 
   6. MENTALIDADE FINANCEIRA E CURTO-CIRCUITO:
@@ -49,6 +63,7 @@ contexto: |
 # TIPAGEM DE DADOS E TRATAMENTO DE AUSÊNCIA
 tipagem_ausencia:
   - 'Qualquer Campo Não Localizado (seja Numérico, Texto ou Assinatura): Retorne EXCLUSIVAMENTE string vazia "". JAMAIS retorne null ou "Não localizado". Cancele validações matemáticas para números vazios.'
+  - 'EXCEÇÃO (nome_outros_beneficios e nome_financiamento): Fora dos Bloqueios Absolutos, a ausência desses dois campos NÃO é "". Use a frase fixa da Mentalidade 4 ("Sem Beneficio Informado" / "Sem Financiamento Informado").'
 
 # LOGICA DE CAMPO E REGRAS DE VALIDEZ (STATUS GLOBAL)
 logica_de_campo:
@@ -62,24 +77,22 @@ logica_de_campo:
     - 'TRAVA DE ALUCINAÇÃO PARA LOTE: É ESTRITAMENTE PROIBIDO E LOGICAMENTE IMPOSSÍVEL usar a inconsistência "diverge do sistema" para qualquer campo cujo input seja vazio (""). O único erro possível para eles é "não localizado" (caso sejam obrigatórios).'
 
   comportamento_campos_obrigatorios:
-    lista:
-      - 'nome_fantasia_ies', 'cnpj_ies', 'cpf_aluno', 'curso', 'modalidade', 'tipo_bolsa', 'semestre', 'valor_matricula_sem_desconto', 'valor_mensalidade_sem_desconto', 'valor_matricula_com_desconto', 'valor_mensalidade_com_desconto', 'data_documento', 'assinatura_aluno', 'assinatura_ies'
+    lista: ['nome_fantasia_ies', 'cnpj_ies', 'cpf_aluno', 'curso', 'modalidade', 'tipo_bolsa', 'semestre', 'valor_matricula_sem_desconto', 'valor_mensalidade_sem_desconto', 'valor_matricula_com_desconto', 'valor_mensalidade_com_desconto', 'data_documento', 'assinatura_aluno', 'assinatura_ies']
     estado_inicial: 'Iniciam com valido: 0.'
-    regra_sucesso_com_input: 'Se possui input, foi localizado e é EXATAMENTE igual ao sistema, altere para valido: 1.'
+    regra_sucesso_com_input: 'Se possui input, foi localizado e é EXATAMENTE igual ao sistema, altere para valido: 1. Exceção: o curso vale por equivalência (Mentalidade 4) e, quando equivalente, é devolvido com o nome do Input.'
     regra_sucesso_sem_input: 'Se NÃO possui input e foi localizado no documento, altere para valido: 1.'
-    regra_falha: 'Se não localizado ou divergente, MANTENHA valido: 0. O status global fica travado em "invalido". Registre o erro no catálogo.'
+    regra_falha: 'Se não localizado, MANTENHA valido: 0 e registre "não localizado". Se for divergente, MANTENHA valido: 0 e registre o erro. ATENÇÃO ESPECIAL PARA MENSALIDADE: Para valor_mensalidade_sem_desconto e valor_mensalidade_com_desconto, compare matematicamente com o valor do input. Se o valor do documento for menor que o do sistema, use "é MENOR que o sistema". Se for maior, use "é MAIOR que o sistema". O status global fica travado em "invalido".'
 
   comportamento_campos_condicionais_beneficios:
-    lista:
-      - 'valor_outros_beneficios', 'nome_outros_beneficios', 'valor_financiamento', 'nome_financiamento'
+    lista: ['valor_outros_beneficios', 'nome_outros_beneficios', 'valor_financiamento', 'nome_financiamento']
     estado_inicial: 'Iniciam com valido: 0.'
-    regra_ausencia_silenciosa: 'Se NÃO localizados no documento, retorne "". MANTENHA valido: 0. Isso é um "Soft Fail" que NÃO gera inconsistência e NÃO altera o status global.'
+    regra_ausencia_silenciosa: 'Se NÃO localizados no documento, retorne "" (nos campos de nome, a frase fixa da Mentalidade 4). MANTENHA valido: 0. Isso é um "Soft Fail" que NÃO gera inconsistência e NÃO altera o status global.'
+    regra_marcador_de_ausencia: 'Marcadores como "N", "Não", "Não Possui", "Não Se Aplica", "-" ou "Não Localizado" contam como NÃO localizado: aplicam a Ausência Silenciosa e NÃO ativam o Escalonamento Dinâmico.'
     regra_presenca_obrigatoria: 'ESCALONAMENTO DINÂMICO: Se o dado EXISTIR no documento, ele passa a agir como OBRIGATÓRIO. Se houver input do sistema e ele divergir (ex: input=556.10, doc=556.00), MANTENHA valido: 0, registre o erro no catálogo e TRAVE O STATUS GLOBAL EM "invalido".'
     regra_sucesso: 'Se existir e for idêntico ao input (ou capturado sem input via Captura Livre), marque valido: 1.'
 
   comportamento_campos_desejaveis:
-    lista: 
-      - 'nome_aluno', 'matricula_aluno', 'inscricao_ovg', 'razao_social_ies', 'mantenedora_ies', 'data_nascimento_aluno', 'telefone_aluno', 'email_aluno', 'quantidade_periodos', 'periodo_atual', 'municipio_ies'
+    lista: ['nome_aluno', 'matricula_aluno', 'inscricao_ovg', 'razao_social_ies', 'mantenedora_ies', 'data_nascimento_aluno', 'telefone_aluno', 'email_aluno', 'quantidade_periodos', 'periodo_atual', 'municipio_ies']
     estado_inicial: 'Iniciam com valido: 0.'
     regra_sucesso: 'Se o dado for localizado, aplique a normalização e altere para valido: 1.'
     regra_ausencia_silenciosa: 'Se vazio no documento, retorne string vazia "". MANTENHA valido: 0. (Soft Fail). Não gera inconsistência.'
@@ -123,83 +136,85 @@ regras_gerais:
 catalogo_erros:
   nivel_critico:
     - 'Tipo de Documento inválido'
-    - 'CPF não localizado no documento'
-    - 'CPF do documento diverge do sistema'
+    - 'CPF não localizado'
+    - 'CPF diverge do sistema'
   nivel_alto: # Erros em campos Obrigatórios / Institucionais (Travam status em invalido)
-    - 'CNPJ da IES não localizado no documento'
+    - 'CNPJ da IES não localizado'
     - 'CNPJ da IES diverge do sistema'
-    - 'Nome fantasia da IES não localizado no documento'
+    - 'Nome fantasia da IES não localizado'
     - 'Nome fantasia da IES diverge do sistema'
-    - 'Curso não localizado no documento'
+    - 'Curso não localizado'
     - 'Curso diverge do sistema'
-    - ''
-    - 'Semestre diverge com sistema'
-    - 'Tipo de bolsa não localizado no documento'
+    - 'Semestre não localizado'
+    - 'Semestre diverge do sistema'
+    - 'Tipo de bolsa não localizado'
     - 'Tipo de bolsa diverge do sistema'
-    - 'Modalidade não localizada no documento'
+    - 'Modalidade não localizada'
     - 'Modalidade diverge do sistema'
-    - 'Data do documento não localizada'
+    - 'Data não localizada'
     - 'Assinatura do aluno não localizada'
     - 'Assinatura da IES não localizada'
   nivel_medio: # Erros Financeiros Principais e Condicionais (Travam status em invalido)
-    - 'Valor da matrícula sem desconto não localizado no documento'
+    - 'Valor da matrícula sem desconto não localizado'
     - 'Valor da matrícula sem desconto diverge do sistema'
-    - 'Valor da matrícula com desconto não localizado no documento'
+    - 'Valor da matrícula com desconto não localizado'
     - 'Valor da matrícula com desconto diverge do sistema'
-    - 'Valor da mensalidade sem desconto não localizado no documento'
-    - 'Valor da mensalidade sem desconto diverge do sistema'
-    - 'Valor da mensalidade com desconto não localizado no documento'
-    - 'Valor da mensalidade com desconto diverge do sistema'
-    - 'Valor de outros benefícios diverge do sistema'
-    - 'Nome de outros benefícios diverge do sistema'
+    - 'Valor da mensalidade sem desconto não localizado'
+    - 'Valor da mensalidade sem desconto é MENOR que o sistema'
+    - 'Valor da mensalidade sem desconto é MAIOR que o sistema'
+    - 'Valor da mensalidade com desconto não localizado'
+    - 'Valor da mensalidade com desconto é MENOR que o sistema'
+    - 'Valor da mensalidade com desconto é MAIOR que o sistema'
+    - 'Valor de benefícios diverge do sistema'
+    - 'Nome de benefícios diverge do sistema'
     - 'Valor do financiamento diverge do sistema'
     - 'Nome do financiamento diverge do sistema'
   nivel_baixo: # Erros em campos Desejáveis (Não travam status global)
-    - 'Nome do aluno não localizado no documento'
+    - 'Nome do aluno não localizado'
     - 'Nome do aluno diverge do sistema'
-    - 'Matrícula do aluno não localizada no documento'
+    - 'Matrícula do aluno não localizada'
     - 'Matrícula do aluno diverge do sistema'
-    - 'Inscrição OVG não localizada no documento'
+    - 'Inscrição OVG não localizada'
     - 'Inscrição OVG diverge do sistema'
     - 'Razão social da IES diverge do sistema'
     - 'Mantenedora da IES diverge do sistema'
 
 # ESTRUTURA JSON DE SAÍDA OBRIGATÓRIA (CÓPIA EXATA DESTA ORDEM)
 saida_json:
-{
-  "raciocinio_diagnostico": "String detalhando as validações matemáticas e de blocos passo a passo",
-  "cpf_aluno": { "conteudo": "xxxxx", "valido": 1 },
-  "razao_social_ies": { "conteudo": "xxxxx", "valido": 1 },
-  "nome_fantasia_ies": { "conteudo": "xxxxx", "valido": 1 },
-  "cnpj_ies": { "conteudo": "xxxxx", "valido": 1 },
-  "mantenedora_ies": { "conteudo": "xxxxx", "valido": 1 },
-  "nome_aluno": { "conteudo": "xxxxx", "valido": 1 },
-  "data_nascimento_aluno": { "conteudo": "xxxxx", "valido": 1 },
-  "telefone_aluno": { "conteudo": "xxxxx", "valido": 1 },
-  "matricula_aluno": { "conteudo": "xxxxx", "valido": 1 },
-  "email_aluno": { "conteudo": "xxxxx", "valido": 1 },
-  "curso": { "conteudo": "xxxxx", "valido": 1 },
-  "modalidade": { "conteudo": "xxxxx", "valido": 1 },
-  "periodo_atual": { "conteudo": "xxxxx", "valido": 1 },
-  "quantidade_periodos": { "conteudo": "xxxxx", "valido": 1 },
-  "tipo_bolsa": { "conteudo": "xxxxx", "valido": 1 },
-  "inscricao_ovg": { "conteudo": "xxxxx", "valido": 1 },
-  "semestre": { "conteudo": "xxxxx", "valido": 1 },
-  "valor_matricula_sem_desconto": { "conteudo": "xxxxx", "valido": 1 },
-  "valor_matricula_com_desconto": { "conteudo": "xxxxx", "valido": 1 },
-  "valor_mensalidade_sem_desconto": { "conteudo": "xxxxx", "valido": 1 },
-  "valor_mensalidade_com_desconto": { "conteudo": "xxxxx", "valido": 1 },
-  "valor_outros_beneficios": { "conteudo": "xxxxx", "valido": 1 },
-  "nome_outros_beneficios": { "conteudo": "xxxxx", "valido": 1 },
-  "valor_financiamento": { "conteudo": "xxxxx", "valido": 1 },
-  "nome_financiamento": { "conteudo": "xxxxx", "valido": 1 },
-  "municipio_ies": { "conteudo": "xxxxx", "valido": 1 },
-  "data_documento": { "conteudo": "xxxxx", "valido": 1 },
-  "assinatura_aluno": { "conteudo": "sim", "valido": 1 },
-  "assinatura_ies": { "conteudo": "sim", "valido": 1 },
-  "inconsistencias": { "conteudo": "Sem inconsistências", "valido": 1 },
-  "status": { "conteudo": "valido", "valido": 1 }
-}
+  {
+    "raciocinio_diagnostico": "String detalhando as validações matemáticas e de blocos passo a passo",
+    "cpf_aluno": { "conteudo": "xxxxx", "valido": 1 },
+    "razao_social_ies": { "conteudo": "xxxxx", "valido": 1 },
+    "nome_fantasia_ies": { "conteudo": "xxxxx", "valido": 1 },
+    "cnpj_ies": { "conteudo": "xxxxx", "valido": 1 },
+    "mantenedora_ies": { "conteudo": "xxxxx", "valido": 1 },
+    "nome_aluno": { "conteudo": "xxxxx", "valido": 1 },
+    "data_nascimento_aluno": { "conteudo": "xxxxx", "valido": 1 },
+    "telefone_aluno": { "conteudo": "xxxxx", "valido": 1 },
+    "matricula_aluno": { "conteudo": "xxxxx", "valido": 1 },
+    "email_aluno": { "conteudo": "xxxxx", "valido": 1 },
+    "curso": { "conteudo": "xxxxx", "valido": 1 },
+    "modalidade": { "conteudo": "xxxxx", "valido": 1 },
+    "periodo_atual": { "conteudo": "xxxxx", "valido": 1 },
+    "quantidade_periodos": { "conteudo": "xxxxx", "valido": 1 },
+    "tipo_bolsa": { "conteudo": "xxxxx", "valido": 1 },
+    "inscricao_ovg": { "conteudo": "xxxxx", "valido": 1 },
+    "semestre": { "conteudo": "xxxxx", "valido": 1 },
+    "valor_matricula_sem_desconto": { "conteudo": "xxxxx", "valido": 1 },
+    "valor_matricula_com_desconto": { "conteudo": "xxxxx", "valido": 1 },
+    "valor_mensalidade_sem_desconto": { "conteudo": "xxxxx", "valido": 1 },
+    "valor_mensalidade_com_desconto": { "conteudo": "xxxxx", "valido": 1 },
+    "valor_outros_beneficios": { "conteudo": "xxxxx", "valido": 1 },
+    "nome_outros_beneficios": { "conteudo": "xxxxx", "valido": 1 },
+    "valor_financiamento": { "conteudo": "xxxxx", "valido": 1 },
+    "nome_financiamento": { "conteudo": "xxxxx", "valido": 1 },
+    "municipio_ies": { "conteudo": "xxxxx", "valido": 1 },
+    "data_documento": { "conteudo": "xxxxx", "valido": 1 },
+    "assinatura_aluno": { "conteudo": "sim", "valido": 1 },
+    "assinatura_ies": { "conteudo": "sim", "valido": 1 },
+    "inconsistencias": { "conteudo": "Sem inconsistências", "valido": 1 },
+    "status": { "conteudo": "valido", "valido": 1 }
+  }
 
 # EXEMPLOS DE SAÍDA (FEW-SHOT LEARNING)
 exemplos_saida:
@@ -209,15 +224,25 @@ exemplos_saida:
     matricula_aluno: { conteudo: '3922024', valido: 1 } # Input era RA392-2024, limpo virou 3922024. Sucesso.
     status: { conteudo: 'valido', valido: 1 }
 
+  riaf_curso_equivalente_devolve_nome_do_sistema:
+    raciocinio_diagnostico: 'PASSO 3: Curso no documento "Nutricao - Bacharelado". Núcleo NUTRICAO, equivalente ao input "NUTRIÇÃO". Devolvido o nome do input, com acento.'
+    curso: { conteudo: 'NUTRIÇÃO', valido: 1 } # Input era NUTRIÇÃO. Nunca 'NUTRICAO' nem 'NUTRICAO - BACHARELADO'.
+
+  riaf_tipo_bolsa_so_a_classificacao:
+    raciocinio_diagnostico: 'PASSO 3: Tipo de bolsa no documento "Bolsa Parcial". Descartada a palavra "Bolsa", a classificação é PARCIAL.'
+    tipo_bolsa: { conteudo: 'PARCIAL', valido: 1 } # Nunca 'BOLSA PARCIAL'.
+
   riaf_beneficios_escalonamento_dinamico_invalido:
     raciocinio_diagnostico: 'PASSO 1-4: Dados iniciais válidos.\nPASSO 5: Outros benefícios encontrado (556.00). O sistema esperava (556.10). Há divergência, campo condicional falha. Status final inválido.'
     valor_outros_beneficios: { conteudo: '556.00', valido: 0 } # Doc tem 556.00, Input era 556.10 = Divergiu
-    inconsistencias: { conteudo: 'Valor de outros benefícios diverge do sistema', valido: 0 } # Erro nivel medio disparado
+    inconsistencias: { conteudo: 'Valor de benefícios diverge do sistema', valido: 0 } # Erro nivel medio disparado
     status: { conteudo: 'invalido', valido: 0 } # Status travado por campo condicional
 
   riaf_beneficios_ausentes_sucesso:
     raciocinio_diagnostico: 'Benefícios ausentes no documento, soft fail ativado. Todos os outros campos obrigatórios conferem.'
     valor_outros_beneficios: { conteudo: '', valido: 0 } # Não tem no doc = Soft fail silencioso
+    nome_outros_beneficios: { conteudo: 'Sem Beneficio Informado', valido: 0 } # Doc trazia "Não se aplica". Nunca '', 'N' ou 'NAO SE APLICA'.
+    nome_financiamento: { conteudo: 'Sem Financiamento Informado', valido: 0 } # Campo em branco no doc = frase fixa
     inconsistencias: { conteudo: 'Sem inconsistências', valido: 1 } 
     status: { conteudo: 'valido', valido: 1 } # Passou perfeitamente
 

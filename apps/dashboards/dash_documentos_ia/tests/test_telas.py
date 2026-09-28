@@ -350,11 +350,15 @@ class TestIntegridadeDoTemplate(BaseTelas):
 
         Os semestres NÃO entram: ali marcar dois soma, e é pergunta legítima.
 
-        São CINCO grupos na barra de Envios — Vínculo, Perfil, Bolsa, Mudou de IES e
-        Mudou de bolsa. A bateria da aba Análise IA tem a sua própria conta e fica fora
-        daqui, senão o número diria só que existem duas barras.
+        São SETE grupos na barra de Envios — Vínculo, Perfil, Bolsa, Mudou de IES,
+        Mudou de bolsa, Modalidade do aluno e Modalidade da IES. Os dois de modalidade
+        têm TRÊS opções e não duas, e entram aqui pela mesma razão: presencial e EAD se
+        excluem, e marcar os dois é o mesmo recorte de não marcar nenhum.
+
+        A bateria da aba Análise IA tem a sua própria conta e fica fora daqui, senão o
+        número diria só que existem duas barras.
         """
-        self.assertEqual(self.barra_envios.count("docia-grupo-exclusivo"), 5)
+        self.assertEqual(self.barra_envios.count("docia-grupo-exclusivo"), 7)
         semestres = self.barra_envios.split('class="filter-semestre', 1)[0]
         self.assertNotIn("docia-grupo-exclusivo", semestres.rsplit("<section", 1)[-1])
 
@@ -466,9 +470,14 @@ class TestApiDeAcompanhamento(BaseTelas):
         )
 
     def test_parar_marca_falha(self):
-        self.cliente.post(reverse("dash_documentos_ia_parar", args=[self.processo.id]))
+        # O `os.system` é simulado: de verdade, ele roda `pkill` na máquina. Em 24/09/2026
+        # esta suíte matou uma atualização real e todos os Chromium do servidor.
+        with patch("apps.dashboards.dash_documentos_ia.views.os.system") as sistema:
+            self.cliente.post(reverse("dash_documentos_ia_parar", args=[self.processo.id]))
         self.processo.refresh_from_db()
         self.assertEqual(self.processo.status, "FALHA")
+        # Âncora no fim: parar o 18 não pode casar com o 181.
+        self.assertIn(f"executar_doc_ia {self.processo.id}$'", sistema.call_args_list[0].args[0])
 
     def test_parar_processo_inexistente_nao_estoura(self):
         resposta = self.cliente.post(reverse("dash_documentos_ia_parar", args=[999999]))
@@ -521,13 +530,14 @@ class TestApiDaTela(BaseTelas):
         Os baldes são a rosca inteira: se não somarem o total, o número no miolo contradiz
         as fatias em volta dele.
 
-        As três fatias de inadimplência entram na soma pelo mesmo motivo que existem, e a
-        `Inadimplentes` com mais razão: ela é a única que ACRESCENTA linhas ao universo (a
-        cobrança que o site faz e nós não faríamos). Deixá-la fora da soma esconderia
-        exatamente o crescimento que ela existe para denunciar.
+        AS DUAS DE INADIMPLÊNCIA ENTRAM NA SOMA porque são linhas do nosso universo, e não
+        acréscimo: o inadimplente é um documento que existe no espelho e recebeu um estado
+        financeiro por cima. Havia uma terceira, `Inadimplentes`, que de fato acrescentava
+        linhas — a cobrança injetada do relatório do site. Ela saiu daqui junto com a
+        injeção que a alimentava, e não porque se decidiu escondê-la.
         """
         chaves = ["Processados", "NaoProcessados", "NaoEnviados",
-                  "InadProc", "InadNaoProc", "Inadimplentes"]
+                  "InadProc", "InadNaoProc"]
         resumo = self.cliente.get(reverse("dash_documentos_ia_dados")).json()["dados"]["resumo_quantitativo"]
         for documento, dados in resumo.items():
             with self.subTest(documento=documento):
@@ -552,8 +562,8 @@ class TestApiDaTela(BaseTelas):
         self.assertEqual(tabela["colunas"][:2], ["doc", "status_doc"])
         # `semestre` fica entre o veredito da IA e o nome: a mesma inscrição repete o
         # mesmo documento em vários semestres, e sem ele as linhas ficam idênticas.
-        self.assertEqual(tabela["colunas"][2:5], ["status_ia", "semestre", "bolsista"])
-        self.assertEqual(len(tabela["colunas"]), 32)
+        self.assertEqual(tabela["colunas"][2:6], ["status_ia", "semestre", "gemini_semestre", "bolsista"])
+        self.assertEqual(len(tabela["colunas"]), 35)
         for linha in tabela["linhas"]:
             self.assertEqual(len(linha), len(tabela["colunas"]))
 
@@ -565,15 +575,20 @@ class TestApiDaTela(BaseTelas):
         pagamento — e a tela dizia que a IA não tinha lido.
 
         Quem desempata é `veredito_documento`, o resultado da IA que o motor guarda antes
-        de `Inadimplente` sobrepor — mas só DEPOIS de `documento_ausente` separar a
-        cobrança do site, que não tem documento nenhum para a IA ter lido. Este teste roda
-        sobre o Parquet real; o caso sintético está em
+        de `Inadimplente` sobrepor. É o ÚNICO desempate: `documento_ausente` saiu junto com
+        a injeção de cobranças do site, que era quem a escrevia. Este teste roda sobre o
+        Parquet real; o caso sintético está em
         `test_inadimplente_nao_lido_nao_entra_na_fatia_processados`.
 
         O ESPERADO ACOMPANHA O PARQUET DA MÁQUINA, de propósito: enquanto o motor não tiver
         rodado com a coluna nova, o desempate é o antigo (`processado`) e é ele que o teste
         cobra. Fixar só um dos dois faria o teste quebrar na primeira atualização do motor
         — ou, pior, passar a validar o comportamento que esta correção veio remover.
+
+        E O DESEMPATE É POR LINHA, não por arquivo: as abas são concatenadas num DataFrame
+        só, então a mesma base pode ter linha com veredito e linha sem. Decidir aqui em
+        bloco ("tem veredito? então todas usam veredito") reprovaria o comportamento certo
+        num Parquet misto.
         """
         from apps.dashboards.dash_documentos_ia import views
 
@@ -586,39 +601,35 @@ class TestApiDaTela(BaseTelas):
             self.skipTest("sem inadimplentes nesta base")
 
         baldes = views._balde_do_documento(inadimplentes)
+        self.assertIn("processado", df.columns,
+                      "o desempate de reserva tem de vir na base, para o Parquet defasado")
         veredito = inadimplentes["veredito_documento"].astype("string").str.strip().str.upper()
-        if veredito.notna().any() and not veredito.eq("").all():
-            leu = veredito.isin(views.STATUS_PROCESSADO)
-        else:
-            self.assertIn("processado", df.columns,
-                          "sem veredito no Parquet, o desempate de reserva tem de vir na base")
-            leu = inadimplentes["processado"].astype("string").str.strip().str.upper().eq("SIM")
-        leu = leu.fillna(False)
-        do_site = (inadimplentes["documento_ausente"].astype("string")
-                   .str.strip().str.upper().eq("SIM").fillna(False))
+        antigo = inadimplentes["processado"].astype("string").str.strip().str.upper().eq("SIM")
+        leu = veredito.isin(views.STATUS_PROCESSADO).where(
+            veredito.notna() & veredito.ne(""), antigo).fillna(False)
 
         self.assertEqual(
-            set(baldes[do_site].unique()) - {views.BALDE_INAD}, set(),
-            "cobrança do site é a fatia `Inadimplentes`, qualquer que seja `processado`")
-        self.assertEqual(
-            set(baldes[~do_site & leu].unique()) - {views.BALDE_INAD_PROC}, set(),
+            set(baldes[leu].unique()) - {views.BALDE_INAD_PROC}, set(),
             "inadimplente que a IA leu tem de contar como processado")
         self.assertEqual(
-            set(baldes[~do_site & ~leu].unique()) - {views.BALDE_INAD_NAO_PROC}, set(),
+            set(baldes[~leu].unique()) - {views.BALDE_INAD_NAO_PROC}, set(),
             "inadimplente que a IA não leu continua não processado")
 
-    def test_cobranca_do_site_vira_a_fatia_inadimplentes(self):
+    def test_documento_ausente_nao_desvia_mais_nenhuma_fatia(self):
         """
-        A sexta fatia não é um estado do documento: é a cobrança que o SIBU faz sem que
-        tenha havido repasse no semestre. Ela chega por injeção do relatório do site (ver
-        `COBRANÇA` em `services/ggci.py`), marcada com `documento_ausente = SIM`.
+        HOUVE UMA SEXTA FATIA, `Inadimplentes`: a cobrança que o SIBU faz sem que tenha
+        havido repasse no semestre, injetada do relatório do site (`COBRANÇA` em
+        `services/ggci.py`) e marcada com `documento_ausente = SIM`. O motor deixou de
+        raspar o site e de injetar essas linhas, então a fatia perdeu a origem e saiu.
 
-        `documento_ausente` DESEMPATA ANTES de `processado`: a terceira linha abaixo diz
-        `processado = Sim` e mesmo assim é `Inadimplentes` — cobrança sem lastro não tem
-        leitura de IA para desempatar, e trocar a ordem a mandaria para a fatia errada.
+        `documento_ausente` SAIU DO DESEMPATE COM ELA, e é isto que o teste fixa: a
+        terceira linha abaixo ainda diz `SIM`, e mesmo assim é classificada pelo único
+        desempate que sobrou — a leitura da IA. Enquanto a coluna continuou desviando,
+        ela tirava a linha das duas fatias de inadimplência sem ter para onde mandá-la, e
+        a linha caía em `Processados`, que é a fatia de quem entregou e foi lido.
 
-        As duas últimas checagens são o Parquet defasado: sem a coluna, ou com ela vazia, a
-        fatia fica em zero e nada é classificado errado.
+        AS TRÊS ÚLTIMAS CHECAGENS SÃO A INDIFERENÇA À COLUNA: com `SIM`, sem a coluna e
+        com ela vazia, o resultado tem de ser exatamente o mesmo.
         """
         import pandas as pd
 
@@ -630,16 +641,17 @@ class TestApiDaTela(BaseTelas):
             "processado": ["Sim", "Não", "Sim", "Sim", "Não", "Sim"],
             "documento_ausente": ["Não", "Não", "Sim", "Não", "Não", "Não"],
         })
-        self.assertEqual(
-            list(views._balde_do_documento(df)),
-            [views.BALDE_INAD_PROC, views.BALDE_INAD_NAO_PROC, views.BALDE_INAD,
-             views.BALDE_PENDENTES, views.BALDE_NAO_PROCESSADOS, views.BALDE_PROCESSADOS])
+        esperado = [views.BALDE_INAD_PROC, views.BALDE_INAD_NAO_PROC, views.BALDE_INAD_PROC,
+                    views.BALDE_PENDENTES, views.BALDE_NAO_PROCESSADOS, views.BALDE_PROCESSADOS]
+        self.assertEqual(list(views._balde_do_documento(df)), esperado)
 
         sem_coluna = df.drop(columns=["documento_ausente"])
         vazia = df.assign(documento_ausente=pd.NA)
-        for base, caso in ((sem_coluna, "sem a coluna"), (vazia, "coluna vazia")):
+        todas_sim = df.assign(documento_ausente="Sim")
+        for base, caso in ((sem_coluna, "sem a coluna"), (vazia, "coluna vazia"),
+                           (todas_sim, "coluna toda em SIM")):
             with self.subTest(caso=caso):
-                self.assertNotIn(views.BALDE_INAD, list(views._balde_do_documento(base)))
+                self.assertEqual(list(views._balde_do_documento(base)), esperado)
 
     def test_inadimplente_nao_lido_nao_entra_na_fatia_processados(self):
         """
@@ -652,8 +664,8 @@ class TestApiDaTela(BaseTelas):
 
         AS TRÊS PRIMEIRAS LINHAS ABAIXO SÃO O CASO INTEIRO: as três dizem `processado = Sim`,
         e é o veredito guardado pelo motor que as separa. A segunda é o RIAF de 2026-2; a
-        terceira mostra que a ordem dos desempates não mudou — cobrança do site continua
-        vindo antes de qualquer leitura.
+        terceira carrega o antigo `documento_ausente = Sim` e é classificada pelo veredito
+        como qualquer outra, porque essa coluna não desempata mais nada.
 
         `Corrompido` conta como LIDO de propósito: é a IA dizendo que abriu o arquivo e não
         conseguiu extrair nada. É a mesma linha que a rosca já traça em `STATUS_PROCESSADO`.
@@ -671,7 +683,7 @@ class TestApiDaTela(BaseTelas):
         })
         self.assertEqual(
             list(views._balde_do_documento(df)),
-            [views.BALDE_INAD_PROC, views.BALDE_INAD_NAO_PROC, views.BALDE_INAD,
+            [views.BALDE_INAD_PROC, views.BALDE_INAD_NAO_PROC, views.BALDE_INAD_NAO_PROC,
              views.BALDE_INAD_PROC, views.BALDE_PROCESSADOS])
 
     def test_sem_veredito_no_parquet_o_desempate_antigo_ainda_vale(self):

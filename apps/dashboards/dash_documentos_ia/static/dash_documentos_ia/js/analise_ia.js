@@ -624,9 +624,10 @@
                 acusaria a IES de um problema que é nosso, de prompt.  */
             const eCatalogacao = alvo.classList.contains('docia-flag--erro-na-inconsistencia');
             const eFalsoInvalido = alvo.classList.contains('docia-flag--falso-invalido');
+            //  O motor manda a frase certa ("O Correto Seria: ...") em todo documento.
             const titulo = '<div class="docia-balao-motivos__titulo">'
                 + (eCatalogacao ? 'O que a IA apontou, e o correto'
-                    : eFalsoInvalido ? 'Apontado pela IA, não confirmado pelo sistema'
+                    : eFalsoInvalido ? 'O que a IA deveria ter apontado'
                     : (razoes.length > 1 ? 'Motivos da divergência' : 'Motivo da divergência'))
                 + '</div>';
             const corpo = razoes.length > 1
@@ -1054,6 +1055,17 @@
                 return marcados[i] ? tintaDoAtivo() : tintaFraca();
             };
             const tintasDosRotulos = categorias.map((_, i) => tintaDoRotulo(i));
+
+            /*  A EXPLICAÇÃO DE CADA BARRA, tirada da MESMA `nota` que o balão usa: o
+                `<title>` e o balão não podem divergir, e derivar um do outro é o que
+                garante isso sem um segundo texto para manter.  */
+            const explicacoes = nota
+                ? categorias.map((_, i) => (nota(i) || []).filter(Boolean).join(' · '))
+                : null;
+
+            /*  UMA COR POR BARRA é o modo `distributed` do Apex — e é ele que decide
+                como o balão tem de ser pedido logo abaixo.  */
+            const umaCorPorBarra = Array.isArray(cores) && cores.length > 1;
             const fundosDasBarras = categorias.map((_, i) => (
                 marcados && marcados[i] ? corDoChip() : 'transparent'));
             /*  ESCALA NÃO-LINEAR (Raiz Quadrada) PARA OS DESENHOS DAS BARRAS.
@@ -1088,13 +1100,27 @@
 
                         `dataPointIndex` vem -1 quando o clique cai no fundo do card,
                         fora de qualquer barra — daí a guarda antes de chamar.  */
-                    events: aoClicar ? {
-                        click: (evento, contexto, config) => {
-                            const i = config && config.dataPointIndex;
-                            if (i === undefined || i === null || i < 0) return;
-                            aoClicar(i);
-                        },
-                    } : {},
+                    /*  `mounted` E `updated` REPÕEM OS `<title>` (ver `explicarBarras`).
+                        Os dois, e não só o primeiro: o Apex reescreve o SVG inteiro a
+                        cada `updateOptions`, e o clique numa barra e o `ajustarAlturasIA`
+                        passam por lá — sem o `updated`, a explicação do hover sumiria
+                        exatamente no gesto seguinte ao que a fez aparecer.
+
+                        ELES SÃO O ÚNICO LUGAR QUE REPÕE. Repor também em `desenhar`
+                        depois do `render()` é uma corrida com o próprio Apex: o `render`
+                        resolve antes de o eixo estar no DOM em parte dos casos, e o que
+                        se via era o `title` valer no primeiro desenho e não no segundo.  */
+                    events: {
+                        mounted: (contexto) => explicarBarras(contexto.el, explicacoes),
+                        updated: (contexto) => explicarBarras(contexto.el, explicacoes),
+                        ...(aoClicar ? {
+                            click: (evento, contexto, config) => {
+                                const i = config && config.dataPointIndex;
+                                if (i === undefined || i === null || i < 0) return;
+                                aoClicar(i);
+                            },
+                        } : {}),
+                    },
                 },
                 /*  O REALCE DE PASSAGEM DIZ QUE DÁ PARA CLICAR. Sem ele a barra é um
                     desenho que responde ao clique sem nunca ter dito que responderia —
@@ -1161,7 +1187,7 @@
                         borderRadius: 6,
                         borderRadiusApplication: 'end',
                         barHeight: '70%',
-                        distributed: Array.isArray(cores) && cores.length > 1,
+                        distributed: umaCorPorBarra,
                         dataLabels: { position: 'top' },
                         //  A faixa do escolhido (ver a nota em `fundosDasBarras`). O
                         //  raio é o mesmo da barra, para a tira não sair em esquadro
@@ -1185,9 +1211,21 @@
                     dropShadow: { enabled: false },
                 },
                 legend: { show: false },
+                /*  `shared` SÓ QUANDO HÁ UMA COR SÓ. O Apex não suporta balão
+                    compartilhado em série `distributed` — cada barra é uma "série" para
+                    ele, e o par `shared: true` + `intersect: false` deixava o balão do
+                    card de alertas sem abrir no PRIMEIRO desenho, passando a abrir só
+                    depois de um `updateOptions` qualquer (o clique numa barra, o
+                    `ajustarAlturasIA`). Era isso o "tenho de clicar numa barra e tirar
+                    para o hover funcionar".
+
+                    O PREÇO É TER DE ACERTAR A BARRA, e é por isso que ele não vem
+                    sozinho: `explicarBarras` põe a mesma frase num `<title>` nativo na
+                    barra E no nome ao lado, que é o alvo grande e o único que o balão do
+                    Apex nunca cobriu.  */
                 tooltip: {
-                    intersect: false,
-                    shared: true,
+                    intersect: umaCorPorBarra,
+                    shared: !umaCorPorBarra,
                     marker: { show: false },
                     custom: ({ seriesIndex, dataPointIndex, w }) => {
                         const valorReal = valores[dataPointIndex];
@@ -1207,6 +1245,51 @@
                     active: { filter: { type: 'none' } },
                 },
             };
+        };
+
+        /*  A EXPLICAÇÃO DE CADA BARRA ESCRITA NO PRÓPRIO SVG, por `<title>` nativo —
+            no NOME, à esquerda, e na BARRA.
+
+            DUAS FALHAS DIFERENTES, e uma resposta só.
+
+            1. O BALÃO DO APEX SÓ EXISTE DENTRO DA ÁREA DE PLOTAGEM, e no gráfico deitado
+               o nome de cada barra mora FORA dela, na faixa à esquerda (ver
+               `larguraDaFaixa`). O alvo grande e legível é justamente o pedaço em que o
+               hover nunca respondeu — e a barra correspondente pode ser um toco de poucos
+               pixels, como os 3 de "a IA nega a formatura" em 17.695 linhas.
+
+            2. NO PRIMEIRO DESENHO O BALÃO NÃO ABRE NEM SOBRE A BARRA, e passa a abrir
+               depois de QUALQUER redesenho — clicar numa barra e desmarcar fazia o hover
+               "ligar", e era o `updateOptions` do clique que o ligava, não o clique. O
+               mesmo acontece pelo `ajustarAlturasIA` quando a caixa muda de tamanho.
+               Enquanto isso não for corrigido no Apex (v7.1.0 é o que o CDN serve), a
+               tela não pode depender do balão dele para explicar-se.
+
+            `<title>` NATIVO E NÃO UM SEGUNDO BALÃO: é o tooltip do navegador, não disputa
+            posição com o do Apex, não precisa de CSS, não some com o tema e funciona no
+            primeiro quadro. Ele só precisa ser REPOSTO a cada redesenho, que é o que os
+            eventos `mounted`/`updated` fazem em `opcoesDeBarraHorizontal`.
+
+            `pointer-events` E `user-select` LIGADOS À MÃO porque o Apex desliga os dois no
+            texto do eixo: sem eles o `<title>` existe no DOM, o mouse atravessa por cima
+            e o nome também não dá para marcar com o cursor.  */
+        const explicarBarras = (el, textos) => {
+            if (!el || !textos || !textos.length) return;
+            const porNo = (no, i) => {
+                if (!textos[i]) return;
+                no.style.pointerEvents = 'all';
+                let titulo = no.querySelector('title');
+                if (!titulo) {
+                    titulo = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+                    no.insertBefore(titulo, no.firstChild);
+                }
+                titulo.textContent = textos[i];
+            };
+            el.querySelectorAll('.apexcharts-yaxis-label').forEach((no, i) => {
+                no.style.userSelect = 'text';
+                porNo(no, i);
+            });
+            el.querySelectorAll('.apexcharts-bar-area').forEach(porNo);
         };
 
         /** Troca o gráfico por uma explicação — ver `.docia-grafico-vazio` no CSS. */
@@ -1313,11 +1396,11 @@
             estreita ao lado da lista, e não a largura do card: ali o desenho respira
             por DENTRO (padding positivo) e não é inflado, enquanto o veredito, que tem
             a legenda embaixo e o card inteiro de largura, faz o contrário.  */
-        const ROSCA_AO_LADO_DA_LISTA = ['ia-gr-inconsistencias', 'ia-gr-sit'];
+        const ROSCA_AO_LADO_DA_LISTA = ['ia-gr-inconsistencias'];
 
         /*  `selecionado` É O NÚMERO DO RECORTE, ou `null` quando não há recorte nenhum.
             Ver a nota do `total`, logo abaixo.  */
-        const opcoesDeRosca = (id, nomes, valores, cores, altura, valoresCru, rotuloDoCentro, selecionado = null) => ({
+        const opcoesDeRosca = (id, nomes, valores, cores, altura, valoresCru, rotuloDoCentro, selecionado = null, descricoes = null) => ({
             chart: {
                 type: 'donut',
                 id: id,
@@ -1427,17 +1510,26 @@
                 hover: { filter: { type: 'lighten', value: 0.16 } },
                 active: { filter: { type: 'none' } },
             },
-            /*  O BALÃO DA ROSCA É SÓ NOME, NÚMERO E PERCENTUAL. Chegou a levar embaixo
-                uma nota explicando a fatia, na Situação do Período; a explicação em cima
-                de um anel que já tem a legenda ao lado dizendo os mesmos três números
-                virou ruído, e saiu. Onde a nota faz falta é na BARRA, que não tem legenda
-                nenhuma — lá ela continua (ver `opcoesDeBarraHorizontal`).  */
+            /*  O BALÃO DA ROSCA É NOME, NÚMERO, PERCENTUAL — E A DESCRIÇÃO DA FATIA,
+                quando quem chama manda uma.
+
+                ELA JÁ SAIU DAQUI UMA VEZ, e o que a trouxe de volta foi o nome da fatia
+                ter deixado de se explicar sozinho. "Estudando" e "Sem período" qualquer
+                um lê; "Último período" é o resultado de uma comparação que ninguém viu
+                acontecer, "Formado" hoje inclui quem o cadastro NÃO lançou e "Desligado"
+                engloba muito mais que a evasão. Sem a frase, a regra só existe no
+                código.
+
+                SÓ ONDE HÁ DESCRIÇÃO: nas roscas que se explicam pelo nome (Veredito,
+                Inconsistências) `descricoes` vem nulo e o balão continua os três números
+                de antes.  */
             tooltip: {
                 custom: ({ seriesIndex, w }) => {
                     const total = valoresCru.reduce((a, b) => a + b, 0);
-                    return balao(conteudoDoBalao(w.globals.colors[seriesIndex],
-                                                 w.globals.labels[seriesIndex],
-                                                 valoresCru[seriesIndex], total));
+                    const nome = w.globals.labels[seriesIndex];
+                    return balao(conteudoDoBalao(w.globals.colors[seriesIndex], nome,
+                                                 valoresCru[seriesIndex], total)
+                        + notasDoBalao(descricoes ? [descricoes[nome]] : null));
                 },
             },
         });
@@ -1478,7 +1570,7 @@
             Nos casos que interessam — clicar numa fatia, trocar de semestre, trocar de
             tema — os nomes são exatamente os mesmos de antes: o que muda é número,
             percentual, cor e marca, e isso se escreve por cima do que já está lá.  */
-        const pintarLegendaRosca = (idCaixa, nomes, valores, cores, chaves = null, recorteSet = null) => {
+        const pintarLegendaRosca = (idCaixa, nomes, valores, cores, chaves = null, recorteSet = null, descricoes = null) => {
             const caixa = document.getElementById(idCaixa);
             if (!caixa) return;
 
@@ -1503,8 +1595,15 @@
                         + ' data-nome="' + escaparHtml(nome) + '"' + btnData + '>'
                         + '<span class="docia-legenda__ponto"></span>'
                         /*  O NOME INTEIRO NO `title`: as frases da IA passam de 60
-                            caracteres e a coluna as apara com reticências.  */
-                        + '<span class="docia-legenda__nome" title="' + escaparHtml(nome) + '">'
+                            caracteres e a coluna as apara com reticências.
+
+                            E A DESCRIÇÃO NO LUGAR DELE quando há uma. O item da legenda é
+                            o alvo GRANDE da fatia — a de 0,2% é um traço de dois pixels
+                            que o mouse não pega —, e um `title` repetindo o nome que está
+                            escrito logo ao lado é um hover que não diz nada. Era esse o
+                            "passo a setinha e não aparece nada".  */
+                        + '<span class="docia-legenda__nome" title="'
+                        + escaparHtml((descricoes && descricoes[nome]) || nome) + '">'
                         + escaparHtml(nome) + '</span>'
                         + '<span class="docia-legenda__valor"></span>'
                         + '<span class="docia-legenda__pct"></span>'
@@ -1579,7 +1678,7 @@
         }
 
 
-        const desenharRosca = (id, nomes, valores, cores, rotuloDoCentro, selecionado = null) => {
+        const desenharRosca = (id, nomes, valores, cores, rotuloDoCentro, selecionado = null, descricoes = null) => {
             const alvo = document.getElementById(id);
             if (!alvo || typeof ApexCharts === 'undefined') return;
 
@@ -1589,7 +1688,7 @@
 
             const opcoes = opcoesDeRosca(id, nomes, inflado, cores,
                                          alturaDoDesenho(id, alturaDe(alvo), alvo.clientWidth),
-                                         valores, rotuloDoCentro, selecionado);
+                                         valores, rotuloDoCentro, selecionado, descricoes);
             if (graficos[id] && graficos[id].__tipo === 'donut') {
                 graficos[id].updateOptions(opcoes, false, true);
                 return;
@@ -2112,21 +2211,50 @@
             normal.
 
             O DEGRAU 2 É A FORMATURA nos dois cards, e é o único tom que atravessa a
-            fronteira entre eles: a fatia "Formado" do anel e o alerta em que a formatura
-            do cadastro chega depois falam do mesmo fato, e a cor os liga sem legenda.  */
+            fronteira entre eles DE PROPÓSITO: a fatia "Formado" do anel e o alerta do
+            retroativo falam do mesmo fato, e a cor os liga sem legenda.
+
+            O DEGRAU 7 TAMBÉM APARECE NOS DOIS, e esse é acidente declarado: a paleta da
+            OVG tem oito tons e os dois cards juntos pedem catorze. "Desligado" no anel e
+            "IA formou no meio do período" nas barras não têm parentesco nenhum — quem
+            olhar procurando um não vai achar. Preferimos repetir um tom entre cards
+            diferentes a inventar uma nona cor fora da marca.
+
+            "DESLIGADO" FICA NO 7, o quase-preto, e não no cinza 4: o 4 é a AUSÊNCIA de
+            dado ("sem período" é campo em branco), e o desligamento é o oposto disso — é
+            o cadastro afirmando um fim.  */
         const CORES_DA_SITUACAO = (tema) => ({
             'Formado': PALETA_OVG[tema][2],
+            'Desligado': PALETA_OVG[tema][7],
             'Passou do limite': PALETA_OVG[tema][5],
             'Último período': PALETA_OVG[tema][1],
-            'Em curso': PALETA_OVG[tema][0],
+            'Estudando': PALETA_OVG[tema][0],
             'Sem período': PALETA_OVG[tema][4],
         });
 
+        /*  OS DOIS PARES DE ALERTA FICAM EM TONS VIZINHOS, e é a única coisa que a cor
+            precisa dizer aqui: "IA formou, sistema não" mora nos dois vermelhos (5 forte
+            e 3 abafado) e "Sistema formou, IA não" nos dois rosas (1 e 0). Cada par
+            nasceu da mesma pergunta partida ao meio — "(no semestre)" e "(atualmente)" —
+            e a vizinhança de tom é o que diz isso sem legenda. Tons distantes fariam
+            quatro assuntos onde há dois.
+
+            FOI ISSO QUE MOVEU O `excedeu_cursando` DO 0 PARA O 6: ele ocupava o rosa
+            claro de que o par precisava, e o cinza escuro lhe cai melhor — como o cinza
+            de ausência do 4, ele não é uma contradição entre duas fontes; ao contrário do
+            4, o cadastro está preenchido e DIZ alguma coisa.
+
+            `ia_fora_da_matriz` FICA NO 7 e `ia_antecipou` no 2: o 2 é a formatura, o tom
+            que atravessa para a fatia "Formado" do anel, e o retroativo é o alerta em que
+            a formatura é FATO confirmado pelo cadastro de hoje.  */
         const CORES_DO_ALERTA = (tema) => ({
             ia_sem_registro: PALETA_OVG[tema][5],
-            ia_antecipou: PALETA_OVG[tema][2],
+            ia_sem_registro_hoje: PALETA_OVG[tema][3],
             ia_negou: PALETA_OVG[tema][1],
-            excedeu_cursando: PALETA_OVG[tema][0],
+            ia_negou_hoje: PALETA_OVG[tema][0],
+            ia_antecipou: PALETA_OVG[tema][2],
+            ia_fora_da_matriz: PALETA_OVG[tema][7],
+            excedeu_cursando: PALETA_OVG[tema][6],
             sem_matriz: PALETA_OVG[tema][4],
         });
 
@@ -2135,20 +2263,15 @@
             const situacao = quadro.situacao || {};
             const contagem = situacao.contagem || {};
             const ordem = (quadro.ordem_situacao || []).filter((nome) => contagem[nome]);
-            const legenda = document.getElementById('ia-legenda-sit');
             const base = document.getElementById('ia-base-sit');
             const linha = document.getElementById('ia-gr-sit');
-            const caixa = linha ? linha.parentElement : null;
 
             if (!situacao.total || !ordem.length) {
-                if (legenda) legenda.innerHTML = '';
-                if (caixa) caixa.classList.add('docia-anel-e-lista--sozinho');
                 if (base) base.textContent = '';
                 mostrarVazio('ia-gr-sit', 'fa-hourglass-half',
                              'A IA ainda não leu nenhum documento neste recorte.');
                 return;
             }
-            if (caixa) caixa.classList.remove('docia-anel-e-lista--sozinho');
 
             /*  A BASE DIZ SOBRE QUANTOS O ANEL FALA e, quando for o caso, que a outra
                 metade da pergunta está em branco: em 2026-1 e 2026-2 a IA ainda não leu
@@ -2172,32 +2295,55 @@
                     soma + (escolhidas.has(nome) ? valores[i] : 0), 0)
                 : null;
 
-            /*  SEM NOTA NENHUMA NO HOVER, nem no balão da fatia nem no `title` da
-                legenda. As duas existiram: o balão abria a regra do estado e a quebra da
-                resposta da IA, e a legenda repetia o mesmo texto porque a fatia de 0,4%
-                é um traço de dois pixels e o nome ao lado é o alvo grande. Só que este
-                card é o único da tela em que o anel e a lista dizem tudo — nome, número e
-                percentual, os cinco estados visíveis de uma vez —, e o texto que abria
-                por cima disso atrapalhava a leitura em vez de completá-la.
+            /*  A DESCRIÇÃO DA FATIA VAI NOS DOIS HOVERS — no balão do anel e no `title`
+                do item da legenda. São dois alvos de tamanhos muito diferentes para a
+                mesma fatia: "Passou do limite" é 0,2% do recorte, um traço de dois pixels
+                no anel, e o item da lista ao lado tem a largura inteira da coluna.
 
-                SÓ AQUI. Nas BARRAS de alerta ao lado a nota fica: lá não há legenda, o
-                nome do eixo é uma frase encurtada e o valor em dinheiro muda de sentido
-                de uma barra para a outra (ver `ALERTAS_DO_HISTORICO`, na view).  */
-            /*  "Lidos" e não "Documentos" como no veredito: este anel divide o card
-                com a lista, sobra-lhe metade do diâmetro, e o miolo não comporta a
-                palavra inteira — ela atravessaria o traço da rosca. */
-            desenharRosca('ia-gr-sit', ordem, valores, cores, 'Lidos', somaMarcada);
-            pintarLegendaRosca('ia-legenda-sit', ordem, valores, cores, ordem, escolhidas);
+                O NOME DA FATIA NÃO SE EXPLICA SOZINHO, e é por isso que a frase voltou:
+                "Último período" é a conclusão de uma comparação que quem lê a tela não
+                viu acontecer, e "Formado" passou a incluir quem CONCLUIU sem o cadastro
+                ter lançado a formatura. O texto sai da view (`DESCRICOES_DA_SITUACAO`),
+                junto da regra que ele descreve.  */
+            /* Removido o gráfico de rosca a pedido do usuário. Usando barras horizontais. */
+            const descricoes = situacao.descricao || null;
+            const marcados = ordem.map((nome) => escolhidas.has(nome));
+            desenhar('ia-gr-sit', ordem, valores, cores, situacao.total, 'numero',
+                     true, situacao.total,
+                     (i) => {
+                         const clicado = ordem[i];
+                         if (escolhidas.has(clicado)) escolhidas.delete(clicado);
+                         else escolhidas.add(clicado);
+                         pintarFiltrosAtivos();
+                     },
+                     marcados,
+                     (i) => descricoes && descricoes[ordem[i]] ? [descricoes[ordem[i]]] : null);
         };
 
         const pintarAlertas = (corpo) => {
             const quadro = corpo.historico || {};
-            const alertas = quadro.alertas || [];
+            const todos = quadro.alertas || [];
             const normais = quadro.normais || {};
             const base = document.getElementById('ia-base-alerta');
 
+            /*  O NOME DE TODOS OS ALERTAS, inclusive os que não viram barra: é o que os
+                chips do recorte lêem para escrever o que está marcado.  */
             rotulosDeAlerta = {};
-            alertas.forEach((a) => { rotulosDeAlerta[a.chave] = a.rotulo; });
+            todos.forEach((a) => { rotulosDeAlerta[a.chave] = a.rotulo; });
+
+            /*  BARRA ZERADA NÃO É DESENHADA, como a fatia zerada não é no anel ao lado.
+                São sete regras, e num recorte qualquer nem toda pergunta tem resposta —
+                `ia_antecipou` (a formatura do cadastro chegar DEPOIS, com a IA dizendo
+                formado) fica em zero no relatório inteiro de hoje. Um toco de largura
+                nenhuma com um nome ao lado ocupa a altura de uma barra de verdade, e num
+                card de meia altura isso é espaço que as grandes perdem.
+
+                MENOS O QUE ESTIVER MARCADO. Se o clique anterior deixou um alerta no
+                recorte e o cruzamento com o outro card o zerou, apagar a barra apagaria
+                junto o único lugar de onde se desmarca — o filtro ficaria preso, aceso no
+                chip e sem alvo na tela.  */
+            const escolhidos = recorteHistorico.alerta;
+            const alertas = todos.filter((a) => a.linhas > 0 || escolhidos.has(a.chave));
 
             if (!normais.total) {
                 if (base) base.textContent = 'nenhum documento processado';
@@ -2216,12 +2362,13 @@
 
             /*  A BASE CONTA O QUE FICOU FORA DO GRÁFICO, que é a maior parte do recorte:
                 os alertas não repartem os lidos, eles são o que sobra depois de tirar
-                quem está no caminho normal. Sem esta linha, cinco barras somando 620
-                num recorte de 16.464 pareceriam o recorte inteiro.  */
+                quem está no caminho normal. Sem esta linha, as barras somando 1.619
+                num recorte de 17.695 pareceriam o recorte inteiro.  */
             /*  E OS FORMADOS FECHAM A LINHA porque é a pergunta que traz a pessoa a este
-                card: de quantos se tem CERTEZA de que concluíram o curso. O número é o
-                do cadastro, e o entre parênteses é onde a IA disse o mesmo — a distância
-                entre os dois é o tamanho do trabalho que as barras acima descrevem.  */
+                card: quantos concluíram o curso neste semestre. O entre parênteses é
+                onde o cadastro e a IA dizem a mesma coisa, e a distância entre os dois
+                números é o tamanho do que a IES ainda não lançou — que é exatamente o
+                trabalho que as barras acima descrevem.  */
             if (base) {
                 base.innerHTML = '<span class="text-red-500 font-medium">'
                     + formatarNumero(emAlerta) + ' em alerta</span> de '
@@ -2234,7 +2381,6 @@
             const tons = CORES_DO_ALERTA(tema);
             const cats = alertas.map((a) => a.curto || a.rotulo);
             const vals = alertas.map((a) => a.linhas);
-            const escolhidos = recorteHistorico.alerta;
             const marcados = escolhidos.size
                 ? alertas.map((a) => escolhidos.has(a.chave))
                 : null;
@@ -2247,12 +2393,12 @@
             /*  A RÉGUA É DESTE CARD, e não a `reguaComum` dos dois de mensalidade: lá os
                 cards são gêmeos e comparáveis lado a lado, aqui não há com quem comparar
                 — o vizinho é uma rosca de outra unidade. O maior alerta desenha até o
-                fim, e a escala em raiz de `opcoesDeBarraHorizontal` mantém os 27 de
-                "passou do limite" visíveis ao lado dos 379 de "a IA nega a formatura".
+                fim, e a escala em raiz de `opcoesDeBarraHorizontal` mantém os 3 de "a IA
+                nega a formatura" visíveis ao lado dos 1.071 de "IA formou, cadastro não".
 
-                O PERCENTUAL SAI DOS LIDOS, e não da soma dos alertas: "42 (0,3%)" diz o
+                O PERCENTUAL SAI DOS LIDOS, e não da soma dos alertas: "232 (1,3%)" diz o
                 que o alerta pesa no recorte, que é a pergunta de quem olha. Sobre a soma
-                dos alertas ele diria 7,4% — uma fração de uma fração, sem denominador
+                dos alertas ele diria 14,3% — uma fração de uma fração, sem denominador
                 visível em lugar nenhum da tela.  */
             const alvoGr = document.getElementById('ia-gr-alerta');
             if (alvoGr) alvoGr.style.cursor = 'pointer';
@@ -2606,12 +2752,11 @@
                     /*  As legendas nomeiam fatias que já não estão na tela. As duas que
                         ficam ao lado do anel levam junto a coluna delas, para o recado
                         de erro ficar centrado no card e não na fatia estreita do anel.  */
-                    ['ia-legenda-veredito', 'ia-legenda-sit',
-                     'ia-legenda-inconsistencias'].forEach((id) => {
+                    ['ia-legenda-veredito', 'ia-legenda-inconsistencias'].forEach((id) => {
                         const alvo = document.getElementById(id);
                         if (alvo) alvo.innerHTML = '';
                     });
-                    ['ia-gr-inconsistencias', 'ia-gr-sit'].forEach((id) => {
+                    ['ia-gr-inconsistencias'].forEach((id) => {
                         const anel = document.getElementById(id);
                         if (anel && anel.parentElement) {
                             anel.parentElement.classList.add('docia-anel-e-lista--sozinho');

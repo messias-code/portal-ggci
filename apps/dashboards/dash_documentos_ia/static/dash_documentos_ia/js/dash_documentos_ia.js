@@ -149,8 +149,7 @@ document.addEventListener('turbo:load', () => {
                 coluna contam exatamente a mesma linha. Dois nomes para o mesmo fato, na
                 mesma tela, é o tipo de coisa que faz alguém somar duas vezes.  */
             const FATIAS = ['Processados', 'Não Processados', 'Pendentes',
-                            'Inadimplentes Proc.', 'Inadimplentes Não Proc.',
-                            'Inadimplentes'];
+                            'Inadimplentes Proc.', 'Inadimplentes Não Proc.'];
 
             /*  Paleta da OVG — rosa claro, rosa escuro, roxo, nesta ordem.
                 Não é a escolha crua das cores da marca: é a família da marca com os
@@ -186,27 +185,15 @@ document.addEventListener('turbo:load', () => {
 
                 E, diferente da anterior, ela sobrevive ao daltonismo: o menor ΔE entre
                 fatias vizinhas sob protanopia, deuteranopia e tritanopia é 25,4.  */
-            /*  A SEXTA FATIA, `Inadimplentes` — a cobrança que o SIBU faz sem que tenha
-                havido repasse no semestre. Vermelho porque ela é a única que aponta um ERRO
-                em curso, e não um estado do documento: as outras cinco descrevem onde o
-                papel está; esta diz que estão cobrando quem não deve nada.
-
-                O problema de medição era conviver com `#BF616A`, o vermelho pastel de
-                `Inadimplentes Proc.`. Dois vermelhos vizinhos na mesma roda embolam, então
-                os candidatos foram medidos contra a paleta inteira, nos dois temas e nos
-                três tipos de daltonismo:
-
-                              contraste   ΔE mínimo    ΔE mínimo sob prot/deut/trit
-                  claro       5,01:1      41,9         24,7
-                  eleitoral   2,88:1      41,9         21,4
-
-                Os dois passam os critérios da rampa original — contraste ≥ 2:1 contra a
-                superfície e ΔE ≥ 15 entre quaisquer duas fatias. `#E63946` foi testado antes
-                no eleitoral e ficou em ΔE 15,5 sob protanopia, no fio do piso; `#F94144`
-                abre para 21,4 sem deixar de ser vermelho.  */
+            /*  HOUVE UMA SEXTA FATIA, `Inadimplentes` — a cobrança que o SIBU faz sem que
+                tenha havido repasse no semestre. Ela tinha vermelho próprio (`#D62828` no
+                claro, `#F94144` no eleitoral) porque era a única que apontava um ERRO em
+                curso e não um estado do documento. O motor deixou de raspar o site e de
+                injetar essas linhas, e a fatia saiu junto com a origem dela. As cores
+                saíram com a fatia: sexta cor sem sexta fatia é cor que nunca é pintada.  */
             const PALETA = {
-                claro:     ['#EB8DC8', '#D6008F', '#6B007B', '#BF616A', '#A3A3A3', '#D62828'],
-                eleitoral: ['#99F0D0', '#3EA9B2', '#6B71B2', '#BF616A', '#A3A3A3', '#F94144'],
+                claro:     ['#EB8DC8', '#D6008F', '#6B007B', '#BF616A', '#A3A3A3'],
+                eleitoral: ['#99F0D0', '#3EA9B2', '#6B71B2', '#BF616A', '#A3A3A3'],
             };
 
             // Tinta do percentual DENTRO da fatia. Branco na fatia clara daria 2,29:1
@@ -415,7 +402,7 @@ document.addEventListener('turbo:load', () => {
                             dele: `#EB8DC8`, o rosa claro de `Processados`, já está perto
                             do branco do card — clarear 8% dele não muda nada que o olho
                             registre, e passar o mouse na maior fatia da tela não dava
-                            retorno nenhum. 0,16 acende as seis de forma perceptível e
+                            retorno nenhum. 0,16 acende as cinco de forma perceptível e
                             ainda deixa a fatia reconhecível como a mesma cor.  */
                         hover: { filter: { type: 'lighten', value: 0.16 } },
                         active: { filter: { type: 'none' } },
@@ -723,8 +710,7 @@ document.addEventListener('turbo:load', () => {
             // listas continuam separadas porque uma é texto de tela e a outra é protocolo:
             // renomear uma fatia não pode calar o filtro do outro lado.
             const BALDES_DA_VIEW = ['Processados', 'Não Processados', 'Pendentes',
-                                    'Inadimplentes Proc.', 'Inadimplentes Não Proc.',
-                                    'Inadimplentes'];
+                                    'Inadimplentes Proc.', 'Inadimplentes Não Proc.'];
 
             /*  Os documentos como o MOTOR os nomeia — sem acento e no plural do
                 extrator, diferentes dos rótulos que os gráficos usam. É esta lista que
@@ -834,7 +820,6 @@ document.addEventListener('turbo:load', () => {
                     dados.NaoEnviados || 0,
                     dados.InadProc || 0,
                     dados.InadNaoProc || 0,
-                    dados.Inadimplentes || 0,
                 ];
                 const totalCru = cru.reduce((a, b) => a + b, 0);
                 const minVisual = Math.ceil(totalCru * PISO_VISUAL_DA_FATIA);
@@ -998,7 +983,7 @@ document.addEventListener('turbo:load', () => {
                 inteiro: sem esta guarda, clicar num chip de lá caía aqui com
                 `dataset.doc` indefinido, empurrava uma chave `undefined|...` para o
                 recorte desta vista, desmarcava as caixas de Documento da barra e ainda
-                repintava as legendas de lá com as SEIS FATIAS daqui, zeradas — que era
+                repintava as legendas de lá com as CINCO FATIAS daqui, zeradas — que era
                 o embaralhado que se via por um quarto de segundo até a resposta da
                 Análise IA chegar e desfazer.  */
             if (!window.__legendaLigadaDocIA) {
@@ -1032,12 +1017,12 @@ document.addEventListener('turbo:load', () => {
             /*  A CAIXA DE DOCUMENTO SEGUE AS FATIAS, e não uma cópia da intenção.
 
                 Na vista de beneficiários o filtro "Documento" é um atalho: marcá-lo
-                acende as seis fatias daquele documento (ver `aplicarDocumentosNasFatias`).
+                acende as cinco fatias daquele documento (ver `aplicarDocumentosNasFatias`).
                 Se depois a pessoa tirar uma delas pela legenda, o recorte deixou de ser
                 "o contrato inteiro" — e a barra não pode continuar dizendo "Contratos"
-                sobre outra coisa. A caixa fica marcada exatamente enquanto TODAS as seis
+                sobre outra coisa. A caixa fica marcada exatamente enquanto TODAS as cinco
                 fatias daquele documento estiverem dentro, o que também acerta o caminho
-                inverso: chegar às seis clicando fatia a fatia acende a caixa sozinho.  */
+                inverso: chegar às cinco clicando fatia a fatia acende a caixa sozinho.  */
             const sincronizarCaixasDeDocumento = () => {
                 checkboxesDocumento.forEach((caixa) => {
                     caixa.checked = BALDES_DA_VIEW.every((balde) =>
@@ -1051,7 +1036,7 @@ document.addEventListener('turbo:load', () => {
              *   são o panorama), mas a aparência sim — as fatias de fora ficam apagadas
              *   e o miolo passa a mostrar quanto está sendo listado.
              * `[data-doc]` DELIMITA A VISTA: a Análise IA usa as mesmas classes de
-             *   legenda, e sem o atributo no seletor esta função pintava as seis fatias
+             *   legenda, e sem o atributo no seletor esta função pintava as cinco fatias
              *   daqui por cima dos vereditos e das inconsistências de lá — a cada
              *   clique em qualquer filtro, porque é daí que ela é chamada.
              */
@@ -1068,8 +1053,7 @@ document.addEventListener('turbo:load', () => {
                                           dados.NaoProcessados || 0,
                                           dados.NaoEnviados || 0,
                                           dados.InadProc || 0,
-                                          dados.InadNaoProc || 0,
-                                          dados.Inadimplentes || 0]);
+                                          dados.InadNaoProc || 0]);
                 });
             };
 
@@ -1602,10 +1586,10 @@ document.addEventListener('turbo:load', () => {
                     situação soltos que se cruzariam com os outros pares.
 
                     UM DOCUMENTO INTEIRO VIRA UMA ETIQUETA SÓ. Marcar "Contratos" na
-                    barra acende as seis fatias do contrato de uma vez; seis etiquetas
+                    barra acende as cinco fatias do contrato de uma vez; cinco etiquetas
                     dizendo a mesma coisa empurrariam para fora da faixa justamente as
                     outras, que são as que ninguém lembra de ter deixado ligadas. Lido do
-                    estado real (as fatias) e não de quem as acendeu: chegar às seis pela
+                    estado real (as fatias) e não de quem as acendeu: chegar às cinco pela
                     legenda dá a mesma etiqueta, porque descreve o mesmo recorte.  */
                 const documentoInteiro = (doc) => BALDES_DA_VIEW.every(
                     (balde) => window.__recortesDocIA.includes(recorteDe(doc, balde)));
@@ -1679,8 +1663,8 @@ document.addEventListener('turbo:load', () => {
                         sincronizarCaixasDeDocumento();
                         repintarLegendas();
                     }
-                    /*  O X da etiqueta de documento apaga as SEIS fatias de uma vez —
-                        é o desfazer do gesto que as acendeu, e não seis cliques.  */
+                    /*  O X da etiqueta de documento apaga as CINCO fatias de uma vez —
+                        é o desfazer do gesto que as acendeu, e não cinco cliques.  */
                     else if (tipo === 'documento') {
                         BALDES_DA_VIEW.forEach((balde) => {
                             const posicao = window.__recortesDocIA.indexOf(recorteDe(valor, balde));
@@ -2216,7 +2200,7 @@ document.addEventListener('turbo:load', () => {
                ==================================================================
                A mesma pergunta do Detalhamento com outro sujeito: lá cada linha é um
                documento de uma PESSOA, aqui cada linha é uma INSTITUIÇÃO. As colunas
-               são os seis baldes de `_balde_do_documento` — os mesmos seis da legenda
+               são os cinco baldes de `_balde_do_documento` — os mesmos cinco da legenda
                das roscas, contados pela mesma regra no servidor. Se fossem contados de
                outro jeito, a coluna "Pendentes" daqui não bateria com a fatia
                "Pendentes" de lá, e não haveria como saber qual das duas está certa.
@@ -2227,31 +2211,23 @@ document.addEventListener('turbo:load', () => {
                round-trip por clique transformaria a comparação em espera.
                ================================================================== */
 
-            /*  As chaves dos seis baldes no JSON, na MESMA ordem de `FATIAS`.
+            /*  As chaves dos cinco baldes no JSON, na MESMA ordem de `FATIAS`.
                 É o que faz o chip, a coluna e a cor se alinharem sem uma segunda
                 tabela de tradução: `FATIAS[i]`, `PALETA[tema][i]` e `CHAVES_DAS_FATIAS[i]`
                 descrevem a mesma fatia.  */
             const CHAVES_DAS_FATIAS = ['Processados', 'NaoProcessados', 'NaoEnviados',
-                                       'InadProc', 'InadNaoProc', 'Inadimplentes'];
+                                       'InadProc', 'InadNaoProc'];
 
             /*  As colunas da tabela por IES. `numero: false` é só a primeira — ela
                 alinha à esquerda, não leva `tabular-nums` e ordena alfabeticamente.
 
-                NÃO TEM COLUNA DE TOTAL DE DOCUMENTOS. Ela seria a soma das seis
+                NÃO TEM COLUNA DE TOTAL DE DOCUMENTOS. Ela seria a soma das cinco
                 seguintes, na mesma linha e à vista: uma coluna que não acrescenta
-                fato nenhum e ainda rouba largura das seis que acrescentam. A resposta
-                continua trazendo o total — é ele que prova que os seis baldes cobrem
+                fato nenhum e ainda rouba largura das cinco que acrescentam. A resposta
+                continua trazendo o total — é ele que prova que os cinco baldes cobrem
                 todas as linhas do recorte —, mas isso é conferência, não leitura de
                 tela.  */
-            /*  AS DUAS BASES DA LINHA.
-
-                `Inadimplentes` (o sexto balde) NÃO é documento nosso: é cobrança
-                injetada do relatório do site, de semestre em que o aluno não teve
-                lançamento nenhum. Ele fica FORA do que a IES deve — senão uma
-                instituição com muita cobrança indevida pareceria estar devendo mais
-                documento do que realmente deve, e o denominador puniria justamente
-                quem foi cobrado errado.  */
-            const esperadosDe = (linha) => (linha.total || 0) - (linha.Inadimplentes || 0);
+            const esperadosDe = (linha) => (linha.total || 0);
             const enviadosDe = (linha) => esperadosDe(linha) - (linha.NaoEnviados || 0);
 
             /*  O PERCENTUAL DIZ QUANTO JÁ ESTÁ RESOLVIDO — quanto MAIOR, MELHOR.
@@ -2308,9 +2284,6 @@ document.addEventListener('turbo:load', () => {
                   inverso: true,
                   pct: (l) => fatia(l.InadNaoProc, l.total) },
 
-                { chave: 'Inadimplentes',  rotulo: FATIAS[5], numero: true,
-                  inverso: true,
-                  pct: (l) => fatia(l.Inadimplentes, l.total) },
             ];
 
             const elIES = {
@@ -2389,20 +2362,24 @@ document.addEventListener('turbo:load', () => {
                 borda branca e um selo de porcentagem no lugar do ícone.
 
                 A COR É SEMÂNTICA, e não a da rosca. Verde o que já passou pela IA,
-                laranja o que ela ainda não leu, azul o que nem chegou; roxo, rosa e
-                vermelho para a família da inadimplência, com o vermelho na fatia que
-                aponta ERRO em curso — a cobrança sem repasse.  */
+                laranja o que ela ainda não leu, azul o que nem chegou; roxo e rosa para
+                a família da inadimplência.
+
+                HAVIA UM VERMELHO, e ele era da fatia `Inadimplentes` — a cobrança sem
+                repasse, a única que apontava ERRO em curso. Ela saiu junto com a injeção
+                do relatório do site que a alimentava, e a cor saiu com ela: entrada sobrando
+                aqui é cor que só seria lida se alguém acrescentasse uma sexta fatia sem
+                olhar para este comentário.  */
             const ICONE_DA_FATIA = [
                 ['ovg-verde',    'fa-circle-check'],
                 ['ovg-laranja',  'fa-hourglass-half'],
                 ['ovg-azul',     'fa-inbox'],
                 ['ovg-roxo',     'fa-money-check-dollar'],
                 ['ovg-rosa',     'fa-scale-unbalanced'],
-                ['ovg-vermelho', 'fa-circle-exclamation'],
             ];
 
             /**
-             * O QUE FAZ: pinta os seis KPIs do topo — o total de cada balde no recorte
+             * O QUE FAZ: pinta os cinco KPIs do topo — o total de cada balde no recorte
              *   inteiro, com a proporção embaixo do número.
              * POR QUÊ CLICAR ORDENA, e não filtra: recortar a tabela por "só os
              *   pendentes" a deixaria com as mesmas ~110 linhas, porque toda IES tem
@@ -2422,7 +2399,7 @@ document.addEventListener('turbo:load', () => {
                     título até dizia "1 de 107", mas ninguém lê um selo para desconfiar de
                     um número grande.
 
-                    SOMAR AS LINHAS VISÍVEIS É EXATO nestas seis colunas: cada linha de
+                    SOMAR AS LINHAS VISÍVEIS É EXATO nestas cinco colunas: cada linha de
                     documento pertence a UMA instituição e a UM balde, então somar por IES
                     não conta nada duas vezes. É literalmente a conta que o servidor faz
                     para `totais` (ver `api_resumo_ies`), e é o que mantém o chip igual à
@@ -2453,7 +2430,7 @@ document.addEventListener('turbo:load', () => {
 
                     O PERCENTUAL DESCE PARA A TERCEIRA LINHA (`docia-kpi-base`), que é
                     onde a Análise IA já põe a base da conta. O selo à direita ocupava o
-                    lugar do ícone, e é o ícone que dá cor ao card — sem ele os seis
+                    lugar do ícone, e é o ícone que dá cor ao card — sem ele os cinco
                     ficavam iguais entre si, que é o problema que `--kpi-cor` resolve.
                     A linha também diz de QUE base o número é fatia: os três primeiros
                     baldes dividem o documento esperado, os três últimos, o total.
@@ -2465,7 +2442,7 @@ document.addEventListener('turbo:load', () => {
 
                     `min-width` INLINE, e não `min-w-[9rem]` — a utilitária é outra que o
                     bundle não tem. Aqui ela importa e nos KPIs de beneficiários não: são
-                    seis cards na mesma faixa, contra quatro, e sem piso os rótulos longos
+                    cinco cards na mesma faixa, contra quatro, e sem piso os rótulos longos
                     (`Inadimplentes Não Proc.`) viram reticência antes da primeira letra.
                     O container já quebra linha (`flex-wrap`).  */
                 if (elIES.chips.childElementCount !== FATIAS.length) {
@@ -2550,14 +2527,14 @@ document.addEventListener('turbo:load', () => {
 
             /*  QUAL FATIA CADA COLUNA ABRE.
 
-                As seis dos baldes abrem a sua, uma só — `CHAVES_DAS_FATIAS[i]` e
+                As cinco dos baldes abrem a sua, uma só — `CHAVES_DAS_FATIAS[i]` e
                 `BALDES_DA_VIEW[i]` descrevem a mesma fatia, é o que já alinha o chip,
                 a coluna e a cor.
 
-                `Beneficiários` abre as TRÊS que não são inadimplência, e não as seis:
+                `Beneficiários` abre as TRÊS que não são inadimplência, e não as cinco:
                 é exatamente a conta que produziu aquele número (ver `_resumo_por_ies`
                 na view — CPF distinto entre as linhas que ficam FORA dos baldes de
-                inadimplência). Abrir as seis mostraria gente que a coluna não contou,
+                inadimplência). Abrir as cinco mostraria gente que a coluna não contou,
                 e o total da tabela não bateria com o número que foi clicado.  */
             const baldesDaColuna = (chave) => {
                 if (chave === 'beneficiarios') return BALDES_DA_VIEW.slice(0, 3);
@@ -2595,7 +2572,7 @@ document.addEventListener('turbo:load', () => {
                 marcarBotaoDeLimpar();
 
                 /*  A caixa de Documento vai VAZIA de propósito: marcada, ela significa
-                    "as seis fatias deste documento" (ver `aplicarDocumentosNasFatias`), e
+                    "as cinco fatias deste documento" (ver `aplicarDocumentosNasFatias`), e
                     o que se está abrindo é uma ou três delas. Quem descreve este recorte
                     são as etiquetas de fatia sobre a tabela.  */
                 estadoPorModo.beneficiarios = {
@@ -2867,17 +2844,17 @@ document.addEventListener('turbo:load', () => {
 
                 Escolher "Contratos" escondia os outros quatro cards e deixava um só no
                 ar. Isso tira da tela justamente a comparação que ela existe para fazer —
-                e o card que sobrava continuava mostrando os seis estados do contrato,
+                e o card que sobrava continuava mostrando os cinco estados do contrato,
                 sem recortar coisa nenhuma embaixo: escondia, mas não filtrava.
 
-                Agora o clique ACENDE as seis fatias do documento escolhido, nos seis
+                Agora o clique ACENDE as cinco fatias do documento escolhido, nos cinco
                 itens da legenda daquele card, e apaga as dos outros quatro. É exatamente
                 o estado que se obteria clicando fatia por fatia na legenda — o mesmo
                 `recortes` que o servidor já sabe interseccionar com o resto — e os cinco
                 cards continuam no ar, agora dizendo de si mesmos quem ficou de fora.
 
-                Os seis baldes cobrem 100% das linhas do documento (ver `BALDES` na
-                view), então "as seis fatias do contrato" e "todo o contrato" são o mesmo
+                Os cinco baldes cobrem 100% das linhas do documento (ver `BALDES` na
+                view), então "as cinco fatias do contrato" e "todo o contrato" são o mesmo
                 recorte: a tabela desce com as linhas de contrato e nada mais.  */
             const aplicarDocumentosNasFatias = () => {
                 window.__recortesDocIA.length = 0;
@@ -2944,7 +2921,7 @@ document.addEventListener('turbo:load', () => {
                 AS FATIAS VIAJAM JUNTO com o documento, e não à parte. Elas são o efeito
                 da caixa de Documento nesta vista (ver `aplicarDocumentosNasFatias`), e
                 guardar uma sem a outra deixaria a barra dizendo "Contratos" sobre uma
-                legenda inteira acesa — ou seis fatias de contrato acesas sem caixa
+                legenda inteira acesa — ou cinco fatias de contrato acesas sem caixa
                 nenhuma marcada. Guardadas juntas, quem clicou fatia a fatia também
                 reencontra exatamente o que deixou.
 
@@ -3643,6 +3620,14 @@ document.addEventListener('turbo:load', () => {
              * O QUE FAZ: Move a barra em direção ao progresso real, em vez de saltar.
              * POR QUÊ EXISTE: o backend reporta em degraus largos (2% → 15% → 25%…),
              * e a barra pulando dá a impressão de travamento entre um degrau e outro.
+             *
+             * A BARRA NUNCA PASSA DO QUE O SERVIDOR DISSE. Havia aqui um "movimento
+             * perpétuo" de 0,03 a cada 40ms — 0,75% por segundo, andando mesmo com o
+             * servidor parado. Sem os Parquets do dia, o SQL leva minutos com o servidor
+             * reportando 2%, e a barra chegava sozinha a 99% em pouco mais de dois minutos
+             * e ficava lá até o fim. O servidor agora reporta o andamento de cada etapa
+             * (tabelas do SQL, arquivos do ScriptCase), então a animação só suaviza o
+             * caminho até o valor real.
              */
             function animarProgresso() {
                 if (animProgresso) return;
@@ -3651,20 +3636,11 @@ document.addEventListener('turbo:load', () => {
                         if (progressoAlvo === 100) {
                             // Se terminou, preenche o restante rapidamente
                             progressoExibido = Math.min(progressoExibido + 2.0, 100);
-                        } else {
-                            // Base constante para não travar (movimento perpétuo e suave)
-                            let incremento = 0.03; 
-                            
-                            // Se o servidor mandou um progresso maior, acelera suavemente para alcançá-lo
-                            if (progressoAlvo > progressoExibido) {
-                                let velAlcance = (progressoAlvo - progressoExibido) / 60;
-                                // Limita a velocidade máxima para evitar "saltos" visuais
-                                incremento = Math.max(0.03, Math.min(velAlcance, 0.15));
-                            }
-                            
-                            progressoExibido += incremento;
-                            // Previne que ultrapasse 99% artificialmente antes do servidor finalizar
-                            if (progressoExibido > 99) progressoExibido = 99;
+                        } else if (progressoAlvo > progressoExibido) {
+                            // Acelera suavemente para alcançar o servidor, sem "saltos" visuais
+                            const velAlcance = (progressoAlvo - progressoExibido) / 60;
+                            const incremento = Math.max(0.03, Math.min(velAlcance, 0.15));
+                            progressoExibido = Math.min(progressoExibido + incremento, progressoAlvo, 99);
                         }
                     } else if (progressoExibido >= 100) {
                         clearInterval(animProgresso);
@@ -3814,7 +3790,13 @@ document.addEventListener('turbo:load', () => {
                 });
             }
 
+            /*  Um 502 isolado do túnel (24/09) derrubava o acompanhamento no meio de
+                um motor de 10 minutos. Só desistimos depois de ~1 minuto seguido sem
+                resposta; antes disso o próximo ciclo simplesmente tenta de novo. */
+            const FALHAS_ATE_DESISTIR = 30;
+
             function acompanhar(processoId) {
+                let falhasSeguidas = 0;
                 pollConsole = setInterval(() => {
                     fetch(`/dashboards/documentos-ia/api/status/${processoId}/`)
                         .then((r) => {
@@ -3822,6 +3804,7 @@ document.addEventListener('turbo:load', () => {
                             return r.json();
                         })
                         .then((data) => {
+                            falhasSeguidas = 0;
                             if (consoleStatus) consoleStatus.innerText = ROTULO_STATUS[data.status] || data.status;
                             progressoAlvo = Math.max(progressoAlvo, data.progresso || 0);
 
@@ -3859,6 +3842,12 @@ document.addEventListener('turbo:load', () => {
                             }
                         })
                         .catch((erro) => {
+                            if (!pollConsole) return;  // já encerrado por outra resposta
+                            falhasSeguidas += 1;
+                            if (falhasSeguidas < FALHAS_ATE_DESISTIR) {
+                                if (consoleStatus) consoleStatus.innerText = 'Reconectando…';
+                                return;
+                            }
                             encerrarAcompanhamento();
                                 sessionStorage.removeItem('__processo_id_docia');
                                 window.__processo_id_docia = null;

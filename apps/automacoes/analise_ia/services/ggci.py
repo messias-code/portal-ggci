@@ -128,7 +128,7 @@ COLUNAS_ABA_DOCUMENTO = [
     'data_processamento', 'processado', 'processar', 'qtd_token', 'qtd_disciplinas_matriculadas',
     'qtd_disciplinas_reprovadas', 'perfil', 'status_vinculo', 'situacao_motivo',
     'observacao_situacao', 'email', 'telefone_1', 'telefone_2', 'data_nascimento', 'matricula',
-    'periodo_atual', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies'
+    'periodo_atual', 'periodo_no_semestre', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies'
 ]
 
 
@@ -936,6 +936,26 @@ def buscar_dados_financeiros_sql(semestres_presentes, inscricoes=None):
             # Sort by uni_codigo and semestre to ensure chronological order before ffill/bfill
             df_merged = df_merged.sort_values(by=['uni_codigo', 'semestre']).reset_index(drop=True)
             
+            agrupador = df_merged['uni_codigo']
+            pagos = pd.to_numeric(df_merged['qtd_pagtos'], errors='coerce').fillna(0)
+            devolvidos = pd.to_numeric(df_merged['qtd_pagtos_retroativos'], errors='coerce').fillna(0)
+            cursou_no_semestre = (pagos > devolvidos).astype('int64')
+            semestres_cursados = cursou_no_semestre.groupby(agrupador).cumsum()
+
+            declarado = pd.to_numeric(df_merged['periodo_atual'], errors='coerce')
+            declarado = declarado.where(declarado > 0)
+            if 'periodo_quantidade' in df_merged.columns:
+                qtd_periodos = pd.to_numeric(df_merged['periodo_quantidade'], errors='coerce')
+                declarado = declarado.where(declarado <= qtd_periodos)
+            cursados_na_declaracao = semestres_cursados.where(declarado.notna())
+            ancora = declarado.groupby(agrupador).ffill()
+            ancora = ancora.fillna(declarado.groupby(agrupador).bfill())
+            ancora_cursados = cursados_na_declaracao.groupby(agrupador).ffill()
+            ancora_cursados = ancora_cursados.fillna(cursados_na_declaracao.groupby(agrupador).bfill())
+
+            periodo_no_semestre = ancora + (semestres_cursados - ancora_cursados)
+            df_merged['periodo_no_semestre'] = periodo_no_semestre.where(periodo_no_semestre > 0)
+
             if 'tipo_bolsa_final' in df_merged.columns:
                 df_merged['tipo_bolsa_final'] = df_merged.groupby('uni_codigo')['tipo_bolsa_final'].ffill().bfill()
                 
@@ -947,7 +967,7 @@ def buscar_dados_financeiros_sql(semestres_presentes, inscricoes=None):
                 'situacao_atual_sistema', 'sit_data_atual_sistema', 'data_coleta_atual_sistema', 
                 'sit_obs_atual_sistema', 'inscricao_ano_semestre', 'uni_deficiencia', 'uni_sexo', 
                 'tipo_bolsista_renovacao', 'perfil', 'data_nascimento', 'email', 'telefone_1', 
-                'telefone_2', 'periodo_atual', 'periodo_quantidade', 'matricula', 'modalidade_aluno', 'modalidade_ies', 
+                'telefone_2', 'periodo_atual', 'periodo_no_semestre', 'periodo_quantidade', 'matricula', 'modalidade_aluno', 'modalidade_ies', 
                 'ins_cnpj', 'ins_razao_social', 'ins_nome_fantasia', 'ins_mantenedora', 
                 'Bolsista_sql', 'UNI_CPF', 'CUR_NOME', 'qtd_disciplinas_matriculadas', 
                 'qtd_disciplinas_reprovadas'
@@ -969,7 +989,7 @@ def buscar_dados_financeiros_sql(semestres_presentes, inscricoes=None):
                 'qual_beneficio': 'Sem Benefícios', 'qual_financiamento': 'Sem Financiamento',
                 'data_coleta': '',
                 'inscricao_ano_semestre': '', 'uni_deficiencia': '', 'uni_sexo': '', 'tipo_bolsista_renovacao': '', 'perfil': '',
-                'data_nascimento': '', 'email': '', 'telefone_1': '', 'telefone_2': '', 'periodo_atual': '', 'periodo_quantidade': '', 'matricula': '', 'modalidade_aluno': '', 'modalidade_ies': '',
+                'data_nascimento': '', 'email': '', 'telefone_1': '', 'telefone_2': '', 'periodo_atual': '', 'periodo_no_semestre': '', 'periodo_quantidade': '', 'matricula': '', 'modalidade_aluno': '', 'modalidade_ies': '',
                 'ins_cnpj': '', 'ins_razao_social': '', 'ins_nome_fantasia': '', 'ins_mantenedora': '', 'valor_matricula_sem_desconto': 0.0, 'valor_matricula_com_desconto': 0.0
             }
             df_merged.fillna(valores_para_zerar, inplace=True)
@@ -1164,6 +1184,7 @@ def mesclar_sql_e_reordenar(df, df_sql, df_pag=None, df_mes_a_mes=None):
             'telefone_1': 'Telefone 1',
             'telefone_2': 'Telefone 2',
             'periodo_atual': 'Período atual',
+            'periodo_no_semestre': 'Período no semestre',
             'periodo_quantidade': 'Período quantidade',
             'matricula': 'Matricula',
             #  O CURSO DO PRÓPRIO SEMESTRE, e não o do último. `CUR_NOME` sempre esteve
@@ -1243,6 +1264,7 @@ def mesclar_sql_e_reordenar(df, df_sql, df_pag=None, df_mes_a_mes=None):
             'modalidade_aluno': 'Modalidade Aluno',
             'modalidade_ies': 'Modalidade IES',
             'periodo_atual': 'Período atual',
+            'periodo_no_semestre': 'Período no semestre',
             'periodo_quantidade': 'Período quantidade',
             'qtd_disciplinas_matriculadas': 'Qtd Disciplinas Matriculadas',
             'qtd_disciplinas_reprovadas': 'Qtd Disciplinas Reprovadas',
@@ -2075,6 +2097,30 @@ def calcular_auditoria_ia(df):
     
     final_st = np.where(ia_st.str.contains('CORROMPIDO', case=False, na=False), 'Corrompido',
                np.where(cond_falso_ausente, 'Falso Ausente', ia_st))
+               
+    # REGRA: Falso Válido de Conclusão de Curso (Históricos)
+    # Se periodo_no_semestre < periodo_quantidade, a pessoa não pode ter se formado. 
+    # A IA extraiu uma formatura no futuro, mas validou para este semestre auditado.
+    if 'Período no semestre' in df.columns and 'Período quantidade' in df.columns and 'Gemini Concluiu Curso' in df.columns:
+        p_sem = pd.to_numeric(df['Período no semestre'], errors='coerce')
+        p_qtd = pd.to_numeric(df['Período quantidade'], errors='coerce')
+        gemini_concluiu = df['Gemini Concluiu Curso'].astype(str).str.strip().str.upper() == 'SIM'
+        
+        mask_falso_concluinte = (p_sem.notna()) & (p_qtd.notna()) & (p_sem < p_qtd) & gemini_concluiu
+        
+        if mask_falso_concluinte.any():
+            df.loc[mask_falso_concluinte, 'Gemini Concluiu Curso'] = 'NÃO'
+            final_st = np.where(mask_falso_concluinte, 'Inválido', final_st)
+            
+            if 'Gemini Inconsistencias' in df.columns:
+                inconsistencias = df['Gemini Inconsistencias'].astype(str).replace('nan', '').str.strip()
+                novo_texto = "Situação acadêmica diverge do semestre auditado (Falso Válido corrigido via sistema)."
+                inconsistencias = np.where(
+                    mask_falso_concluinte,
+                    np.where(inconsistencias != '', inconsistencias + ", " + novo_texto, novo_texto),
+                    inconsistencias
+                )
+                df['Gemini Inconsistencias'] = inconsistencias
     
     df['Status_IA'] = final_st
     
@@ -2405,7 +2451,48 @@ def calcular_auditoria_ia(df):
     ia_beneficio = pd.to_numeric(df.get('Gemini Valor Beneficio', pd.Series([0]*len(df), index=df.index)), errors='coerce').fillna(0)
     sys_financiamento = pd.to_numeric(df.get('valor_financiamento', pd.Series([0]*len(df), index=df.index)), errors='coerce').fillna(0)
     ia_financiamento = pd.to_numeric(df.get('Gemini Valor Financiamento', pd.Series([0]*len(df), index=df.index)), errors='coerce').fillna(0)
-    matematica_invalida_riaf_extra = is_riaf & ((sys_beneficio != ia_beneficio) | (sys_financiamento != ia_financiamento))
+    
+    def _texto(nome):
+        return (df.get(nome, pd.Series(['']*len(df), index=df.index)).astype(object).fillna('').astype(str)
+                .str.strip().str.upper().replace(['NAN', 'NONE', '<NA>'], '')
+                .str.replace(r'N[AÃ]O LOCALIZAD[AO]', '', regex=True).str.strip()
+                .str.normalize('NFKD').str.encode('ascii', 'ignore').str.decode('ascii'))
+
+    def _valor(nome):
+        return pd.to_numeric(df.get(nome, pd.Series([0.0]*len(df), index=df.index)), errors='coerce').fillna(0.0).round(2)
+
+    ia_cnpj = _texto('Gemini Cnpj Faculdade').str.replace(r'\.0$', '', regex=True).str.replace(r'\D', '', regex=True)
+    ia_cnpj = ia_cnpj.where(ia_cnpj == '', ia_cnpj.str.zfill(14))
+    sys_cnpj = _texto('Ins. CNPJ').str.replace(r'\.0$', '', regex=True).str.replace(r'\D', '', regex=True)
+    sys_cnpj = sys_cnpj.where(sys_cnpj == '', sys_cnpj.str.zfill(14))
+
+    ia_bolsa = _texto('Gemini Tipo Bolsa')
+    import numpy as np
+    import pandas as pd
+    ia_bolsa = pd.Series(np.select([ia_bolsa.str.contains('INTEGRAL'), ia_bolsa.str.contains('PARCIAL|MEIA')],
+                                   ['INTEGRAL', 'PARCIAL'], default=''), index=df.index)
+    sys_bolsa = _texto('tipo_bolsa_final')
+
+    ia_modalidade = _texto('Gemini Modalidade')
+    sys_modalidade = _texto('Modalidade IES').where(_texto('Modalidade IES') != '', _texto('modalidade_ies'))
+
+    mat_sd_ia = pd.to_numeric(df.get('Gemini Matricula S/ Desconto', pd.Series([0]*len(df), index=df.index)), errors='coerce').fillna(0)
+    mat_cd_ia = pd.to_numeric(df.get('Gemini Matricula C/ Desconto', pd.Series([0]*len(df), index=df.index)), errors='coerce').fillna(0)
+    mat_sd_sys, mat_cd_sys = _valor('Matricula S/ Desconto'), _valor('Matricula C/ Desconto')
+    mat_sd_lida, mat_cd_lida = mat_sd_ia.round(2), mat_cd_ia.round(2)
+    mcd_ia = pd.to_numeric(df.get('Gemini Mensalidade C/ Desconto', pd.Series([0]*len(df), index=df.index)), errors='coerce').fillna(0)
+    mcd_sys = pd.to_numeric(df.get('Mensalidade C/ Desconto', pd.Series([0]*len(df), index=df.index)), errors='coerce').fillna(0)
+    mcd_lida, mcd_esperada = mcd_ia.round(2), mcd_sys.round(2)
+
+matematica_invalida_riaf_extra = is_riaf & (
+        (sys_beneficio != ia_beneficio) | (sys_financiamento != ia_financiamento) |
+        (ia_cnpj == '') | ((ia_cnpj != '') & (sys_cnpj != '') & (ia_cnpj != sys_cnpj)) |
+        (ia_bolsa == '') | ((ia_bolsa != '') & sys_bolsa.isin(['PARCIAL', 'INTEGRAL']) & (ia_bolsa != sys_bolsa)) |
+        (ia_modalidade == '') | ((ia_modalidade != '') & (sys_modalidade != '') & (ia_modalidade != sys_modalidade)) |
+        (mat_sd_lida == 0) | ((mat_sd_lida != 0) & (mat_sd_sys != 0) & (mat_sd_lida != mat_sd_sys)) |
+        (mat_cd_lida == 0) | ((mat_cd_lida != 0) & (mat_cd_sys != 0) & (mat_cd_lida != mat_cd_sys)) |
+        (mcd_lida == 0) | ((mcd_lida != 0) & (mcd_esperada != 0) & (mcd_lida != mcd_esperada))
+    )
 
     # ERRO NA INCONSISTÊNCIA — a frase do Gemini não bate com o valor que ele mesmo extraiu.
     #
@@ -2491,7 +2578,7 @@ def calcular_auditoria_ia(df):
 
     ordem_desejada = [
         'Status_IA', 'Status_Vínculo', 
-        'Situação do Motivo', 'Observação da Situação',
+        'Situação do Motivo', 'Observação da Situação', 'Situação do Motivo Atual', 'Observação da Situação Atual',
         'Mudou IES?', 'IES Anterior', 'IES Posterior', 'Mudou Bolsa?', 'Bolsa Anterior', 'Bolsa Posterior', 
         'Semestre', 'Gemini Semestre', 'Inscrição', 'Inscrição Anterior', 'Inscrição Posterior', 
         'Bolsista', 'CPF', 'Gemini CPF', 'Gemini Inconsistencias', 'Faculdade', 'Curso', 
@@ -4664,7 +4751,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                             ('matricula', 'Matricula'), ('modalidade_aluno', 'modalidade_aluno'), ('modalidade_ies', 'modalidade_ies'), 
                             ('email', 'E-mail'), ('telefone_1', 'Telefone 1'), ('telefone_2', 'Telefone 2'),
                             ('data_nascimento', 'Data nascimento'), ('periodo_atual', 'Período atual'),
-                            ('periodo_quantidade', 'Período quantidade')
+                            ('periodo_no_semestre', 'Período no semestre'), ('periodo_quantidade', 'Período quantidade')
                         ]:
                             if col_orig in row and pd.notna(row[col_orig]):
                                 novo_ausente[col_dest] = row[col_orig]
@@ -5026,7 +5113,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
 
         # --- LIMPEZA DE COLUNAS LIXO (APENAS AS SOLICITADAS PELO USUÁRIO) ---
         colunas_do_relatorio = [
-            'Status_IA', 'Status_Vínculo', 'Situação do Motivo', 'Observação da Situação', 'Mudou IES?',
+            'Status_IA', 'Status_Vínculo', 'Situação do Motivo', 'Observação da Situação', 'Situação do Motivo Atual', 'Observação da Situação Atual', 'Mudou IES?',
             'IES Anterior', 'IES Posterior', 'Mudou Bolsa?', 'Bolsa Anterior', 'Bolsa Posterior',
             'Semestre', 'Gemini Semestre', 'Inscrição', 'Inscrição Anterior', 'Inscrição Posterior',
             'Bolsista', 'CPF', 'Gemini CPF', 'Gemini Inconsistencias', 'Faculdade', 'Curso', 'Gemini Curso',
@@ -5047,7 +5134,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             'Gemini Beneficio Nome', 'Gemini Valor Beneficio', 'Gemini Valor Financiado', 'Gemini Nome Financiamento',
             'Gemini Modalidade', 'Gemini Email', 'Gemini Telefone', 'Gemini Periodo', 'Gemini Quantidade Periodos',
             'Gemini Tipo Bolsa', 'Data nascimento', 'E-mail', 'Telefone 1', 'Telefone 2', 'Período atual',
-            'Período quantidade', 'Matricula', 'Ins. Cnpj', 'Ins. Nome Fantasia', 'Ins. Mantenedora',
+            'Período no semestre', 'Período quantidade', 'Matricula', 'Ins. Cnpj', 'Ins. Nome Fantasia', 'Ins. Mantenedora',
             'Modalidade Aluno', 'Modalidade IES', 'Matricula C/ Desconto', 'Matricula S/ Desconto', 'data_create', 'Processado',
             'Qtde Token', 'gemini_vigencia', 'gemini_clausulas', 'gemini_recisao', 'gemini_cnpj_mantenedora',
             'gemini_documentos_beneficio', 'gemini_cnpj_banco', 'gemini_numero', 'gemini_numero_semestres',
@@ -5129,6 +5216,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             'Semestre': 'semestre',
             'Gemini Semestre': 'gemini_semestre',
             'Período atual': 'periodo_atual',
+            'Período no semestre': 'periodo_no_semestre',
             'Gemini Período': 'gemini_periodo',
             'Período quantidade': 'qtd_periodos',
             'Gemini Quantidade Periodos': 'gemini_qtd_periodos',
@@ -5155,6 +5243,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             'Soma Valor Beneficio': 'soma_valor_beneficio',
             'qual_financiamento': 'qual_financiamento',
             'Gemini Nome Financiamento': 'gemini_nome_financiamento',
+            'Gemini Financiamento Nome': 'gemini_nome_financiamento',
             'valor_financiamento': 'valor_financiamento',
             'Gemini Valor Financiado': 'gemini_valor_financiamento',
             'Soma Valor Financiamento': 'soma_valor_financiamento',
@@ -5247,15 +5336,15 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                 'gemini_matricula_com_desc', 'matricula_cd_doc', 'mensalidade_sem_desc', 
                 'gemini_mensalidade_sem_desc', 'msd_doc', 'mensalidade_com_desc', 
                 'gemini_mensalidade_com_desc', 'mcd_doc', 'valor_beneficio', 'soma_valor_beneficio', 
-                'gemini_valor_beneficio', 'beneficio', 'valor_financiamento', 'soma_valor_financiamento', 
-                'gemini_valor_financiamento', 'financiamento', 
+                'gemini_valor_beneficio', 'beneficio', 'gemini_nome_beneficio', 'valor_financiamento', 'soma_valor_financiamento', 
+                'gemini_valor_financiamento', 'financiamento', 'gemini_nome_financiamento', 
                 'soma_ovg_devia_pagar_sis', 'soma_ovg_devia_pagar_ia', 'soma_prejuizo_ovg', 
                 'soma_economia_ovg', 'diagnostico_financeiro_final', 'data_coleta', 
                 'data_coleta_atual_sistema', 'data_create', 'data_processamento', 'processado', 
                 'processar', 'qtd_token', 'qtd_disciplinas_matriculadas', 'qtd_disciplinas_reprovadas', 
                 'perfil', 'status_vinculo', 'situacao_motivo', 'observacao_situacao', 'email', 
                 'gemini_email', 'telefone_1', 'telefone_2', 'data_nascimento', 'matricula', 
-                'periodo_atual', 'qtd_periodos', 'modalidade_aluno', 'modalidade_ies'
+                'periodo_atual', 'periodo_no_semestre', 'qtd_periodos', 'modalidade_aluno', 'modalidade_ies'
             ]
             
             for c in colunas_riaf:
@@ -5319,7 +5408,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             'qtd_disciplinas_matriculadas', 'qtd_disciplinas_reprovadas', 
             'perfil', 'status_vinculo', 'situacao_motivo', 'observacao_situacao', 
             'email', 'telefone_1', 'telefone_2', 'data_nascimento', 'matricula', 
-            'periodo_atual', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies'
+            'periodo_atual', 'periodo_no_semestre', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies'
         ]
         
         AVISO_VAZIO = "Nenhum documento encontrado ou processado para este tipo"

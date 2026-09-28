@@ -247,12 +247,52 @@ class TestBarraDeProgresso(unittest.TestCase):
         """
         Medido em seis execuções: a extração leva de 53% a 89% do tempo, e o bloco das
         regras é quase constante (~40s). A barra tem de refletir isso.
+
+        "Extração" aqui é SQL + ScriptCase: com timestamp, os 882s de 24/09/2026 eram
+        688s de SQL e o resto de ScriptCase. As duas faixas somadas são a etapa longa, e
+        uma encosta na outra — um vão entre elas seria um salto sem trabalho nenhum.
         """
+        inicio_etl, fim_etl = mod.FAIXA_ETL
         inicio, fim = mod.FAIXA_EXTRACAO
-        self.assertGreaterEqual(fim - inicio, 60,
+        self.assertEqual(fim_etl, inicio, "o SQL termina onde o ScriptCase começa")
+        self.assertGreaterEqual(fim - inicio_etl, 60,
                                 "a etapa mais longa não pode ocupar uma fatia estreita da barra")
         self.assertEqual(fim, mod.PROGRESS_MAP_ABSOLUTE[0][1],
                          "o fim da faixa tem de encostar no marco 'Extração concluída'")
+
+    def test_progresso_do_etl_vem_da_contagem_de_tabelas(self):
+        """O SQL deixava a barra em 2% por 11 minutos: agora ele anda por tabela pronta."""
+        inicio, fim = mod.FAIXA_ETL
+        self.assertEqual(mod._progresso_do_etl("[ETL_PROGRESSO] 0/16"), inicio)
+        self.assertEqual(mod._progresso_do_etl("[ETL_PROGRESSO] 16/16"), fim)
+        meio = mod._progresso_do_etl("[ETL_PROGRESSO] 8/16")
+        self.assertTrue(inicio < meio < fim, meio)
+        # Um marcador não pode ser lido pelo outro.
+        self.assertIsNone(mod._progresso_do_etl("[EXTRACAO_PROGRESSO] 8/16"))
+        self.assertIsNone(mod._progresso_da_extracao("[ETL_PROGRESSO] 8/16"))
+
+    def test_o_teto_nao_deixa_o_sql_invadir_o_scriptcase(self):
+        inicio, fim = mod.FAIXA_ETL
+        self.assertEqual(mod._teto_da_etapa(inicio + 1), fim - 1)
+
+    def test_com_sql_em_cache_o_scriptcase_ganha_o_proprio_bloco(self):
+        """
+        Execução 182: o SQL veio do cache e as duas aberturas caíram no mesmo flush;
+        o timing pôs os 300s do ScriptCase na conta do ETL_SQL.
+        """
+        trecho = ("🚀 Iniciando processamento massivo...\n[ETL_PROGRESSO] 16/16\n"
+                  "🌐 Baixando planilhas do ScriptCase (34 tarefas)...\n")
+        self.assertEqual(mod.LogCapture._detectar_bloco(None, trecho), "EXTRAÇÃO")
+
+    def test_o_extrator_emite_a_contagem_do_sql(self):
+        """Os dois lados do contrato do ETL, como no da extração."""
+        import inspect
+
+        from apps.dashboards.dash_documentos_ia.services import extrator
+
+        fonte = inspect.getsource(extrator.atualizar_cache_parquets)
+        self.assertIn("[ETL_PROGRESSO]", fonte)
+        self.assertIn("as_completed", fonte)
 
     def test_progresso_da_extracao_vem_da_contagem_de_arquivos(self):
         inicio, fim = mod.FAIXA_EXTRACAO

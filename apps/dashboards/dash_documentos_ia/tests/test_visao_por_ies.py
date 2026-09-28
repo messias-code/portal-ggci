@@ -4,7 +4,7 @@ Propósito: Trava a visão por IES — o resumo por instituição e as peças qu
 Autor: N/A
 Dependências Principais: pandas, django.test
 
-POR QUÊ EXISTE: a vista por IES conta os MESMOS SEIS BALDES da vista de beneficiários,
+POR QUÊ EXISTE: a vista por IES conta os MESMOS CINCO BALDES da vista de beneficiários,
 por outro eixo. É uma segunda contagem sobre a mesma regra, e é aí que mora o risco: se
 `_resumo_por_ies` classificasse de um jeito e `_balde_do_documento` de outro, a coluna
 "Pendentes" daqui não bateria com a fatia "Pendentes" de lá — as duas na mesma tela, sem
@@ -12,7 +12,7 @@ erro em lugar nenhum, e sem como saber qual está certa.
 
 O que este arquivo garante:
 
-  1. Os seis baldes COBREM todas as linhas (a soma dos totais é o tamanho do recorte).
+  1. Os cinco baldes COBREM todas as linhas (a soma dos totais é o tamanho do recorte).
   2. Beneficiário é PESSOA: o mesmo CPF em cinco documentos conta uma vez, e o total
      geral não é a soma das colunas — quem muda de IES no meio do período aparece nas
      duas.
@@ -63,7 +63,7 @@ class TestResumoPorIES(SimpleTestCase):
             veredito_documento=['VÁLIDO', '', '', '', 'VÁLIDO'],
         )
 
-    def test_os_seis_baldes_cobrem_todas_as_linhas(self):
+    def test_os_cinco_baldes_cobrem_todas_as_linhas(self):
         """
         A soma dos totais tem de ser o tamanho do recorte. Um balde que escapasse da
         classificação sumiria da tela sem deixar rastro — a tabela mostraria menos
@@ -99,13 +99,14 @@ class TestResumoPorIES(SimpleTestCase):
 
     def test_inadimplente_nao_conta_como_beneficiario(self):
         """
-        Quem só aparece por inadimplência NÃO é beneficiário. O caso mais gritante é o
-        balde `Inadimplentes`: ele nem é documento nosso — é cobrança injetada do
-        relatório do site, de semestre em que o aluno não teve lançamento nenhum.
-        Contá-lo era dizer que a OVG atende quem ela não custeou.
+        Quem só aparece por inadimplência NÃO é beneficiário: inadimplência é ausência de
+        repasse líquido no semestre, e contá-lo era dizer que a OVG atende quem ela não
+        custeou.
 
-        Medido na base real (2025-1): 7.541 CPFs saem por esta regra, 7.488 deles vindos
-        só desse balde.
+        Medido na base real (2025-1), quando ainda havia o balde `Inadimplentes` da
+        cobrança injetada do site: 7.541 CPFs saíam por esta regra, 7.488 deles vindos só
+        daquele balde. Ele saiu junto com a injeção, e a regra continua valendo para os
+        dois que restaram — que é o que este teste fixa.
         """
         df = _abas(
             faculdade=['IES A', 'IES A'],
@@ -117,16 +118,16 @@ class TestResumoPorIES(SimpleTestCase):
         )
         linha = views._resumo_por_ies(df)[0]
         self.assertEqual(linha['beneficiarios'], 1)
-        # A LINHA continua contando: documento e pessoa são bases diferentes, e a
-        # cobrança indevida é justamente o que a coluna `Inadimplentes` denuncia.
+        # A LINHA continua contando: documento e pessoa são bases diferentes, e o
+        # documento do inadimplente existe no espelho como qualquer outro.
         self.assertEqual(linha['total'], 2)
-        self.assertEqual(linha['Inadimplentes'], 1)
+        self.assertEqual(linha['InadNaoProc'], 1)
 
-    def test_os_tres_baldes_de_inadimplencia_saem_juntos_da_contagem(self):
+    def test_os_dois_baldes_de_inadimplencia_saem_juntos_da_contagem(self):
         """
-        Não é só o balde injetado: `Inadimplentes Proc.` e `Inadimplentes Não Proc.`
-        também são pessoas sem repasse líquido no semestre. Os três descrevem o mesmo
-        fato sobre o dinheiro, e o desempate entre eles é sobre a LEITURA do documento.
+        `Inadimplentes Proc.` e `Inadimplentes Não Proc.` são a mesma pessoa sem repasse
+        líquido no semestre. Os dois descrevem o mesmo fato sobre o dinheiro, e o
+        desempate entre eles é sobre a LEITURA do documento — nunca sobre o repasse.
         """
         df = _abas(
             faculdade=['IES A'] * 3,
@@ -256,7 +257,7 @@ class TestApiResumoIES(TestCase):
     def test_responde_no_formato_que_a_tela_espera(self):
         """
         As chaves são contrato com o JavaScript: `CHAVES_DAS_FATIAS` no front lê
-        exatamente estes nomes, na mesma ordem das seis fatias.
+        exatamente estes nomes, na mesma ordem das cinco fatias.
         """
         self.cliente.force_login(self.com_acesso)
         corpo = self.cliente.get(self.url).json()
@@ -336,7 +337,7 @@ class TestPecasDaVistaNaTela(TestCase):
         """
         Houve uma seção "Ordenar por" na barra, com as perguntas nomeadas (menor % de
         pendência, maior nº de pendências...). Ela saiu: o cabeçalho de cada coluna já
-        ordena, e os seis chips do topo também. Três caminhos para o mesmo gesto é um a
+        ordena, e os cinco chips do topo também. Três caminhos para o mesmo gesto é um a
         mais do que a tela precisa — e o da barra era o único que exigia abrir a barra.
 
         A tabela abre em ordem ALFABÉTICA e é para lá que "Restaurar Padrão" volta;
@@ -413,26 +414,27 @@ class TestSemanticaDoPercentualNaTabela(SimpleTestCase):
         self.assertIn("pct: (l) => progresso(l.NaoEnviados, esperadosDe(l)) },", self.js)
         self.assertIn("pct: (l) => progresso(l.NaoProcessados, enviadosDe(l)) },", self.js)
 
-    def test_os_tres_de_inadimplencia_sao_a_excecao(self):
+    def test_os_dois_de_inadimplencia_sao_a_excecao(self):
         """
         Fatia crua sobre o total da linha — nunca o complemento. `progresso()` ali diria
         "97% não inadimplente" e esconderia justamente o que a coluna existe para
         denunciar.
         """
-        for chave in ['InadProc', 'InadNaoProc', 'Inadimplentes']:
+        for chave in ['InadProc', 'InadNaoProc']:
             with self.subTest(coluna=chave):
                 self.assertIn("pct: (l) => fatia(l.%s, l.total) }" % chave, self.js)
                 self.assertNotIn("progresso(l.%s" % chave, self.js)
 
-    def test_a_cobranca_sem_lastro_fica_fora_do_que_a_ies_deve(self):
+    def test_o_esperado_e_o_total_da_linha(self):
         """
-        `Inadimplentes` é cobrança injetada do relatório do site, de semestre sem
-        lançamento nenhum — não é documento que a IES deva. Dentro do denominador, ela
-        puniria no `% enviado` justamente quem foi cobrado errado.
+        O denominador do `% enviado` é o total, sem subtração. Ele já teve uma: saía dali
+        a fatia `Inadimplentes`, cobrança injetada do relatório do site de semestre sem
+        lançamento nenhum, que não era documento que a IES devesse. A injeção saiu do
+        motor, a fatia saiu com ela, e o que sobrou no denominador é documento de verdade
+        — subtrair qualquer coisa agora seria inventar desconto.
         """
-        self.assertIn(
-            "const esperadosDe = (linha) => (linha.total || 0) - (linha.Inadimplentes || 0);",
-            self.js)
+        self.assertIn("const esperadosDe = (linha) => (linha.total || 0);", self.js)
+        self.assertNotIn("linha.Inadimplentes", self.js)
 
     def test_base_zero_nao_inventa_percentual(self):
         """Sem base não há progresso a medir; a célula sai só com o número."""
@@ -526,13 +528,16 @@ class TestExportacaoDaVisaoIES(TestCase):
                             planilha.iter_rows(min_row=2, max_col=1, values_only=True)}
         self.assertEqual(nomes_no_arquivo, {linha['ies'] for linha in da_tela})
 
-    def test_leva_as_duas_bases_dos_percentuais(self):
+    def test_leva_a_base_do_percentual_de_processados(self):
         """
-        `Esperados` e `Enviados` não são colunas da tela — lá os percentuais já saem
-        calculados ao lado de cada número. No arquivo elas vão junto porque, sem elas,
-        quem for conferir teria de reconstruir a regra de cabeça: `Esperados` tira a
-        cobrança sem lastro do que a IES realmente deve, e é o passo que não se adivinha
-        olhando as outras colunas.
+        `Enviados` não é coluna da tela — lá os percentuais já saem calculados ao lado de
+        cada número. No arquivo ela vai junto porque, sem ela, quem for conferir teria de
+        reconstruir a base de cabeça: é o total menos as pendências, e é o único passo que
+        não se lê direto das outras colunas.
+
+        `ESPERADOS` NÃO VOLTA. Ela era a base do `% enviado` enquanto o denominador tirava
+        a cobrança sem lastro do total; sem a injeção que produzia essa cobrança, o
+        denominador É o total, e a coluna seria uma cópia da vizinha.
         """
         import io as _io
 
@@ -542,12 +547,11 @@ class TestExportacaoDaVisaoIES(TestCase):
         planilha = openpyxl.load_workbook(
             _io.BytesIO(self.cliente.get(self.url).content)).active
         cabecalho = [c.value for c in planilha[1]]
-        self.assertEqual(cabecalho[-3:], ['Total de Documentos', 'Esperados', 'Enviados'])
+        self.assertEqual(cabecalho[-2:], ['Total de Documentos', 'Enviados'])
+        self.assertNotIn('Esperados', cabecalho)
 
         for linha in planilha.iter_rows(min_row=2, values_only=True):
-            (_, _, proc, nao_proc, pend, inad_p, inad_np, inad,
-             total, esperados, enviados) = linha
+            (_, _, proc, nao_proc, pend, inad_p, inad_np, total, enviados) = linha
             with self.subTest(ies=linha[0]):
-                self.assertEqual(proc + nao_proc + pend + inad_p + inad_np + inad, total)
-                self.assertEqual(esperados, total - inad)
-                self.assertEqual(enviados, esperados - pend)
+                self.assertEqual(proc + nao_proc + pend + inad_p + inad_np, total)
+                self.assertEqual(enviados, total - pend)

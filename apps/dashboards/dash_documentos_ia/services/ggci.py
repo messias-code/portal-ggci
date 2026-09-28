@@ -127,7 +127,7 @@ COLUNAS_ABA_DOCUMENTO = [
     'data_processamento', 'processado', 'processar', 'qtd_token', 'qtd_disciplinas_matriculadas',
     'qtd_disciplinas_reprovadas', 'perfil', 'status_vinculo', 'situacao_motivo',
     'observacao_situacao', 'email', 'telefone_1', 'telefone_2', 'data_nascimento', 'matricula',
-    'periodo_atual', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies', 'documento_ausente',
+    'periodo_atual', 'periodo_no_semestre', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies', 'documento_ausente',
     'veredito_documento', 'motivos_divergencia'
 ]
 
@@ -159,6 +159,10 @@ CATALOGO_MOTIVOS = {
     'semestre_diverge':      {'PADRAO': 'Semestre diverge com sistema'},
     'curso_ausente':         {'PADRAO': 'Curso não localizado no documento'},
     'curso_diverge':         {'PADRAO': 'Curso diverge do sistema'},
+    #  Frase que saiu do catálogo do Histórico em 24/09/2026 (a IA a usava contra uma
+    #  situação esperada que nunca vinha no input). Aqui ela segue: é o nosso motivo, não o dela.
+    'concluiu_antes_do_fim': {'PADRAO': 'Situação acadêmica do documento diverge da esperada pelo sistema'},
+    'documento_ilegivel':    {'PADRAO': 'Documento ilegível ou sem informações curriculares suficientes'},
     'msd_ausente':           {'PADRAO': 'Valor da mensalidade sem desconto não localizado no documento'},
     'msd_menor':             {'PADRAO': 'Valor da mensalidade sem desconto é MENOR que o esperado no documento'},
     'msd_maior':             {'PADRAO': 'Valor da mensalidade sem desconto é MAIOR que o esperado no documento'},
@@ -176,7 +180,8 @@ CATALOGO_MOTIVOS = {
     'correto_mcd_nao_loc':   {'PADRAO': "O Correto Seria: 'Valor da mensalidade com desconto não localizado no documento'"},
     'correto_mcd_menor':     {'PADRAO': "O Correto Seria: 'Valor da mensalidade com desconto é MENOR que o esperado no documento'"},
     'correto_mcd_maior':     {'PADRAO': "O Correto Seria: 'Valor da mensalidade com desconto é MAIOR que o esperado no documento'"},
-    'correto_mcd_conforme':  {'PADRAO': "O Correto Seria: 'Valor da mensalidade com desconto está CONFORME o esperado no documento'"}
+    'correto_mcd_conforme':  {'PADRAO': "O Correto Seria: 'Valor da mensalidade com desconto está CONFORME o esperado no documento'"},
+    'correto_sem_inconsistencias': {'PADRAO': "O Correto Seria: 'Sem inconsistências'"}
 }
 
 #  Como os motivos viajam dentro da célula: uma frase por motivo, nesta ordem. A barra foi
@@ -921,6 +926,121 @@ def get_engine():
         )
     return _ENGINE_CACHE
 
+def resolver_periodos(df_merged):
+    """
+    O QUE FAZ: preenche `periodo_no_semestre` e troca `periodo_atual` pelo último período
+    que a IES informou. Recebe o `df_merged` de `buscar_dados_financeiros_sql`, ordenado
+    por aluno e semestre, e devolve outro DataFrame com as mesmas linhas.
+    """
+    # O PERÍODO **DAQUELE** SEMESTRE, que é outra pergunta que `periodo_atual`.
+    #
+    # `periodo_atual` é o que a IES DECLAROU na coleta amarrada ao semestre — e ela
+    # nem sempre declara. Há semestre sem coleta nenhuma e há semestre em que a IES
+    # repete o número do anterior sem atualizar. Quem responde pelo buraco é o
+    # DINHEIRO: cada semestre efetivamente pago é um semestre cursado, então a
+    # partir da última declaração o período anda +1 por semestre pago.
+    #
+    # SEMESTRE 100% DEVOLVIDO NÃO CONTA. `qtd_pagtos == qtd_pagtos_retroativos`
+    # significa que todo o repasse do semestre foi cancelado e devolvido (ver o
+    # comentário da query de `buscar_dados_financeiros_sql`, e note que o nome da
+    # coluna engana). O aluno não cursou aquele semestre na bolsa, e contá-lo
+    # empurraria o período para a frente sem que ninguém tivesse estudado.
+    #
+    # A DECLARAÇÃO GANHA DA PROJEÇÃO onde as duas existem, e não o contrário: a IES
+    # é quem sabe em que período o aluno está. A projeção só preenche o que ela
+    # deixou em branco — por isso a âncora é a declaração MAIS PRÓXIMA, e não a
+    # primeira. Contar pagamento desde o início da bolsa daria TEMPO DE BOLSA, não
+    # período: quem entra na OVG já no 4º período nunca chegaria ao fim da matriz.
+    #
+    # PARA TRÁS TAMBÉM (o `bfill` do par âncora): o semestre anterior à primeira
+    # declaração recebe o mesmo cálculo com sinal invertido. Sem isso ele cairia em
+    # "Sem período" por um campo que a IES só foi preencher depois.
+    #
+    # UMA CONTA POR ALUNO E SEMESTRE, não por linha. O SQL devolve duas ou três linhas
+    # para o mesmo semestre quando o aluno troca de bolsa ou de perfil nele, e em 242
+    # delas cada linha declara um período diferente. Contando por linha, o semestre
+    # duplicado andava o período duas vezes e o vizinho do `shift` era a linha gêmea;
+    # e qual das duas sobrevivia ao `drop_duplicates` do relatório mudava a cada
+    # execução.
+    chaves = ['uni_codigo', 'semestre']
+    pagos = pd.to_numeric(df_merged['qtd_pagtos'], errors='coerce').fillna(0)
+    devolvidos = pd.to_numeric(df_merged['qtd_pagtos_retroativos'], errors='coerce').fillna(0)
+    declarado_bruto = pd.to_numeric(df_merged['periodo_atual'], errors='coerce')
+    declarado_bruto = declarado_bruto.where(declarado_bruto > 0)
+    # Declaração acima do total do curso vira o total do curso, e não é descartada.
+    # Descartar apagava a âncora: a 2023018 declarou 12, 12 e 3 num curso de 10, e
+    # o 3 de 2026/1 era projetado para trás até virar "período 2" no semestre da
+    # formatura. Quem declara acima do total está no fim do curso. Um dígito errado
+    # isolado (a 2053340: 7, 10, 9 num curso de 9) vira 7, 9, 9, e o espremido
+    # logo abaixo corrige o do meio para 8.
+    declarado = declarado_bruto
+    if 'periodo_quantidade' in df_merged.columns:
+        qtd_periodos = pd.to_numeric(df_merged['periodo_quantidade'], errors='coerce')
+        qtd_periodos = qtd_periodos.where(qtd_periodos > 0)  # 0 = curso sem total cadastrado
+        declarado = declarado.clip(upper=qtd_periodos)
+
+    por_semestre = pd.DataFrame({
+        'uni_codigo': df_merged['uni_codigo'], 'semestre': df_merged['semestre'],
+        'cursou': (pagos > devolvidos).astype('int64'),
+        'declarado': declarado, 'declarado_bruto': declarado_bruto,
+    }).groupby(chaves, sort=True).agg(
+        cursou=('cursou', 'max'),
+        declarado=('declarado', 'max'),
+        versoes=('declarado', 'nunique'),
+        declarado_bruto=('declarado_bruto', 'max'),
+    ).reset_index()
+
+    # DUAS DECLARAÇÕES DIFERENTES NO MESMO SEMESTRE: nenhuma vale, e o semestre é
+    # projetado pelos vizinhos, como se a IES não tivesse declarado. Não dá para
+    # escolher uma: a 2138609 declarou 4 e 6 em 2025/1, com 4 em 2024/2 e 6 em
+    # 2025/2, e o certo é 5. A 2029310 declarou 6 e 7 em 2026/2, depois de 6 em
+    # 2026/1, e o certo é 7.
+    conflito = por_semestre['versoes'] > 1
+    por_semestre.loc[conflito, 'declarado'] = np.nan
+
+    agrupador = por_semestre['uni_codigo']
+    cursou_no_semestre = por_semestre['cursou']
+    semestres_cursados = cursou_no_semestre.groupby(agrupador).cumsum()
+    declarado = por_semestre['declarado']
+    cursados_na_declaracao = semestres_cursados.where(declarado.notna())
+    ancora = declarado.groupby(agrupador).ffill()
+    ancora = ancora.fillna(declarado.groupby(agrupador).bfill())
+    ancora_cursados = cursados_na_declaracao.groupby(agrupador).ffill()
+    ancora_cursados = ancora_cursados.fillna(cursados_na_declaracao.groupby(agrupador).bfill())
+
+    periodo_no_semestre = ancora + (semestres_cursados - ancora_cursados)
+    por_semestre['periodo_no_semestre'] = periodo_no_semestre.where(periodo_no_semestre > 0)
+
+    # SEMESTRE ESPREMIDO ENTRE VIZINHOS QUE O DESMENTEM. Anterior N, seguinte N+2 e os
+    # dois semestres pagos: o do meio só pode ser N+1, diga a IES o que disser. Aqui a
+    # declaração perde para a projeção. É um dígito errado (7 → 9 → 9 ou 6 → 6 → 8),
+    # não um aproveitamento de disciplinas, que continuaria subindo. Caso real: a 2053340
+    # declarou 7, 10 e 9 em 2025/1, 2025/2 e 2026/1; o certo em 2025/2 é 8. Medido em
+    # 24/09/2026: mexe em 693 semestres (0,61%). A regra ampla ("no máximo +1 por
+    # semestre") mexeria em 2.688, e em 95% deles a IES mantém o número alto depois.
+    anterior = por_semestre['periodo_no_semestre'].groupby(agrupador).shift(1)
+    seguinte = por_semestre['periodo_no_semestre'].groupby(agrupador).shift(-1)
+    cursou_o_seguinte = cursou_no_semestre.groupby(agrupador).shift(-1).fillna(0).astype(bool)
+    espremido = cursou_no_semestre.astype(bool) & cursou_o_seguinte & (seguinte - anterior == 2)
+    por_semestre.loc[espremido, 'periodo_no_semestre'] = anterior[espremido] + 1
+
+    # PERIODO ATUAL É O ÚLTIMO QUE A IES INFORMOU, o mesmo em toda a linha do tempo
+    # do aluno (é o que `views.py` já supunha dele). Vinha o declarado de cada
+    # semestre, e isso é o `periodo_no_semestre`: a 2069118 mostrava 7 em 2026/1 e 8
+    # em 2026/2, quando hoje ela está no 8. Vale o número como veio, sem o teto do
+    # curso, porque "Passou do limite" costuma ser verdade (ver a 2021171). Se o
+    # último semestre informado é um dos conflitantes, vale o período resolvido dele.
+    informado = por_semestre[por_semestre['declarado_bruto'].notna()]
+    ultimo = informado.groupby('uni_codigo').tail(1)
+    atual = ultimo['declarado_bruto'].where(ultimo['versoes'] <= 1, ultimo['periodo_no_semestre'])
+    atual = pd.Series(atual.values, index=ultimo['uni_codigo'].values)
+
+    df_merged = df_merged.merge(por_semestre[chaves + ['periodo_no_semestre']], on=chaves, how='left')
+    tem_atual = df_merged['uni_codigo'].isin(atual.index)
+    df_merged.loc[tem_atual, 'periodo_atual'] = df_merged.loc[tem_atual, 'uni_codigo'].map(atual)
+    return df_merged
+
+
 def buscar_dados_financeiros_sql(semestres_presentes, inscricoes=None):
     """
     O QUE FAZ: Busca a situação cadastral cruzando via Polars SQLContext no Parquet Local (Stateless Database).
@@ -992,7 +1112,9 @@ def buscar_dados_financeiros_sql(semestres_presentes, inscricoes=None):
             df_merged = pd.merge(df_skeleton, df_sql, on=['uni_codigo', 'semestre'], how='outer')
             # Sort by uni_codigo and semestre to ensure chronological order before ffill/bfill
             df_merged = df_merged.sort_values(by=['uni_codigo', 'semestre']).reset_index(drop=True)
-            
+
+            df_merged = resolver_periodos(df_merged)
+
             if 'tipo_bolsa_final' in df_merged.columns:
                 df_merged['tipo_bolsa_final'] = df_merged.groupby('uni_codigo')['tipo_bolsa_final'].ffill().bfill()
                 
@@ -1247,6 +1369,7 @@ def mesclar_sql_e_reordenar(df, df_sql, df_pag=None, df_mes_a_mes=None):
             'telefone_1': 'Telefone 1',
             'telefone_2': 'Telefone 2',
             'periodo_atual': 'Semestre atual',
+            'periodo_no_semestre': 'Período no semestre',
             'periodo_quantidade': 'Semestre quantidade',
             'matricula': 'Matricula',
             #  O CURSO DO PRÓPRIO SEMESTRE, e não o do último. `CUR_NOME` sempre esteve
@@ -2283,20 +2406,25 @@ def calcular_auditoria_ia(df):
 
     mat_sd_ia = pd.to_numeric(df.get('Gemini Matricula Sem Desconto', pd.Series([0.0]*len(df), index=df.index)), errors='coerce').fillna(0.0)
     mat_cd_ia = pd.to_numeric(df.get('Gemini Matricula Com Desconto', pd.Series([0.0]*len(df), index=df.index)), errors='coerce').fillna(0.0)
+    #  A matrícula lida se compara com a matrícula do sistema, não com a mensalidade: a 2146421
+    #  (RIAF 2026-1) tinha 999 nas duas e saía "Valor no documento é Maior" porque a
+    #  mensalidade dela estava zerada. Eram 923 linhas do RIAF assim.
+    mat_sd_sys = pd.to_numeric(df.get('Matricula S/ Desconto', pd.Series([0.0]*len(df), index=df.index)), errors='coerce').fillna(0.0)
+    mat_cd_sys = pd.to_numeric(df.get('Matricula C/ Desconto', pd.Series([0.0]*len(df), index=df.index)), errors='coerce').fillna(0.0)
 
-    dif_mat_s = msd_sys - mat_sd_ia
-    dif_mat_c = np.where(mat_cd_ia != 0, mcd_sys - mat_cd_ia, 0)
+    dif_mat_s = mat_sd_sys - mat_sd_ia
+    dif_mat_c = np.where(mat_cd_ia != 0, mat_cd_sys - mat_cd_ia, 0)
     
     dif_mat_s = np.where(mask_ignorar_math, 0.0, dif_mat_s)
     dif_mat_c = np.where(mask_ignorar_math, 0.0, dif_mat_c)
 
     cond_mat_sd_nao_loc = (mat_sd_ia == 0)
     cond_mat_sd_igual = (dif_mat_s == 0)
-    cond_mat_sd_menor = (mat_sd_ia < msd_sys)
+    cond_mat_sd_menor = (mat_sd_ia < mat_sd_sys)
     
     cond_mat_cd_nao_loc = (mat_cd_ia == 0)
     cond_mat_cd_igual = (dif_mat_c == 0)
-    cond_mat_cd_menor = (mat_cd_ia < mcd_sys)
+    cond_mat_cd_menor = (mat_cd_ia < mat_cd_sys)
 
     df['Matricula_SD_Doc'] = np.select(
         [mask_ausente, mask_nao_processado, mask_corrompido, cond_mat_sd_nao_loc, cond_mat_sd_igual, cond_mat_sd_menor],
@@ -2521,7 +2649,24 @@ def calcular_auditoria_ia(df):
     documento_traz_curso = is_historico | doc_tipo.str.contains('RIAF', case=False, na=False)
     curso_invalido = documento_traz_curso & ((ia_curso == '') | (sys_curso != ia_curso))
 
-    matematica_invalida_geral = (ia_cpf == '') | (sys_cpf != ia_cpf) | (ia_semestre == '') | (sys_semestre != ia_semestre) | curso_invalido
+    # FORMOU CEDO DEMAIS — só Histórico. A IA diz que o aluno concluiu o curso, mas no
+    # semestre auditado ele ainda não estava no último período. O histórico é enviado
+    # depois do semestre e costuma trazer os semestres seguintes até a formatura: a
+    # 2053340 mandou, para 2025/2, um histórico que cursa 2025/2 e 2026/1 e só então
+    # cola grau. A IA leu a formatura e respondeu "Sim" para 2025/2, no período 8 de 9.
+    # A coluna `Gemini Concluiu Curso` continua com o que a IA disse. O erro é dela, e
+    # quem explica a divergência é o motivo.
+    periodo_no_semestre = pd.to_numeric(df.get('Período no semestre', pd.Series([np.nan]*len(df), index=df.index)), errors='coerce')
+    periodos_do_curso = pd.to_numeric(df.get('Semestre quantidade', pd.Series([np.nan]*len(df), index=df.index)), errors='coerce')
+    ia_concluiu_curso = df.get('Gemini Concluiu Curso', pd.Series(['']*len(df), index=df.index)).astype(object).fillna('').astype(str).str.strip().str.upper() == 'SIM'
+    concluiu_antes_do_fim = is_historico & ia_concluiu_curso & (periodo_no_semestre < periodos_do_curso)
+
+    # ILEGÍVEL É A IA DIZENDO QUE NÃO LEU — não há o que auditar, então o documento é
+    # `Inválido` e nunca `Falso Inválido`. A 2071813 (2025-2) veio com CPF e curso
+    # preenchidos e esta frase: a matemática, que só olha os campos, dava Válido.
+    documento_ilegivel = inc_original.str.contains('Documento ileg[ií]vel', case=False, regex=True, na=False)
+
+    matematica_invalida_geral = (ia_cpf == '') | (sys_cpf != ia_cpf) | (ia_semestre == '') | (sys_semestre != ia_semestre) | curso_invalido | concluiu_antes_do_fim | documento_ilegivel
     matematica_invalida_financeiro = (inc_original.str.contains('Valor da mensalidade integral não localizado', na=False)) | (dif_s != 0)
 
     is_riaf = doc_tipo.str.contains('RIAF', case=False, na=False)
@@ -2533,11 +2678,51 @@ def calcular_auditoria_ia(df):
         ia_assinatura_ies.str.contains('NÃO LOCALIZADO|NAO LOCALIZADO', regex=True)
     )
 
+    def _texto(nome):
+        return (df.get(nome, pd.Series(['']*len(df), index=df.index)).astype(object).fillna('').astype(str)
+                .str.strip().str.upper().replace(['NAN', 'NONE', '<NA>'], '')
+                .str.replace(r'N[AÃ]O LOCALIZAD[AO]', '', regex=True).str.strip()
+                .str.normalize('NFKD').str.encode('ascii', 'ignore').str.decode('ascii'))
+
+    def _valor(nome):
+        return pd.to_numeric(df.get(nome, pd.Series([0.0]*len(df), index=df.index)), errors='coerce').fillna(0.0).round(2)
+
+    #  CNPJ chega como número (`COLS_NUM`) e perde o zero à esquerda.
+    ia_cnpj = _texto('Gemini Cnpj Faculdade').str.replace(r'\.0$', '', regex=True).str.replace(r'\D', '', regex=True)
+    ia_cnpj = ia_cnpj.where(ia_cnpj == '', ia_cnpj.str.zfill(14))
+    sys_cnpj = _texto('Ins. CNPJ').str.replace(r'\.0$', '', regex=True).str.replace(r'\D', '', regex=True)
+    sys_cnpj = sys_cnpj.where(sys_cnpj == '', sys_cnpj.str.zfill(14))
+
+    #  O prompt manda devolver só PARCIAL ou INTEGRAL; o que ficou gravado antes disso
+    #  ("Bolsa Parcial", "OVG Direito 650") é reduzido à classificação, ou a nada.
+    ia_bolsa = _texto('Gemini Tipo Bolsa')
+    ia_bolsa = pd.Series(np.select([ia_bolsa.str.contains('INTEGRAL'), ia_bolsa.str.contains('PARCIAL|MEIA')],
+                                   ['INTEGRAL', 'PARCIAL'], default=''), index=df.index)
+    sys_bolsa = _texto('tipo_bolsa_final')
+
+    ia_modalidade = _texto('Gemini Modalidade')
+    sys_modalidade = _texto('Modalidade IES').where(_texto('Modalidade IES') != '', _texto('modalidade_ies'))
+
+    mat_sd_sys, mat_cd_sys = _valor('Matricula S/ Desconto'), _valor('Matricula C/ Desconto')
+    mat_sd_lida, mat_cd_lida = mat_sd_ia.round(2), mat_cd_ia.round(2)
+    mcd_lida, mcd_esperada = mcd_ia.round(2), mcd_sys.round(2)
+
+    ia_matricula = _texto('Gemini Matricula').str.replace(r'\.0$', '', regex=True).str.replace(r'\D', '', regex=True).str.lstrip('0')
+    sys_matricula = _texto('Matricula').str.replace(r'\.0$', '', regex=True).str.replace(r'\D', '', regex=True).str.lstrip('0')
+
     sys_beneficio = pd.to_numeric(df.get('valor_beneficio', pd.Series([0]*len(df), index=df.index)), errors='coerce').fillna(0)
     ia_beneficio = pd.to_numeric(df.get('Gemini Valor Beneficio', pd.Series([0]*len(df), index=df.index)), errors='coerce').fillna(0)
     sys_financiamento = pd.to_numeric(df.get('valor_financiamento', pd.Series([0]*len(df), index=df.index)), errors='coerce').fillna(0)
     ia_financiamento = pd.to_numeric(df.get('Gemini Valor Financiamento', pd.Series([0]*len(df), index=df.index)), errors='coerce').fillna(0)
-    matematica_invalida_riaf_extra = is_riaf & ((sys_beneficio != ia_beneficio) | (sys_financiamento != ia_financiamento))
+    matematica_invalida_riaf_extra = is_riaf & (
+        (sys_beneficio != ia_beneficio) | (sys_financiamento != ia_financiamento) |
+        (ia_cnpj == '') | ((ia_cnpj != '') & (sys_cnpj != '') & (ia_cnpj != sys_cnpj)) |
+        (ia_bolsa == '') | ((ia_bolsa != '') & sys_bolsa.isin(['PARCIAL', 'INTEGRAL']) & (ia_bolsa != sys_bolsa)) |
+        (ia_modalidade == '') | ((ia_modalidade != '') & (sys_modalidade != '') & (ia_modalidade != sys_modalidade)) |
+        (mat_sd_lida == 0) | ((mat_sd_lida != 0) & (mat_sd_sys != 0) & (mat_sd_lida != mat_sd_sys)) |
+        (mat_cd_lida == 0) | ((mat_cd_lida != 0) & (mat_cd_sys != 0) & (mat_cd_lida != mat_cd_sys)) |
+        (mcd_lida == 0) | ((mcd_lida != 0) & (mcd_esperada != 0) & (mcd_lida != mcd_esperada))
+    )
 
     # ERRO NA INCONSISTÊNCIA — a frase do Gemini não bate com o valor que ele mesmo extraiu.
     #
@@ -2669,6 +2854,8 @@ def calcular_auditoria_ia(df):
         ((ia_semestre != '') & (sys_semestre != ia_semestre), 'semestre_diverge'),
         (documento_traz_curso & (ia_curso == ''), 'curso_ausente'),
         (documento_traz_curso & (ia_curso != '') & (sys_curso != ia_curso), 'curso_diverge'),
+        (concluiu_antes_do_fim, 'concluiu_antes_do_fim'),
+        (documento_ilegivel, 'documento_ilegivel'),
         (is_riaf & assinatura_aluno_ausente, 'assinatura_aluno'),
         (is_riaf & assinatura_ies_ausente, 'assinatura_ies'),
         #  A IA apontou assinatura na frase sem dizer de quem, e os dois campos vieram
@@ -2719,14 +2906,58 @@ def calcular_auditoria_ia(df):
     #  aqui SEMPRE: sem este `where`, o `Falso Inválido` ficaria mudo justamente na tela
     #  que explica vereditos.
     #
-    #  O que precisa ser revisto são as frases que a IA escreveu, e é só isso que o balão
-    #  mostra — sob outro título, porque a lista não acusa o documento, acusa o prompt.
-    #  Reaproveita `Gemini Inconsistencias` sem reescrever nada: só troca o separador da
-    #  IA (vírgula) pelo nosso, para a tela quebrar em itens do mesmo jeito.
-    frases_da_ia = inc_original.str.replace(r',\s*', SEPARADOR_MOTIVOS, regex=True)
-    frases_da_ia = frases_da_ia.mask(
-        inc_original.str.contains('Sem inconsistências', case=False, na=False), '')
-    motivos = pd.Series(np.where(cond_falso_invalido, frases_da_ia, motivos), index=df.index)
+    #  O BALÃO DIZ A FRASE QUE A IA DEVERIA TER ESCRITO. Repetir `Gemini Inconsistencias`
+    #  só copiava a coluna ao lado. No Histórico a matemática confere todo o catálogo, então
+    #  o certo é "Sem inconsistências". No Contrato sobra o desconto, que nunca invalida:
+    #  o certo é a frase de mcd pelo valor que a própria IA leu, quando ele diverge.
+    #
+    #  O RIAF É CONFERIDO AQUI, CAMPO A CAMPO. O catálogo dele cobra CNPJ, modalidade, tipo
+    #  de bolsa, matrícula e desconto, que a matemática do veredito não olha. Repetir a frase
+    #  da IA dava a 2220159 (2026-1) três divergências quando só o CNPJ divergia: "Bolsa
+    #  Parcial" é `Parcial`, e a modalidade batia. Cada campo que dá para comparar é refeito
+    #  pelo dado; a frase da IA só sobrevive para o campo que não temos com que comparar
+    #  (nome do aluno, mantenedora, data do documento...), e entra depois das nossas.
+
+    #  Ordem do `catalogo_erros` do RIAF.
+    conferencias_riaf = [
+        (ia_cnpj == '', 'CNPJ da IES não localizado'),
+        ((ia_cnpj != '') & (sys_cnpj != '') & (ia_cnpj != sys_cnpj), 'CNPJ da IES diverge do sistema'),
+        (ia_bolsa == '', 'Tipo de bolsa não localizado'),
+        ((ia_bolsa != '') & sys_bolsa.isin(['PARCIAL', 'INTEGRAL']) & (ia_bolsa != sys_bolsa), 'Tipo de bolsa diverge do sistema'),
+        (ia_modalidade == '', 'Modalidade não localizada'),
+        ((ia_modalidade != '') & (sys_modalidade != '') & (ia_modalidade != sys_modalidade), 'Modalidade diverge do sistema'),
+        (mat_sd_lida == 0, 'Valor da matrícula sem desconto não localizado'),
+        ((mat_sd_lida != 0) & (mat_sd_sys != 0) & (mat_sd_lida != mat_sd_sys), 'Valor da matrícula sem desconto diverge do sistema'),
+        (mat_cd_lida == 0, 'Valor da matrícula com desconto não localizado'),
+        ((mat_cd_lida != 0) & (mat_cd_sys != 0) & (mat_cd_lida != mat_cd_sys), 'Valor da matrícula com desconto diverge do sistema'),
+        (mcd_lida == 0, 'Valor da mensalidade com desconto não localizado'),
+        ((mcd_lida != 0) & (mcd_esperada != 0) & (mcd_lida < mcd_esperada), 'Valor da mensalidade com desconto é MENOR que o sistema'),
+        ((mcd_lida != 0) & (mcd_esperada != 0) & (mcd_lida > mcd_esperada), 'Valor da mensalidade com desconto é MAIOR que o sistema'),
+        ((ia_matricula != '') & (sys_matricula != '') & (ia_matricula != sys_matricula), 'Matrícula do aluno diverge do sistema'),
+    ]
+    correto_riaf = pd.Series(['']*len(df), index=df.index)
+    for mascara, frase in conferencias_riaf:
+        correto_riaf = correto_riaf.str.cat(pd.Series(np.where(mascara, frase, ''), index=df.index), sep='|')
+
+    #  Frase da IA sobre campo que a matemática ou a lista acima já conferiram sai; o resto fica.
+    campos_conferidos = (r'^(?:CPF|Semestre|Curso|CNPJ|Tipo de bolsa|Modalidade|Assinatura|Valor d|'
+                         r'Matr[ií]cula do aluno|Sem inconsist|Documento ileg)')
+    frases_ia = pd.Series(inc_original.values).str.split(r',\s*', regex=True).explode().str.strip()
+    frases_ia = frases_ia[(frases_ia != '') & ~frases_ia.str.contains(campos_conferidos, case=False, regex=True, na=False)]
+    frases_ia = frases_ia.str[:1].str.upper() + frases_ia.str[1:]
+    nao_conferidas = frases_ia.groupby(level=0).agg('|'.join).reindex(range(len(df)), fill_value='')
+    correto_riaf = correto_riaf.str.cat(pd.Series(nao_conferidas.values, index=df.index), sep='|')
+    correto_riaf = correto_riaf.str.replace(r'\|+', '|', regex=True).str.strip('|').str.replace('|', ', ', regex=False)
+    correto_riaf = "O Correto Seria: '" + correto_riaf.replace('', 'Sem inconsistências') + "'"
+
+    correto = np.select(
+        [is_riaf,
+         so_contrato & (mcd_ia == 0),
+         so_contrato & (mcd_ia < mcd_sys),
+         so_contrato & (mcd_ia > mcd_sys)],
+        [correto_riaf] + [CATALOGO_MOTIVOS[chave]['PADRAO'] for chave in ('correto_mcd_nao_loc', 'correto_mcd_menor', 'correto_mcd_maior')],
+        default=CATALOGO_MOTIVOS['correto_sem_inconsistencias']['PADRAO'])
+    motivos = pd.Series(np.where(cond_falso_invalido, correto, motivos), index=df.index)
 
     mask_balao_desnecessario = df['Status_IA'].isin(['Válido', 'Inválido'])
     df['Motivos Divergência'] = np.where(mask_ignorar_math | cond_inadimplente | mask_balao_desnecessario, '', motivos)
@@ -2750,7 +2981,7 @@ def calcular_auditoria_ia(df):
 
     ordem_desejada = [
         'Status_IA', 'Status_Vínculo', 
-        'Situação do Motivo', 'Observação da Situação',
+        'Situação do Motivo', 'Observação da Situação', 'Situação do Motivo Atual', 'Observação da Situação Atual',
         'Mudou IES?', 'IES Anterior', 'IES Posterior', 'Mudou Bolsa?', 'Bolsa Anterior', 'Bolsa Posterior', 
         'Semestre', 'Gemini Semestre', 'Inscrição', 'Inscrição Anterior', 'Inscrição Posterior', 
         'Bolsista', 'CPF', 'Gemini CPF', 'Gemini Inconsistencias', 'Faculdade', 'Curso', 
@@ -4378,7 +4609,6 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
     arq_agendar = os.path.join(base_dir, "analise_documentos_agendar_processamentos", "CONSOLIDADO", "consolidado_agendar_processamentos.parquet")
     pasta_pag = os.path.join(base_dir, "analise_pagamentos", "CONSOLIDADO")
     arq_pagamentos = os.path.join(pasta_pag, "consolidado_pagamentos.parquet")
-    arq_cobranca_site = os.path.join(base_dir, "cobranca_do_site", "CONSOLIDADO", "consolidado_cobranca_do_site.parquet")
     arquivo_geral_saida = os.path.join(base_dir, f"relatorio_geral.xlsx")
     
 
@@ -4916,7 +5146,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                             ('matricula', 'Matricula'), ('modalidade_aluno', 'modalidade_aluno'), ('modalidade_ies', 'modalidade_ies'), 
                             ('email', 'E-mail'), ('telefone_1', 'Telefone 1'), ('telefone_2', 'Telefone 2'),
                             ('data_nascimento', 'Data nascimento'), ('periodo_atual', 'Semestre atual'),
-                            ('periodo_quantidade', 'Semestre quantidade')
+                            ('periodo_no_semestre', 'Período no semestre'), ('periodo_quantidade', 'Semestre quantidade')
                         ]:
                             if col_orig in row and pd.notna(row[col_orig]):
                                 novo_ausente[col_dest] = row[col_orig]
@@ -4976,7 +5206,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                                 ('matricula', 'Matricula'), ('modalidade_aluno', 'modalidade_aluno'), ('modalidade_ies', 'modalidade_ies'), 
                                 ('email', 'E-mail'), ('telefone_1', 'Telefone 1'), ('telefone_2', 'Telefone 2'),
                                 ('data_nascimento', 'Data nascimento'), ('periodo_atual', 'Semestre atual'),
-                                ('periodo_quantidade', 'Semestre quantidade')
+                                ('periodo_no_semestre', 'Período no semestre'), ('periodo_quantidade', 'Semestre quantidade')
                             ]:
                                 if col_orig in row and pd.notna(row[col_orig]):
                                     novo_ausente[col_dest] = row[col_orig]
@@ -5007,102 +5237,6 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             # (a melhor cobria 6.550 de 6.555 e trazia 10.549 a mais). A única fonte fiel é a
             # própria tela, que o extrator agora baixa pelo menu `Relatório de Contratos`.
             #
-            # QUEM DECIDE é a coluna `Lançamento`, que vem do site: `Não` significa que não
-            # houve repasse naquele semestre. O site tem esse dado e cobra assim mesmo.
-            #
-            # `Status_IA = Inadimplente` de propósito, e não um valor novo: as fórmulas do
-            # relatório gerencial filtram `"<>INADIMPLENTE"`, então estas linhas aparecem nas
-            # abas de dados e ficam FORA das somas de cobrança — que é exatamente o que se
-            # quer de uma cobrança indevida. `Documento Ausente` as separa, no dashboard, do
-            # inadimplente que entregou o documento.
-            if os.path.exists(arq_cobranca_site):
-                try:
-                    df_cobranca = pd.read_parquet(arq_cobranca_site)
-                    col_lancamento = next((c for c in df_cobranca.columns
-                                           if c.strip().lower().startswith('lan')), None)
-                    if col_lancamento is None:
-                        raise KeyError("coluna de lançamento não encontrada no relatório do site")
-
-                    sem_lancamento = (df_cobranca[col_lancamento].astype(str).str.strip()
-                                      .str.upper().isin(['NÃO', 'NAO', 'N']))
-                    df_indevidas = df_cobranca[sem_lancamento].copy()
-
-                    # Quem JÁ ESTÁ no relatório sai daqui: a linha dele é a de verdade, com o
-                    # documento e o veredito da IA. Sem esta checagem a mesma inscrição
-                    # apareceria duas vezes no mesmo semestre e a rosca contaria em dobro.
-                    ja_no_relatorio = set(zip(
-                        df_docs['Inscrição'].astype(str).str.split('.').str[0].str.strip(),
-                        df_docs['Semestre'].astype(str).str.strip().str.replace('/', '-'),
-                        aplicar_por_distintos(df_docs['Documento Tipo'], limpar_texto_geral),
-                    )) if not df_docs.empty else set()
-                    
-                    ja_no_relatorio_riaf = set(zip(
-                        df_riaf['Inscrição'].astype(str).str.split('.').str[0].str.strip(),
-                        df_riaf['Semestre'].astype(str).str.strip().str.replace('/', '-'),
-                        aplicar_por_distintos(pd.Series([DOC_RIAF]*len(df_riaf)), limpar_texto_geral),
-                    )) if not df_riaf.empty else set()
-                    
-                    ja_no_relatorio.update(ja_no_relatorio_riaf)
-
-                    # O CONSOLIDADOR NORMALIZA o texto das colunas (sem acento, maiúsculas),
-                    # então o `Documento` chega como `HISTORICO ESCOLAR` e não bateria com o
-                    # `DOC_HISTORICO` do sistema — a linha cairia numa aba que não existe.
-                    # O mapa devolve a constante canônica, comparando pela forma normalizada.
-                    doc_por_forma_limpa = {
-                        limpar_texto_geral(d): d
-                        for d in (DOC_CONTRATO, DOC_FINANC, DOC_BENEF, DOC_RIAF, DOC_HISTORICO)
-                    }
-
-                    novas_cobrancas = []
-                    novas_cobrancas_riaf = []
-                    for row in df_indevidas.to_dict('records'):
-                        semestre_row = str(row.get('Semestre', '')).strip().replace('/', '-')
-                        documento_row = str(row.get('Documento', '')).strip()
-                        inscricao_row = str(row.get('Inscrição', '')).split('.')[0].strip()
-                        if not inscricao_row or not semestre_row or not documento_row:
-                            continue
-                        documento_canonico = doc_por_forma_limpa.get(limpar_texto_geral(documento_row))
-                        if documento_canonico is None:
-                            # Documento que este relatório não cobre: ignorar é mais seguro
-                            # que inventar uma aba nova a partir de texto do site.
-                            continue
-                        if (inscricao_row, semestre_row, limpar_texto_geral(documento_row)) in ja_no_relatorio:
-                            continue
-                            
-                        novo_registro = {
-                            'Status_IA': 'Inadimplente',
-                            'Documento Ausente': 'SIM',
-                            'Inscrição': inscricao_row,
-                            'Semestre': semestre_row,
-                            'Documento Tipo': documento_canonico,
-                            'Bolsista': limpar_texto_geral(str(row.get('Beneficiário', ''))),
-                            'CPF': row.get('CPF', ''),
-                            'Faculdade': limpar_texto_geral(str(row.get('Instituição', ''))),
-                        }
-                        
-                        if documento_canonico == DOC_RIAF:
-                            novas_cobrancas_riaf.append(novo_registro)
-                        else:
-                            novas_cobrancas.append(novo_registro)
-
-                    if novas_cobrancas:
-                        df_docs = pd.concat(
-                            [df_docs, converter_colunas_para_salvamento(pd.DataFrame(novas_cobrancas))],
-                            ignore_index=True)
-                            
-                    if novas_cobrancas_riaf:
-                        df_riaf = pd.concat(
-                            [df_riaf, converter_colunas_para_salvamento(pd.DataFrame(novas_cobrancas_riaf))],
-                            ignore_index=True)
-                            
-                    if novas_cobrancas or novas_cobrancas_riaf:
-                        print(f"[GGCI       | INJETADOS     | COBRANÇA] {len(novas_cobrancas) + len(novas_cobrancas_riaf)} "
-                              f"cobranças do site sem lançamento no semestre.")
-                except Exception as erro_cobranca:
-                    # Falhar aqui não pode derrubar o relatório: a fatia fica vazia e todo o
-                    # resto continua correto. É informação adicional, não a base.
-                    print(f"[GGCI       | AVISO         | COBRANÇA] Relatório do site não pôde "
-                          f"ser cruzado: {erro_cobranca}")
 
     else:
         # Fallback caso não haja pagamentos mas seja necessário sql
@@ -5390,7 +5524,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
 
         # --- LIMPEZA DE COLUNAS LIXO (APENAS AS SOLICITADAS PELO USUÁRIO) ---
         colunas_do_relatorio = [
-            'Status_IA', 'Status_Vínculo', 'Situação do Motivo', 'Observação da Situação', 'Mudou IES?',
+            'Status_IA', 'Status_Vínculo', 'Situação do Motivo', 'Observação da Situação', 'Situação do Motivo Atual', 'Observação da Situação Atual', 'Mudou IES?',
             'IES Anterior', 'IES Posterior', 'Mudou Bolsa?', 'Bolsa Anterior', 'Bolsa Posterior',
             'Semestre', 'Gemini Semestre', 'Inscrição', 'Inscrição Anterior', 'Inscrição Posterior',
             'Bolsista', 'CPF', 'Gemini CPF', 'Gemini Inconsistencias', 'Faculdade', 'Curso', 'Gemini Curso',
@@ -5411,7 +5545,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             'Gemini Beneficio Nome', 'Gemini Valor Beneficio', 'Gemini Valor Financiado', 'Gemini Nome Financiamento',
             'Gemini Modalidade', 'Gemini Email', 'Gemini Telefone', 'Gemini Periodo', 'Gemini Quantidade Periodos',
             'Gemini Tipo Bolsa', 'Data nascimento', 'E-mail', 'Telefone 1', 'Telefone 2', 'Semestre atual',
-            'Semestre quantidade', 'Matricula', 'Ins. Cnpj', 'Ins. Nome Fantasia', 'Ins. Mantenedora',
+            'Período no semestre', 'Semestre quantidade', 'Matricula', 'Ins. Cnpj', 'Ins. Nome Fantasia', 'Ins. Mantenedora',
             'Modalidade Aluno', 'Modalidade IES', 'Matricula C/ Desconto', 'Matricula S/ Desconto', 'data_create', 'Processado',
             'Documento Ausente',
             'Veredito Documento',
@@ -5498,6 +5632,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             'Semestre': 'semestre',
             'Gemini Semestre': 'gemini_semestre',
             'Semestre atual': 'periodo_atual',
+            'Período no semestre': 'periodo_no_semestre',
             'Gemini Periodo': 'gemini_periodo',
             'Semestre quantidade': 'qtd_periodos',
             'Gemini Quantidade Periodos': 'gemini_qtd_periodos',
@@ -5524,6 +5659,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             'Soma Valor Beneficio': 'soma_valor_beneficio',
             'qual_financiamento': 'qual_financiamento',
             'Gemini Nome Financiamento': 'gemini_nome_financiamento',
+            'Gemini Financiamento Nome': 'gemini_nome_financiamento',
             'valor_financiamento': 'valor_financiamento',
             'Gemini Valor Financiado': 'gemini_valor_financiamento',
             'Soma Valor Financiamento': 'soma_valor_financiamento',
@@ -5615,7 +5751,14 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                 if col_tel in df_riaf.columns:
                     s_nums = df_riaf[col_tel].astype(str).str.replace(r'\D', '', regex=True)
                     df_riaf[col_tel] = pd.to_numeric(s_nums, errors='coerce').astype('Int64')
-                    
+
+            #  O CNPJ lido pela IA chega como número (`COLS_NUM`) e perde o zero à esquerda:
+            #  13 dígitos em 11.265 dos 15.418 do cache. Ao lado do `cnpj_ies`, texto de 14,
+            #  a mesma faculdade pareceria ter outro CNPJ.
+            if 'gemini_cnpj_faculdade' in df_riaf.columns:
+                cnpj_ia = pd.to_numeric(df_riaf['gemini_cnpj_faculdade'], errors='coerce').astype('Int64')
+                df_riaf['gemini_cnpj_faculdade'] = cnpj_ia.astype(str).str.zfill(14).where(cnpj_ia.notna(), None)
+
             colunas_riaf = [
                 'status_ia', 'gemini_inconsistencia', 'semestre', 'gemini_semestre', 'bolsista', 
                 'inscricao', 'inscricao_anterior', 'inscricao_posterior', 'cpf', 'gemini_cpf', 
@@ -5624,7 +5767,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                 # é a chave pela qual se cruza o RIAF com o catálogo curado, e nas outras
                 # quatro abas ela seria mais uma coluna de cadastro repetida. Vem do mesmo
                 # bloco de SQL que traz `ins_cnpj` (ver `mapping_sql_para_df`).
-                'bolsa_posterior', 'faculdade', 'cnpj_ies', 'ins_mantenedora', 'mudou_ies',
+                'bolsa_posterior', 'faculdade', 'cnpj_ies', 'gemini_cnpj_faculdade', 'ins_mantenedora', 'mudou_ies',
                 'ies_anterior', 'ies_posterior',
                 'curso', 'gemini_curso', 'gemini_assinatura_aluno', 'gemini_assinatura_ies', 'ultimo_valor_pago_ref', 
                 'total_bolsa_paga', 'qtd_pagtos', 'qtd_pagtos_retroativos', 'matricula_sem_desc', 
@@ -5632,15 +5775,15 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                 'gemini_matricula_com_desc', 'matricula_cd_doc', 'mensalidade_sem_desc', 
                 'gemini_mensalidade_sem_desc', 'msd_doc', 'mensalidade_com_desc', 
                 'gemini_mensalidade_com_desc', 'mcd_doc', 'valor_beneficio', 'soma_valor_beneficio', 
-                'gemini_valor_beneficio', 'beneficio', 'valor_financiamento', 'soma_valor_financiamento', 
-                'gemini_valor_financiamento', 'financiamento', 
+                'gemini_valor_beneficio', 'beneficio', 'gemini_nome_beneficio', 'valor_financiamento', 'soma_valor_financiamento', 
+                'gemini_valor_financiamento', 'financiamento', 'gemini_nome_financiamento', 
                 'soma_ovg_devia_pagar_sis', 'soma_ovg_devia_pagar_ia', 'soma_prejuizo_ovg', 
                 'soma_economia_ovg', 'diagnostico_financeiro_final', 'data_coleta', 
                 'data_coleta_atual_sistema', 'data_create', 'data_processamento', 'processado', 
                 'processar', 'qtd_token', 'qtd_disciplinas_matriculadas', 'qtd_disciplinas_reprovadas', 
                 'perfil', 'status_vinculo', 'situacao_motivo', 'observacao_situacao', 'email', 
                 'gemini_email', 'telefone_1', 'telefone_2', 'data_nascimento', 'matricula', 
-                'periodo_atual', 'qtd_periodos', 'modalidade_aluno', 'modalidade_ies', 'documento_ausente', 'veredito_documento',
+                'periodo_atual', 'periodo_no_semestre', 'qtd_periodos', 'modalidade_aluno', 'modalidade_ies', 'gemini_modalidade', 'documento_ausente', 'veredito_documento',
                 'motivos_divergencia'
             ]
             
@@ -5790,7 +5933,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                     print(f"[GGCI       | GERANDO       | DOCS  ] {tab_name} ({len(df_tipo)} linhas)...")
                     if doc_original == DOC_HISTORICO:
                         colunas_historico = [
-                            'status_ia', 'gemini_inconsistencia', 'semestre', 'bolsista', 
+                            'status_ia', 'gemini_inconsistencia', 'semestre', 'gemini_semestre', 'bolsista', 
                             'inscricao', 'inscricao_anterior', 'inscricao_posterior', 'cpf', 
                             'gemini_cpf', 'tipo_bolsa_final', 'mudou_bolsa', 'bolsa_anterior', 
                             'bolsa_posterior', 'faculdade', 'mudou_ies', 'ies_anterior', 
@@ -5802,7 +5945,12 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                             'perfil', 'status_vinculo', 'situacao_motivo', 'observacao_situacao', 
                             'situacao_motivo_atual', 'observacao_situacao_atual', 
                             'email', 'telefone_1', 'telefone_2', 'data_nascimento', 'matricula', 
-                            'periodo_atual', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies'
+                            'periodo_atual', 'periodo_no_semestre', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies',
+                            # As três últimas de `COLUNAS_ABA_DOCUMENTO`, que esta lista não
+                            # tinha: sem `motivos_divergencia` o balão do Status IA ficava mudo
+                            # no Histórico (4.079 `Falso Válido` na proc_184, nenhum com motivo),
+                            # e sem `veredito_documento` a tela adivinhava o inadimplente lido.
+                            'documento_ausente', 'veredito_documento', 'motivos_divergencia'
                         ]
                         for c in colunas_historico:
                             if c not in df_tipo.columns:

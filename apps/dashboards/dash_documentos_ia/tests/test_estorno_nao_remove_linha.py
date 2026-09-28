@@ -230,7 +230,12 @@ class TestParidadeComAnaliseIA(SimpleTestCase):
         for caminho in (GGCI_DASH, GGCI_ANALISE):
             fonte = self._fonte(caminho)
             trecho = fonte.split('mapping_fallback = {')[1].split('}')[0]
-            for chave in ("'modalidade_aluno', 'modalidade_ies'", "'periodo_atual'", "'periodo_quantidade'"):
+            #  UMA CHAVE POR ITEM: as duas de modalidade vieram de uma substituição em
+            #  cima de `'modalidade'` e ficaram coladas numa string só, que nunca
+            #  aparece contígua no dicionário — o teste passou a procurar um texto que
+            #  não existe em lugar nenhum e falhava com as duas chaves presentes.
+            for chave in ("'modalidade_aluno'", "'modalidade_ies'",
+                          "'periodo_atual'", "'periodo_quantidade'"):
                 self.assertIn(chave, trecho,
                               f'{chave} ausente do mapping_fallback em {caminho}')
 

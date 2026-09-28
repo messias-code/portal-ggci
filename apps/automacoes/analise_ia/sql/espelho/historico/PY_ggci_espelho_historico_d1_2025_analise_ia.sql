@@ -1,4 +1,6 @@
-CREATE OR REPLACE VIEW sibu.PY_ggci_espelho_historico_d1_2025_analise_ia AS
+DROP VIEW IF EXISTS sibu.PY_ggci_espelho_historico_d1_2025_analise_ia;
+DROP TABLE IF EXISTS sibu.PY_ggci_espelho_historico_d1_2025_analise_ia;
+CREATE TABLE sibu.PY_ggci_espelho_historico_d1_2025_analise_ia AS
 
 WITH UltimaTentativa AS (
     SELECT 

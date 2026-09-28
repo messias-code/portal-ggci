@@ -50,6 +50,9 @@ SUFIXO_TABELAS = f"{SUFIXO_APP}{env_suffix}"
 # MAS: Adicionada trava inteligente de exportação (export_lock) para evitar ataque de negação de serviço (DDoS) no Scriptcase
 export_lock = threading.Semaphore(3)
 
+# Quantas tabelas `PY_ggci_*` materializar ao mesmo tempo no SIBU (ver `atualizar_cache_parquets`).
+ETL_PARALELO = 4
+
 # ==========================================
 # 1. CONFIGURAÇÕES GERAIS DE EXTRAÇÃO
 # ==========================================
@@ -626,6 +629,34 @@ def extrair_ano_pagamento(ano_str, pasta_pagamentos):
 # ==========================================
 # (Removidos - substituídos por um pool global único na função executar)
 
+def dono_do_lock_morto(caminho_lock):
+    """
+    O QUE FAZ: Diz se o processo que criou o lock do Parquet já não existe.
+    POR QUÊ EXISTE: o botão Parar mata o motor com `pkill` (SIGTERM), e o `finally` que
+      apaga o lock não roda. A execução seguinte esperava o lock órfão envelhecer 10 min
+      achando que "outro processo" extraía a tabela. Caso real (25/09/2026): a #23 esperou
+      ~10 min pelos locks das #20-#22, todas abortadas, sem nenhum processo vivo.
+    RETORNO: True só quando o PID gravado no lock não está vivo. Lock no formato antigo
+      (só o timestamp) devolve False e segue a regra de idade.
+    """
+    try:
+        with open(caminho_lock) as f_lock:
+            pid = int(f_lock.readline().strip())
+    except (OSError, ValueError):
+        return False
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return True
+    except PermissionError:
+        return False
+    # Zumbi já morreu, só não foi recolhido pelo pai.
+    try:
+        with open(f"/proc/{pid}/stat") as f_stat:
+            return f_stat.read().rsplit(")", 1)[1].split()[0] == "Z"
+    except (OSError, IndexError):
+        return False
+
 def atualizar_cache_parquets(docs_selecionados=None):
     """
     O QUE FAZ: Replica em Parquet local as tabelas `PY_ggci_*` do banco SIBU.
@@ -695,8 +726,8 @@ def atualizar_cache_parquets(docs_selecionados=None):
         for nome, sql, categorias in mapa_tabelas:
             if not docs_selecionados or "TODOS" in categorias or any(c in docs_selecionados for c in categorias):
                 tabelas_pendentes.append((nome, sql))
-        
-        for nome_tabela, caminho_sql in tabelas_pendentes:
+
+        def materializar(nome_tabela, caminho_sql):
             caminho_parquet = os.path.join(pasta_parquets, f"{nome_tabela}.parquet")
             caminho_lock = os.path.join(pasta_parquets, f".lock_{nome_tabela}")
             
@@ -726,7 +757,14 @@ def atualizar_cache_parquets(docs_selecionados=None):
                         except OSError:
                             pass
                         continue
-                        
+                    if dono_do_lock_morto(caminho_lock):
+                        print(f"[EXTRATOR   | INFO          | FILE LOCK  ] Lock da {nome_tabela} é de um processo encerrado. Removendo.")
+                        try:
+                            os.remove(caminho_lock)
+                        except OSError:
+                            pass
+                        continue
+
                     print(f"[EXTRATOR   | INFO          | FILE LOCK  ] Aguardando outro processo extrair {nome_tabela}...")
                     time.sleep(5)
                 else:
@@ -734,15 +772,15 @@ def atualizar_cache_parquets(docs_selecionados=None):
                     break
             
             if cache_valido:
-                continue
-                
+                return
+
             # Adquire Lock
             try:
                 with open(caminho_lock, "w") as f_lock:
-                    f_lock.write(str(time.time()))
+                    f_lock.write(f"{os.getpid()}\n{time.time()}")
             except Exception as e:
                 print(f"⚠️ Erro ao criar lock para {nome_tabela}: {e}")
-                continue
+                return
                 
             print(f"[EXTRATOR   | INFO          | BD SIBU    ] Executando ETL para Tabela {nome_tabela}...")
             try:
@@ -754,21 +792,23 @@ def atualizar_cache_parquets(docs_selecionados=None):
                     conn.execute(text(f"DROP VIEW IF EXISTS sibu.{nome_tabela}"))
                     conn.execute(text(f"DROP TABLE IF EXISTS sibu.{nome_tabela}"))
                     
-                    # Executa as lógicas de criação no banco
-                    if os.path.exists(caminho_sql):
-                        with open(caminho_sql, "r") as f_sql:
-                            sql_content = f_sql.read()
-                            nome_base = nome_tabela.replace(env_suffix, "")
-                            sql_content = sql_content.replace(nome_base, nome_tabela)
-                            conn.execute(text(sql_content))
-                    
-                    # Lê os dados do MySQL para a memória (Pandas)
-                    df_pandas = pd.read_sql(f"SELECT * FROM sibu.{nome_tabela}", conn)
-                    
-                    # Limpa os resíduos APÓS puxar para a memória (Stateless Database)
-                    conn.execute(text(f"DROP VIEW IF EXISTS sibu.{nome_tabela}"))
-                    conn.execute(text(f"DROP TABLE IF EXISTS sibu.{nome_tabela}"))
-                    conn.commit()
+                    # O DROP FINAL VAI NUM `finally` porque ele é a única coisa aqui que não pode ser pulada.
+                    try:
+                        # Executa as lógicas de criação no banco
+                        if os.path.exists(caminho_sql):
+                            with open(caminho_sql, "r") as f_sql:
+                                sql_content = f_sql.read()
+                                nome_base = nome_tabela.replace(env_suffix, "")
+                                sql_content = sql_content.replace(nome_base, nome_tabela)
+                                conn.execute(text(sql_content))
+                        
+                        # Lê os dados do MySQL para a memória (Pandas)
+                        df_pandas = pd.read_sql(f"SELECT * FROM sibu.{nome_tabela}", conn)
+                    finally:
+                        # Limpa os resíduos APÓS puxar para a memória (Stateless Database)
+                        conn.execute(text(f"DROP VIEW IF EXISTS sibu.{nome_tabela}"))
+                        conn.execute(text(f"DROP TABLE IF EXISTS sibu.{nome_tabela}"))
+                        conn.commit()
                 
                 # Converte para Polars e salva em Parquet
                 df_polars = pl.from_pandas(df_pandas)
@@ -784,6 +824,25 @@ def atualizar_cache_parquets(docs_selecionados=None):
                         os.remove(caminho_lock)
                 except OSError:
                     pass
+
+        # AS TABELAS RODAM EM PARALELO, como no `dash_documentos_ia` (medido lá em 24/09/2026:
+        # as 16 consultas em fila levavam 10,5 a 11,5 min, e em 4 vagas caíram para ~3,5 min).
+        # Aqui era o mesmo laço em fila: a #23, de 25/09/2026, materializou 10 tabelas uma
+        # atrás da outra. Cada consulta cria e lê a PRÓPRIA tabela a partir das tabelas-base
+        # do SIBU, e nenhuma lê a tabela de outra, então a ordem não muda nada no resultado.
+        #
+        # QUATRO, E NÃO DEZESSEIS: mais vagas só dividem o mesmo servidor em mais pedaços, e o
+        # `read_timeout` de 300s vale por consulta — a mais lenta não pode estourar por disputa.
+        # Os dois motores não rodam juntos (`motor_em_andamento`), então o SIBU nunca vê 8.
+        total_tabelas = len(tabelas_pendentes)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=ETL_PARALELO) as executor_sql:
+            futuros = [executor_sql.submit(materializar, nome, sql) for nome, sql in tabelas_pendentes]
+            for concluidas, futuro in enumerate(concurrent.futures.as_completed(futuros), start=1):
+                try:
+                    futuro.result()
+                except Exception as e:
+                    print(f"⚠️ Erro não tratado no ETL de uma tabela: {e}")
+                print(f"[ETL_PROGRESSO] {concluidas}/{total_tabelas}")
 
     except Exception as e:
         print(f"⚠️ Erro grave no Cache Manager (Parquet): {e}")
@@ -906,6 +965,10 @@ def executar(docs_selecionados=None, periodos_por_doc=None, processo_id=None, in
     if arquivos_estimados == 0:
         print(f"⚠️ EXTRAÇÃO VAZIA: Nenhum arquivo corresponde aos filtros (Bloqueio por Regras).")
         return 0
+
+    # Marco de início da fase do ScriptCase. Sem ele o "Timing por bloco" somava os
+    # minutos de SQL à EXTRAÇÃO, e a conta apontava o gargalo para o lugar errado.
+    print(f"🌐 Baixando planilhas do ScriptCase ({arquivos_estimados * len(tarefas_menus)} tarefas)...")
 
     # Inicialização assíncrona usando um ÚNICO pool global
     # Mantido max_workers=8 a pedido do usuário
