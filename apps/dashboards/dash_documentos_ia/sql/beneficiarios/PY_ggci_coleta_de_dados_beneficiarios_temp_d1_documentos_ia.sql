@@ -62,15 +62,39 @@ base_uniao_bruta AS (
     INNER JOIN sibu.universitarios u ON c.uni_codigo = u.uni_codigo
     WHERE c.data_create >= '2024-01-01'
 ),
+-- MÊS SEM LANÇAMENTO NÃO EXISTE EM SEMESTRE PAGO. Coleta, previsão e garantia só servem
+-- ao semestre que ainda não tem nenhum lançamento — é o único cadastro que ele tem. Num
+-- semestre pago, uma coleta posterior ao último pagamento virava um mês a mais, e por ser
+-- o ÚLTIMO mês ditava o tipo de bolsa e a mensalidade do semestre inteiro. Caso real: a
+-- inscrição 2192726 recebeu INTEGRAL de 07/2025 a 08/2026 (680,00); a coleta de 10/09/2026,
+-- sem lançamento, fabricou setembro com PARCIAL e 1.047,16. Medido em 25/09/2026: 2.823
+-- meses fantasma em 2.577 semestres pagos; 371 viravam PARCIAL e ~330 mudavam a mensalidade.
+--   O TIPO DE BOLSA DE QUEM AINDA NÃO FOI PAGO vem do último lançamento até o mês, e só
+-- depois do cadastro. `situacao_integral` só guarda 'S' ou NULL — NULL é "não informado",
+-- não PARCIAL, e o ELSE do CASE lia assim: 1.884 semestres sem pagamento saíam PARCIAL
+-- com o último lançamento do aluno INTEGRAL, e nenhum no sentido contrário.
 base_uniao_limpa AS (
-    SELECT 
-        t.*,
+    SELECT
+        t.uni_codigo, t.ano_mes_pagto, t.semestre,
+        CASE WHEN t.origem_dado = '1_REALIZADO' THEN t.tipo_bolsa ELSE COALESCE(ult_lan.tipo_bolsa, t.tipo_bolsa) END AS tipo_bolsa,
+        t.situacao_pagto, t.coleta_id, t.origem_dado, t.data_ref,
         MAX(t.ano_mes_pagto) OVER (PARTITION BY t.uni_codigo) as max_ano_mes_pagto
     FROM (
-        SELECT *, ROW_NUMBER() OVER(PARTITION BY uni_codigo, ano_mes_pagto ORDER BY origem_dado ASC) as ranking_prioridade
-        FROM base_uniao_bruta
-        WHERE ano_mes_pagto >= 202501 
-    ) t WHERE ranking_prioridade = 1 
+        SELECT r.*, MAX(r.origem_dado = '1_REALIZADO') OVER (PARTITION BY r.uni_codigo, r.semestre) as semestre_pago
+        FROM (
+            SELECT *, ROW_NUMBER() OVER(PARTITION BY uni_codigo, ano_mes_pagto ORDER BY origem_dado ASC) as ranking_prioridade
+            FROM base_uniao_bruta
+            WHERE ano_mes_pagto >= 202501
+        ) r WHERE r.ranking_prioridade = 1
+    ) t
+    LEFT JOIN LATERAL (
+        SELECT l_tb.tipo_bolsa FROM sibu.lancamento l_tb
+        WHERE t.origem_dado <> '1_REALIZADO'
+          AND l_tb.uni_codigo = t.uni_codigo AND l_tb.lan_anomes <= t.ano_mes_pagto
+          AND l_tb.tipo_bolsa IS NOT NULL AND l_tb.tipo_bolsa != ''
+        ORDER BY l_tb.lan_anomes DESC LIMIT 1
+    ) ult_lan ON true
+    WHERE t.origem_dado = '1_REALIZADO' OR t.semestre_pago = 0
 ),
 coleta_mes AS (
     SELECT 

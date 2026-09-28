@@ -108,12 +108,34 @@ base_uniao_bruta AS (
 /* -----------------------------------------------------------------------------------------
    PASSO 2: FILTRO DE CORTE E FAXINA
 ----------------------------------------------------------------------------------------- */
+-- MÊS SEM LANÇAMENTO NÃO EXISTE EM SEMESTRE PAGO, e o tipo de bolsa de quem ainda não foi
+-- pago vem do último lançamento antes do cadastro. Mesma regra, e mesma medição, do
+-- `base_uniao_limpa` em
+-- `sql/beneficiarios/PY_ggci_coleta_de_dados_beneficiarios_temp_d1_documentos_ia.sql`:
+-- as duas tabelas têm de enxergar os mesmos meses, senão o motor cruza semestre pago de
+-- um lado com mês fantasma do outro.
 base_uniao_limpa AS (
-    SELECT * FROM (
-        SELECT *, ROW_NUMBER() OVER(PARTITION BY uni_codigo, ano_mes_pagto ORDER BY origem_dado ASC) as ranking_prioridade
-        FROM base_uniao_bruta
-        WHERE ano_mes_pagto >= 202501 
-    ) t WHERE ranking_prioridade = 1 
+    SELECT
+        t.uni_codigo, t.ano_mes_pagto, t.semestre,
+        t.valr_bolsa, t.valor_da_bolsa, t.lan_valor_complemento, t.lan_valor_cancelamento,
+        CASE WHEN t.origem_dado = '1_REALIZADO' THEN t.tipo_bolsa ELSE COALESCE(ult_lan.tipo_bolsa, t.tipo_bolsa) END AS tipo_bolsa,
+        t.situacao_pagto, t.tipo_pagto, t.coleta_id, t.origem_dado, t.data_ref
+    FROM (
+        SELECT r.*, MAX(r.origem_dado = '1_REALIZADO') OVER (PARTITION BY r.uni_codigo, r.semestre) as semestre_pago
+        FROM (
+            SELECT *, ROW_NUMBER() OVER(PARTITION BY uni_codigo, ano_mes_pagto ORDER BY origem_dado ASC) as ranking_prioridade
+            FROM base_uniao_bruta
+            WHERE ano_mes_pagto >= 202501
+        ) r WHERE r.ranking_prioridade = 1
+    ) t
+    LEFT JOIN LATERAL (
+        SELECT l_tb.tipo_bolsa FROM sibu.lancamento l_tb
+        WHERE t.origem_dado <> '1_REALIZADO'
+          AND l_tb.uni_codigo = t.uni_codigo AND l_tb.lan_anomes <= t.ano_mes_pagto
+          AND l_tb.tipo_bolsa IS NOT NULL AND l_tb.tipo_bolsa != ''
+        ORDER BY l_tb.lan_anomes DESC LIMIT 1
+    ) ult_lan ON true
+    WHERE t.origem_dado = '1_REALIZADO' OR t.semestre_pago = 0
 ),
 
 /* -----------------------------------------------------------------------------------------

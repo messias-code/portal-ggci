@@ -2406,20 +2406,25 @@ def calcular_auditoria_ia(df):
 
     mat_sd_ia = pd.to_numeric(df.get('Gemini Matricula Sem Desconto', pd.Series([0.0]*len(df), index=df.index)), errors='coerce').fillna(0.0)
     mat_cd_ia = pd.to_numeric(df.get('Gemini Matricula Com Desconto', pd.Series([0.0]*len(df), index=df.index)), errors='coerce').fillna(0.0)
+    #  A matrícula lida se compara com a matrícula do sistema, não com a mensalidade: a 2146421
+    #  (RIAF 2026-1) tinha 999 nas duas e saía "Valor no documento é Maior" porque a
+    #  mensalidade dela estava zerada. Eram 923 linhas do RIAF assim.
+    mat_sd_sys = pd.to_numeric(df.get('Matricula S/ Desconto', pd.Series([0.0]*len(df), index=df.index)), errors='coerce').fillna(0.0)
+    mat_cd_sys = pd.to_numeric(df.get('Matricula C/ Desconto', pd.Series([0.0]*len(df), index=df.index)), errors='coerce').fillna(0.0)
 
-    dif_mat_s = msd_sys - mat_sd_ia
-    dif_mat_c = np.where(mat_cd_ia != 0, mcd_sys - mat_cd_ia, 0)
+    dif_mat_s = mat_sd_sys - mat_sd_ia
+    dif_mat_c = np.where(mat_cd_ia != 0, mat_cd_sys - mat_cd_ia, 0)
     
     dif_mat_s = np.where(mask_ignorar_math, 0.0, dif_mat_s)
     dif_mat_c = np.where(mask_ignorar_math, 0.0, dif_mat_c)
 
     cond_mat_sd_nao_loc = (mat_sd_ia == 0)
     cond_mat_sd_igual = (dif_mat_s == 0)
-    cond_mat_sd_menor = (mat_sd_ia < msd_sys)
+    cond_mat_sd_menor = (mat_sd_ia < mat_sd_sys)
     
     cond_mat_cd_nao_loc = (mat_cd_ia == 0)
     cond_mat_cd_igual = (dif_mat_c == 0)
-    cond_mat_cd_menor = (mat_cd_ia < mcd_sys)
+    cond_mat_cd_menor = (mat_cd_ia < mat_cd_sys)
 
     df['Matricula_SD_Doc'] = np.select(
         [mask_ausente, mask_nao_processado, mask_corrompido, cond_mat_sd_nao_loc, cond_mat_sd_igual, cond_mat_sd_menor],
@@ -2866,19 +2871,83 @@ def calcular_auditoria_ia(df):
     #  o certo é "Sem inconsistências". No Contrato sobra o desconto, que nunca invalida:
     #  o certo é a frase de mcd pelo valor que a própria IA leu, quando ele diverge.
     #
-    #  O RIAF FICA COM AS FRASES DA IA: o catálogo dele cobra CNPJ, matrícula, modalidade e
-    #  tipo de bolsa, que a matemática não confere. Dizer "Sem inconsistências" ali seria
-    #  afirmar o que ninguém checou.
+    #  O RIAF É CONFERIDO AQUI, CAMPO A CAMPO. O catálogo dele cobra CNPJ, modalidade, tipo
+    #  de bolsa, matrícula e desconto, que a matemática do veredito não olha. Repetir a frase
+    #  da IA dava a 2220159 (2026-1) três divergências quando só o CNPJ divergia: "Bolsa
+    #  Parcial" é `Parcial`, e a modalidade batia. Cada campo que dá para comparar é refeito
+    #  pelo dado; a frase da IA só sobrevive para o campo que não temos com que comparar
+    #  (nome do aluno, mantenedora, data do documento...), e entra depois das nossas.
+    def _texto(nome):
+        return (df.get(nome, pd.Series(['']*len(df), index=df.index)).astype(object).fillna('').astype(str)
+                .str.strip().str.upper().replace(['NAN', 'NONE', '<NA>'], '')
+                .str.replace(r'N[AÃ]O LOCALIZAD[AO]', '', regex=True).str.strip()
+                .str.normalize('NFKD').str.encode('ascii', 'ignore').str.decode('ascii'))
+
+    def _valor(nome):
+        return pd.to_numeric(df.get(nome, pd.Series([0.0]*len(df), index=df.index)), errors='coerce').fillna(0.0).round(2)
+
+    #  CNPJ chega como número (`COLS_NUM`) e perde o zero à esquerda.
+    ia_cnpj = _texto('Gemini Cnpj Faculdade').str.replace(r'\.0$', '', regex=True).str.replace(r'\D', '', regex=True)
+    ia_cnpj = ia_cnpj.where(ia_cnpj == '', ia_cnpj.str.zfill(14))
+    sys_cnpj = _texto('Ins. CNPJ').str.replace(r'\.0$', '', regex=True).str.replace(r'\D', '', regex=True)
+    sys_cnpj = sys_cnpj.where(sys_cnpj == '', sys_cnpj.str.zfill(14))
+
+    #  O prompt manda devolver só PARCIAL ou INTEGRAL; o que ficou gravado antes disso
+    #  ("Bolsa Parcial", "OVG Direito 650") é reduzido à classificação, ou a nada.
+    ia_bolsa = _texto('Gemini Tipo Bolsa')
+    ia_bolsa = pd.Series(np.select([ia_bolsa.str.contains('INTEGRAL'), ia_bolsa.str.contains('PARCIAL|MEIA')],
+                                   ['INTEGRAL', 'PARCIAL'], default=''), index=df.index)
+    sys_bolsa = _texto('tipo_bolsa_final')
+
+    ia_modalidade = _texto('Gemini Modalidade')
+    sys_modalidade = _texto('Modalidade IES').where(_texto('Modalidade IES') != '', _texto('modalidade_ies'))
+
+    mat_sd_sys, mat_cd_sys = _valor('Matricula S/ Desconto'), _valor('Matricula C/ Desconto')
+    mat_sd_lida, mat_cd_lida = mat_sd_ia.round(2), mat_cd_ia.round(2)
+    mcd_lida, mcd_esperada = mcd_ia.round(2), mcd_sys.round(2)
+
+    ia_matricula = _texto('Gemini Matricula').str.replace(r'\.0$', '', regex=True).str.replace(r'\D', '', regex=True).str.lstrip('0')
+    sys_matricula = _texto('Matricula').str.replace(r'\.0$', '', regex=True).str.replace(r'\D', '', regex=True).str.lstrip('0')
+
+    #  Ordem do `catalogo_erros` do RIAF.
+    conferencias_riaf = [
+        (ia_cnpj == '', 'CNPJ da IES não localizado no documento'),
+        ((ia_cnpj != '') & (sys_cnpj != '') & (ia_cnpj != sys_cnpj), 'CNPJ da IES diverge do sistema'),
+        (ia_bolsa == '', 'Tipo de bolsa não localizado no documento'),
+        ((ia_bolsa != '') & sys_bolsa.isin(['PARCIAL', 'INTEGRAL']) & (ia_bolsa != sys_bolsa), 'Tipo de bolsa diverge do sistema'),
+        (ia_modalidade == '', 'Modalidade não localizada no documento'),
+        ((ia_modalidade != '') & (sys_modalidade != '') & (ia_modalidade != sys_modalidade), 'Modalidade diverge do sistema'),
+        (mat_sd_lida == 0, 'Valor da matrícula sem desconto não localizado no documento'),
+        ((mat_sd_lida != 0) & (mat_sd_sys != 0) & (mat_sd_lida != mat_sd_sys), 'Valor da matrícula sem desconto diverge do sistema'),
+        (mat_cd_lida == 0, 'Valor da matrícula com desconto não localizado no documento'),
+        ((mat_cd_lida != 0) & (mat_cd_sys != 0) & (mat_cd_lida != mat_cd_sys), 'Valor da matrícula com desconto diverge do sistema'),
+        (mcd_lida == 0, 'Valor da mensalidade com desconto não localizado no documento'),
+        ((mcd_lida != 0) & (mcd_esperada != 0) & (mcd_lida != mcd_esperada), 'Valor da mensalidade com desconto diverge do sistema'),
+        ((ia_matricula != '') & (sys_matricula != '') & (ia_matricula != sys_matricula), 'Matrícula do aluno diverge do sistema'),
+    ]
+    correto_riaf = pd.Series(['']*len(df), index=df.index)
+    for mascara, frase in conferencias_riaf:
+        correto_riaf = correto_riaf.str.cat(pd.Series(np.where(mascara, frase, ''), index=df.index), sep='|')
+
+    #  Frase da IA sobre campo que a matemática ou a lista acima já conferiram sai; o resto fica.
+    campos_conferidos = (r'^(?:CPF|Semestre|Curso|CNPJ|Tipo de bolsa|Modalidade|Assinatura|Valor d|'
+                         r'Matr[ií]cula do aluno|Sem inconsist|Documento ileg)')
+    frases_ia = pd.Series(inc_original.values).str.split(r',\s*', regex=True).explode().str.strip()
+    frases_ia = frases_ia[(frases_ia != '') & ~frases_ia.str.contains(campos_conferidos, case=False, regex=True, na=False)]
+    frases_ia = frases_ia.str[:1].str.upper() + frases_ia.str[1:]
+    nao_conferidas = frases_ia.groupby(level=0).agg('|'.join).reindex(range(len(df)), fill_value='')
+    correto_riaf = correto_riaf.str.cat(pd.Series(nao_conferidas.values, index=df.index), sep='|')
+    correto_riaf = correto_riaf.str.replace(r'\|+', '|', regex=True).str.strip('|').str.replace('|', ', ', regex=False)
+    correto_riaf = "O Correto Seria: '" + correto_riaf.replace('', 'Sem inconsistências') + "'"
+
     correto = np.select(
-        [so_contrato & (mcd_ia == 0),
+        [is_riaf,
+         so_contrato & (mcd_ia == 0),
          so_contrato & (mcd_ia < mcd_sys),
          so_contrato & (mcd_ia > mcd_sys)],
-        [CATALOGO_MOTIVOS[chave]['PADRAO'] for chave in ('correto_mcd_nao_loc', 'correto_mcd_menor', 'correto_mcd_maior')],
+        [correto_riaf] + [CATALOGO_MOTIVOS[chave]['PADRAO'] for chave in ('correto_mcd_nao_loc', 'correto_mcd_menor', 'correto_mcd_maior')],
         default=CATALOGO_MOTIVOS['correto_sem_inconsistencias']['PADRAO'])
-    frases_da_ia = inc_original.str.replace(r',\s*', SEPARADOR_MOTIVOS, regex=True)
-    frases_da_ia = frases_da_ia.mask(
-        inc_original.str.contains('Sem inconsistências', case=False, na=False), '')
-    motivos = pd.Series(np.where(cond_falso_invalido, np.where(is_riaf, frases_da_ia, correto), motivos), index=df.index)
+    motivos = pd.Series(np.where(cond_falso_invalido, correto, motivos), index=df.index)
 
     mask_balao_desnecessario = df['Status_IA'].isin(['Válido', 'Inválido'])
     df['Motivos Divergência'] = np.where(mask_ignorar_math | cond_inadimplente | mask_balao_desnecessario, '', motivos)
@@ -5672,7 +5741,14 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                 if col_tel in df_riaf.columns:
                     s_nums = df_riaf[col_tel].astype(str).str.replace(r'\D', '', regex=True)
                     df_riaf[col_tel] = pd.to_numeric(s_nums, errors='coerce').astype('Int64')
-                    
+
+            #  O CNPJ lido pela IA chega como número (`COLS_NUM`) e perde o zero à esquerda:
+            #  13 dígitos em 11.265 dos 15.418 do cache. Ao lado do `cnpj_ies`, texto de 14,
+            #  a mesma faculdade pareceria ter outro CNPJ.
+            if 'gemini_cnpj_faculdade' in df_riaf.columns:
+                cnpj_ia = pd.to_numeric(df_riaf['gemini_cnpj_faculdade'], errors='coerce').astype('Int64')
+                df_riaf['gemini_cnpj_faculdade'] = cnpj_ia.astype(str).str.zfill(14).where(cnpj_ia.notna(), None)
+
             colunas_riaf = [
                 'status_ia', 'gemini_inconsistencia', 'semestre', 'gemini_semestre', 'bolsista', 
                 'inscricao', 'inscricao_anterior', 'inscricao_posterior', 'cpf', 'gemini_cpf', 
@@ -5681,7 +5757,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                 # é a chave pela qual se cruza o RIAF com o catálogo curado, e nas outras
                 # quatro abas ela seria mais uma coluna de cadastro repetida. Vem do mesmo
                 # bloco de SQL que traz `ins_cnpj` (ver `mapping_sql_para_df`).
-                'bolsa_posterior', 'faculdade', 'cnpj_ies', 'ins_mantenedora', 'mudou_ies',
+                'bolsa_posterior', 'faculdade', 'cnpj_ies', 'gemini_cnpj_faculdade', 'ins_mantenedora', 'mudou_ies',
                 'ies_anterior', 'ies_posterior',
                 'curso', 'gemini_curso', 'gemini_assinatura_aluno', 'gemini_assinatura_ies', 'ultimo_valor_pago_ref', 
                 'total_bolsa_paga', 'qtd_pagtos', 'qtd_pagtos_retroativos', 'matricula_sem_desc', 
@@ -5697,7 +5773,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                 'processar', 'qtd_token', 'qtd_disciplinas_matriculadas', 'qtd_disciplinas_reprovadas', 
                 'perfil', 'status_vinculo', 'situacao_motivo', 'observacao_situacao', 'email', 
                 'gemini_email', 'telefone_1', 'telefone_2', 'data_nascimento', 'matricula', 
-                'periodo_atual', 'periodo_no_semestre', 'qtd_periodos', 'modalidade_aluno', 'modalidade_ies', 'documento_ausente', 'veredito_documento',
+                'periodo_atual', 'periodo_no_semestre', 'qtd_periodos', 'modalidade_aluno', 'modalidade_ies', 'gemini_modalidade', 'documento_ausente', 'veredito_documento',
                 'motivos_divergencia'
             ]
             

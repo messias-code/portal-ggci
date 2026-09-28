@@ -51,7 +51,7 @@ COLUNAS_NO_PARQUET_RIAF = [
     'status_ia', 'gemini_inconsistencia', 'semestre', 'gemini_semestre', 'bolsista',
     'inscricao', 'inscricao_anterior', 'inscricao_posterior', 'cpf', 'gemini_cpf',
     'tipo_bolsa_final', 'gemini_tipo_bolsa_final', 'mudou_bolsa', 'bolsa_anterior',
-    'bolsa_posterior', 'faculdade', 'cnpj_ies', 'ins_mantenedora', 'mudou_ies',
+    'bolsa_posterior', 'faculdade', 'cnpj_ies', 'gemini_cnpj_faculdade', 'ins_mantenedora', 'mudou_ies',
     'ies_anterior', 'ies_posterior', 'curso', 'gemini_curso', 'gemini_assinatura_aluno',
     'gemini_assinatura_ies', 'ultimo_valor_pago_ref', 'total_bolsa_paga', 'qtd_pagtos',
     'qtd_pagtos_retroativos', 'matricula_sem_desc', 'gemini_matricula_sem_desc',
@@ -67,7 +67,7 @@ COLUNAS_NO_PARQUET_RIAF = [
     'qtd_disciplinas_reprovadas', 'perfil', 'status_vinculo', 'situacao_motivo',
     'observacao_situacao', 'email', 'gemini_email', 'telefone_1', 'telefone_2',
     'data_nascimento', 'matricula', 'periodo_atual', 'periodo_no_semestre',
-    'qtd_periodos', 'modalidade_aluno', 'modalidade_ies',
+    'qtd_periodos', 'modalidade_aluno', 'modalidade_ies', 'gemini_modalidade',
     'documento_ausente', 'veredito_documento',
 ]
 
@@ -126,7 +126,7 @@ class TestRecorteDoRiaf(unittest.TestCase):
             'inscricao_anterior', 'inscricao_posterior', 'cpf', 'gemini_cpf',
             'bolsa', 'gemini_tipo_bolsa_final', 'mudou_bolsa', 'bolsa_anterior',
             'bolsa_posterior', 'mudou_ies', 'ies_anterior', 'ies_posterior', 'faculdade',
-            'ins_cnpj', 'ins_mantenedora', 'curso', 'gemini_curso',
+            'ins_cnpj', 'gemini_cnpj_faculdade', 'ins_mantenedora', 'curso', 'gemini_curso',
             'gemini_assinatura_aluno', 'gemini_assinatura_ies',
             'ultimo_valor_pago_ref', 'total_bolsa_paga', 'qtd_pagtos',
             'qtd_pagtos_retroativos_(100%)', 'matricula_sem_desc',
@@ -144,7 +144,7 @@ class TestRecorteDoRiaf(unittest.TestCase):
             'status_vinculo', 'situacao_motivo', 'observacao_situacao', 'email',
             'gemini_email', 'telefone_1', 'telefone_2', 'data_nascimento', 'matricula',
             'periodo_no_semestre', 'periodo_atual', 'qtd_periodos', 'modalidade_aluno',
-            'modalidade_ies',
+            'modalidade_ies', 'gemini_modalidade',
         ])
 
     def test_toda_coluna_da_ia_do_riaf_esta_na_tela(self):

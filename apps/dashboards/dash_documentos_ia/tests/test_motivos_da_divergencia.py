@@ -197,21 +197,57 @@ class MotivosDaDivergenciaTests(SimpleTestCase):
         self.assertEqual(motivos, ["O Correto Seria: 'Valor da mensalidade com desconto é MENOR"
                                    " que o esperado no documento'"])
 
-    def test_falso_invalido_do_riaf_lista_o_que_a_ia_apontou(self):
+    def _riaf_falso_invalido(self, inscricao, inconsistencias, **col):
+        """RIAF que a IA reprovou, com todo campo do catálogo batendo — cada teste estraga um."""
+        base = {'Status_IA': ['Inválido'], 'Gemini Inconsistencias': [inconsistencias],
+                'Ins. CNPJ': ['01060102001722'], 'Gemini Cnpj Faculdade': [1060102001722],
+                'Gemini Tipo Bolsa': ['PARCIAL'],
+                'Modalidade IES': ['Presencial'], 'Gemini Modalidade': ['PRESENCIAL'],
+                'Matricula S/ Desconto': [1000.0], 'Gemini Matricula Sem Desconto': [1000.0],
+                'Matricula C/ Desconto': [500.0], 'Gemini Matricula Com Desconto': [500.0]}
+        base.update(col)
+        return self._motivos(documento=ggci.DOC_RIAF, Inscrição=[inscricao], **base)
+
+    def test_falso_invalido_do_riaf_diz_so_o_campo_que_divergia(self):
         """
-        O catálogo do RIAF cobra campos que a matemática não confere (nome, mantenedora,
-        CNPJ). Sem como afirmar a frase certa, o balão mostra a da IA para revisão.
+        A 2220159 em 2026-1: a IA apontou CNPJ, modalidade e tipo de bolsa. Só o CNPJ
+        divergia (matriz no documento, filial no sistema); "Bolsa Parcial" é `Parcial`, e a
+        modalidade batia. Repetir as três frases só copiava a coluna ao lado.
         """
-        motivos, status = self._motivos(
-            documento=ggci.DOC_RIAF,
-            Inscrição=[2200015],
-            **{'Status_IA': ['Inválido'],
-               'Gemini Inconsistencias': ['Nome do aluno diverge do sistema,'
-                                          ' Mantenedora da IES diverge do sistema']},
-        )
+        motivos, status = self._riaf_falso_invalido(
+            2220159, 'CNPJ da ies diverge do sistema, modalidade diverge do sistema,'
+                     ' tipo de bolsa diverge do sistema',
+            **{'Gemini Cnpj Faculdade': [1060102000165], 'Gemini Tipo Bolsa': ['Bolsa Parcial']})
         self.assertEqual(status, ['Falso Inválido'])
-        self.assertEqual(motivos, ['Nome do aluno diverge do sistema'
-                                   ' | Mantenedora da IES diverge do sistema'])
+        self.assertEqual(motivos, ["O Correto Seria: 'CNPJ da IES diverge do sistema'"])
+
+    def test_falso_invalido_do_riaf_sem_divergencia_diz_sem_inconsistencias(self):
+        """CNPJ com o zero à esquerda perdido e bolsa com a palavra "Bolsa" não são divergência."""
+        motivos, _ = self._riaf_falso_invalido(
+            2200015, 'CNPJ da IES diverge do sistema, Tipo de bolsa diverge do sistema',
+            **{'Gemini Tipo Bolsa': ['Bolsa Parcial']})
+        self.assertEqual(motivos, ["O Correto Seria: 'Sem inconsistências'"])
+
+    def test_falso_invalido_do_riaf_corrige_a_frase_pelo_valor_lido(self):
+        """
+        A 2120558 em 2026-1: a IA disse que a modalidade e o tipo de bolsa divergiam. A
+        modalidade batia, e "OVG Agronomia 6" não diz se a bolsa é parcial ou integral —
+        o certo é "não localizado". O desconto, esse sim, divergia.
+        """
+        motivos, _ = self._riaf_falso_invalido(
+            2120558, 'Modalidade diverge do sistema, tipo de bolsa diverge do sistema,'
+                     ' valor da mensalidade com desconto diverge do sistema',
+            **{'Gemini Tipo Bolsa': ['OVG Agronomia 6'],
+               'Mensalidade C/ Desconto': [500.0], 'Gemini Mensalidade C/ Desconto': [450.0]})
+        self.assertEqual(motivos, ["O Correto Seria: 'Tipo de bolsa não localizado no documento,"
+                                   " Valor da mensalidade com desconto diverge do sistema'"])
+
+    def test_falso_invalido_do_riaf_mantem_o_que_nao_da_para_conferir(self):
+        """Nome do aluno e mantenedora não têm com que comparar: a frase da IA fica, depois das nossas."""
+        motivos, _ = self._riaf_falso_invalido(
+            2200016, 'Nome do aluno diverge do sistema, Mantenedora da IES diverge do sistema')
+        self.assertEqual(motivos, ["O Correto Seria: 'Nome do aluno diverge do sistema,"
+                                   " Mantenedora da IES diverge do sistema'"])
 
     def test_documento_ilegivel_e_invalido_e_nunca_falso_invalido(self):
         """
@@ -327,3 +363,27 @@ class MotivosNaRespostaDaTelaTests(SimpleTestCase):
         sem tooltip — e não em branco, que é o que aconteceria se a view estourasse aqui.
         """
         self.assertEqual(_motivos_das_linhas(None, pd.DataFrame({'a': [1, 2]})), [])
+
+
+class ConferenciaDaMatriculaTests(SimpleTestCase):
+    """
+    `Matricula_SD_Doc`/`Matricula_CD_Doc` comparavam a matrícula lida com a MENSALIDADE do
+    sistema. A 2146421 (RIAF 2026-1) tinha matrícula 999 no sistema e no documento, mensalidade
+    zerada, e saía "Valor no documento é Maior".
+    """
+
+    def _conferir(self, **col):
+        base = {'Matricula S/ Desconto': [999.0], 'Gemini Matricula Sem Desconto': [999.0],
+                'Matricula C/ Desconto': [599.0], 'Gemini Matricula Com Desconto': [599.0]}
+        base.update(col)
+        saida = MotivosDaDivergenciaTests._auditar(None, _linhas(ggci.DOC_RIAF, Inscrição=[2146421], **base))
+        return saida['Matricula_SD_Doc'].iloc[0], saida['Matricula_CD_Doc'].iloc[0]
+
+    def test_matricula_igual_a_do_sistema_e_conforme_mesmo_com_mensalidade_zerada(self):
+        self.assertEqual(self._conferir(**{'Mensalidade S/ Desconto': [0.0], 'Mensalidade C/ Desconto': [0.0]}),
+                         ('Coleta de dados conforme documento', 'Coleta de dados conforme documento'))
+
+    def test_matricula_menor_e_maior_que_a_do_sistema(self):
+        self.assertEqual(self._conferir(**{'Gemini Matricula Sem Desconto': [900.0],
+                                           'Gemini Matricula Com Desconto': [700.0]}),
+                         ('Valor no documento é Menor', 'Valor no documento é Maior'))

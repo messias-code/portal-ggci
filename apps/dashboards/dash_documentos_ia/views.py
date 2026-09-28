@@ -2799,7 +2799,7 @@ COLUNAS_ANALISE_IA = {
         'tipo_bolsa_final', 'gemini_tipo_bolsa_final', 'mudou_bolsa', 'bolsa_anterior',
         'bolsa_posterior',
         'mudou_ies', 'ies_anterior', 'ies_posterior', 'faculdade', 'cnpj_ies',
-        'ins_mantenedora', 'curso', 'gemini_curso',
+        'gemini_cnpj_faculdade', 'ins_mantenedora', 'curso', 'gemini_curso',
         'gemini_assinatura_aluno', 'gemini_assinatura_ies',
         'ultimo_valor_pago_ref', 'total_bolsa_paga', 'qtd_pagtos',
         'qtd_pagtos_retroativos', 'matricula_sem_desc', 'gemini_matricula_sem_desc',
@@ -2816,7 +2816,8 @@ COLUNAS_ANALISE_IA = {
         'status_vinculo', 'situacao_motivo', 'observacao_situacao', 'email',
         'gemini_email',
         'telefone_1', 'telefone_2', 'data_nascimento', 'matricula',
-        'periodo_no_semestre', 'periodo_atual', 'qtd_periodos', 'modalidade_aluno', 'modalidade_ies'
+        'periodo_no_semestre', 'periodo_atual', 'qtd_periodos', 'modalidade_aluno', 'modalidade_ies',
+        'gemini_modalidade'
     ],
     'HISTÓRICO': [
         'status_ia', 'gemini_inconsistencia', 'semestre', 'gemini_semestre', 'bolsista', 'inscricao',
