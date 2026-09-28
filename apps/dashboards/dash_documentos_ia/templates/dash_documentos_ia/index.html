@@ -755,17 +755,7 @@
                                      id="ia-card-sit" style="flex: 1 1 0; min-width: 0; min-height: 0;">
                                     <h3 class="text-sm font-extrabold text-gray-700 m-0 text-center shrink-0" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">SITUAÇÃO DO PERÍODO (COLETA)</h3>
                                     <p class="docia-grafico-base text-[10px] text-gray-400 text-center m-0 shrink-0" id="ia-base-sit"></p>
-                                    <!--
-                                        ANEL E LEGENDA LADO A LADO, como no card das
-                                        inconsistências e ao contrário do veredito: a
-                                        coluna tem metade da altura dos vizinhos (são dois
-                                        cards dividindo o que eles têm inteiro) e a legenda
-                                        embaixo deixaria ao anel uma tira de ~60px.
-                                    -->
-                                    <div class="docia-anel-e-lista docia-anel-e-lista--estreito">
-                                        <div class="docia-grafico-ia flex justify-center items-center" id="ia-gr-sit"></div>
-                                        <div class="docia-legenda docia-legenda--ia docia-legenda--lado" id="ia-legenda-sit"></div>
-                                    </div>
+                                    <div class="docia-grafico-ia w-full flex justify-center items-center" id="ia-gr-sit" style="flex: 1 1 0; min-height: 0;"></div>
                                 </div>
 
                                 <div class="docia-card-doc bg-white border border-gray-200 shadow-sm rounded-2xl py-3 px-2 flex flex-col hidden"

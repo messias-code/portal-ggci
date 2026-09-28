@@ -20,6 +20,10 @@ contexto: |
     * Exemplo 1: "Psicologia - Formação de Psicólogo" é equivalente a "PSICOLOGIA".
     * Exemplo 2: "SUP TEC GESTAO TECN DA INFORMACAO" é equivalente a "GESTAO EM TECNOLOGIA DA INFORMACAO".
     * Exemplo 3: "Ciências Biológicas - Modalidade Médica" ou "Ciências Biológicas" é equivalente a "BIOMEDICINA".
+  - Regra de Falsa Equivalência (Áreas Diferentes): Cursos de tecnologia, engenharia ou de nomes similares NÃO SÃO o mesmo curso que o bacharelado/licenciatura da área mãe. A raiz tem que ser a mesma profissão.
+    * Exemplo: "Química" NÃO É EQUIVALENTE a "Tecnologia em Processos Químicos" ou "Engenharia Química". (São profissões diferentes).
+    * Exemplo: "Análise e Desenvolvimento de Sistemas" NÃO É EQUIVALENTE a "Ciência da Computação".
+    * Nestes casos de falsa equivalência, a extração deve devolver o nome que está no documento, e o campo será 'valido: 0'.
   - Regra de Extração Limpa (Nome do Sistema): Se a equivalência semântica for validada, `curso.conteudo` DEVE ser o `curso_esperado` COPIADO CARACTERE A CARACTERE, exatamente como veio no Input — mesma grafia, mesmos acentos (ou a falta deles), sem "Bacharelado", "Licenciatura", "Curso de", turno ou ano. É PROIBIDO devolver o nome como está escrito no documento quando ele for equivalente.
     * Exemplo: Input "BIOMEDICINA", documento "Ciências Biológicas" -> curso.conteudo = "BIOMEDICINA".
     * Exemplo: Input "MEDICINA VETERINARIA", documento "Medicina Veterinária Bacharelado" -> curso.conteudo = "MEDICINA VETERINARIA".

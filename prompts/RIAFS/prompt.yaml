@@ -43,6 +43,7 @@ contexto: |
 
   5. MENTALIDADE TEMPORAL E ACADÊMICA:
   - O Input (sistema) é a ÚNICA verdade para campos que possuem comparação.
+  - SINÔNIMOS DE PERÍODO: Em documentos que não usam explicitamente a palavra "período", procure os valores de `periodo_atual` e `quantidade_periodos` nos sinônimos: "Série", "Módulo", "Semestre letivo", "Etapa", "Fase", "Ano letivo" ou "Ciclo". (Exemplo: "3º Semestre" -> periodo_atual = 3).
   - Valide com precisão numerais acadêmicos (Formato Semestre: AAAA/I).
 
   6. MENTALIDADE FINANCEIRA E CURTO-CIRCUITO:

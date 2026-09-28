@@ -1396,7 +1396,7 @@
             estreita ao lado da lista, e não a largura do card: ali o desenho respira
             por DENTRO (padding positivo) e não é inflado, enquanto o veredito, que tem
             a legenda embaixo e o card inteiro de largura, faz o contrário.  */
-        const ROSCA_AO_LADO_DA_LISTA = ['ia-gr-inconsistencias', 'ia-gr-sit'];
+        const ROSCA_AO_LADO_DA_LISTA = ['ia-gr-inconsistencias'];
 
         /*  `selecionado` É O NÚMERO DO RECORTE, ou `null` quando não há recorte nenhum.
             Ver a nota do `total`, logo abaixo.  */
@@ -2263,20 +2263,15 @@
             const situacao = quadro.situacao || {};
             const contagem = situacao.contagem || {};
             const ordem = (quadro.ordem_situacao || []).filter((nome) => contagem[nome]);
-            const legenda = document.getElementById('ia-legenda-sit');
             const base = document.getElementById('ia-base-sit');
             const linha = document.getElementById('ia-gr-sit');
-            const caixa = linha ? linha.parentElement : null;
 
             if (!situacao.total || !ordem.length) {
-                if (legenda) legenda.innerHTML = '';
-                if (caixa) caixa.classList.add('docia-anel-e-lista--sozinho');
                 if (base) base.textContent = '';
                 mostrarVazio('ia-gr-sit', 'fa-hourglass-half',
                              'A IA ainda não leu nenhum documento neste recorte.');
                 return;
             }
-            if (caixa) caixa.classList.remove('docia-anel-e-lista--sozinho');
 
             /*  A BASE DIZ SOBRE QUANTOS O ANEL FALA e, quando for o caso, que a outra
                 metade da pergunta está em branco: em 2026-1 e 2026-2 a IA ainda não leu
@@ -2310,13 +2305,17 @@
                 viu acontecer, e "Formado" passou a incluir quem CONCLUIU sem o cadastro
                 ter lançado a formatura. O texto sai da view (`DESCRICOES_DA_SITUACAO`),
                 junto da regra que ele descreve.  */
-            /*  "Lidos" e não "Documentos" como no veredito: este anel divide o card
-                com a lista, sobra-lhe metade do diâmetro, e o miolo não comporta a
-                palavra inteira — ela atravessaria o traço da rosca. */
+            /* Removido o gráfico de rosca a pedido do usuário. Usando barras horizontais. */
             const descricoes = situacao.descricao || null;
-            desenharRosca('ia-gr-sit', ordem, valores, cores, 'Lidos', somaMarcada, descricoes);
-            pintarLegendaRosca('ia-legenda-sit', ordem, valores, cores, ordem, escolhidas,
-                               descricoes);
+            desenhar('ia-gr-sit', ordem, valores, cores, situacao.total, 'numero',
+                     true, situacao.total,
+                     (i) => {
+                         const clicado = ordem[i];
+                         if (escolhidas.has(clicado)) escolhidas.delete(clicado);
+                         else escolhidas.add(clicado);
+                         pintarFiltrosAtivos();
+                     },
+                     escolhidas, descricoes);
         };
 
         const pintarAlertas = (corpo) => {
@@ -2751,12 +2750,11 @@
                     /*  As legendas nomeiam fatias que já não estão na tela. As duas que
                         ficam ao lado do anel levam junto a coluna delas, para o recado
                         de erro ficar centrado no card e não na fatia estreita do anel.  */
-                    ['ia-legenda-veredito', 'ia-legenda-sit',
-                     'ia-legenda-inconsistencias'].forEach((id) => {
+                    ['ia-legenda-veredito', 'ia-legenda-inconsistencias'].forEach((id) => {
                         const alvo = document.getElementById(id);
                         if (alvo) alvo.innerHTML = '';
                     });
-                    ['ia-gr-inconsistencias', 'ia-gr-sit'].forEach((id) => {
+                    ['ia-gr-inconsistencias'].forEach((id) => {
                         const anel = document.getElementById(id);
                         if (anel && anel.parentElement) {
                             anel.parentElement.classList.add('docia-anel-e-lista--sozinho');
