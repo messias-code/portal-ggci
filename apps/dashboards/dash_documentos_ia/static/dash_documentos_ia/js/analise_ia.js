@@ -2307,6 +2307,7 @@
                 junto da regra que ele descreve.  */
             /* Removido o gráfico de rosca a pedido do usuário. Usando barras horizontais. */
             const descricoes = situacao.descricao || null;
+            const marcados = ordem.map((nome) => escolhidas.has(nome));
             desenhar('ia-gr-sit', ordem, valores, cores, situacao.total, 'numero',
                      true, situacao.total,
                      (i) => {
@@ -2315,7 +2316,8 @@
                          else escolhidas.add(clicado);
                          pintarFiltrosAtivos();
                      },
-                     escolhidas, descricoes);
+                     marcados,
+                     (i) => descricoes && descricoes[ordem[i]] ? [descricoes[ordem[i]]] : null);
         };
 
         const pintarAlertas = (corpo) => {
