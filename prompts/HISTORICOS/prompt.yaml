@@ -295,13 +295,13 @@ logica_de_campo:
 catalogo_erros:
   nivel_critico:
     - 'Tipo de Documento inválido'
-    - 'CPF não localizado no documento'
-    - 'CPF do documento diverge do sistema'
+    - 'CPF não localizado'
+    - 'CPF diverge do sistema'
   nivel_alto:
-    - 'Curso não localizado no documento'
+    - 'Curso não localizado'
     - 'Curso diverge do sistema'
-    - 'Semestre esperado não localizado nos registros de disciplinas'
-    - 'Semestre diverge com sistema'
+    - 'Semestre não localizado'
+    - 'Semestre diverge do sistema'
   nivel_medio:
     - 'Documento ilegível ou sem informações curriculares suficientes'
 
@@ -405,5 +405,5 @@ exemplos_saida:
     semestre: { conteudo: '', valido: 0 }
     situacao: { conteudo: 'Desligado', valido: 1 }
     concluiu_curso: 'não'
-    inconsistencias: { conteudo: 'Semestre esperado não localizado nos registros de disciplinas', valido: 0 }
+    inconsistencias: { conteudo: 'Semestre não localizado', valido: 0 }
     status: { conteudo: 'invalido', valido: 0 }

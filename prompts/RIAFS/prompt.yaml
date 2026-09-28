@@ -33,7 +33,7 @@ contexto: |
   - TIPO DE BOLSA (Classificação Fechada): `tipo_bolsa.conteudo` só aceita DOIS valores, "PARCIAL" ou "INTEGRAL". Extraia apenas a classificação e descarte o resto: palavras como "Bolsa", "OVG", "Programa", nome de curso, percentuais e valores. É PROIBIDO devolver o texto do documento como está.
     * Exemplo: documento "Bolsa Parcial", "OVG Parcial (R$ 650,00)" ou "Meia Bolsa" -> tipo_bolsa.conteudo = "PARCIAL".
     * Exemplo: documento "Bolsa Integral" ou "OVG Integral: 100%" -> tipo_bolsa.conteudo = "INTEGRAL".
-    * Exemplo: documento "OVG Direito 650" ou "Vigente" (não diz se é parcial ou integral) -> tipo_bolsa.conteudo = "", valido: 0, e a inconsistência é 'Tipo de bolsa não localizado no documento'.
+    * Exemplo: documento "OVG Direito 650" ou "Vigente" (não diz se é parcial ou integral) -> tipo_bolsa.conteudo = "", valido: 0, e a inconsistência é 'Tipo de bolsa não localizado'.
   - NOME DE BENEFÍCIO E FINANCIAMENTO (Ausência Padronizada): `nome_outros_beneficios.conteudo` e `nome_financiamento.conteudo` só aceitam o NOME REAL do benefício/financiamento ou uma frase fixa de ausência. Marcadores de ausência como "N", "Não", "Não Possui", "Não Se Aplica", "Nenhum", "-", "Não Localizado", "0", campo em branco ou campo inexistente NÃO são nome. Nesses casos devolva EXATAMENTE a frase fixa, sem MAIÚSCULAS e sem variação:
     * nome_outros_beneficios.conteudo = "Sem Beneficio Informado"
     * nome_financiamento.conteudo = "Sem Financiamento Informado"
@@ -81,7 +81,7 @@ logica_de_campo:
     estado_inicial: 'Iniciam com valido: 0.'
     regra_sucesso_com_input: 'Se possui input, foi localizado e é EXATAMENTE igual ao sistema, altere para valido: 1. Exceção: o curso vale por equivalência (Mentalidade 4) e, quando equivalente, é devolvido com o nome do Input.'
     regra_sucesso_sem_input: 'Se NÃO possui input e foi localizado no documento, altere para valido: 1.'
-    regra_falha: 'Se não localizado ou divergente, MANTENHA valido: 0. O status global fica travado em "invalido". Registre o erro no catálogo.'
+    regra_falha: 'Se não localizado, MANTENHA valido: 0 e registre "não localizado". Se for divergente, MANTENHA valido: 0 e registre o erro. ATENÇÃO ESPECIAL PARA MENSALIDADE: Para valor_mensalidade_sem_desconto e valor_mensalidade_com_desconto, compare matematicamente com o valor do input. Se o valor do documento for menor que o do sistema, use "é MENOR que o sistema". Se for maior, use "é MAIOR que o sistema". O status global fica travado em "invalido".'
 
   comportamento_campos_condicionais_beneficios:
     lista: ['valor_outros_beneficios', 'nome_outros_beneficios', 'valor_financiamento', 'nome_financiamento']
@@ -136,43 +136,45 @@ regras_gerais:
 catalogo_erros:
   nivel_critico:
     - 'Tipo de Documento inválido'
-    - 'CPF não localizado no documento'
-    - 'CPF do documento diverge do sistema'
+    - 'CPF não localizado'
+    - 'CPF diverge do sistema'
   nivel_alto: # Erros em campos Obrigatórios / Institucionais (Travam status em invalido)
-    - 'CNPJ da IES não localizado no documento'
+    - 'CNPJ da IES não localizado'
     - 'CNPJ da IES diverge do sistema'
-    - 'Nome fantasia da IES não localizado no documento'
+    - 'Nome fantasia da IES não localizado'
     - 'Nome fantasia da IES diverge do sistema'
-    - 'Curso não localizado no documento'
+    - 'Curso não localizado'
     - 'Curso diverge do sistema'
-    - ''
-    - 'Semestre diverge com sistema'
-    - 'Tipo de bolsa não localizado no documento'
+    - 'Semestre não localizado'
+    - 'Semestre diverge do sistema'
+    - 'Tipo de bolsa não localizado'
     - 'Tipo de bolsa diverge do sistema'
-    - 'Modalidade não localizada no documento'
+    - 'Modalidade não localizada'
     - 'Modalidade diverge do sistema'
-    - 'Data do documento não localizada'
+    - 'Data não localizada'
     - 'Assinatura do aluno não localizada'
     - 'Assinatura da IES não localizada'
   nivel_medio: # Erros Financeiros Principais e Condicionais (Travam status em invalido)
-    - 'Valor da matrícula sem desconto não localizado no documento'
+    - 'Valor da matrícula sem desconto não localizado'
     - 'Valor da matrícula sem desconto diverge do sistema'
-    - 'Valor da matrícula com desconto não localizado no documento'
+    - 'Valor da matrícula com desconto não localizado'
     - 'Valor da matrícula com desconto diverge do sistema'
-    - 'Valor da mensalidade sem desconto não localizado no documento'
-    - 'Valor da mensalidade sem desconto diverge do sistema'
-    - 'Valor da mensalidade com desconto não localizado no documento'
-    - 'Valor da mensalidade com desconto diverge do sistema'
-    - 'Valor de outros benefícios diverge do sistema'
-    - 'Nome de outros benefícios diverge do sistema'
+    - 'Valor da mensalidade sem desconto não localizado'
+    - 'Valor da mensalidade sem desconto é MENOR que o sistema'
+    - 'Valor da mensalidade sem desconto é MAIOR que o sistema'
+    - 'Valor da mensalidade com desconto não localizado'
+    - 'Valor da mensalidade com desconto é MENOR que o sistema'
+    - 'Valor da mensalidade com desconto é MAIOR que o sistema'
+    - 'Valor de benefícios diverge do sistema'
+    - 'Nome de benefícios diverge do sistema'
     - 'Valor do financiamento diverge do sistema'
     - 'Nome do financiamento diverge do sistema'
   nivel_baixo: # Erros em campos Desejáveis (Não travam status global)
-    - 'Nome do aluno não localizado no documento'
+    - 'Nome do aluno não localizado'
     - 'Nome do aluno diverge do sistema'
-    - 'Matrícula do aluno não localizada no documento'
+    - 'Matrícula do aluno não localizada'
     - 'Matrícula do aluno diverge do sistema'
-    - 'Inscrição OVG não localizada no documento'
+    - 'Inscrição OVG não localizada'
     - 'Inscrição OVG diverge do sistema'
     - 'Razão social da IES diverge do sistema'
     - 'Mantenedora da IES diverge do sistema'
@@ -233,7 +235,7 @@ exemplos_saida:
   riaf_beneficios_escalonamento_dinamico_invalido:
     raciocinio_diagnostico: 'PASSO 1-4: Dados iniciais válidos.\nPASSO 5: Outros benefícios encontrado (556.00). O sistema esperava (556.10). Há divergência, campo condicional falha. Status final inválido.'
     valor_outros_beneficios: { conteudo: '556.00', valido: 0 } # Doc tem 556.00, Input era 556.10 = Divergiu
-    inconsistencias: { conteudo: 'Valor de outros benefícios diverge do sistema', valido: 0 } # Erro nivel medio disparado
+    inconsistencias: { conteudo: 'Valor de benefícios diverge do sistema', valido: 0 } # Erro nivel medio disparado
     status: { conteudo: 'invalido', valido: 0 } # Status travado por campo condicional
 
   riaf_beneficios_ausentes_sucesso:
