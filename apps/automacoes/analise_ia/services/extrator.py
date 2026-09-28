@@ -792,21 +792,23 @@ def atualizar_cache_parquets(docs_selecionados=None):
                     conn.execute(text(f"DROP VIEW IF EXISTS sibu.{nome_tabela}"))
                     conn.execute(text(f"DROP TABLE IF EXISTS sibu.{nome_tabela}"))
                     
-                    # Executa as lógicas de criação no banco
-                    if os.path.exists(caminho_sql):
-                        with open(caminho_sql, "r") as f_sql:
-                            sql_content = f_sql.read()
-                            nome_base = nome_tabela.replace(env_suffix, "")
-                            sql_content = sql_content.replace(nome_base, nome_tabela)
-                            conn.execute(text(sql_content))
-                    
-                    # Lê os dados do MySQL para a memória (Pandas)
-                    df_pandas = pd.read_sql(f"SELECT * FROM sibu.{nome_tabela}", conn)
-                    
-                    # Limpa os resíduos APÓS puxar para a memória (Stateless Database)
-                    conn.execute(text(f"DROP VIEW IF EXISTS sibu.{nome_tabela}"))
-                    conn.execute(text(f"DROP TABLE IF EXISTS sibu.{nome_tabela}"))
-                    conn.commit()
+                    # O DROP FINAL VAI NUM `finally` porque ele é a única coisa aqui que não pode ser pulada.
+                    try:
+                        # Executa as lógicas de criação no banco
+                        if os.path.exists(caminho_sql):
+                            with open(caminho_sql, "r") as f_sql:
+                                sql_content = f_sql.read()
+                                nome_base = nome_tabela.replace(env_suffix, "")
+                                sql_content = sql_content.replace(nome_base, nome_tabela)
+                                conn.execute(text(sql_content))
+                        
+                        # Lê os dados do MySQL para a memória (Pandas)
+                        df_pandas = pd.read_sql(f"SELECT * FROM sibu.{nome_tabela}", conn)
+                    finally:
+                        # Limpa os resíduos APÓS puxar para a memória (Stateless Database)
+                        conn.execute(text(f"DROP VIEW IF EXISTS sibu.{nome_tabela}"))
+                        conn.execute(text(f"DROP TABLE IF EXISTS sibu.{nome_tabela}"))
+                        conn.commit()
                 
                 # Converte para Polars e salva em Parquet
                 df_polars = pl.from_pandas(df_pandas)
