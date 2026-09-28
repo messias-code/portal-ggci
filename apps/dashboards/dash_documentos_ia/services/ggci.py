@@ -2678,11 +2678,51 @@ def calcular_auditoria_ia(df):
         ia_assinatura_ies.str.contains('NÃO LOCALIZADO|NAO LOCALIZADO', regex=True)
     )
 
+    def _texto(nome):
+        return (df.get(nome, pd.Series(['']*len(df), index=df.index)).astype(object).fillna('').astype(str)
+                .str.strip().str.upper().replace(['NAN', 'NONE', '<NA>'], '')
+                .str.replace(r'N[AÃ]O LOCALIZAD[AO]', '', regex=True).str.strip()
+                .str.normalize('NFKD').str.encode('ascii', 'ignore').str.decode('ascii'))
+
+    def _valor(nome):
+        return pd.to_numeric(df.get(nome, pd.Series([0.0]*len(df), index=df.index)), errors='coerce').fillna(0.0).round(2)
+
+    #  CNPJ chega como número (`COLS_NUM`) e perde o zero à esquerda.
+    ia_cnpj = _texto('Gemini Cnpj Faculdade').str.replace(r'\.0$', '', regex=True).str.replace(r'\D', '', regex=True)
+    ia_cnpj = ia_cnpj.where(ia_cnpj == '', ia_cnpj.str.zfill(14))
+    sys_cnpj = _texto('Ins. CNPJ').str.replace(r'\.0$', '', regex=True).str.replace(r'\D', '', regex=True)
+    sys_cnpj = sys_cnpj.where(sys_cnpj == '', sys_cnpj.str.zfill(14))
+
+    #  O prompt manda devolver só PARCIAL ou INTEGRAL; o que ficou gravado antes disso
+    #  ("Bolsa Parcial", "OVG Direito 650") é reduzido à classificação, ou a nada.
+    ia_bolsa = _texto('Gemini Tipo Bolsa')
+    ia_bolsa = pd.Series(np.select([ia_bolsa.str.contains('INTEGRAL'), ia_bolsa.str.contains('PARCIAL|MEIA')],
+                                   ['INTEGRAL', 'PARCIAL'], default=''), index=df.index)
+    sys_bolsa = _texto('tipo_bolsa_final')
+
+    ia_modalidade = _texto('Gemini Modalidade')
+    sys_modalidade = _texto('Modalidade IES').where(_texto('Modalidade IES') != '', _texto('modalidade_ies'))
+
+    mat_sd_sys, mat_cd_sys = _valor('Matricula S/ Desconto'), _valor('Matricula C/ Desconto')
+    mat_sd_lida, mat_cd_lida = mat_sd_ia.round(2), mat_cd_ia.round(2)
+    mcd_lida, mcd_esperada = mcd_ia.round(2), mcd_sys.round(2)
+
+    ia_matricula = _texto('Gemini Matricula').str.replace(r'\.0$', '', regex=True).str.replace(r'\D', '', regex=True).str.lstrip('0')
+    sys_matricula = _texto('Matricula').str.replace(r'\.0$', '', regex=True).str.replace(r'\D', '', regex=True).str.lstrip('0')
+
     sys_beneficio = pd.to_numeric(df.get('valor_beneficio', pd.Series([0]*len(df), index=df.index)), errors='coerce').fillna(0)
     ia_beneficio = pd.to_numeric(df.get('Gemini Valor Beneficio', pd.Series([0]*len(df), index=df.index)), errors='coerce').fillna(0)
     sys_financiamento = pd.to_numeric(df.get('valor_financiamento', pd.Series([0]*len(df), index=df.index)), errors='coerce').fillna(0)
     ia_financiamento = pd.to_numeric(df.get('Gemini Valor Financiamento', pd.Series([0]*len(df), index=df.index)), errors='coerce').fillna(0)
-    matematica_invalida_riaf_extra = is_riaf & ((sys_beneficio != ia_beneficio) | (sys_financiamento != ia_financiamento))
+    matematica_invalida_riaf_extra = is_riaf & (
+        (sys_beneficio != ia_beneficio) | (sys_financiamento != ia_financiamento) |
+        (ia_cnpj == '') | ((ia_cnpj != '') & (sys_cnpj != '') & (ia_cnpj != sys_cnpj)) |
+        (ia_bolsa == '') | ((ia_bolsa != '') & sys_bolsa.isin(['PARCIAL', 'INTEGRAL']) & (ia_bolsa != sys_bolsa)) |
+        (ia_modalidade == '') | ((ia_modalidade != '') & (sys_modalidade != '') & (ia_modalidade != sys_modalidade)) |
+        (mat_sd_lida == 0) | ((mat_sd_lida != 0) & (mat_sd_sys != 0) & (mat_sd_lida != mat_sd_sys)) |
+        (mat_cd_lida == 0) | ((mat_cd_lida != 0) & (mat_cd_sys != 0) & (mat_cd_lida != mat_cd_sys)) |
+        (mcd_lida == 0) | ((mcd_lida != 0) & (mcd_esperada != 0) & (mcd_lida != mcd_esperada))
+    )
 
     # ERRO NA INCONSISTÊNCIA — a frase do Gemini não bate com o valor que ele mesmo extraiu.
     #
@@ -2877,52 +2917,22 @@ def calcular_auditoria_ia(df):
     #  Parcial" é `Parcial`, e a modalidade batia. Cada campo que dá para comparar é refeito
     #  pelo dado; a frase da IA só sobrevive para o campo que não temos com que comparar
     #  (nome do aluno, mantenedora, data do documento...), e entra depois das nossas.
-    def _texto(nome):
-        return (df.get(nome, pd.Series(['']*len(df), index=df.index)).astype(object).fillna('').astype(str)
-                .str.strip().str.upper().replace(['NAN', 'NONE', '<NA>'], '')
-                .str.replace(r'N[AÃ]O LOCALIZAD[AO]', '', regex=True).str.strip()
-                .str.normalize('NFKD').str.encode('ascii', 'ignore').str.decode('ascii'))
-
-    def _valor(nome):
-        return pd.to_numeric(df.get(nome, pd.Series([0.0]*len(df), index=df.index)), errors='coerce').fillna(0.0).round(2)
-
-    #  CNPJ chega como número (`COLS_NUM`) e perde o zero à esquerda.
-    ia_cnpj = _texto('Gemini Cnpj Faculdade').str.replace(r'\.0$', '', regex=True).str.replace(r'\D', '', regex=True)
-    ia_cnpj = ia_cnpj.where(ia_cnpj == '', ia_cnpj.str.zfill(14))
-    sys_cnpj = _texto('Ins. CNPJ').str.replace(r'\.0$', '', regex=True).str.replace(r'\D', '', regex=True)
-    sys_cnpj = sys_cnpj.where(sys_cnpj == '', sys_cnpj.str.zfill(14))
-
-    #  O prompt manda devolver só PARCIAL ou INTEGRAL; o que ficou gravado antes disso
-    #  ("Bolsa Parcial", "OVG Direito 650") é reduzido à classificação, ou a nada.
-    ia_bolsa = _texto('Gemini Tipo Bolsa')
-    ia_bolsa = pd.Series(np.select([ia_bolsa.str.contains('INTEGRAL'), ia_bolsa.str.contains('PARCIAL|MEIA')],
-                                   ['INTEGRAL', 'PARCIAL'], default=''), index=df.index)
-    sys_bolsa = _texto('tipo_bolsa_final')
-
-    ia_modalidade = _texto('Gemini Modalidade')
-    sys_modalidade = _texto('Modalidade IES').where(_texto('Modalidade IES') != '', _texto('modalidade_ies'))
-
-    mat_sd_sys, mat_cd_sys = _valor('Matricula S/ Desconto'), _valor('Matricula C/ Desconto')
-    mat_sd_lida, mat_cd_lida = mat_sd_ia.round(2), mat_cd_ia.round(2)
-    mcd_lida, mcd_esperada = mcd_ia.round(2), mcd_sys.round(2)
-
-    ia_matricula = _texto('Gemini Matricula').str.replace(r'\.0$', '', regex=True).str.replace(r'\D', '', regex=True).str.lstrip('0')
-    sys_matricula = _texto('Matricula').str.replace(r'\.0$', '', regex=True).str.replace(r'\D', '', regex=True).str.lstrip('0')
 
     #  Ordem do `catalogo_erros` do RIAF.
     conferencias_riaf = [
-        (ia_cnpj == '', 'CNPJ da IES não localizado no documento'),
+        (ia_cnpj == '', 'CNPJ da IES não localizado'),
         ((ia_cnpj != '') & (sys_cnpj != '') & (ia_cnpj != sys_cnpj), 'CNPJ da IES diverge do sistema'),
-        (ia_bolsa == '', 'Tipo de bolsa não localizado no documento'),
+        (ia_bolsa == '', 'Tipo de bolsa não localizado'),
         ((ia_bolsa != '') & sys_bolsa.isin(['PARCIAL', 'INTEGRAL']) & (ia_bolsa != sys_bolsa), 'Tipo de bolsa diverge do sistema'),
-        (ia_modalidade == '', 'Modalidade não localizada no documento'),
+        (ia_modalidade == '', 'Modalidade não localizada'),
         ((ia_modalidade != '') & (sys_modalidade != '') & (ia_modalidade != sys_modalidade), 'Modalidade diverge do sistema'),
-        (mat_sd_lida == 0, 'Valor da matrícula sem desconto não localizado no documento'),
+        (mat_sd_lida == 0, 'Valor da matrícula sem desconto não localizado'),
         ((mat_sd_lida != 0) & (mat_sd_sys != 0) & (mat_sd_lida != mat_sd_sys), 'Valor da matrícula sem desconto diverge do sistema'),
-        (mat_cd_lida == 0, 'Valor da matrícula com desconto não localizado no documento'),
+        (mat_cd_lida == 0, 'Valor da matrícula com desconto não localizado'),
         ((mat_cd_lida != 0) & (mat_cd_sys != 0) & (mat_cd_lida != mat_cd_sys), 'Valor da matrícula com desconto diverge do sistema'),
-        (mcd_lida == 0, 'Valor da mensalidade com desconto não localizado no documento'),
-        ((mcd_lida != 0) & (mcd_esperada != 0) & (mcd_lida != mcd_esperada), 'Valor da mensalidade com desconto diverge do sistema'),
+        (mcd_lida == 0, 'Valor da mensalidade com desconto não localizado'),
+        ((mcd_lida != 0) & (mcd_esperada != 0) & (mcd_lida < mcd_esperada), 'Valor da mensalidade com desconto é MENOR que o sistema'),
+        ((mcd_lida != 0) & (mcd_esperada != 0) & (mcd_lida > mcd_esperada), 'Valor da mensalidade com desconto é MAIOR que o sistema'),
         ((ia_matricula != '') & (sys_matricula != '') & (ia_matricula != sys_matricula), 'Matrícula do aluno diverge do sistema'),
     ]
     correto_riaf = pd.Series(['']*len(df), index=df.index)
