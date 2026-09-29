@@ -1,5 +1,3 @@
-DROP VIEW IF EXISTS sibu.PY_ggci_espelho_financiamento_d1_2025_documentos_ia;
-DROP TABLE IF EXISTS sibu.PY_ggci_espelho_financiamento_d1_2025_documentos_ia;
 CREATE TABLE sibu.PY_ggci_espelho_financiamento_d1_2025_documentos_ia AS
 WITH UltimaTentativa AS (
     SELECT 
