@@ -2467,8 +2467,6 @@ def calcular_auditoria_ia(df):
     sys_cnpj = sys_cnpj.where(sys_cnpj == '', sys_cnpj.str.zfill(14))
 
     ia_bolsa = _texto('Gemini Tipo Bolsa')
-    import numpy as np
-    import pandas as pd
     ia_bolsa = pd.Series(np.select([ia_bolsa.str.contains('INTEGRAL'), ia_bolsa.str.contains('PARCIAL|MEIA')],
                                    ['INTEGRAL', 'PARCIAL'], default=''), index=df.index)
     sys_bolsa = _texto('tipo_bolsa_final')
