@@ -3331,6 +3331,25 @@ document.addEventListener('turbo:load', () => {
                     repintarConfig();
                 });
 
+                /*  LIMPAR SÓ ZERA O FORMULÁRIO; quem grava é o Aplicar, como em qualquer
+                    outro gesto do modal. Com tudo zerado, o Aplicar devolve a atualização
+                    ao padrão — ver `montarConfiguracao`.  */
+                document.getElementById('btn-config-limpar').addEventListener('click', () => {
+                    caixasPeriodo.forEach((c) => (c.checked = false));
+                    botoesBruta.forEach((botao) => {
+                        botao.classList.remove('is-ativo');
+                        botao.setAttribute('aria-pressed', 'false');
+                    });
+                    botoesLista.forEach((botao) => {
+                        botao.classList.remove('is-ativo');
+                        botao.setAttribute('aria-expanded', 'false');
+                    });
+                    modalConfig.querySelectorAll('.cfgx-doc__lista')
+                        .forEach((caixa) => caixa.classList.add('hidden'));
+                    camposInscricoes.forEach((campo) => (campo.value = ''));
+                    repintarConfig();
+                });
+
                 // --- abrir, fechar e aplicar ----------------------------------------
                 const abrirConfig = () => {
                     modalConfig.style.display = 'flex';
@@ -3379,8 +3398,13 @@ document.addEventListener('turbo:load', () => {
                     const temPeriodo = semestres.length > 0;
                     const temDoc = bruta.length > 0 || forcadas.length > 0;
 
+                    /*  NADA MARCADO É O PADRÃO, e não um erro. Antes isto exigia período
+                        e documento, e não havia caminho de volta: desmarcar tudo e
+                        aplicar era recusado, e o escopo da última atualização bruta
+                        ficava valendo para todas as seguintes. `{}` é o que o back-end
+                        entende por atualização completa.  */
                     if (!temPeriodo && !temDoc) {
-                        return { erro: 'É obrigatório selecionar o período e configurar o Bot de extração inteligente.' };
+                        return {};
                     }
                     if (temPeriodo && !temDoc) {
                         return { erro: 'Você selecionou o período, mas não configurou o Bot de extração inteligente.' };

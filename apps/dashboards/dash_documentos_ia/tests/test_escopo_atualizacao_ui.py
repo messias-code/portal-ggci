@@ -218,3 +218,28 @@ class SoOsDocumentosAjustadosTests(SimpleTestCase):
         self.assertNotIn('documentos: DOCUMENTOS_DO_MOTOR', self.montar)
         self.assertIn('bruta.some((b) => b.documento === doc)', self.montar)
         self.assertIn('forcadas.some((f) => f.documento === doc)', self.montar)
+
+
+class VoltarAoPadraoTests(SimpleTestCase):
+    """
+    Desmarcar tudo e aplicar era recusado ("É obrigatório selecionar o período..."), e o
+    Cancelar mantinha o escopo anterior: depois de uma atualização bruta não havia como
+    voltar à atualização padrão sem recarregar a página.
+    """
+
+    def setUp(self):
+        js = os.path.join(PROJECT_ROOT, 'apps', 'dashboards', 'dash_documentos_ia',
+                          'static', 'dash_documentos_ia', 'js', 'dash_documentos_ia.js')
+        self.js = _ler(js)
+        self.montar = self.js.split('const montarConfiguracao = () => {')[1][:2500]
+
+    def test_nada_marcado_aplica_o_padrao(self):
+        self.assertNotIn('É obrigatório selecionar o período', self.montar)
+        self.assertIn('if (!temPeriodo && !temDoc) {\n                        return {};', self.montar)
+
+    def test_limpar_zera_o_formulario(self):
+        limpar = self.js.split("getElementById('btn-config-limpar').addEventListener")[1][:1200]
+        self.assertIn('caixasPeriodo.forEach((c) => (c.checked = false))', limpar)
+        self.assertIn("botao.classList.remove('is-ativo')", limpar)
+        self.assertIn("camposInscricoes.forEach((campo) => (campo.value = ''))", limpar)
+
