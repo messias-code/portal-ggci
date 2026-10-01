@@ -844,6 +844,12 @@ document.addEventListener('turbo:load', () => {
                 /*  `updateOptions` redesenha o SVG inteiro, então só é chamado quando
                     algo realmente mudou — senão cada clique custaria cinco redesenhos
                     completos no meio da interação.  */
+                /*  ANTES do `updateOptions`, que redesenha o miolo na hora lendo este
+                    valor. Gravado depois, o miolo saía com o recorte ANTERIOR: desmarcar
+                    a última fatia deixava "0" no meio de toda rosca que estava de fora, e
+                    nada redesenhava de novo porque a série não tinha mudado.  */
+                grafico.selecionadoNoRecorte = haRecorte ? selecionado : null;
+
                 const assinatura = novasCores.join() + '|' + novoRotulo;
                 if (grafico.__assinaturaRecorte !== assinatura) {
                     grafico.__assinaturaRecorte = assinatura;
@@ -858,7 +864,6 @@ document.addEventListener('turbo:load', () => {
                     }, false, false);
                 }
 
-                grafico.selecionadoNoRecorte = haRecorte ? selecionado : null;
                 const inflado = cru.map((v) => (v > 0 && v < minVisual) ? minVisual : v);
                 const assinaturaSeries = inflado.join(',');
                 if (grafico.__assinaturaSeries !== assinaturaSeries) {
