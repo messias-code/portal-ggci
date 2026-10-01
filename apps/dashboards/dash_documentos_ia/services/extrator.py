@@ -693,6 +693,36 @@ def extrair_ano_pagamento(ano_str, pasta_pagamentos):
 # ==========================================
 # (Removidos - substituídos por um pool global único na função executar)
 
+def dono_do_lock_morto(caminho_lock):
+    """
+    O QUE FAZ: Diz se o processo que criou o lock do Parquet já não existe.
+    POR QUÊ EXISTE: o Parar (e o recarregar da página, que chama o Parar por
+      sendBeacon) mata o motor com `pkill` (SIGTERM), e o `finally` que apaga o lock não
+      roda. A execução seguinte esperava o lock órfão envelhecer 10 min, repetindo
+      "Aguardando outro processo extrair" sem processo nenhum vivo — caso de 01/10/2026,
+      a #219 parada nos locks de contrato e financiamento de uma execução abortada.
+      Mesma correção que o analise_ia recebeu em 25/09/2026.
+    RETORNO: True só quando o PID gravado no lock não está vivo. Lock no formato antigo
+      (só o timestamp) devolve False e segue a regra de idade.
+    """
+    try:
+        with open(caminho_lock) as f_lock:
+            pid = int(f_lock.readline().strip())
+    except (OSError, ValueError):
+        return False
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return True
+    except PermissionError:
+        return False
+    # Zumbi já morreu, só não foi recolhido pelo pai.
+    try:
+        with open(f"/proc/{pid}/stat") as f_stat:
+            return f_stat.read().rsplit(")", 1)[1].split()[0] == "Z"
+    except (OSError, IndexError):
+        return False
+
 def atualizar_cache_parquets(docs_selecionados=None):
     """
     O QUE FAZ: Replica em Parquet local as tabelas `PY_ggci_*` do banco SIBU.
@@ -829,6 +859,13 @@ def atualizar_cache_parquets(docs_selecionados=None):
                         except OSError:
                             pass
                         continue
+                    if dono_do_lock_morto(caminho_lock):
+                        print(f"[EXTRATOR   | INFO          | FILE LOCK  ] Lock da {nome_tabela} é de um processo encerrado. Removendo.")
+                        try:
+                            os.remove(caminho_lock)
+                        except OSError:
+                            pass
+                        continue
                         
                     print(f"[EXTRATOR   | INFO          | FILE LOCK  ] Aguardando outro processo extrair {nome_tabela}...")
                     time.sleep(5)
@@ -842,7 +879,7 @@ def atualizar_cache_parquets(docs_selecionados=None):
             # Adquire Lock
             try:
                 with open(caminho_lock, "w") as f_lock:
-                    f_lock.write(str(time.time()))
+                    f_lock.write(f"{os.getpid()}\n{time.time()}")
             except Exception as e:
                 print(f"⚠️ Erro ao criar lock para {nome_tabela}: {e}")
                 return
