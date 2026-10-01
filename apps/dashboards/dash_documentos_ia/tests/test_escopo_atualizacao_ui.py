@@ -243,3 +243,50 @@ class VoltarAoPadraoTests(SimpleTestCase):
         self.assertIn("botao.classList.remove('is-ativo')", limpar)
         self.assertIn("camposInscricoes.forEach((campo) => (campo.value = ''))", limpar)
 
+
+class PararNoConsoleTests(SimpleTestCase):
+    """
+    O único jeito de abortar era sair da página (o `pagehide` manda o Parar por
+    sendBeacon). O console ganhou um Parar que só aparece com execução no ar.
+    """
+
+    def setUp(self):
+        base = os.path.join(PROJECT_ROOT, 'apps', 'dashboards', 'dash_documentos_ia')
+        self.js = _ler(os.path.join(base, 'static', 'dash_documentos_ia', 'js', 'dash_documentos_ia.js'))
+        self.html = _ler(os.path.join(base, 'templates', 'dash_documentos_ia', 'index.html'))
+
+    def test_o_botao_nasce_escondido(self):
+        self.assertIn('id="btn-parar-console" class="docia-console-parar" hidden', self.html)
+
+    def test_aparece_ao_acompanhar_e_some_ao_restaurar(self):
+        acompanhar = self.js.split('function acompanhar(processoId) {')[1][:200]
+        self.assertIn('mostrarParar(true)', acompanhar)
+        restaurar = self.js.split('function restaurarBotaoAtualizar() {')[1][:600]
+        self.assertIn('mostrarParar(false)', restaurar)
+
+    def test_o_clique_confirma_e_chama_a_view_de_parar(self):
+        clique = self.js.split("btnPararConsole.addEventListener('click'")[1][:1200]
+        self.assertIn('confirm(', clique)
+        self.assertIn('/dashboards/documentos-ia/api/parar/${id}/', clique)
+
+    def test_hidden_ganha_do_display_da_classe(self):
+        self.assertIn('.docia-console-parar[hidden] { display: none; }', _ler(CSS_CLARO))
+
+    def test_o_parar_tem_contraparte_escura(self):
+        self.assertIn('html[data-tema="eleitoral"] .docia-console-parar', _ler(CSS_ESCURO))
+
+    def test_falha_fecha_a_barra_em_vermelho(self):
+        falha = self.js.split("} else if (data.status === 'FALHA') {")[1][:700]
+        self.assertIn("consoleBarra.style.width = '100%'", falha)
+        self.assertIn("consoleBarra.classList.add('docia-barra--falha')", falha)
+        # E a próxima execução volta ao degradê.
+        self.assertIn("consoleBarra.classList.remove('docia-barra--falha')", self.js)
+        self.assertIn('html[data-tema="eleitoral"] .console-ggci__barra.docia-barra--falha',
+                      _ler(CSS_ESCURO))
+
+    def test_aviso_de_abortado_sai_em_vermelho_no_log(self):
+        formatar = self.js.split('function formatarLog(bruto) {')[1]
+        self.assertIn('/🚨 \\[SISTEMA\\] (Processo abortado.*)/g', formatar)
+        # Tem que vir antes de o 🚨 ser apagado, senão o padrão nunca casa.
+        self.assertLess(formatar.index('Processo abortado'),
+                        formatar.index(".replace(/🚨/g, '')"))

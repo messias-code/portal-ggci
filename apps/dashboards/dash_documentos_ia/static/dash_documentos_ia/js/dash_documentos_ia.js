@@ -3465,6 +3465,17 @@ document.addEventListener('turbo:load', () => {
             const consoleTexto = document.getElementById('console-progress-text');
             const consoleStatus = document.getElementById('console-status');
             const btnFecharConsole = document.getElementById('btn-fechar-console');
+            const btnPararConsole = document.getElementById('btn-parar-console');
+
+            /*  O PARAR SÓ EXISTE COM EXECUÇÃO NO AR. Antes o único jeito de abortar era
+                sair da página (o `pagehide` lá embaixo), e quem recarregava para isso
+                via "abortado" e achava que tinha sido um defeito.  */
+            const mostrarParar = (visivel) => {
+                if (!btnPararConsole) return;
+                btnPararConsole.hidden = !visivel;
+                btnPararConsole.disabled = false;
+                btnPararConsole.innerHTML = '<i class="fa-solid fa-stop"></i><span>Parar</span>';
+            };
 
             let pollConsole = null;      // timer do long-polling
             let animProgresso = null;    // timer da interpolação da barra
@@ -3615,6 +3626,14 @@ document.addEventListener('turbo:load', () => {
                     + `<span class="text-red-600 font-bold text-[11px] uppercase mr-2">! ABORTADO</span>`
                     + `<span class="text-red-300 mx-2">|</span>`
                     + `<span class="text-purple-900 text-[13px]">$1</span></span></div>`);
+                // O aviso que a VIEW grava ao abortar (Parar, sair da página ou registro
+                // órfão). Sem isto ele saía em tinta comum no fim do log, e quem parou
+                // não tinha confirmação nenhuma de que a parada pegou.
+                log = log.replace(/🚨 \[SISTEMA\] (Processo abortado.*)/g,
+                    `<div class="my-2"><span class="bg-red-50 border border-red-200 px-2.5 py-1 rounded inline-flex items-center break-words">`
+                    + `<span class="text-red-600 font-bold text-[11px] uppercase mr-2">■ ABORTADO</span>`
+                    + `<span class="text-red-300 mx-2">|</span>`
+                    + `<span class="text-red-600 font-bold text-[13px]">$1</span></span></div>`);
                 log = log.replace(/❌ FALHA CRÍTICA:/g, '<span class="text-red-600 font-bold">✖ FALHA CRÍTICA:</span>');
                 log = log.replace(/⚠️/g, '<span class="text-yellow-500 font-bold mr-1">!</span>');
                 log = log.replace(/✅/g, '').replace(/🚨/g, '');
@@ -3637,6 +3656,36 @@ document.addEventListener('turbo:load', () => {
             }
 
             if (btnFecharConsole) btnFecharConsole.addEventListener('click', fecharConsole);
+
+            /*  Quem encerra a tela é o polling: a view grava FALHA e o próximo ciclo
+                de `acompanhar` cai no mesmo caminho de qualquer falha (console aberto,
+                botão Atualizar de volta). Aqui só se pede, e se confirma antes — a
+                extração leva minutos e o Parar fica ao lado do X de fechar.  */
+            if (btnPararConsole && !btnPararConsole.dataset.ligadoDocia) {
+                btnPararConsole.dataset.ligadoDocia = '1';
+                btnPararConsole.addEventListener('click', () => {
+                    const id = window.__processo_id_docia;
+                    if (!id) return;
+                    if (!confirm('Parar a atualização em andamento? A tela continua com os dados da última atualização concluída.')) return;
+                    btnPararConsole.disabled = true;
+                    btnPararConsole.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Parando...</span>';
+                    fetch(`/dashboards/documentos-ia/api/parar/${id}/`, {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': window.CSRF_TOKEN },
+                    })
+                    .then((r) => r.json())
+                    .then((data) => {
+                        if (data.status !== 'ok') throw new Error(data.msg || 'resposta inesperada do servidor');
+                    })
+                    .catch((erro) => {
+                        mostrarParar(true);
+                        if (consoleLogs) {
+                            consoleLogs.innerHTML += `<div class="mt-3 text-red-600 font-bold">✖ Não foi possível parar: ${escapar(String(erro.message || erro))}</div>`;
+                        }
+                    });
+                });
+            }
+
             if (modalConsole) {
                 // Clique no fundo fecha; clique dentro da janela, não.
                 modalConsole.addEventListener('click', (e) => {
@@ -3706,6 +3755,7 @@ document.addEventListener('turbo:load', () => {
                 const quando = dataAtualizacao ? dataAtualizacao.innerText : '';
                 btnAtualizar.innerHTML = `<span>Atualizar</span> <span class="text-gray-400 font-medium whitespace-nowrap">| <span id="data-atualizacao">${quando}</span></span>`;
                 window.__processo_id_docia = null;
+                mostrarParar(false);
                 // Rede de segurança: se algum caminho de saída novo esquecer de soltar a
                 // trava síncrona, o botão ficaria morto até recarregar a página.
                 window.__iniciandoDocIA = false;
@@ -3752,6 +3802,7 @@ document.addEventListener('turbo:load', () => {
 
                     btnAtualizar.disabled = true;
                     progressoAlvo = 0;
+                    if (consoleBarra) consoleBarra.classList.remove('docia-barra--falha');
                     progressoExibido = 0;
                     pintarBotao(0);
                     if (consoleStatus) consoleStatus.innerText = 'Iniciando';
@@ -3836,6 +3887,7 @@ document.addEventListener('turbo:load', () => {
 
             function acompanhar(processoId) {
                 let falhasSeguidas = 0;
+                mostrarParar(true);
                 pollConsole = setInterval(() => {
                     fetch(`/dashboards/documentos-ia/api/status/${processoId}/`)
                         .then((r) => {
@@ -3873,6 +3925,15 @@ document.addEventListener('turbo:load', () => {
                                 if (window.recarregarDocumentosIA) window.recarregarDocumentosIA();
                             } else if (data.status === 'FALHA') {
                                 encerrarAcompanhamento();
+                                // Parada e falha fecham a barra em 100% VERMELHA: ela
+                                // ficava congelada no meio, em rosa, como se ainda rodasse.
+                                progressoAlvo = 100;
+                                progressoExibido = 100;
+                                if (consoleBarra) {
+                                    consoleBarra.style.width = '100%';
+                                    consoleBarra.classList.add('docia-barra--falha');
+                                }
+                                if (consoleTexto) consoleTexto.innerText = '100%';
                                 sessionStorage.removeItem('__processo_id_docia');
                                 window.__processo_id_docia = null;
                                 if (consoleStatus) consoleStatus.innerText = 'Falha';
