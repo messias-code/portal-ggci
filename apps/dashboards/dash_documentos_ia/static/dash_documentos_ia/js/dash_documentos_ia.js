@@ -1745,6 +1745,9 @@ document.addEventListener('turbo:load', () => {
                 // vez por célula: são até 5.000 linhas × 31 colunas.
                 const comFlag = colunas.map(
                     (nome) => COLUNAS_COM_FLAG.has(String(nome).toLowerCase().replace(/_/g, ' ')));
+                // O texto da IA é a única célula que quebra linha — ver `.docia-texto-longo`.
+                const quebraLinha = colunas.map(
+                    (nome) => String(nome).toLowerCase().replace(/_/g, ' ') === 'gemini inconsistencia');
 
                 const linhaHtml = (linha) =>
                     '<tr class="docia-tr hover:bg-pink-50/60 transition-colors group cursor-default">'
@@ -1752,7 +1755,9 @@ document.addEventListener('turbo:load', () => {
                         const texto = celula(valor);
                         const miolo = (comFlag[i] && texto !== '-')
                             ? `<span class="docia-flag docia-flag--${slugDaFlag(texto)}">${escaparHtml(rotuloDaFlag(texto))}</span>`
-                            : escaparHtml(texto);
+                            : quebraLinha[i]
+                                ? `<div class="docia-texto-longo">${escaparHtml(texto)}</div>`
+                                : escaparHtml(texto);
                         return `<td class="px-4 py-2.5 border-b border-gray-100 text-[13px] text-gray-700 group-hover:text-gray-900 transition-colors ${i === 0 ? 'font-medium' : ''}">${miolo}</td>`;
                     }).join('')
                     + '</tr>';

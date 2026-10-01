@@ -1977,6 +1977,24 @@ html[data-tela-cheia="1"] .docia-legenda__pct { width: 44px; }
 
 
 /* ==========================================================================
+   O TEXTO DA IA QUEBRA LINHA (coluna Gemini Inconsistencia)
+
+   A tabela é `whitespace-nowrap` com `width: max-content`: numa linha só, as
+   289 letras de um RIAF com cinco divergências esticavam a coluna a ~1.900px e
+   empurravam o resto da linha para fora da tela.
+
+   A LARGURA MÁXIMA FICA NA DIV, E NÃO NO <td>: o layout automático de tabela
+   ignora `max-width` em célula. 720px deixa o RIAF de cinco divergências em 3
+   linhas e os comuns em 1 — sem reticências, porque o texto inteiro é o que se
+   lê. Texto curto ("Sem inconsistências") segue do tamanho dele.
+   ========================================================================== */
+.docia-texto-longo {
+    white-space: normal;
+    max-width: 720px;
+}
+
+
+/* ==========================================================================
    O BALÃO DOS MOTIVOS
    ==========================================================================
    `Falso Válido` diz que a matemática discorda da IA, e nunca em QUE campo. Com
