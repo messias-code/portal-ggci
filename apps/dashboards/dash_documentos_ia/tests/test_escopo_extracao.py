@@ -338,3 +338,27 @@ class TestBarraDeProgresso(unittest.TestCase):
         fonte = inspect.getsource(extrator.executar)
         self.assertIn("[EXTRACAO_PROGRESSO]", fonte)
         self.assertIn("as_completed", fonte)
+
+
+class TestTetoDaAtualizacaoBruta(unittest.TestCase):
+    """
+    A bruta tira o filtro por lote e traz o semestre inteiro, como o menu de cobrança.
+    Com o teto dos filtrados, o RIAF bruto de 2026-1 falhou em todas as tentativas e o
+    ciclo terminava "CONCLUIDO" com o dash ainda no espelho D-1.
+    """
+
+    def test_bruta_ganha_o_orcamento_do_semestre_inteiro(self):
+        fonte = inspect.getsource(extrator.extrair_documento_scriptcase)
+        self.assertIn(
+            'baixa_semestre_inteiro = nome_menu == "Relatório de Contratos" or modo_bruto',
+            fonte)
+
+    def test_clique_no_xls_so_vale_com_a_exportacao_a_vista(self):
+        """
+        Com 16 mil linhas o clique no XLS chega antes do handler do thickbox e é
+        engolido sem erro (proc 200 e 201). Só conta com o popup ou o progresso à vista.
+        """
+        fonte = inspect.getsource(extrator.extrair_documento_scriptcase)
+        self.assertIn('frame.locator("#TB_window, #idBtnDown").first', fonte)
+        self.assertIn("exportacao_iniciada.wait_for(state=\"visible\"", fonte)
+        self.assertIn('raise Exception("Clique no XLS não abriu a exportação.")', fonte)
