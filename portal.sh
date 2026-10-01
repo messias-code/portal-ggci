@@ -1166,6 +1166,11 @@ echo \"$pass\"" > /tmp/askpass_portal.sh
     tmux new-session -d -s prod /bin/bash
     tmux send-keys -t prod "cd $PROD_DIR" C-m
     tmux send-keys -t prod ". venv/bin/activate && bash portal.sh" C-m
+    # `dados/processamento/` FICA. É ali que mora o relatório da última execução
+    # concluída, e é ele que a tela lê. Apagado no sync, o banco seguia apontando
+    # para uma `proc_N` que não existia mais e o Documentos IA abria zerado até a
+    # próxima atualização terminar (01/10/2026: a proc_37 sumiu no sync das 14:53).
+    # Não cresce sem limite: cada motor já mantém só as suas últimas pastas.
     sleep 3
     tmux send-keys -t prod "3" C-m
     
