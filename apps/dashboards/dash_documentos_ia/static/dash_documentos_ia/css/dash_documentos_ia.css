@@ -1977,6 +1977,24 @@ html[data-tela-cheia="1"] .docia-legenda__pct { width: 44px; }
 
 
 /* ==========================================================================
+   O TEXTO DA IA QUEBRA LINHA (coluna Gemini Inconsistencia)
+
+   A tabela é `whitespace-nowrap` com `width: max-content`: numa linha só, as
+   289 letras de um RIAF com cinco divergências esticavam a coluna a ~1.900px e
+   empurravam o resto da linha para fora da tela.
+
+   A LARGURA MÁXIMA FICA NA DIV, E NÃO NO <td>: o layout automático de tabela
+   ignora `max-width` em célula. 720px deixa o RIAF de cinco divergências em 3
+   linhas e os comuns em 1 — sem reticências, porque o texto inteiro é o que se
+   lê. Texto curto ("Sem inconsistências") segue do tamanho dele.
+   ========================================================================== */
+.docia-texto-longo {
+    white-space: normal;
+    max-width: 720px;
+}
+
+
+/* ==========================================================================
    O BALÃO DOS MOTIVOS
    ==========================================================================
    `Falso Válido` diz que a matemática discorda da IA, e nunca em QUE campo. Com
@@ -4657,3 +4675,47 @@ html[data-entrada="mouse"] .tema-toggle:focus-visible,
 html[data-entrada="mouse"] .area-trabalho :focus-visible {
     outline: none;
 }
+
+
+/* ==========================================================================
+   O PARAR DO CONSOLE
+
+   Classe própria, e não utilitárias: no eleitoral o `console.css` reaponta
+   `.console-ggci .text-red-600` com especificidade maior que a de qualquer
+   `hover:` do Tailwind, e o texto ficaria vermelho sobre o fundo vermelho do
+   hover. Só aparece com uma execução no ar — ver `mostrarParar` no JS.
+   ========================================================================== */
+.docia-console-parar {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    height: 2rem;
+    padding: 0 0.75rem;
+    border: 1px solid #FECACA;
+    border-radius: 0.5rem;
+    background-color: #FEF2F2;
+    color: #DC2626;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: background-color 150ms, color 150ms, border-color 150ms;
+}
+.docia-console-parar:hover:not(:disabled) {
+    background-color: #DC2626;
+    border-color: #DC2626;
+    color: #FFFFFF;
+}
+.docia-console-parar:disabled { opacity: 0.6; cursor: wait; }
+/* O `display` acima ganharia do `[hidden]` do navegador. */
+.docia-console-parar[hidden] { display: none; }
+.docia-console-parar:focus-visible { outline: 2px solid #DC2626; outline-offset: 2px; }
+
+/* Barra do console depois de uma parada ou falha: cheia e vermelha. Tira o
+   degradê (`background-image`) em vez de só trocar a cor, senão ele cobre. */
+.console-ggci__barra.docia-barra--falha {
+    background-image: none;
+    background-color: #DC2626;
+}
+/* O "100%" é cinza sobre o trilho claro; sobre o vermelho cheio some. */
+.console-ggci__barra.docia-barra--falha + #console-progress-text { color: #FFFFFF; }

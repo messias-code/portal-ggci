@@ -163,7 +163,8 @@ class TestConfiguracaoDaAtualizacao(BaseTelas):
 
         html = self.cliente.get(reverse("dash_documentos_ia")).content.decode()
         for elemento in ["modal-config", "btn-config-atualizacao", "btn-config-aplicar",
-                         "btn-config-cancelar", "config-contador", "selo-config"]:
+                         "btn-config-cancelar", "btn-config-limpar", "config-contador",
+                         "selo-config"]:
             with self.subTest(elemento=elemento):
                 self.assertIn('id="%s"' % elemento, html)
 

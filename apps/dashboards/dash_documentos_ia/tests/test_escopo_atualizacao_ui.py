@@ -200,3 +200,93 @@ class ConsoleNaoDuplicaTests(SimpleTestCase):
         clique = self.js.split("btnAtualizar.addEventListener('click'")[1][:600]
         self.assertIn('if (window.__iniciandoDocIA) { return; }', clique)
 
+
+
+class SoOsDocumentosAjustadosTests(SimpleTestCase):
+    """
+    "Bruta" só no RIAF de 2026-1 disparava os cinco documentos: `montarConfiguracao`
+    mandava `DOCUMENTOS_DO_MOTOR` inteiro em `documentos`, e o motor extraía contrato,
+    histórico, benefício e financiamento junto, no modo inteligente.
+    """
+
+    def setUp(self):
+        js = os.path.join(PROJECT_ROOT, 'apps', 'dashboards', 'dash_documentos_ia',
+                          'static', 'dash_documentos_ia', 'js', 'dash_documentos_ia.js')
+        self.montar = _ler(js).split('const montarConfiguracao = () => {')[1][:2500]
+
+    def test_documentos_sai_so_do_que_foi_ajustado(self):
+        self.assertNotIn('documentos: DOCUMENTOS_DO_MOTOR', self.montar)
+        self.assertIn('bruta.some((b) => b.documento === doc)', self.montar)
+        self.assertIn('forcadas.some((f) => f.documento === doc)', self.montar)
+
+
+class VoltarAoPadraoTests(SimpleTestCase):
+    """
+    Desmarcar tudo e aplicar era recusado ("É obrigatório selecionar o período..."), e o
+    Cancelar mantinha o escopo anterior: depois de uma atualização bruta não havia como
+    voltar à atualização padrão sem recarregar a página.
+    """
+
+    def setUp(self):
+        js = os.path.join(PROJECT_ROOT, 'apps', 'dashboards', 'dash_documentos_ia',
+                          'static', 'dash_documentos_ia', 'js', 'dash_documentos_ia.js')
+        self.js = _ler(js)
+        self.montar = self.js.split('const montarConfiguracao = () => {')[1][:2500]
+
+    def test_nada_marcado_aplica_o_padrao(self):
+        self.assertNotIn('É obrigatório selecionar o período', self.montar)
+        self.assertIn('if (!temPeriodo && !temDoc) {\n                        return {};', self.montar)
+
+    def test_limpar_zera_o_formulario(self):
+        limpar = self.js.split("getElementById('btn-config-limpar').addEventListener")[1][:1200]
+        self.assertIn('caixasPeriodo.forEach((c) => (c.checked = false))', limpar)
+        self.assertIn("botao.classList.remove('is-ativo')", limpar)
+        self.assertIn("camposInscricoes.forEach((campo) => (campo.value = ''))", limpar)
+
+
+class PararNoConsoleTests(SimpleTestCase):
+    """
+    O único jeito de abortar era sair da página (o `pagehide` manda o Parar por
+    sendBeacon). O console ganhou um Parar que só aparece com execução no ar.
+    """
+
+    def setUp(self):
+        base = os.path.join(PROJECT_ROOT, 'apps', 'dashboards', 'dash_documentos_ia')
+        self.js = _ler(os.path.join(base, 'static', 'dash_documentos_ia', 'js', 'dash_documentos_ia.js'))
+        self.html = _ler(os.path.join(base, 'templates', 'dash_documentos_ia', 'index.html'))
+
+    def test_o_botao_nasce_escondido(self):
+        self.assertIn('id="btn-parar-console" class="docia-console-parar" hidden', self.html)
+
+    def test_aparece_ao_acompanhar_e_some_ao_restaurar(self):
+        acompanhar = self.js.split('function acompanhar(processoId) {')[1][:200]
+        self.assertIn('mostrarParar(true)', acompanhar)
+        restaurar = self.js.split('function restaurarBotaoAtualizar() {')[1][:600]
+        self.assertIn('mostrarParar(false)', restaurar)
+
+    def test_o_clique_confirma_e_chama_a_view_de_parar(self):
+        clique = self.js.split("btnPararConsole.addEventListener('click'")[1][:1200]
+        self.assertIn('confirm(', clique)
+        self.assertIn('/dashboards/documentos-ia/api/parar/${id}/', clique)
+
+    def test_hidden_ganha_do_display_da_classe(self):
+        self.assertIn('.docia-console-parar[hidden] { display: none; }', _ler(CSS_CLARO))
+
+    def test_o_parar_tem_contraparte_escura(self):
+        self.assertIn('html[data-tema="eleitoral"] .docia-console-parar', _ler(CSS_ESCURO))
+
+    def test_falha_fecha_a_barra_em_vermelho(self):
+        falha = self.js.split("} else if (data.status === 'FALHA') {")[1][:700]
+        self.assertIn("consoleBarra.style.width = '100%'", falha)
+        self.assertIn("consoleBarra.classList.add('docia-barra--falha')", falha)
+        # E a próxima execução volta ao degradê.
+        self.assertIn("consoleBarra.classList.remove('docia-barra--falha')", self.js)
+        self.assertIn('html[data-tema="eleitoral"] .console-ggci__barra.docia-barra--falha',
+                      _ler(CSS_ESCURO))
+
+    def test_aviso_de_abortado_sai_em_vermelho_no_log(self):
+        formatar = self.js.split('function formatarLog(bruto) {')[1]
+        self.assertIn('/🚨 \\[SISTEMA\\] (Processo abortado.*)/g', formatar)
+        # Tem que vir antes de o 🚨 ser apagado, senão o padrão nunca casa.
+        self.assertLess(formatar.index('Processo abortado'),
+                        formatar.index(".replace(/🚨/g, '')"))

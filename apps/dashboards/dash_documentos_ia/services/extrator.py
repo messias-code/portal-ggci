@@ -417,7 +417,16 @@ def extrair_documento_scriptcase(tarefa, doc_config, semestre_str, is_pendentes=
                     # BENEFÍCIOS em 11/08 — por isso ele ganha um orçamento próprio, e não o
                     # dos outros. Continua sendo um teto, não uma espera indefinida: passou
                     # disso, recarregar e tentar de novo sai mais barato que insistir.
-                    baixa_semestre_inteiro = nome_menu == "Relatório de Contratos"
+                    #
+                    # A ATUALIZAÇÃO BRUTA TEM O MESMO PERFIL: sem lista no filtro por lote,
+                    # ela também traz o semestre inteiro. Até 29/09/2026 caía no teto dos
+                    # filtrados, e o RIAF bruto de 2026-1 falhou nas 12 tentativas das proc
+                    # 197 e 199 — o ciclo terminava "CONCLUIDO" e o dash seguia com o D-1.
+                    # O teto da cobrança basta: medido com print a print em 29/09/2026, o
+                    # Análise do RIAF 2026-1 bruto (16.722 linhas) liberou o Baixar 142s
+                    # depois do OK. O que estourava o teto era a exportação que nunca
+                    # começou — ver o clique no XLS logo abaixo.
+                    baixa_semestre_inteiro = nome_menu == "Relatório de Contratos" or modo_bruto
 
                     TETO_GERACAO_S = 150 if baixa_semestre_inteiro else 45      # laço de espera do botão de download
                     TETO_BOTAO_MS = 60000 if baixa_semestre_inteiro else 30000  # confirmação final de que ele está visível
@@ -456,14 +465,32 @@ def extrair_documento_scriptcase(tarefa, doc_config, semestre_str, is_pendentes=
                                 print(f"{tag} ❌ Falha no botão Exportar (Timeout).")
                             return
 
-                        btn_export.click()
-
                         # Usa force=True porque em grids muito pequenos (ex: 2 linhas)
                         # o menu suspenso pode ser cortado pelo limite do iframe, tornando-o
                         # "invisível" para as verificações estritas do Playwright.
                         link_excel = frame.locator("a#xls_top, a#xls_bot").first
-                        link_excel.wait_for(state="attached", timeout=5000)
-                        link_excel.click(force=True)
+                        # O CLIQUE NO XLS PODE SER ENGOLIDO. O link é um thickbox: quem abre
+                        # o popup de opções é um handler que o ScriptCase liga só depois de
+                        # montar o grid, e com o semestre inteiro (16 mil linhas) o botão
+                        # Exportação aparece antes disso. O clique cedo não dá erro nem
+                        # navega — nada acontece, e o laço abaixo esperava um Baixar de uma
+                        # exportação que nunca começou (proc 200 e 201; as sondas de
+                        # 29/09/2026 flagraram a tela parada 10 min no grid). Por isso a
+                        # exportação só conta como iniciada com o popup (ou a tela de
+                        # progresso) à vista; senão, clica de novo.
+                        exportacao_iniciada = frame.locator("#TB_window, #idBtnDown").first
+                        for tentativa_xls in range(1, 4):
+                            btn_export.click()
+                            link_excel.wait_for(state="attached", timeout=5000)
+                            link_excel.click(force=True)
+                            try:
+                                exportacao_iniciada.wait_for(state="visible", timeout=5000)
+                                break
+                            except Exception:
+                                print(f"{tag} ⚠️ Clique no XLS não abriu a exportação ({tentativa_xls}/3).")
+                        else:
+                            diagnostico.capturar(page, "xls_nao_abriu_exportacao", tag)
+                            raise Exception("Clique no XLS não abriu a exportação.")
 
                         popup = frame.frame_locator("iframe[name^='TB_iframeContent']")
                         botao_ok = popup.locator("#bok")
@@ -666,6 +693,36 @@ def extrair_ano_pagamento(ano_str, pasta_pagamentos):
 # ==========================================
 # (Removidos - substituídos por um pool global único na função executar)
 
+def dono_do_lock_morto(caminho_lock):
+    """
+    O QUE FAZ: Diz se o processo que criou o lock do Parquet já não existe.
+    POR QUÊ EXISTE: o Parar (e o recarregar da página, que chama o Parar por
+      sendBeacon) mata o motor com `pkill` (SIGTERM), e o `finally` que apaga o lock não
+      roda. A execução seguinte esperava o lock órfão envelhecer 10 min, repetindo
+      "Aguardando outro processo extrair" sem processo nenhum vivo — caso de 01/10/2026,
+      a #219 parada nos locks de contrato e financiamento de uma execução abortada.
+      Mesma correção que o analise_ia recebeu em 25/09/2026.
+    RETORNO: True só quando o PID gravado no lock não está vivo. Lock no formato antigo
+      (só o timestamp) devolve False e segue a regra de idade.
+    """
+    try:
+        with open(caminho_lock) as f_lock:
+            pid = int(f_lock.readline().strip())
+    except (OSError, ValueError):
+        return False
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return True
+    except PermissionError:
+        return False
+    # Zumbi já morreu, só não foi recolhido pelo pai.
+    try:
+        with open(f"/proc/{pid}/stat") as f_stat:
+            return f_stat.read().rsplit(")", 1)[1].split()[0] == "Z"
+    except (OSError, IndexError):
+        return False
+
 def atualizar_cache_parquets(docs_selecionados=None):
     """
     O QUE FAZ: Replica em Parquet local as tabelas `PY_ggci_*` do banco SIBU.
@@ -802,6 +859,13 @@ def atualizar_cache_parquets(docs_selecionados=None):
                         except OSError:
                             pass
                         continue
+                    if dono_do_lock_morto(caminho_lock):
+                        print(f"[EXTRATOR   | INFO          | FILE LOCK  ] Lock da {nome_tabela} é de um processo encerrado. Removendo.")
+                        try:
+                            os.remove(caminho_lock)
+                        except OSError:
+                            pass
+                        continue
                         
                     print(f"[EXTRATOR   | INFO          | FILE LOCK  ] Aguardando outro processo extrair {nome_tabela}...")
                     time.sleep(5)
@@ -815,7 +879,7 @@ def atualizar_cache_parquets(docs_selecionados=None):
             # Adquire Lock
             try:
                 with open(caminho_lock, "w") as f_lock:
-                    f_lock.write(str(time.time()))
+                    f_lock.write(f"{os.getpid()}\n{time.time()}")
             except Exception as e:
                 print(f"⚠️ Erro ao criar lock para {nome_tabela}: {e}")
                 return

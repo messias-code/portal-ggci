@@ -1111,3 +1111,22 @@ html[data-tema="eleitoral"] .docia-card-doc .text-red-500,
 html[data-tema="eleitoral"] #ia-vista-performance .text-red-500 {
     color: #F2937D;
 }
+
+/* O Parar do console: mesmos tokens de erro que o `console.css` usa no log. */
+html[data-tema="eleitoral"] .docia-console-parar {
+    border-color: rgba(242, 147, 125, 0.30);
+    background-color: rgba(242, 147, 125, 0.12);
+    color: var(--tema-status-erro);
+}
+html[data-tema="eleitoral"] .docia-console-parar:hover:not(:disabled) {
+    background-color: var(--tema-solido-erro);
+    border-color: var(--tema-solido-erro);
+    color: #FFFFFF;
+}
+html[data-tema="eleitoral"] .docia-console-parar:focus-visible { outline-color: var(--tema-status-erro); }
+
+/* O `console.css` repõe o degradê teal→índigo com especificidade maior. */
+html[data-tema="eleitoral"] .console-ggci__barra.docia-barra--falha {
+    background-image: none;
+    background-color: var(--tema-solido-erro);
+}
