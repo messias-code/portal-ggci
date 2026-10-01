@@ -49,6 +49,47 @@ if os.path.exists(STATE_FILE):
     except Exception:
         state = {} # Se o arquivo estiver corrompido, recomeça do zero
 
+# ------------------------------------------------------------------------------
+# CICLOS DIÁRIOS — PROD À MEIA-NOITE, DEV ÀS 06:00
+# ------------------------------------------------------------------------------
+# Os quatro ciclos (Análise IA e Documentos IA, nos dois ambientes) saíam no
+# mesmo segundo, 00:01:28, e materializavam os espelhos PY_ggci_* no SIBU ao
+# mesmo tempo. O MySQL derrubava as conexões ("MySQL Connection not
+# available"), os Parquets base não saíam e o Documentos IA de produção abortou
+# na etapa GGCI em 29/09, 30/09 e 01/10/2026 — o dev sobreviveu às mesmas
+# quedas por sorte. Separados, cada ambiente tem o SIBU só para si.
+#
+# O histórico de como esta etapa chegou aqui está na ETAPA 4, lá embaixo.
+CICLOS_DIARIOS = (
+    ("IA",           "apps/automacoes/analise_ia",        "cron_analise_ia"),
+    ("DOCUMENTOS IA", "apps/dashboards/dash_documentos_ia", "cron_documentos_ia"),
+)
+
+def disparar_ciclos(ambientes):
+    for rotulo, pasta in ambientes:
+        for nome_ciclo, caminho_app, comando in CICLOS_DIARIOS:
+            os.makedirs(f"{pasta}/{caminho_app}/cron", exist_ok=True)
+            log_resumo = f"{pasta}/{caminho_app}/cron/{comando.replace('cron_', '')}_{rotulo}.log"
+
+            # start_new_session desprende o filho da sessão do cron: o ciclo leva
+            # dezenas de minutos e não pode cair junto com este script.
+            cmd = (
+                f"cd {pasta} && "
+                f"if [ -f 'venv/bin/activate' ]; then source venv/bin/activate; fi && "
+                f"python3 -u manage.py {comando} --uma-vez-por-dia >> {log_resumo} 2>&1"
+            )
+            subprocess.Popen(cmd, shell=True, executable="/bin/bash", start_new_session=True)
+            print(f"🚀 Ciclo de {nome_ciclo} acionado em {rotulo.upper()} (resumo em {log_resumo})")
+
+
+# Às 06:00 o cron chama com `--ciclos-dev`: só os ciclos do DEV, sem tocar em
+# servidor nenhum. Sai aqui, ANTES da limpeza de sessões do tmux logo abaixo,
+# que derrubaria a produção no meio do expediente.
+if "--ciclos-dev" in sys.argv:
+    print(f"[{datetime.datetime.now():%Y-%m-%d %H:%M:%S}] Ciclos diários do DEV")
+    disparar_ciclos((("dev", DEV_DIR),))
+    sys.exit(0)
+
 current_date = datetime.date.today().isoformat()
 now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -155,27 +196,10 @@ print("✅ AMBOS OS SERVIDORES ESTÃO ONLINE E BLINDADOS FISICAMENTE!\n")
 # atualização está em materializar os 16 espelhos PY_ggci_* no SIBU (~5 min),
 # e esses espelhos são cache de um dia. Rodando de madrugada, o funcionário que
 # clica em "Atualizar" de manhã já encontra o cache pronto.
-CICLOS_DIARIOS = (
-    ("IA",           "apps/automacoes/analise_ia",        "cron_analise_ia"),
-    ("DOCUMENTOS IA", "apps/dashboards/dash_documentos_ia", "cron_documentos_ia"),
-)
-
+# A lista `CICLOS_DIARIOS` e o disparo moram em `disparar_ciclos`, lá em cima.
 print("Verificando a inteligência artificial...")
-
-for rotulo, pasta in (("prod", PROD_DIR), ("dev", DEV_DIR)):
-    for nome_ciclo, caminho_app, comando in CICLOS_DIARIOS:
-        os.makedirs(f"{pasta}/{caminho_app}/cron", exist_ok=True)
-        log_resumo = f"{pasta}/{caminho_app}/cron/{comando.replace('cron_', '')}_{rotulo}.log"
-
-        # start_new_session desprende o filho da sessão do cron: o ciclo leva
-        # dezenas de minutos e não pode cair junto com este script.
-        cmd = (
-            f"cd {pasta} && "
-            f"if [ -f 'venv/bin/activate' ]; then source venv/bin/activate; fi && "
-            f"python3 -u manage.py {comando} --uma-vez-por-dia >> {log_resumo} 2>&1"
-        )
-        subprocess.Popen(cmd, shell=True, executable="/bin/bash", start_new_session=True)
-        print(f"🚀 Ciclo de {nome_ciclo} acionado em {rotulo.upper()} (resumo em {log_resumo})")
+# Só os da PRODUÇÃO: os do DEV vêm às 06:00 — ver `disparar_ciclos`.
+disparar_ciclos((("prod", PROD_DIR),))
 
 # ------------------------------------------------------------------------------
 # INSTRUÇÕES FINAIS PARA O USUÁRIO

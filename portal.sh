@@ -1144,6 +1144,13 @@ echo \"$pass\"" > /tmp/askpass_portal.sh
     # novo do git pull acima — é o momento certo.
     install_watchdog
 
+    # Mesmo motivo para o cron: o crontab guarda uma CÓPIA de scripts/cron.conf,
+    # e um horário novo (os ciclos do DEV às 06:00) chegaria como arquivo e nunca
+    # rodaria. Reinstalar é idempotente.
+    if [ -f "scripts/cron.conf" ]; then
+        run_with_stream "crontab scripts/cron.conf" "Registrando scripts/cron.conf no crontab do Linux"
+    fi
+
     # Sincroniza as credenciais: copia o .env do DEV (fonte da verdade) para PROD,
     # ajustando apenas os valores que são diferentes por natureza entre os ambientes.
     log_msg "info" "Sincronizando credenciais do DEV para PRODUÇÃO..."
@@ -1159,18 +1166,18 @@ echo \"$pass\"" > /tmp/askpass_portal.sh
     
     log_msg "ok" "Produção atualizada com sucesso!"
     
-    log_msg "info" "Limpando as pastas 'dados' e 'logs' de todos os aplicativos em Produção..."
-    run_with_stream "find \"$PROD_DIR/apps\" -type d \\( -name \"dados\" -o -name \"logs\" \\) | xargs -I {} sh -c 'rm -rf \"{}\"/* 2>/dev/null || true'" "Apagando conteúdos temporários e logs"
-    
-    log_msg "info" "Religando o Tmux de Produção do zero automaticamente..."
-    tmux new-session -d -s prod /bin/bash
-    tmux send-keys -t prod "cd $PROD_DIR" C-m
-    tmux send-keys -t prod ". venv/bin/activate && bash portal.sh" C-m
     # `dados/processamento/` FICA. É ali que mora o relatório da última execução
     # concluída, e é ele que a tela lê. Apagado no sync, o banco seguia apontando
     # para uma `proc_N` que não existia mais e o Documentos IA abria zerado até a
     # próxima atualização terminar (01/10/2026: a proc_37 sumiu no sync das 14:53).
     # Não cresce sem limite: cada motor já mantém só as suas últimas pastas.
+    log_msg "info" "Limpando as pastas 'dados' e 'logs' de todos os aplicativos em Produção..."
+    run_with_stream "find \"$PROD_DIR/apps\" -mindepth 1 \\( -path '*/dados/*' -o -path '*/logs/*' \\) -prune ! -path '*/dados/processamento' ! -name '.*' -exec rm -rf {} + 2>/dev/null || true" "Apagando conteúdos temporários e logs (preservando os relatórios processados)"
+    
+    log_msg "info" "Religando o Tmux de Produção do zero automaticamente..."
+    tmux new-session -d -s prod /bin/bash
+    tmux send-keys -t prod "cd $PROD_DIR" C-m
+    tmux send-keys -t prod ". venv/bin/activate && bash portal.sh" C-m
     sleep 3
     tmux send-keys -t prod "3" C-m
     
