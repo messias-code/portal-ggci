@@ -200,3 +200,21 @@ class ConsoleNaoDuplicaTests(SimpleTestCase):
         clique = self.js.split("btnAtualizar.addEventListener('click'")[1][:600]
         self.assertIn('if (window.__iniciandoDocIA) { return; }', clique)
 
+
+
+class SoOsDocumentosAjustadosTests(SimpleTestCase):
+    """
+    "Bruta" só no RIAF de 2026-1 disparava os cinco documentos: `montarConfiguracao`
+    mandava `DOCUMENTOS_DO_MOTOR` inteiro em `documentos`, e o motor extraía contrato,
+    histórico, benefício e financiamento junto, no modo inteligente.
+    """
+
+    def setUp(self):
+        js = os.path.join(PROJECT_ROOT, 'apps', 'dashboards', 'dash_documentos_ia',
+                          'static', 'dash_documentos_ia', 'js', 'dash_documentos_ia.js')
+        self.montar = _ler(js).split('const montarConfiguracao = () => {')[1][:2500]
+
+    def test_documentos_sai_so_do_que_foi_ajustado(self):
+        self.assertNotIn('documentos: DOCUMENTOS_DO_MOTOR', self.montar)
+        self.assertIn('bruta.some((b) => b.documento === doc)', self.montar)
+        self.assertIn('forcadas.some((f) => f.documento === doc)', self.montar)

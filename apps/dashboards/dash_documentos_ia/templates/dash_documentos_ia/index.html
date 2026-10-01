@@ -2030,15 +2030,11 @@
 
         DUAS DECISÕES, E SÓ DUAS:
 
-          1. O PERÍODO, que é global. Diferente do analise_ia, aqui não se atualiza "só
-             os RIAF": o dashboard compara os cinco documentos entre si, e trazer um sem
-             os outros deixaria a comparação torta. Os cinco vêm sempre; o que se escolhe
-             é de QUAIS semestres.
+          1. O PERÍODO, que é global: vale para todo documento que entrar.
 
-          2. COMO cada documento vem. O padrão é a atualização inteligente — pedir ao ScriptCase
-             só o que o espelho ainda não tem. Por documento dá para trocar isso por
-             "bruta" (o período inteiro, ignorando o espelho) ou por uma lista de
-             inscrições, quando o reprocessamento foi focado.
+          2. QUAIS documentos vêm, e COMO. Só desce o documento marcado como "bruta" (o
+             período inteiro, ignorando o espelho) ou com uma lista de inscrições. Os
+             outros ficam como estão no espelho D-1 — a tela continua mostrando os cinco.
     -->
     <div id="modal-config" class="area-trabalho hidden items-center justify-center p-4" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1150; background-color: rgba(15, 23, 42, 0.45); backdrop-filter: blur(5px); display: none;">
         <div class="cfgx">
@@ -2059,7 +2055,7 @@
                         <span class="cfgx__passo">1</span>
                         <span class="cfgx__secao-texto">
                             <strong>Semestre</strong>
-                            <span>Quais semestres entram nesta atualização. Vale para os cinco documentos.</span>
+                            <span>Quais semestres entram nesta atualização. Vale para todos os documentos marcados abaixo.</span>
                         </span>
                         <button type="button" class="cfgx__mini" id="btn-config-periodos">todos</button>
                     </div>
@@ -2100,7 +2096,7 @@
                         <span class="cfgx__passo">2</span>
                         <span class="cfgx__secao-texto">
                             <strong>Bot de extração inteligente</strong>
-                            <span>Sem marcar nada, todos usarão a atualização inteligente — baixando apenas o que falta no espelho.</span>
+                            <span>Só os documentos marcados são extraídos. Os demais ficam como estão no espelho do banco.</span>
                         </span>
                     </div>
                     <div class="cfgx__docs">

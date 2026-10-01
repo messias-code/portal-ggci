@@ -3179,15 +3179,16 @@ document.addEventListener('turbo:load', () => {
                madrugada só para o número virar de "Não Processado" para "Processado" é
                tempo perdido. Aqui se decide duas coisas, e só duas:
 
-                 1. O PERÍODO, que é global. Diferente do analise_ia, aqui não se
-                    atualiza "só os RIAF": o dashboard compara os cinco documentos entre
-                    si, e trazer um sem os outros deixaria a comparação torta. Os cinco
-                    vêm sempre; o que se escolhe é de QUAIS semestres.
+                 1. O PERÍODO, que é global: vale para todo documento que entrar.
 
-                 2. COMO cada documento vem. O padrão é a atualização inteligente — pedir ao
-                    ScriptCase só o que o espelho ainda não tem. Por documento dá para
-                    trocar por "bruta" (o período inteiro, ignorando o espelho) ou por
-                    uma lista de inscrições, quando o reprocessamento foi focado.
+                 2. QUAIS documentos vêm, e COMO. Só desce o documento marcado como
+                    "bruta" (o período inteiro, ignorando o espelho) ou com uma lista de
+                    inscrições. Marcar "bruta" só no RIAF extrai só o RIAF — os outros
+                    quatro não passam pelo ScriptCase.
+
+               O RECORTE É SÓ DA EXTRAÇÃO. As regras continuam rodando sobre o universo
+               inteiro (ver `executar_doc_ia`), então os documentos fora do recorte não
+               somem da tela: aparecem como estão no espelho D-1 do banco.
 
                O ESTADO APLICADO vive em `window.__configDocIA` e só é lido no clique em
                "Atualizar". Configurar e atualizar são gestos separados de propósito: a
@@ -3345,8 +3346,9 @@ document.addEventListener('turbo:load', () => {
                  * FORMATO: o mesmo do analise_ia, porque o extrator é da mesma família —
                  *   `documentos`, `periodos_por_doc`, `processados_hoje` e
                  *   `atualizacao_bruta` (ver `escopo_da_execucao` no comando).
-                 * OS CINCO DOCUMENTOS VÃO SEMPRE: o que a tela escolhe é o período e o
-                 *   modo de cada um, nunca "só este documento".
+                 * SÓ OS DOCUMENTOS AJUSTADOS VÃO: até 29/09/2026 os cinco iam sempre, e
+                 *   "bruta" só no RIAF de 2026-1 disparava contrato, histórico, benefício
+                 *   e financiamento junto, no modo inteligente.
                  */
                 const montarConfiguracao = () => {
                     const semestres = periodosMarcados();
@@ -3377,13 +3379,16 @@ document.addEventListener('turbo:load', () => {
                         return { erro: 'Você configurou o Bot de extração inteligente, mas não selecionou o período.' };
                     }
 
+                    const documentos = DOCUMENTOS_DO_MOTOR.filter((doc) =>
+                        bruta.some((b) => b.documento === doc)
+                        || forcadas.some((f) => f.documento === doc));
                     const periodosPorDoc = {};
-                    DOCUMENTOS_DO_MOTOR.forEach((doc) => {
+                    documentos.forEach((doc) => {
                         periodosPorDoc[doc] = semestres;
                     });
 
                     return {
-                        documentos: DOCUMENTOS_DO_MOTOR,
+                        documentos: documentos,
                         periodos_por_doc: periodosPorDoc,
                         processados_hoje: forcadas,
                         atualizacao_bruta: bruta,
