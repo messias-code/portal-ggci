@@ -2818,6 +2818,23 @@ document.addEventListener('turbo:load', () => {
                 const optSelecionada = Array.from(btnsOrdemOpt).find(b => b.dataset.valor === window.__ordemIES.chave);
                 if (optSelecionada && textoOrdemIES) {
                     textoOrdemIES.textContent = optSelecionada.textContent;
+
+                    btnsOrdemOpt.forEach(b => {
+                        const ehAtivo = b.dataset.valor === window.__ordemIES.chave;
+                        if (ehAtivo) {
+                            b.classList.remove('text-gray-700', 'bg-white', 'bg-gray-50');
+                            b.classList.add('bg-[#6B007B]', 'text-white');
+                        } else {
+                            b.classList.remove('bg-[#6B007B]', 'text-white');
+                            // Reseta o zebrado alternado
+                            b.classList.add('text-gray-700');
+                            if (b.dataset.valor === 'Processados' || b.dataset.valor === 'NaoEnviados' || b.dataset.valor === 'InadNaoProc') {
+                                b.classList.add('bg-gray-50');
+                            } else {
+                                b.classList.add('bg-white');
+                            }
+                        }
+                    });
                 }
                 radiosOrdemDirIES.forEach((radio) => {
                     if (radio.value === (window.__ordemIES.desc ? 'desc' : 'asc')) {
