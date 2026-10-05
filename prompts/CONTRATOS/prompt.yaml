@@ -65,7 +65,7 @@ regras_gerais:
       inconsistencias.conteudo DEVE ser ''Sem inconsistências''.'
   - 'REGRA DE BLOQUEIO ABSOLUTO: Erro de CPF ou Tipo de Documento (Nivel Critico) interrompe todas as demais validacoes e invalida automaticamente o contrato.'
   - 'ORDEM DE EXECUCAO: CPF -> Tipo de Documento -> Semestre -> Mensalidades.'
-  - 'REGRA DE CURTO-CIRCUITO PARA VALORES AUSENTES: Se qualquer mensalidade (integral ou com desconto) não for localizada no contrato (resultado = string vazia ''''), É ESTRITAMENTE PROIBIDO realizar comparações matemáticas com o valor do sistema. Aborte a validação matemática e aplique IMEDIATAMENTE a mensagem de "não localizado" correspondente. JAMAIS classifique um valor ausente (vazio) como MAIOR ou MENOR que o sistema.'
+  - 'REGRA DE CURTO-CIRCUITO PARA VALORES AUSENTES: Se qualquer mensalidade (integral ou com desconto) não for localizada no contrato (resultado = string vazia ''''), É ESTRITAMENTE PROIBIDO realizar comparações matemáticas com o valor do sistema. Aborte a validação matemática e aplique IMEDIATAMENTE a mensagem de "não localizado" correspondente. JAMAIS classifique um valor ausente (vazio) como divergente do sistema.'
 
 # TIPAGEM DE DADOS (CONTRATO COERCITIVO)
 contrato_tipagem:
@@ -184,7 +184,7 @@ logica_de_campo:
       - 'Marque valido = 0.'
       - 'Status geral DEVE ser invalido.'
       - 'Registre erro de Nivel Medio no catalogo ("Valor da mensalidade sem desconto não localizado").'
-    trava_comparacao_ausente: 'CURTO-CIRCUITO: Se o valor extraído for vazio (''''), CANCELE a validação matemática abaixo. NÃO compare com o sistema. JAMAIS classifique como MAIOR ou MENOR que o sistema.'
+    trava_comparacao_ausente: 'CURTO-CIRCUITO: Se o valor extraído for vazio (''''), CANCELE a validação matemática abaixo. NÃO compare com o sistema. JAMAIS classifique como divergente do sistema.'
     validacao:
       - 'NORMALIZACAO DECIMAL: Antes de comparar, TRUNQUE o valor do contrato para 2 casas decimais (ignore da 3ª casa em diante).'
       - 'Calcule a diferenca absoluta: abs(ValorContratoTruncado - ValorEsperado).'
@@ -206,7 +206,7 @@ logica_de_campo:
       - 'Marque valido = 0.'
       - 'NAO invalide o status geral.'
       - 'Registre erro de Nivel Baixo no catalogo ("Valor da mensalidade com desconto não localizado").'
-    trava_comparacao_ausente: 'CURTO-CIRCUITO: Se o valor extraído for vazio (''''), CANCELE a validação matemática abaixo. NÃO compare com o sistema. JAMAIS classifique como MAIOR ou MENOR que o sistema.'
+    trava_comparacao_ausente: 'CURTO-CIRCUITO: Se o valor extraído for vazio (''''), CANCELE a validação matemática abaixo. NÃO compare com o sistema. JAMAIS classifique como divergente do sistema.'
     validacao: 'Mesma regra: aplique TRUNCAGEM de 2 casas antes da comparação. Sem tolerancia.'
     impacto_status: 'Erro aqui NAO invalida o status geral.'
     em_caso_de_erro: 'Busque no Catalogo (Nivel Baixo) a mensagem adequada.'
@@ -216,18 +216,18 @@ catalogo_erros:
   nivel_critico:
     - 'Tipo de Documento inválido'
     - 'CPF não localizado'
-    - 'CPF diverge do sistema'
+    - 'CPF diverge da coleta'
   nivel_alto:
     - 'Semestre não localizado'
-    - 'Semestre diverge do sistema'
+    - 'Semestre diverge da coleta'
   nivel_medio:
     - 'Valor da mensalidade sem desconto não localizado'
-    - 'Valor da mensalidade sem desconto é MENOR que o sistema'
-    - 'Valor da mensalidade sem desconto é MAIOR que o sistema'
+    - 'Valor da mensalidade sem desconto é MENOR que a coleta'
+    - 'Valor da mensalidade sem desconto é MAIOR que a coleta'
   nivel_baixo:
     - 'Valor da mensalidade com desconto não localizado'
-    - 'Valor da mensalidade com desconto é MENOR que o sistema'
-    - 'Valor da mensalidade com desconto é MAIOR que o sistema'
+    - 'Valor da mensalidade com desconto é MENOR que a coleta'
+    - 'Valor da mensalidade com desconto é MAIOR que a coleta'
 
 # ESTRUTURA JSON DE SAIDA
 saida_json:
@@ -257,7 +257,7 @@ exemplos_saida:
     mensalidade_sem_desconto: { conteudo: '', valido: 0 }
     mensalidade_com_desconto: { conteudo: '', valido: 0 }
     semestre: { conteudo: '', valido: 0 }
-    inconsistencias: { conteudo: 'CPF diverge do sistema', valido: 0 }
+    inconsistencias: { conteudo: 'CPF diverge da coleta', valido: 0 }
     status: { conteudo: 'invalido', valido: 0 }
 
   contrato_semestre_divergente:
@@ -266,7 +266,7 @@ exemplos_saida:
     mensalidade_sem_desconto: { conteudo: '1200.00', valido: 1 }
     mensalidade_com_desconto: { conteudo: '1100.00', valido: 1 }
     semestre: { conteudo: '2024/2', valido: 0 }
-    inconsistencias: { conteudo: 'Semestre diverge do sistema', valido: 0 }
+    inconsistencias: { conteudo: 'Semestre diverge da coleta', valido: 0 }
     status: { conteudo: 'invalido', valido: 0 }
 
   contrato_semestre_nao_localizado:
@@ -290,7 +290,7 @@ exemplos_saida:
     mensalidade_sem_desconto: { conteudo: '1200.00', valido: 1 }
     mensalidade_com_desconto: { conteudo: '1000.00', valido: 0 }
     semestre: { conteudo: '2025/1', valido: 1 }
-    inconsistencias: { conteudo: 'Valor da mensalidade com desconto é MENOR que o sistema', valido: 1 }
+    inconsistencias: { conteudo: 'Valor da mensalidade com desconto é MENOR que a coleta', valido: 1 }
     status: { conteudo: 'valido', valido: 1 }
 
   contrato_mensalidade_com_desconto_nao_localizada:
@@ -323,7 +323,7 @@ exemplos_saida:
     mensalidade_sem_desconto: { conteudo: '1897.30', valido: 1 }
     mensalidade_com_desconto: { conteudo: '569.19', valido: 0 }
     semestre: { conteudo: '2025/2', valido: 1 }
-    inconsistencias: { conteudo: 'Valor da mensalidade com desconto é MENOR que o sistema', valido: 1 }
+    inconsistencias: { conteudo: 'Valor da mensalidade com desconto é MENOR que a coleta', valido: 1 }
     status: { conteudo: 'valido', valido: 1 }
 
   contrato_tipo_invalido:
