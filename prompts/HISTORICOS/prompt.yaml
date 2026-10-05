@@ -207,12 +207,12 @@ catalogo_erros:
   nivel_critico:
     - 'Tipo de Documento inválido'
     - 'CPF não localizado'
-    - 'CPF diverge do sistema'
+    - 'CPF diverge da coleta'
   nivel_alto:
     - 'Curso não localizado'
-    - 'Curso diverge do sistema'
+    - 'Curso diverge da coleta'
     - 'Semestre não localizado'
-    - 'Semestre diverge do sistema'
+    - 'Semestre diverge da coleta'
   nivel_medio:
     - 'Documento ilegível ou sem informações curriculares suficientes'
 
@@ -267,7 +267,7 @@ exemplos_saida:
     semestre: { conteudo: '2025-1', valido: 1 }
     situacao: { conteudo: 'Trancado', valido: 1 }
     concluiu_curso: 'não'
-    inconsistencias: { conteudo: 'Curso diverge do sistema', valido: 0 }
+    inconsistencias: { conteudo: 'Curso diverge da coleta', valido: 0 }
     status: { conteudo: 'invalido', valido: 0 }
 
   aluno_omissao_inconclusiva_cenario_6:
