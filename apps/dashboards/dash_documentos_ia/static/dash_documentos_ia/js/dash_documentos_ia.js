@@ -2360,7 +2360,23 @@ document.addEventListener('turbo:load', () => {
                     ? dadosIES.linhas.filter((linha) => semAcento(linha.ies).includes(termo))
                     : dadosIES.linhas.slice();
 
-                linhas.sort((a, b) => String(a.ies).localeCompare(String(b.ies), 'pt-BR'));
+                const ordem = window.__ordemIES;
+                if (ordem.chave === 'ies') {
+                    linhas.sort((a, b) => {
+                        const cmp = String(a.ies).localeCompare(String(b.ies), 'pt-BR');
+                        return ordem.desc ? -cmp : cmp;
+                    });
+                } else {
+                    linhas.sort((a, b) => {
+                        const va = a[ordem.chave] || 0;
+                        const vb = b[ordem.chave] || 0;
+                        if (va !== vb) {
+                            return ordem.desc ? vb - va : va - vb;
+                        }
+                        return String(a.ies).localeCompare(String(b.ies), 'pt-BR');
+                    });
+                }
+                return linhas;
                 return linhas;
             };
 
@@ -2789,6 +2805,39 @@ document.addEventListener('turbo:load', () => {
                 });
             }
 
+
+            // --- Ordenação da Tabela IES -----------------------------------------
+            const selectOrdemIES = document.getElementById('select-ordem-ies-coluna');
+            const radiosOrdemDirIES = document.querySelectorAll('.filter-ordem-dir');
+
+            const aplicarOrdemUI = () => {
+                if (selectOrdemIES) {
+                    selectOrdemIES.value = window.__ordemIES.chave;
+                }
+                radiosOrdemDirIES.forEach((radio) => {
+                    if (radio.value === (window.__ordemIES.desc ? 'desc' : 'asc')) {
+                        radio.checked = true;
+                    }
+                });
+            };
+
+            if (selectOrdemIES) {
+                selectOrdemIES.addEventListener('change', (e) => {
+                    window.__ordemIES.chave = e.target.value;
+                    pintarVistaIES();
+                });
+            }
+            radiosOrdemDirIES.forEach((radio) => {
+                radio.addEventListener('change', (e) => {
+                    if (e.target.checked) {
+                        window.__ordemIES.desc = e.target.value === 'desc';
+                        pintarVistaIES();
+                    }
+                });
+            });
+            // Inicializar a UI com o estado padrão (já em window.__ordemIES)
+            aplicarOrdemUI();
+
             // --- Busca local: nenhuma consulta, só repintar ---------------------
             if (elIES.busca) {
                 const marcarLimparIES = () => {
@@ -2905,6 +2954,7 @@ document.addEventListener('turbo:load', () => {
             const vistaIES = document.getElementById('vista-ies');
             const filtrosBeneficiarios = document.getElementById('filtros-beneficiarios');
             const filtroDocumentos = document.getElementById('filtro-documentos');
+            const filtroOrdemIES = document.getElementById('filtro-ordem-ies');
 
             const modoSelecionado = () => {
                 const marcado = Array.from(radiosModo).find((radio) => radio.checked);
@@ -3011,6 +3061,9 @@ document.addEventListener('turbo:load', () => {
                 if (filtroDocumentos) {
                     filtroDocumentos.style.display = emIES ? '' : 'none';
                 }
+                if (filtroOrdemIES) {
+                    filtroOrdemIES.style.display = emIES ? '' : 'none';
+                }
 
                 // A legenda só se repinta na vista que está no ar: no IES as cinco
                 // roscas estão num container sem altura, e pintá-las ali é trabalho
@@ -3086,6 +3139,7 @@ document.addEventListener('turbo:load', () => {
                     if (elIES.busca) elIES.busca.value = '';
                     if (elIES.limparBusca) elIES.limparBusca.classList.add('hidden');
                     window.__ordemIES = Object.assign({}, ORDEM_PADRAO_IES);
+                    if (typeof aplicarOrdemUI !== "undefined") aplicarOrdemUI();
                     if (typeof window.resetFiltroIES === 'function') window.resetFiltroIES();
                     if (elTabela.busca) elTabela.busca.value = '';
                     marcarBotaoDeLimpar();
