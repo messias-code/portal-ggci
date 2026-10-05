@@ -2807,12 +2807,17 @@ document.addEventListener('turbo:load', () => {
 
 
             // --- Ordenação da Tabela IES -----------------------------------------
-            const selectOrdemIES = document.getElementById('select-ordem-ies-coluna');
+            const btnOrdemIES = document.getElementById('btn-ordem-ies');
+            const menuOrdemIES = document.getElementById('menu-ordem-ies');
+            const textoOrdemIES = document.getElementById('texto-ordem-ies');
+            const iconeOrdemIES = document.getElementById('icone-ordem-ies');
+            const btnsOrdemOpt = document.querySelectorAll('.btn-ordem-opt');
             const radiosOrdemDirIES = document.querySelectorAll('.filter-ordem-dir');
 
             const aplicarOrdemUI = () => {
-                if (selectOrdemIES) {
-                    selectOrdemIES.value = window.__ordemIES.chave;
+                const optSelecionada = Array.from(btnsOrdemOpt).find(b => b.dataset.valor === window.__ordemIES.chave);
+                if (optSelecionada && textoOrdemIES) {
+                    textoOrdemIES.textContent = optSelecionada.textContent;
                 }
                 radiosOrdemDirIES.forEach((radio) => {
                     if (radio.value === (window.__ordemIES.desc ? 'desc' : 'asc')) {
@@ -2821,12 +2826,32 @@ document.addEventListener('turbo:load', () => {
                 });
             };
 
-            if (selectOrdemIES) {
-                selectOrdemIES.addEventListener('change', (e) => {
-                    window.__ordemIES.chave = e.target.value;
-                    pintarVistaIES();
+            if (btnOrdemIES && menuOrdemIES) {
+                btnOrdemIES.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const aberto = !menuOrdemIES.classList.contains('hidden');
+                    menuOrdemIES.classList.toggle('hidden', aberto);
+                    if (iconeOrdemIES) iconeOrdemIES.className = aberto ? 'fa-solid fa-chevron-down text-gray-400 text-[10px]' : 'fa-solid fa-chevron-up text-pink-600 text-[10px]';
+                });
+
+                document.addEventListener('click', (e) => {
+                    if (!btnOrdemIES.contains(e.target) && !menuOrdemIES.contains(e.target)) {
+                        menuOrdemIES.classList.add('hidden');
+                        if (iconeOrdemIES) iconeOrdemIES.className = 'fa-solid fa-chevron-down text-gray-400 text-[10px]';
+                    }
+                });
+
+                btnsOrdemOpt.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        window.__ordemIES.chave = btn.dataset.valor;
+                        textoOrdemIES.textContent = btn.textContent;
+                        menuOrdemIES.classList.add('hidden');
+                        if (iconeOrdemIES) iconeOrdemIES.className = 'fa-solid fa-chevron-down text-gray-400 text-[10px]';
+                        pintarVistaIES();
+                    });
                 });
             }
+
             radiosOrdemDirIES.forEach((radio) => {
                 radio.addEventListener('change', (e) => {
                     if (e.target.checked) {
