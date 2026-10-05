@@ -1349,40 +1349,41 @@
                             <div class="docia-filtro-cabecalho">
                                 <h4 class="docia-filtro-titulo">Ordenar por</h4>
                             </div>
-                            <div class="space-y-3">
-                                <div>
-                                    <div class="relative w-full" id="dropdown-ordem-ies-container">
-                                        <button type="button" id="btn-ordem-ies" class="w-full flex items-center justify-between bg-gray-50 border border-gray-300 rounded-xl h-[2.75rem] px-4 text-xs font-bold text-gray-800 outline-none hover:bg-gray-100 hover:border-pink-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 transition-all shadow-sm">
-                                            <span class="flex items-center gap-2">
-                                                <i class="fa-solid fa-arrow-down-short-wide text-[#6B007B]"></i>
-                                                <span id="texto-ordem-ies" class="uppercase tracking-wide">Alfabética</span>
-                                            </span>
-                                            <i class="fa-solid fa-chevron-down text-[#6B007B] text-[11px]" id="icone-ordem-ies"></i>
-                                        </button>
-                                        <div class="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden flex flex-col hidden" id="menu-ordem-ies">
-                                            <button type="button" data-valor="ies" class="btn-ordem-opt text-left px-4 py-2.5 text-xs font-bold text-gray-700 bg-white hover:bg-[#6B007B] hover:text-white border-b border-gray-100 transition-colors uppercase tracking-wide">Alfabética</button>
-                                            <button type="button" data-valor="Processados" class="btn-ordem-opt text-left px-4 py-2.5 text-xs font-bold text-gray-700 bg-gray-50 hover:bg-[#6B007B] hover:text-white border-b border-gray-100 transition-colors uppercase tracking-wide">Processados</button>
-                                            <button type="button" data-valor="NaoProcessados" class="btn-ordem-opt text-left px-4 py-2.5 text-xs font-bold text-gray-700 bg-white hover:bg-[#6B007B] hover:text-white border-b border-gray-100 transition-colors uppercase tracking-wide">Não Processados</button>
-                                            <button type="button" data-valor="NaoEnviados" class="btn-ordem-opt text-left px-4 py-2.5 text-xs font-bold text-gray-700 bg-gray-50 hover:bg-[#6B007B] hover:text-white border-b border-gray-100 transition-colors uppercase tracking-wide">Não Enviados</button>
-                                            <button type="button" data-valor="InadProc" class="btn-ordem-opt text-left px-4 py-2.5 text-xs font-bold text-gray-700 bg-white hover:bg-[#6B007B] hover:text-white border-b border-gray-100 transition-colors uppercase tracking-wide">Inadimplentes Proc.</button>
-                                            <button type="button" data-valor="InadNaoProc" class="btn-ordem-opt text-left px-4 py-2.5 text-xs font-bold text-gray-700 bg-gray-50 hover:bg-[#6B007B] hover:text-white transition-colors uppercase tracking-wide">Inadimplentes Não Proc.</button>
-                                        </div>
+                            <!--
+                                Classes semânticas (`docia-ordem-*`) e não utilitárias:
+                                `h-[2.75rem]` e `bg-[#6B007B]` não existem no bundle
+                                purgado, e o botão saía sem altura e a opção ativa
+                                branco sobre branco. O desenho é o da calha
+                                segmentada logo abaixo — ver `.docia-ordem` no CSS.
+                            -->
+                            <div class="docia-ordem" id="dropdown-ordem-ies-container">
+                                <button type="button" id="btn-ordem-ies" class="docia-ordem-gatilho" aria-haspopup="listbox" aria-expanded="false">
+                                    <span class="docia-ordem-gatilho__icone"><i class="fa-solid fa-arrow-down-short-wide"></i></span>
+                                    <span id="texto-ordem-ies" class="docia-ordem-gatilho__texto">Alfabética</span>
+                                    <i class="fa-solid fa-chevron-down docia-ordem-gatilho__seta" id="icone-ordem-ies"></i>
+                                </button>
+                                <div class="docia-ordem-menu hidden" id="menu-ordem-ies" role="listbox">
+                                    <button type="button" data-valor="ies" class="btn-ordem-opt docia-ordem-opcao docia-ordem-opcao--ativa" role="option">Alfabética</button>
+                                    <button type="button" data-valor="Processados" class="btn-ordem-opt docia-ordem-opcao" role="option">Processados</button>
+                                    <button type="button" data-valor="NaoProcessados" class="btn-ordem-opt docia-ordem-opcao" role="option">Não Processados</button>
+                                    <button type="button" data-valor="NaoEnviados" class="btn-ordem-opt docia-ordem-opcao" role="option">Não Enviados</button>
+                                    <button type="button" data-valor="InadProc" class="btn-ordem-opt docia-ordem-opcao" role="option">Inadimplentes Proc.</button>
+                                    <button type="button" data-valor="InadNaoProc" class="btn-ordem-opt docia-ordem-opcao" role="option">Inadimplentes Não Proc.</button>
+                                </div>
+                            </div>
+                            <div class="docia-grade-seg grid bg-white border border-gray-300 rounded-xl overflow-hidden divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(2, minmax(0, 1fr));">
+                                <label class="cursor-pointer block relative">
+                                    <input type="radio" name="ordem-ies-direcao" value="asc" class="filter-ordem-dir peer sr-only" checked>
+                                    <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                        <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">Menor p/ Maior</span>
                                     </div>
-                                </div>
-                                <div class="docia-grade-seg grid bg-white border border-gray-300 rounded-xl overflow-hidden divide-x divide-gray-300" style="transform: translateZ(0); grid-template-columns: repeat(2, minmax(0, 1fr));">
-                                    <label class="cursor-pointer block relative">
-                                        <input type="radio" name="ordem-ies-direcao" value="asc" class="filter-ordem-dir peer sr-only" checked>
-                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
-                                            <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">Menor p/ Maior</span>
-                                        </div>
-                                    </label>
-                                    <label class="cursor-pointer block relative">
-                                        <input type="radio" name="ordem-ies-direcao" value="desc" class="filter-ordem-dir peer sr-only">
-                                        <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
-                                            <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">Maior p/ Menor</span>
-                                        </div>
-                                    </label>
-                                </div>
+                                </label>
+                                <label class="cursor-pointer block relative">
+                                    <input type="radio" name="ordem-ies-direcao" value="desc" class="filter-ordem-dir peer sr-only">
+                                    <div class="flex items-center justify-center w-full h-[2.5rem] transition-colors duration-200 peer-checked:bg-[#6B007B] peer-checked:text-white text-gray-900 hover:bg-gray-50 peer-checked:hover:bg-[#540060]">
+                                        <span class="text-[10px] font-bold text-center leading-tight uppercase relative z-10">Maior p/ Menor</span>
+                                    </div>
+                                </label>
                             </div>
                         </section>
 <section class="docia-filtro-secao">

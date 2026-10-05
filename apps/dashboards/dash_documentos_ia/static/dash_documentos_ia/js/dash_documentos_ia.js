@@ -2810,32 +2810,18 @@ document.addEventListener('turbo:load', () => {
             const btnOrdemIES = document.getElementById('btn-ordem-ies');
             const menuOrdemIES = document.getElementById('menu-ordem-ies');
             const textoOrdemIES = document.getElementById('texto-ordem-ies');
-            const iconeOrdemIES = document.getElementById('icone-ordem-ies');
             const btnsOrdemOpt = document.querySelectorAll('.btn-ordem-opt');
             const radiosOrdemDirIES = document.querySelectorAll('.filter-ordem-dir');
 
+            // Cor e seta saem do CSS (`.docia-ordem-*`): aqui só se marca o
+            // estado — a opção ativa e o `aria-expanded` do gatilho.
             const aplicarOrdemUI = () => {
-                const optSelecionada = Array.from(btnsOrdemOpt).find(b => b.dataset.valor === window.__ordemIES.chave);
-                if (optSelecionada && textoOrdemIES) {
-                    textoOrdemIES.textContent = optSelecionada.textContent;
-
-                    btnsOrdemOpt.forEach(b => {
-                        const ehAtivo = b.dataset.valor === window.__ordemIES.chave;
-                        if (ehAtivo) {
-                            b.classList.remove('text-gray-700', 'bg-white', 'bg-gray-50');
-                            b.classList.add('bg-[#6B007B]', 'text-white');
-                        } else {
-                            b.classList.remove('bg-[#6B007B]', 'text-white');
-                            // Reseta o zebrado alternado
-                            b.classList.add('text-gray-700');
-                            if (b.dataset.valor === 'Processados' || b.dataset.valor === 'NaoEnviados' || b.dataset.valor === 'InadNaoProc') {
-                                b.classList.add('bg-gray-50');
-                            } else {
-                                b.classList.add('bg-white');
-                            }
-                        }
-                    });
-                }
+                btnsOrdemOpt.forEach((b) => {
+                    const ehAtivo = b.dataset.valor === window.__ordemIES.chave;
+                    b.classList.toggle('docia-ordem-opcao--ativa', ehAtivo);
+                    b.setAttribute('aria-selected', ehAtivo ? 'true' : 'false');
+                    if (ehAtivo && textoOrdemIES) textoOrdemIES.textContent = b.textContent;
+                });
                 radiosOrdemDirIES.forEach((radio) => {
                     if (radio.value === (window.__ordemIES.desc ? 'desc' : 'asc')) {
                         radio.checked = true;
@@ -2843,27 +2829,28 @@ document.addEventListener('turbo:load', () => {
                 });
             };
 
+            const abrirMenuOrdem = (abrir) => {
+                menuOrdemIES.classList.toggle('hidden', !abrir);
+                btnOrdemIES.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+            };
+
             if (btnOrdemIES && menuOrdemIES) {
                 btnOrdemIES.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    const aberto = !menuOrdemIES.classList.contains('hidden');
-                    menuOrdemIES.classList.toggle('hidden', aberto);
-                    if (iconeOrdemIES) iconeOrdemIES.className = aberto ? 'fa-solid fa-chevron-down text-gray-400 text-[10px]' : 'fa-solid fa-chevron-up text-pink-600 text-[10px]';
+                    abrirMenuOrdem(menuOrdemIES.classList.contains('hidden'));
                 });
 
                 document.addEventListener('click', (e) => {
                     if (!btnOrdemIES.contains(e.target) && !menuOrdemIES.contains(e.target)) {
-                        menuOrdemIES.classList.add('hidden');
-                        if (iconeOrdemIES) iconeOrdemIES.className = 'fa-solid fa-chevron-down text-gray-400 text-[10px]';
+                        abrirMenuOrdem(false);
                     }
                 });
 
                 btnsOrdemOpt.forEach(btn => {
                     btn.addEventListener('click', () => {
                         window.__ordemIES.chave = btn.dataset.valor;
-                        textoOrdemIES.textContent = btn.textContent;
-                        menuOrdemIES.classList.add('hidden');
-                        if (iconeOrdemIES) iconeOrdemIES.className = 'fa-solid fa-chevron-down text-gray-400 text-[10px]';
+                        aplicarOrdemUI();
+                        abrirMenuOrdem(false);
                         pintarVistaIES();
                     });
                 });
