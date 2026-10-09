@@ -2360,7 +2360,23 @@ document.addEventListener('turbo:load', () => {
                     ? dadosIES.linhas.filter((linha) => semAcento(linha.ies).includes(termo))
                     : dadosIES.linhas.slice();
 
-                linhas.sort((a, b) => String(a.ies).localeCompare(String(b.ies), 'pt-BR'));
+                const ordem = window.__ordemIES;
+                if (ordem.chave === 'ies') {
+                    linhas.sort((a, b) => {
+                        const cmp = String(a.ies).localeCompare(String(b.ies), 'pt-BR');
+                        return ordem.desc ? -cmp : cmp;
+                    });
+                } else {
+                    linhas.sort((a, b) => {
+                        const va = a[ordem.chave] || 0;
+                        const vb = b[ordem.chave] || 0;
+                        if (va !== vb) {
+                            return ordem.desc ? vb - va : va - vb;
+                        }
+                        return String(a.ies).localeCompare(String(b.ies), 'pt-BR');
+                    });
+                }
+                return linhas;
                 return linhas;
             };
 
@@ -2789,6 +2805,68 @@ document.addEventListener('turbo:load', () => {
                 });
             }
 
+
+            // --- Ordenação da Tabela IES -----------------------------------------
+            const btnOrdemIES = document.getElementById('btn-ordem-ies');
+            const menuOrdemIES = document.getElementById('menu-ordem-ies');
+            const textoOrdemIES = document.getElementById('texto-ordem-ies');
+            const btnsOrdemOpt = document.querySelectorAll('.btn-ordem-opt');
+            const radiosOrdemDirIES = document.querySelectorAll('.filter-ordem-dir');
+
+            // Cor e seta saem do CSS (`.docia-ordem-*`): aqui só se marca o
+            // estado — a opção ativa e o `aria-expanded` do gatilho.
+            const aplicarOrdemUI = () => {
+                btnsOrdemOpt.forEach((b) => {
+                    const ehAtivo = b.dataset.valor === window.__ordemIES.chave;
+                    b.classList.toggle('docia-ordem-opcao--ativa', ehAtivo);
+                    b.setAttribute('aria-selected', ehAtivo ? 'true' : 'false');
+                    if (ehAtivo && textoOrdemIES) textoOrdemIES.textContent = b.textContent;
+                });
+                radiosOrdemDirIES.forEach((radio) => {
+                    if (radio.value === (window.__ordemIES.desc ? 'desc' : 'asc')) {
+                        radio.checked = true;
+                    }
+                });
+            };
+
+            const abrirMenuOrdem = (abrir) => {
+                menuOrdemIES.classList.toggle('hidden', !abrir);
+                btnOrdemIES.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+            };
+
+            if (btnOrdemIES && menuOrdemIES) {
+                btnOrdemIES.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    abrirMenuOrdem(menuOrdemIES.classList.contains('hidden'));
+                });
+
+                document.addEventListener('click', (e) => {
+                    if (!btnOrdemIES.contains(e.target) && !menuOrdemIES.contains(e.target)) {
+                        abrirMenuOrdem(false);
+                    }
+                });
+
+                btnsOrdemOpt.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        window.__ordemIES.chave = btn.dataset.valor;
+                        aplicarOrdemUI();
+                        abrirMenuOrdem(false);
+                        pintarVistaIES();
+                    });
+                });
+            }
+
+            radiosOrdemDirIES.forEach((radio) => {
+                radio.addEventListener('change', (e) => {
+                    if (e.target.checked) {
+                        window.__ordemIES.desc = e.target.value === 'desc';
+                        pintarVistaIES();
+                    }
+                });
+            });
+            // Inicializar a UI com o estado padrão (já em window.__ordemIES)
+            aplicarOrdemUI();
+
             // --- Busca local: nenhuma consulta, só repintar ---------------------
             if (elIES.busca) {
                 const marcarLimparIES = () => {
@@ -2905,6 +2983,7 @@ document.addEventListener('turbo:load', () => {
             const vistaIES = document.getElementById('vista-ies');
             const filtrosBeneficiarios = document.getElementById('filtros-beneficiarios');
             const filtroDocumentos = document.getElementById('filtro-documentos');
+            const filtroOrdemIES = document.getElementById('filtro-ordem-ies');
 
             const modoSelecionado = () => {
                 const marcado = Array.from(radiosModo).find((radio) => radio.checked);
@@ -3011,6 +3090,9 @@ document.addEventListener('turbo:load', () => {
                 if (filtroDocumentos) {
                     filtroDocumentos.style.display = emIES ? '' : 'none';
                 }
+                if (filtroOrdemIES) {
+                    filtroOrdemIES.style.display = emIES ? '' : 'none';
+                }
 
                 // A legenda só se repinta na vista que está no ar: no IES as cinco
                 // roscas estão num container sem altura, e pintá-las ali é trabalho
@@ -3086,6 +3168,7 @@ document.addEventListener('turbo:load', () => {
                     if (elIES.busca) elIES.busca.value = '';
                     if (elIES.limparBusca) elIES.limparBusca.classList.add('hidden');
                     window.__ordemIES = Object.assign({}, ORDEM_PADRAO_IES);
+                    if (typeof aplicarOrdemUI !== "undefined") aplicarOrdemUI();
                     if (typeof window.resetFiltroIES === 'function') window.resetFiltroIES();
                     if (elTabela.busca) elTabela.busca.value = '';
                     marcarBotaoDeLimpar();

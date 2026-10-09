@@ -174,7 +174,17 @@ SELECT
         ELSE 'ATIVO'
     END AS status_vinculo,
     sa.sit_obs AS ultima_observacao,
-    sma.motivo AS ultimo_motivo
+    sma.motivo AS ultimo_motivo,
+
+    -- NOVAS COLUNAS
+    IF(u_final.contrato_id IS NOT NULL, 'Sim', 'Não') AS assinou_termo_adesao,
+    IF(la.ultimo_acesso IS NOT NULL, 'Sim', 'Não') AS acessou_sistema,
+    la.ultimo_acesso AS data_ultimo_acesso,
+    IF(cf_contrato.uni_codigo IS NOT NULL, 'Sim', 'Não') AS apresentou_contrato,
+    IF(cr.uni_codigo IS NOT NULL, 'Sim', 'Não') AS apresentou_riaf,
+    COALESCE(sma.motivo, CASE WHEN sa.sit_tipo = 3 THEN 'DESLIGADO' WHEN ca.situacao != 'S' THEN 'DESLIGADO' ELSE 'ATIVO' END) AS situacao_beneficiario,
+    IF(fb.situacao = 'S', 'Regular', 'Irregular/Sem Envio') AS frequencia_atual
+
 
 FROM base_uniao_limpa b
 LEFT JOIN coleta_mes c ON b.uni_codigo = c.uni_codigo AND b.ano_mes_pagto = c.ano_mes_pagto
@@ -206,6 +216,12 @@ LEFT JOIN LATERAL (SELECT situacao FROM sibu.coleta_dados WHERE uni_codigo = b.u
 LEFT JOIN LATERAL (SELECT sit_data, sit_tipo, sit_obs, sit_motdes FROM sibu.situacao WHERE uni_codigo = b.uni_codigo AND (b.ano_mes_pagto = b.max_ano_mes_pagto OR DATE(sit_data) <= DATE(CONCAT(LEFT(b.semestre, 4), IF(RIGHT(b.semestre, 1)='1', '-06-30', '-12-31')))) ORDER BY sit_data DESC LIMIT 1) sa ON true
 LEFT JOIN sibu.universitarios u_final ON b.uni_codigo = u_final.uni_codigo
 LEFT JOIN sibu.sit_motivos sma ON sa.sit_motdes = sma.motivo_id
+
+LEFT JOIN LATERAL (SELECT usuario, MAX(data) AS ultimo_acesso FROM sibu.log_acesso WHERE usuario = u_final.uni_cpf GROUP BY usuario LIMIT 1) la ON true
+LEFT JOIN LATERAL (SELECT uni_codigo, MAX(data_create) as max_dt FROM sibu.contratos_faculdades WHERE status = 1 AND uni_codigo = b.uni_codigo GROUP BY uni_codigo LIMIT 1) cf_contrato ON true
+LEFT JOIN LATERAL (SELECT uni_codigo, MAX(data_create) as max_dt FROM sibu.coleta_dados_riaf WHERE uni_codigo = b.uni_codigo GROUP BY uni_codigo LIMIT 1) cr ON true
+LEFT JOIN LATERAL (SELECT uni_codigo, situacao, MAX(mes) as ultimo_mes FROM sibu.frequencias_bolsistas WHERE uni_codigo = b.uni_codigo GROUP BY uni_codigo, situacao ORDER BY situacao='S' DESC, ultimo_mes DESC LIMIT 1) fb ON true
+
 -- IES E CURSO DO SEMESTRE: o cadastro do aluno só guarda a faculdade e o curso ATUAIS,
 -- então quem transfere ficaria com os dois de hoje carimbados em todos os semestres. Os
 -- dois vêm do último lançamento até o fim do semestre da linha, caindo no cadastro quando
@@ -242,4 +258,5 @@ GROUP BY
     u_final.uni_tel2, u_final.uni_deficiencia, u_final.uni_sexo, u_final.uni_matricula, 
     u_final.uni_tipo_curso, cmod.descricao, u_final.inscricao_ano, u_final.data_importacao, h_ingresso.data_ingresso,
     inst.ins_cnpj, inst.ins_razao_social, inst.ins_nome_fantasia, inst.mantenedora, inst.ins_nome,
-    CASE WHEN sv.sit_tipo = 1 OR sv.sit_motdes IN (30, 57) THEN 'INGRESSO' ELSE 'VETERANO' END, sa.sit_tipo, sa.sit_obs, ca.situacao, sma.motivo;
+    CASE WHEN sv.sit_tipo = 1 OR sv.sit_motdes IN (30, 57) THEN 'INGRESSO' ELSE 'VETERANO' END, sa.sit_tipo, sa.sit_obs, ca.situacao, sma.motivo,
+    u_final.contrato_id, la.ultimo_acesso, cf_contrato.uni_codigo, cr.uni_codigo, fb.situacao;

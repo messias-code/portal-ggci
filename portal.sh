@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Garante que o script sempre rode na própria pasta (resolve problemas de caminho com tmux, cron, etc)
+cd "$(dirname "$0")" || exit 1
+
 if [ -f "venv/bin/activate" ]; then
     source venv/bin/activate
 fi
