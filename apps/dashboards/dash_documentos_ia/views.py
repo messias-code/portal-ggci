@@ -951,6 +951,10 @@ COLUNAS_TABELA = [
     'qtd_periodos',
     'modalidade_aluno',
     'modalidade_ies',
+    'assinou_o_termo',
+    'renovou',
+    'acessou_o_portal',
+    'data_e_hora_do_acesso',
 ]
 
 # As que realmente existem no Parquet — as duas derivadas saem da leitura.
@@ -2778,6 +2782,7 @@ COLUNAS_ANALISE_IA = {
     'CONTRATO': [
         'status_ia', 'gemini_inconsistencia', 'semestre', 'gemini_semestre', 'bolsista', 'inscricao',
         'inscricao_anterior', 'inscricao_posterior', 'cpf', 'gemini_cpf',
+        'apresentou_contrato', 'apresentou_riaf', 'situacao_beneficiario', 'frequencia_atual',
         'tipo_bolsa_final', 'mudou_bolsa', 'bolsa_anterior', 'bolsa_posterior',
         'mudou_ies', 'ies_anterior', 'ies_posterior', 'faculdade', 'curso',
         'ultimo_valor_pago_ref', 'total_bolsa_paga', 'qtd_pagtos',
@@ -2791,11 +2796,13 @@ COLUNAS_ANALISE_IA = {
         'qtd_disciplinas_matriculadas', 'qtd_disciplinas_reprovadas', 'perfil',
         'status_vinculo', 'situacao_motivo', 'observacao_situacao', 'email',
         'telefone_1', 'telefone_2', 'data_nascimento', 'matricula',
-        'periodo_no_semestre', 'periodo_atual', 'qtd_periodos', 'modalidade_aluno', 'modalidade_ies'
+        'periodo_no_semestre', 'periodo_atual', 'qtd_periodos', 'modalidade_aluno', 'modalidade_ies',
+        'assinou_o_termo', 'renovou', 'acessou_o_portal', 'data_e_hora_do_acesso'
     ],
     'RIAF': [
         'status_ia', 'gemini_inconsistencia', 'semestre', 'bolsista', 'inscricao',
         'inscricao_anterior', 'inscricao_posterior', 'cpf', 'gemini_cpf',
+        'apresentou_contrato', 'apresentou_riaf', 'situacao_beneficiario', 'frequencia_atual',
         'tipo_bolsa_final', 'gemini_tipo_bolsa_final', 'mudou_bolsa', 'bolsa_anterior',
         'bolsa_posterior',
         'mudou_ies', 'ies_anterior', 'ies_posterior', 'faculdade', 'cnpj_ies',
@@ -2817,11 +2824,13 @@ COLUNAS_ANALISE_IA = {
         'gemini_email',
         'telefone_1', 'telefone_2', 'data_nascimento', 'matricula',
         'periodo_no_semestre', 'periodo_atual', 'qtd_periodos', 'modalidade_aluno', 'modalidade_ies',
+        'assinou_o_termo', 'renovou', 'acessou_o_portal', 'data_e_hora_do_acesso',
         'gemini_modalidade'
     ],
     'HISTÓRICO': [
         'status_ia', 'gemini_inconsistencia', 'semestre', 'gemini_semestre', 'bolsista', 'inscricao',
         'inscricao_anterior', 'inscricao_posterior', 'cpf', 'gemini_cpf',
+        'apresentou_contrato', 'apresentou_riaf', 'situacao_beneficiario', 'frequencia_atual',
         'tipo_bolsa_final', 'mudou_bolsa', 'bolsa_anterior', 'bolsa_posterior',
         'mudou_ies', 'ies_anterior', 'ies_posterior', 'faculdade', 'curso', 'gemini_curso',
         'ultimo_valor_pago_ref', 'total_bolsa_paga', 'qtd_pagtos',
@@ -2831,7 +2840,8 @@ COLUNAS_ANALISE_IA = {
         'status_vinculo', 'situacao_motivo', 'observacao_situacao',
         'situacao_motivo_atual', 'observacao_situacao_atual', 'email',
         'telefone_1', 'telefone_2', 'data_nascimento', 'matricula',
-        'periodo_no_semestre', 'periodo_atual', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies'
+        'periodo_no_semestre', 'periodo_atual', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies',
+        'assinou_o_termo', 'renovou', 'acessou_o_portal', 'data_e_hora_do_acesso'
     ],
 }
 

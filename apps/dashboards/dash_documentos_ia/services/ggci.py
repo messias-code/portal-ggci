@@ -128,7 +128,7 @@ COLUNAS_ABA_DOCUMENTO = [
     'qtd_disciplinas_reprovadas', 'perfil', 'status_vinculo', 'situacao_motivo',
     'observacao_situacao', 'email', 'telefone_1', 'telefone_2', 'data_nascimento', 'matricula',
     'periodo_atual', 'periodo_no_semestre', 'qtd_periodos', 'gemini_concluiu_curso', 'modalidade_aluno', 'modalidade_ies', 'documento_ausente',
-    'veredito_documento', 'motivos_divergencia'
+    'veredito_documento', 'motivos_divergencia', 'assinou_o_termo', 'renovou', 'acessou_o_portal', 'data_e_hora_do_acesso'
 ]
 
 
@@ -1081,11 +1081,12 @@ def buscar_dados_financeiros_sql(semestres_presentes, inscricoes=None):
             b.modalidade_aluno, b.modalidade_ies,
             b.ins_cnpj, b.ins_razao_social, b.ins_nome_fantasia, b.ins_mantenedora, b.nome_faculdade_sql, MAX(p.valor_matricula_sem_desconto) AS valor_matricula_sem_desconto, MAX(p.valor_matricula_com_desconto) AS valor_matricula_com_desconto,
             b.nome_aluno AS Bolsista_sql, b.cpf_aluno AS UNI_CPF, b.curso_aluno AS CUR_NOME,
-            b.qtd_disciplinas_matriculadas, b.qtd_disciplinas_reprovadas
+            b.qtd_disciplinas_matriculadas, b.qtd_disciplinas_reprovadas,
+            b.assinou_o_termo, b.renovou, b.acessou_o_portal, b.data_e_hora_do_acesso
         FROM beneficiarios b
         LEFT JOIN pagamentos p ON b.codigo_aluno = p.codigo_aluno AND b.semestre = p.semestre_referencia_analise
         WHERE (b.semestre IN ({sems_formatados}) {f"OR b.codigo_aluno IN ({','.join(map(str, inscricoes))})" if inscricoes else ""})
-        GROUP BY b.codigo_aluno, b.semestre, b.tipo_bolsa, b.status_vinculo, b.data_inclusao, b.ultima_observacao, b.ultimo_motivo, b.inclusao, b.flag_deficiencia, b.sexo, b.perfil, b.data_nascimento, b.email_aluno, b.telefone_principal, b.telefone_secundario, b.periodo_atual, b.periodo_quantidade, b.matricula_ies, b.modalidade_aluno, b.modalidade_ies, b.ins_cnpj, b.ins_razao_social, b.ins_nome_fantasia, b.ins_mantenedora, b.nome_faculdade_sql, b.nome_aluno, b.cpf_aluno, b.curso_aluno, b.qtd_disciplinas_matriculadas, b.qtd_disciplinas_reprovadas
+        GROUP BY b.codigo_aluno, b.semestre, b.tipo_bolsa, b.status_vinculo, b.data_inclusao, b.ultima_observacao, b.ultimo_motivo, b.inclusao, b.flag_deficiencia, b.sexo, b.perfil, b.data_nascimento, b.email_aluno, b.telefone_principal, b.telefone_secundario, b.periodo_atual, b.periodo_quantidade, b.matricula_ies, b.modalidade_aluno, b.modalidade_ies, b.ins_cnpj, b.ins_razao_social, b.ins_nome_fantasia, b.ins_mantenedora, b.nome_faculdade_sql, b.nome_aluno, b.cpf_aluno, b.curso_aluno, b.qtd_disciplinas_matriculadas, b.qtd_disciplinas_reprovadas, b.assinou_o_termo, b.renovou, b.acessou_o_portal, b.data_e_hora_do_acesso
     """
     
     try:
@@ -1095,6 +1096,7 @@ def buscar_dados_financeiros_sql(semestres_presentes, inscricoes=None):
         
         ctx = pl.SQLContext(beneficiarios=lf_benef, pagamentos=lf_pag)
         df_sql_pl = ctx.execute(query).collect()
+        
         df_sql = df_sql_pl.to_pandas()
             
         end_time = time.time()
@@ -5556,7 +5558,8 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             'gemini_valor_semestralidade', 'gemini_valor_coparticipacao', 'Processar', 'Gemini Concluiu Curso',
             'data_coleta_atual_sistema', 'inscricao_ano_semestre', 'data_ingresso', 'Check Contrato',
             'Check Financiamento', 'Check Benefícios', 'Check RIAF', 'Check Histórico', 'Check Doc beneficios',
-            'Duração Total Semestres', 'Qtd Disciplinas Matriculadas', 'Qtd Disciplinas Reprovadas', 'Perfil do Beneficiario'
+            'Duração Total Semestres', 'Qtd Disciplinas Matriculadas', 'Qtd Disciplinas Reprovadas', 'Perfil do Beneficiario',
+            'assinou_o_termo', 'renovou', 'acessou_o_portal', 'data_e_hora_do_acesso'
         ]
         
         # Mapeamento case-insensitive e trim
@@ -5784,7 +5787,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                 'perfil', 'status_vinculo', 'situacao_motivo', 'observacao_situacao', 'email', 
                 'gemini_email', 'telefone_1', 'telefone_2', 'data_nascimento', 'matricula', 
                 'periodo_atual', 'periodo_no_semestre', 'qtd_periodos', 'modalidade_aluno', 'modalidade_ies', 'gemini_modalidade', 'documento_ausente', 'veredito_documento',
-                'motivos_divergencia'
+                'motivos_divergencia', 'assinou_o_termo', 'renovou', 'acessou_o_portal', 'data_e_hora_do_acesso'
             ]
             
             for c in colunas_riaf:
@@ -5950,7 +5953,8 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                             # tinha: sem `motivos_divergencia` o balão do Status IA ficava mudo
                             # no Histórico (4.079 `Falso Válido` na proc_184, nenhum com motivo),
                             # e sem `veredito_documento` a tela adivinhava o inadimplente lido.
-                            'documento_ausente', 'veredito_documento', 'motivos_divergencia'
+                            'documento_ausente', 'veredito_documento', 'motivos_divergencia',
+                            'assinou_o_termo', 'renovou', 'acessou_o_portal', 'data_e_hora_do_acesso'
                         ]
                         for c in colunas_historico:
                             if c not in df_tipo.columns:
