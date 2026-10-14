@@ -1,0 +1,6 @@
+.venv/
+.venv-kokoro/
+voz/
+__pycache__/
+.cache/
+.venv-xtts/
