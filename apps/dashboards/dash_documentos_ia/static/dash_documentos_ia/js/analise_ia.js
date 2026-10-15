@@ -2716,7 +2716,10 @@
             duas: é o mesmo clique.  */
         const recarregarResumo = (minhaVez) => {
             fetch(URL_RESUMO + '?' + parametros().toString())
-                .then((resposta) => resposta.json())
+                .then((resposta) => {
+                    if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
+                    return resposta.json();
+                })
                 .then((corpo) => {
                     if (minhaVez !== pedidoAtual) return;
                     if (corpo.status !== 'ok') throw new Error(corpo.mensagem || 'resposta inesperada');
@@ -2789,7 +2792,10 @@
             recarregarResumo(minhaVez);
 
             fetch(URL_TABELA + '?' + parametros().toString())
-                .then((resposta) => resposta.json())
+                .then((resposta) => {
+                    if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
+                    return resposta.json();
+                })
                 .then((corpo) => {
                     if (minhaVez !== pedidoAtual) return;
                     if (corpo.status !== 'ok') throw new Error(corpo.mensagem || 'resposta inesperada');
@@ -3146,7 +3152,10 @@
                 consulta.append('apenas_coluna', coluna);
 
                 fetch(URL_TABELA + '?' + consulta.toString())
-                    .then((resposta) => resposta.json())
+                    .then((resposta) => {
+                        if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
+                        return resposta.json();
+                    })
                     .then((corpo) => {
                         botao.innerHTML = original;
                         botao.disabled = false;
