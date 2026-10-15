@@ -3974,7 +3974,12 @@ document.addEventListener('turbo:load', () => {
                 pollConsole = setInterval(() => {
                     fetch(`/dashboards/documentos-ia/api/status/${processoId}/`)
                         .then((r) => {
-                            if (!r.ok) throw new Error(`status ${r.status}`);
+                            if (!r.ok) {
+                                if (r.status === 401) {
+                                    throw new Error('Sessão expirada. Faça login novamente.');
+                                }
+                                throw new Error(`status ${r.status}`);
+                            }
                             return r.json();
                         })
                         .then((data) => {
