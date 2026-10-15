@@ -81,3 +81,59 @@ class TransicoesDeterministicasTests(SimpleTestCase):
         for ordem in itertools.permutations(['a', 'b', 'c']):
             self.assertEqual(self._transicoes(list(ordem)), esperado,
                              f'ordem {ordem} produziu transições diferentes')
+
+    def test_bolsa_igual_entre_duas_inscricoes_informa_tipo_de_bolsa(self):
+        """
+        Mesmo se a modalidade da bolsa for igual entre duas inscrições,
+        as colunas Bolsa Anterior e Bolsa Posterior devem informar o tipo de bolsa da outra inscrição.
+        """
+        df = pd.DataFrame({
+            'CPF': ['1843811502', '1843811502'],
+            'data_coleta': ['2026-02-01', '2026-08-01'],
+            'Semestre': ['2026-1', '2026-2'],
+            'Inscrição': ['2233116', '2249588'],
+            'tipo_bolsa_final': ['Integral', 'Integral'],
+            'Faculdade': ['Faculdade A', 'Faculdade B'],
+        })
+        out = ggci.aplicar_transicoes(df, pd.DataFrame())
+        row1 = out[out['Inscrição'] == '2233116'].iloc[0]
+        row2 = out[out['Inscrição'] == '2249588'].iloc[0]
+
+        self.assertEqual(row1['Inscrição Posterior'], '2249588')
+        self.assertEqual(row1['Bolsa Posterior'], 'Integral')
+        self.assertEqual(row1['Bolsa Anterior'], '-')
+
+        self.assertEqual(row2['Inscrição Anterior'], '2233116')
+        self.assertEqual(row2['Bolsa Anterior'], 'Integral')
+        self.assertEqual(row2['Bolsa Posterior'], '-')
+
+    def test_permanencia_na_mesma_inscricao_marca_mudou_bolsa_como_n(self):
+        """
+        Quando o aluno mantém a mesma inscrição de um semestre para o outro,
+        não houve transição de bolsa naquele semestre e deve ser marcado N.
+        """
+        df = pd.DataFrame({
+            'CPF': ['71237292182', '71237292182', '71237292182'],
+            'data_coleta': ['2025-02-01', '2026-02-01', '2026-08-01'],
+            'Semestre': ['2025-1', '2026-1', '2026-2'],
+            'Inscrição': ['2174964', '2220704', '2220704'],
+            'tipo_bolsa_final': ['Parcial', 'Parcial', 'Parcial'],
+            'Faculdade': ['Faculdade A', 'Faculdade A', 'Faculdade A'],
+        })
+        out = ggci.aplicar_transicoes(df, pd.DataFrame())
+        r_2025_1 = out[out['Semestre'] == '2025-1'].iloc[0]
+        r_2026_1 = out[out['Semestre'] == '2026-1'].iloc[0]
+        r_2026_2 = out[out['Semestre'] == '2026-2'].iloc[0]
+
+        # 2025-1 é o último semestre antes de migrar para a 2220704
+        self.assertEqual(r_2025_1['Mudou Bolsa?'], 'S')
+        self.assertEqual(r_2025_1['Bolsa Posterior'], 'Parcial')
+
+        # 2026-1 é o primeiro semestre após a migração da 2174964
+        self.assertEqual(r_2026_1['Mudou Bolsa?'], 'S')
+        self.assertEqual(r_2026_1['Bolsa Anterior'], 'Parcial')
+
+        # 2026-2 manteve a mesma inscrição 2220704 de 2026-1
+        self.assertEqual(r_2026_2['Mudou Bolsa?'], 'N')
+        self.assertEqual(r_2026_2['Bolsa Anterior'], 'Parcial')
+        self.assertEqual(r_2026_2['Bolsa Posterior'], '-')
