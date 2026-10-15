@@ -142,3 +142,8 @@ gestao_acessos_iniciais.json
 # CARTOGRAPHER
 # ==========================================
 .cartographer/
+
+# ==========================================
+# ARTEFATOS EXPLICATIVOS
+# ==========================================
+artefatos explicativos/

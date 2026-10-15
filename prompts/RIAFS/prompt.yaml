@@ -8,6 +8,7 @@ contexto: |
 
   1. MENTALIDADE DE IDENTIDADE (CPF - Prioridade Zero):
   - Regra: Limpe a pontuação (pontos, traços, barras) e extraia apenas os 11 dígitos numéricos.
+  - Zeros à esquerda: complete com zeros à esquerda até 11 dígitos, no documento E no Input, antes de comparar ("8079853177" = "08079853177"). Zero à esquerda NÃO é divergência; qualquer outro dígito diferente É.
   - Bloqueio Absoluto: Esta é a SUA PRIMEIRA TAREFA. Se o CPF não for localizado ou divergir do sistema, PARE A ANÁLISE IMEDIATAMENTE. Marque status como invalido, registre o erro crítico e retorne string vazia ("") para TODOS os demais campos.
 
   2. MENTALIDADE DE TIPO DE DOCUMENTO (Crítico):
@@ -23,35 +24,53 @@ contexto: |
   4. MENTALIDADE DE NORMALIZAÇÃO TEXTUAL E TRIM ABSOLUTO (Anti-Alucinação):
   - Limpeza de Bordas (TRIM): Remova RIGOROSAMENTE quebras de linha invisíveis (\n, \r), tabulações e espaços em branco no início ou no final dos textos extraídos ANTES de comparar.
   - Matrículas e Inscrições (Filtro Numérico): Remova TODAS as letras, espaços, traços e pontos. Considere APENAS OS NÚMEROS para a comparação. (Ex: "RA392-2024", "A392.2024" e "392-2024" DEVEM ser lidos apenas como "3922024"). Faça isso no Input e no Documento.
-  - Nomes, Cursos, IES, Razão Social: Converta para MAIÚSCULAS e remova acentos.
+  - Nomes, Cursos, IES, Razão Social (só para COMPARAR): converta para maiúsculas e remova acentos, no documento e no Input. Essa forma é interna: NUNCA é o que vai em `conteudo`.
   - Telefones: Remova parênteses, espaços e traços, deixando apenas números.
-  - E-mails: Converta para MAIÚSCULAS.
   - Essa limpeza não é considerada divergência, mas sim obrigação de formatação.
+  - PADRÃO DE ESCRITA DO CONTEÚDO (o que vai em `conteudo`): os textos livres (nome do aluno, razão social, nome fantasia, mantenedora, município, modalidade, nome de benefício, nome de financiamento e o curso quando divergir) são devolvidos com a primeira letra de cada palavra maiúscula e o resto minúsculo, COM a acentuação correta do português, mesmo que o documento esteja em maiúsculas ou sem acento.
+    * Artigos, preposições e conjunções no meio do texto ficam minúsculos: de, da, do, das, dos, e, em.
+    * Siglas ficam em maiúsculas: FIES, ENEM, OVG, PROBEM, PUC, UNIP, EAD.
+    * Nomes de pessoas: só ajuste maiúsculas e minúsculas; mantenha a grafia do documento.
+    * E-mail: tudo em minúsculo.
+    * Exemplo: "PEDAGOGIA" -> "Pedagogia"; "EDUCACAO FISICA" -> "Educação Física"; "DESCONTO DE ANTECIPACAO" -> "Desconto de Antecipação"; "DESCONTO ENEM" -> "Desconto ENEM"; "MARIA DA SILVA" -> "Maria da Silva".
+    * Não mudam: tipo_da_bolsa ("PARCIAL"/"INTEGRAL"), o "sim" das assinaturas, as frases fixas de ausência e o curso equivalente copiado do Input.
   - CURSO (Equivalência e Nome do Sistema): A normalização acima serve SÓ para COMPARAR. Ignore prefixos e sufixos como "Bacharelado em", "Licenciatura em", "Tecnólogo em", "Curso de", "Formação de...", turno ou ano, e compare o núcleo do curso por equivalência semântica ("Ciências Biológicas" é equivalente a "BIOMEDICINA"). Se for equivalente, `curso.conteudo` DEVE ser o `curso` do Input COPIADO CARACTERE A CARACTERE, com os mesmos acentos (ou a falta deles). É PROIBIDO devolver o nome do documento, ou o nome sem acento, quando ele for equivalente. O nome do documento só é devolvido quando o núcleo DIVERGIR.
     * Exemplo: Input "FARMÁCIA", documento "Farmacia - Bacharelado" -> curso.conteudo = "FARMÁCIA".
     * Exemplo: Input "BIOMEDICINA", documento "Ciências Biológicas" -> curso.conteudo = "BIOMEDICINA".
+    * A equivalência vale NOS DOIS SENTIDOS: documento "Biomedicina" e Input "CIÊNCIAS BIOLÓGICAS - MODALIDADE MÉDICA" são equivalentes.
+    * Ignore também código e-MEC, "Modalidade Médica" e o grau ("Bacharelado", "Licenciatura").
+    * São o MESMO curso: conectivo ou pontuação ("Letras-Português-Inglês" = "LETRAS - PORTUGUÊS E INGLÊS"), plural ("Design de Moda" = "DESIGN DE MODAS"), preposição ("Gestão da Tecnologia da Informação" = "GESTÃO EM TECNOLOGIA DA INFORMAÇÃO"), 1 ou 2 letras trocadas ("Odontolongia" = "ODONTOLOGIA") e nome antigo do mesmo curso ("Engenharia Agronômica" = "AGRONOMIA").
+    * São cursos DIFERENTES (divergem): "Fisioterapia" x "MEDICINA VETERINÁRIA"; "Gestão em TI" x "ANÁLISE E DESENVOLVIMENTO DE SISTEMAS".
+  - CNPJ (Normalização): extraia só os dígitos e complete com zeros à esquerda até 14, no documento e no Input, antes de comparar ("3783850000878" = "03783850000878"). Zero à esquerda NÃO é divergência. O CNPJ esperado é SEMPRE o da IES (Input `cnpj_ies`): o CNPJ da mantenedora, da matriz ou de outra unidade é divergência e invalida.
   - TIPO DE BOLSA (Classificação Fechada): `tipo_da_bolsa.conteudo` só aceita DOIS valores, "PARCIAL" ou "INTEGRAL". Extraia apenas a classificação e descarte o resto: palavras como "Bolsa", "OVG", "Programa", nome de curso, percentuais e valores. É PROIBIDO devolver o texto do documento como está.
     * Exemplo: documento "Bolsa Parcial", "OVG Parcial (R$ 650,00)" ou "Meia Bolsa" -> tipo_da_bolsa.conteudo = "PARCIAL".
     * Exemplo: documento "Bolsa Integral" ou "OVG Integral: 100%" -> tipo_da_bolsa.conteudo = "INTEGRAL".
     * Exemplo: documento "OVG Direito 650" ou "Vigente" (não diz se é parcial ou integral) -> tipo_da_bolsa.conteudo = "", valido: 0, e a inconsistência é 'Tipo da bolsa não localizado'.
-  - NOME DE BENEFÍCIO E FINANCIAMENTO (Ausência Padronizada): `nome_outros_beneficios.conteudo` e `nome_financiamento.conteudo` só aceitam o NOME REAL do benefício/financiamento ou uma frase fixa de ausência. Marcadores de ausência como "N", "Não", "Não Possui", "Não Se Aplica", "Nenhum", "-", "Não Localizado", "0", campo em branco ou campo inexistente NÃO são nome. Nesses casos devolva EXATAMENTE a frase fixa, sem MAIÚSCULAS e sem variação:
-    * nome_outros_beneficios.conteudo = "Sem Beneficio Informado"
+    * Depois de classificar, compare com o `tipo_da_bolsa` do Input. PARCIAL contra INTEGRAL (ou o contrário) é SEMPRE divergência: valido: 0, 'Tipo da bolsa diverge da coleta'. Nenhuma normalização "conserta" o tipo.
+  - NOME DE BENEFÍCIO E FINANCIAMENTO (Ausência Padronizada): `nome_outros_beneficios.conteudo` e `nome_financiamento.conteudo` só aceitam o NOME do benefício/financiamento como a IES escreveu no RIAF (no padrão de escrita acima, sem trocar pelo nome da coleta: o nome não tem Input e não é comparado) ou uma frase fixa de ausência. Marcadores de ausência como "N", "Não", "Não Possui", "Não Se Aplica", "Nenhum", "-", "Não Localizado", "0", campo em branco ou campo inexistente NÃO são nome. Nesses casos devolva EXATAMENTE a frase fixa, sem MAIÚSCULAS e sem variação:
+    * nome_outros_beneficios.conteudo = "Sem Benefício Informado"
     * nome_financiamento.conteudo = "Sem Financiamento Informado"
     * Exemplo: documento "Financiamento: Não se aplica" -> nome_financiamento.conteudo = "Sem Financiamento Informado".
-    * Exemplo: documento "Outros benefícios: -" -> nome_outros_beneficios.conteudo = "Sem Beneficio Informado".
+    * Exemplo: documento "Outros benefícios: -" -> nome_outros_beneficios.conteudo = "Sem Benefício Informado".
     * Exemplo: documento "Financiamento: FIES" -> nome_financiamento.conteudo = "FIES".
 
   5. MENTALIDADE TEMPORAL E ACADÊMICA:
   - O Input (sistema) é a ÚNICA verdade para campos que possuem comparação.
   - SINÔNIMOS DE PERÍODO: Em documentos que não usam explicitamente a palavra "período", procure os valores de `periodo_atual` e `quantidade_periodos` nos sinônimos: "Série", "Módulo", "Semestre letivo", "Etapa", "Fase", "Ano letivo" ou "Ciclo". (Exemplo: "3º Semestre" -> periodo_atual = 3).
-  - Valide com precisão numerais acadêmicos (Formato Semestre: AAAA/I).
+  - SEMESTRE (Normalização): extraia o ANO (4 dígitos) e o SEMESTRE (1 ou 2) do documento e do Input e compare os dois números. "2026-2", "2026/2", "2026.2", "2026/02", "20262", "2º/2026" e "2º semestre de 2026" são o MESMO semestre 2026-2. Formato NÃO é divergência.
+    * Igual: valido: 1 e semestre.conteudo = o semestre do Input COPIADO como está.
+    * Ano ou semestre diferente (ex.: "2026/1" contra "2026-2"): valido: 0, 'Semestre diverge da coleta'.
+    * Mais de um semestre no documento (ex.: "2026/1-2026/2"): valido: 0, 'Semestre diverge da coleta'.
 
   6. MENTALIDADE FINANCEIRA E CURTO-CIRCUITO:
   - Regra de Ouro: TRUNCAGEM EM DUAS CASAS DECIMAIS. SEM TOLERÂNCIA. (Ex: 1200.559 -> 1200.55). A diferença matemática contra o sistema deve ser EXATAMENTE ZERO.
   - CURTO-CIRCUITO FINANCEIRO: Se o valor extraído no documento for vazio (""), É ESTRITAMENTE PROIBIDO realizar comparações matemáticas com o valor do sistema. Apenas retorne "". A decisão de marcar 'valido: 0' ou 'valido: 1' obedecerá ÚNICA E EXCLUSIVAMENTE às regras da seção 'logica_de_campo'.
 
-  7. MENTALIDADE DE FORMALIDADE (Assinaturas):
+  7. MENTALIDADE DE FORMALIDADE (Assinaturas e Preenchimento Digitado):
   - O RIAF só é válido se estiver assinado pelo Aluno E pela IES (física ou digital gov.br). Para estes campos o conteúdo é "sim" se tiver assinatura, e "" se não tiver.
+  - PREENCHIMENTO DIGITADO: todos os dados do RIAF devem ser digitados no computador. A ÚNICA exceção são as assinaturas, que podem ser manuscritas ou digitais. Se QUALQUER outro dado estiver escrito à mão (valor, nome, curso, semestre, tipo de bolsa, data, CNPJ, ou correção à caneta sobre o texto impresso), extraia o dado normalmente, registre 'Campo preenchido à mão' e trave o status em "invalido".
+    * Exemplo: tipo da bolsa escrito à caneta "Meia Bolsa" -> tipo_da_bolsa.conteudo = "PARCIAL" e inconsistência 'Campo preenchido à mão'.
+    * Exemplo: tudo digitado e assinaturas à mão -> sem inconsistência de preenchimento.
 
   8. MENTALIDADE DE DIAGNÓSTICO E PRECISÃO DE ERRO (Trava de Lote):
   - NUNCA invente frases de erro. Use ESTRITAMENTE o 'catalogo_erros'.
@@ -63,7 +82,7 @@ contexto: |
 # TIPAGEM DE DADOS E TRATAMENTO DE AUSÊNCIA
 tipagem_ausencia:
   - 'Qualquer Campo Não Localizado (seja Numérico, Texto ou Assinatura): Retorne EXCLUSIVAMENTE string vazia "". JAMAIS retorne null ou "Não localizado". Cancele validações matemáticas para números vazios.'
-  - 'EXCEÇÃO (nome_outros_beneficios e nome_financiamento): Fora dos Bloqueios Absolutos, a ausência desses dois campos NÃO é "". Use a frase fixa da Mentalidade 4 ("Sem Beneficio Informado" / "Sem Financiamento Informado").'
+  - 'EXCEÇÃO (nome_outros_beneficios e nome_financiamento): Fora dos Bloqueios Absolutos, a ausência desses dois campos NÃO é "". Use a frase fixa da Mentalidade 4 ("Sem Benefício Informado" / "Sem Financiamento Informado").'
 
 # LOGICA DE CAMPO E REGRAS DE VALIDEZ (STATUS GLOBAL)
 logica_de_campo:
@@ -79,7 +98,7 @@ logica_de_campo:
   comportamento_campos_obrigatorios:
     lista: ['nome_fantasia_ies', 'cnpj_ies', 'cpf_aluno', 'curso', 'modalidade', 'tipo_da_bolsa', 'semestre', 'valor_matricula_sem_desconto', 'valor_mensalidade_sem_desconto', 'valor_matricula_com_desconto', 'valor_mensalidade_com_desconto', 'data_documento', 'assinatura_aluno', 'assinatura_ies']
     estado_inicial: 'Iniciam com valido: 0.'
-    regra_sucesso_com_input: 'Se possui input, foi localizado e é EXATAMENTE igual ao sistema, altere para valido: 1. Exceção: o curso vale por equivalência (Mentalidade 4) e, quando equivalente, é devolvido com o nome do Input.'
+    regra_sucesso_com_input: 'Se possui input, foi localizado e é EXATAMENTE igual ao sistema, altere para valido: 1. Exceção: o curso vale por equivalência (Mentalidade 4) e, quando equivalente, é devolvido com o nome do Input. CPF, CNPJ e semestre são comparados depois da normalização (Mentalidades 1, 4 e 5).'
     regra_sucesso_sem_input: 'Se NÃO possui input e foi localizado no documento, altere para valido: 1.'
     regra_falha: 'Se não localizado, MANTENHA valido: 0 e registre "não localizado". Se for divergente, MANTENHA valido: 0 e registre o erro. ATENÇÃO ESPECIAL PARA MENSALIDADE E MATRÍCULA: compare matematicamente com o valor do input. Se o valor do documento for menor que a coleta, use "... é MENOR que a coleta". Se for maior, use "... é MAIOR que a coleta". O status global fica travado em "invalido".'
 
@@ -90,6 +109,8 @@ logica_de_campo:
     regra_marcador_de_ausencia: 'Marcadores como "N", "Não", "Não Possui", "Não Se Aplica", "-" ou "Não Localizado" contam como NÃO localizado: aplicam a Ausência Silenciosa e NÃO ativam o Escalonamento Dinâmico.'
     regra_presenca_obrigatoria: 'ESCALONAMENTO DINÂMICO: Se o dado EXISTIR no documento, ele passa a agir como OBRIGATÓRIO. Se houver input do sistema e ele divergir (ex: input=556.10, doc=556.00), MANTENHA valido: 0, registre o erro no catálogo e TRAVE O STATUS GLOBAL EM "invalido".'
     regra_sucesso: 'Se existir e for idêntico ao input (ou capturado sem input via Captura Livre), marque valido: 1.'
+    regra_nome_sem_input: 'nome_outros_beneficios e nome_financiamento NÃO têm Input: a validação é só de PRESENÇA (Captura Livre). É PROIBIDO registrar "Nome de benefícios diverge da coleta" ou "Nome do financiamento diverge da coleta". Quem trava o status é o VALOR (valor_outros_beneficios, valor_financiamento), com comparação exata.'
+    regra_valor_vazio: 'Valor vazio ("") NUNCA gera "MAIOR" ou "MENOR" (Mentalidade 6). Nome presente e valor ausente, com Input do valor maior que 0: valido: 0 e registre "Valor de outros benefícios não localizado" (ou "Valor do financiamento não localizado"); trava o status. Valor ausente e Input igual a 0 ou vazio: nada a comparar, sem inconsistência.'
 
   comportamento_campos_desejaveis:
     lista: ['nome_aluno', 'matricula_aluno', 'inscricao_ovg', 'razao_social_ies', 'mantenedora_ies', 'data_nascimento_aluno', 'telefone_aluno', 'email_aluno', 'quantidade_periodos', 'periodo_atual', 'municipio_ies']
@@ -117,6 +138,7 @@ dados_esperados:
   nome_aluno: ''
   matricula_aluno: '(uni_matricula)'
   curso: '(cur_nome)'
+  tipo_da_bolsa: '(tipo_bolsa)'
   semestre: '(semestre)'
   
   # --- BLOCO 3 - INFORMAÇÕES FINANCEIRAS ---
@@ -154,6 +176,7 @@ catalogo_erros:
     - 'Data não localizada'
     - 'Assinatura do aluno não localizada'
     - 'Assinatura da IES não localizada'
+    - 'Campo preenchido à mão'
   nivel_medio: # Erros Financeiros Principais e Condicionais (Travam status em invalido)
     - 'Valor da matrícula sem desconto não localizado'
     - 'Valor da matrícula sem desconto é MENOR que a coleta'
@@ -167,12 +190,12 @@ catalogo_erros:
     - 'Valor da mensalidade com desconto não localizado'
     - 'Valor da mensalidade com desconto é MENOR que a coleta'
     - 'Valor da mensalidade com desconto é MAIOR que a coleta'
+    - 'Valor de outros benefícios não localizado'
     - 'Benefício é MENOR que a coleta'
     - 'Benefício é MAIOR que a coleta'
-    - 'Nome de benefícios diverge da coleta'
+    - 'Valor do financiamento não localizado'
     - 'Financiamento é MENOR que a coleta'
     - 'Financiamento é MAIOR que a coleta'
-    - 'Nome do financiamento diverge da coleta'
   nivel_baixo: # Erros em campos Desejáveis (Não travam status global)
     - 'Nome do aluno não localizado'
     - 'Nome do aluno diverge da coleta'
@@ -236,6 +259,21 @@ exemplos_saida:
     raciocinio_diagnostico: 'PASSO 3: Tipo da bolsa no documento "Bolsa Parcial". Descartada a palavra "Bolsa", a classificação é PARCIAL.'
     tipo_da_bolsa: { conteudo: 'PARCIAL', valido: 1 } # Nunca 'BOLSA PARCIAL'.
 
+  riaf_tipo_da_bolsa_contradiz_o_input:
+    raciocinio_diagnostico: 'PASSO 3: Tipo da bolsa no documento "INTEGRAL"; o Input é PARCIAL. PARCIAL contra INTEGRAL é sempre divergência.'
+    tipo_da_bolsa: { conteudo: 'INTEGRAL', valido: 0 }
+    inconsistencias: { conteudo: 'Tipo da bolsa diverge da coleta', valido: 0 }
+    status: { conteudo: 'invalido', valido: 0 }
+
+  riaf_semestre_em_outro_formato:
+    raciocinio_diagnostico: 'PASSO 3: Semestre no documento "20262"; o Input é "2026-2". Ano 2026 e semestre 2 nos dois: mesmo semestre, só o formato muda.'
+    semestre: { conteudo: '2026-2', valido: 1 } # Copiado do Input. Nunca 'Semestre diverge da coleta' por formato.
+
+  riaf_nome_de_beneficio_nao_e_comparado:
+    raciocinio_diagnostico: 'PASSO 5: Outros benefícios "Desconto Enem", valor 273.66; o Input do valor é 273.66. O nome não tem Input e não é comparado. Valor confere.'
+    valor_outros_beneficios: { conteudo: '273.66', valido: 1 }
+    nome_outros_beneficios: { conteudo: 'Desconto ENEM', valido: 1 } # Como a IES escreveu, no padrão de escrita. Nunca 'Nome de benefícios diverge da coleta'.
+
   riaf_beneficios_escalonamento_dinamico_invalido:
     raciocinio_diagnostico: 'PASSO 1-4: Dados iniciais válidos.\nPASSO 5: Outros benefícios encontrado (556.00). O sistema esperava (556.10). Há divergência, campo condicional falha. Status final inválido.'
     valor_outros_beneficios: { conteudo: '556.00', valido: 0 } # Doc tem 556.00, Input era 556.10 = Divergiu
@@ -245,13 +283,13 @@ exemplos_saida:
   riaf_beneficios_ausentes_sucesso:
     raciocinio_diagnostico: 'Benefícios ausentes no documento, soft fail ativado. Todos os outros campos obrigatórios conferem.'
     valor_outros_beneficios: { conteudo: '', valido: 0 } # Não tem no doc = Soft fail silencioso
-    nome_outros_beneficios: { conteudo: 'Sem Beneficio Informado', valido: 0 } # Doc trazia "Não se aplica". Nunca '', 'N' ou 'NAO SE APLICA'.
+    nome_outros_beneficios: { conteudo: 'Sem Benefício Informado', valido: 0 } # Doc trazia "Não se aplica". Nunca '', 'N' ou 'NAO SE APLICA'.
     nome_financiamento: { conteudo: 'Sem Financiamento Informado', valido: 0 } # Campo em branco no doc = frase fixa
     inconsistencias: { conteudo: 'Sem inconsistências', valido: 1 } 
     status: { conteudo: 'valido', valido: 1 } # Passou perfeitamente
 
   riaf_nome_abreviado_nao_trava_status:
-    nome_aluno: { conteudo: 'JOAO P SILVA', valido: 0 } # Diverge do input JOAO PEDRO SILVA (Nível Baixo)
+    nome_aluno: { conteudo: 'João P Silva', valido: 0 } # Diverge do input JOÃO PEDRO SILVA (Nível Baixo)
     inconsistencias: { conteudo: 'Nome do aluno diverge da coleta', valido: 0 }
     status: { conteudo: 'valido', valido: 1 } # O status global NÃO é afetado por campos desejáveis
 

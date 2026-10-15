@@ -132,6 +132,8 @@ SKILLS_REMOTAS=(
   "design-taste-frontend|https://github.com/Leonxlnx/taste-skill --skill design-taste-frontend"
   "image-to-code|https://github.com/Leonxlnx/taste-skill --skill image-to-code"
   "web-design-guidelines|vercel-labs/agent-skills"
+  # Vídeo com acabamento de estúdio (GSAP, shaders, áudio). Ver .claude/tools/video/README.md.
+  "hyperframes|heygen-com/hyperframes"
 )
 secao_skills() {
   titulo "Skills (globais — Claude Code + Antigravity)"
@@ -151,6 +153,22 @@ secao_skills() {
       ok "skill instalada: $nome"
     fi
   done
+
+  # O npx skills add pode deixar o Claude Code fora da lista de agentes: a skill fica em
+  # ~/.agents/skills e o Claude só a enxerga pelo symlink em ~/.claude/skills.
+  rodar "mkdir -p '$HOME/.claude/skills'"
+  local dir
+  for dir in "$HOME"/.agents/skills/*/; do
+    nome="$(basename "$dir")"
+    [ -e "$HOME/.claude/skills/$nome" ] || rodar "ln -s '../../.agents/skills/$nome' '$HOME/.claude/skills/$nome'"
+  done
+  ok "skills visíveis para o Claude Code (~/.claude/skills)"
+
+  # HyperFrames: telemetria desligada (o vídeo carrega números do SIBU) e o Chrome headless
+  # que a gravação local exige. O ffmpeg vem do apt (sudo apt install ffmpeg).
+  rodar "npx -y hyperframes telemetry disable </dev/null >/dev/null 2>&1 || true"
+  rodar "npx -y hyperframes browser ensure </dev/null >/dev/null 2>&1 || true"
+  ok "hyperframes: telemetria desligada e Chrome headless pronto"
 
   if command -v playwright-cli >/dev/null 2>&1; then
     ok "playwright-cli já instalado"

@@ -635,11 +635,11 @@ def aplicar_transicoes(df, df_pag):
     df['IES Anterior'] = np.where((prev_ies != "-") & (prev_ies != ies_atual), prev_ies, "-")
     df['IES Posterior'] = np.where((next_ies != "-") & (next_ies != ies_atual), next_ies, "-")
     
-    df['Bolsa Anterior'] = np.where((prev_bolsa != "-") & (prev_bolsa != curr_bolsa), prev_bolsa, "-")
-    df['Bolsa Posterior'] = np.where((next_bolsa != "-") & (next_bolsa != curr_bolsa), next_bolsa, "-")
+    df['Bolsa Anterior'] = np.where(df['Inscrição Anterior'].notna(), prev_bolsa, "-")
+    df['Bolsa Posterior'] = np.where(df['Inscrição Posterior'].notna(), next_bolsa, "-")
     
     df['Mudou IES?'] = np.where((df['IES Anterior'] != "-") | (df['IES Posterior'] != "-"), "SIM", "NÃO")
-    df['Mudou Bolsa?'] = np.where((df['Bolsa Anterior'] != "-") | (df['Bolsa Posterior'] != "-"), "SIM", "NÃO")
+    df['Mudou Bolsa?'] = np.where(df['Inscrição Anterior'].notna() | df['Inscrição Posterior'].notna(), "SIM", "NÃO")
     
     # === A NOVA LÓGICA DE VÍNCULO (Com Trava de Inscrição Substituída) ===
     ano_atual_str = str(datetime.datetime.now().year)
