@@ -86,7 +86,7 @@
                     <i class="fa-solid fa-screwdriver-wrench text-[23px] w-6 text-center"></i><span>Ferramentas</span>
                 </a>
                 
-                {% if user.p_analise_ia or user.p_recalculo_bolsas or user.p_enquadramento_cursos or user.usuario == 'admin@ovg.org.br' %}
+                {% if user.p_analise_ia or user.p_enquadramento_cursos or user.usuario == 'admin@ovg.org.br' %}
                     <a href="{% url 'automacoes' %}" class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
                         <i class="fa-brands fa-whmcs text-[28px] w-6 text-center"></i><span>Automações</span>
                     </a>
@@ -106,13 +106,13 @@
                     </div>
                 {% endif %}
                 
-                {% if user.p_documentacoes or user.usuario == 'admin@ovg.org.br' %}
-                    <a href="#" class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
-                        <i class="fa-solid fa-folder-open text-[23px] w-6 text-center"></i><span>Documentações</span>
+                {% if user.p_sugestoes or user.usuario == 'admin@ovg.org.br' %}
+                    <a href="{% url 'sugestoes' %}" class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
+                        <i class="fa-solid fa-lightbulb text-[23px] w-6 text-center"></i><span>Sugestões</span>
                     </a>
                 {% else %}
                     <div class="menu-nav-bloqueado flex items-center space-x-4 px-4 py-3 text-gray-400 bg-gray-50/50 rounded-xl font-semibold text-base cursor-not-allowed opacity-70" title="Acesso Restrito">
-                        <i class="fa-solid fa-lock text-[23px] w-6 text-center"></i><span>Documentações</span>
+                        <i class="fa-solid fa-lock text-[23px] w-6 text-center"></i><span>Sugestões</span>
                     </div>
                 {% endif %}
             </nav>

@@ -1,8 +1,8 @@
 /* ==========================================================================
    PORTAL GGCI — MODO ELEITORAL DA ÁREA DE TRABALHO (COMPARTILHADO)
    ==========================================================================
-   As telas internas das Automações — Análise IA, Recálculo de Bolsas e
-   Enquadramento de Cursos — são densas: centenas de elementos montados
+   As telas internas das Automações — Análise IA e Enquadramento de
+   Cursos — são densas: centenas de elementos montados
    direto com utilitárias do Tailwind, sem classes semânticas. Só a Análise IA
    tem mais de 500 usos de classe de cor espalhados por 1300 linhas.
 
@@ -40,7 +40,7 @@
      dois presentes neste projeto:
 
        - O template declara o modal DEPOIS do `</main>`, porque ele é irmão da
-         tela, não conteúdo dela (Recálculo de Bolsas, modais de erro).
+         tela, não conteúdo dela (modais de erro).
        - Uma `</div>` a mais fecha o `<main>` antes da hora e o parser promove
          todo o resto a filho do `<body>` (era o caso do Análise IA).
 
@@ -401,27 +401,6 @@ html[data-tema="eleitoral"] .area-trabalho .text-blue-800 {
 html[data-tema="eleitoral"] .area-trabalho .border-blue-200,
 html[data-tema="eleitoral"] .area-trabalho .border-blue-100 {
     border-color: rgba(143, 173, 235, 0.30);
-}
-
-
-/* --------------------------------------------------------------------------
-   BOTÃO DE AÇÃO DOS CARDS (.btn-acao-card — Recálculo de Bolsas)
-   Definido no CSS da própria automação com rosa fixo (#ec4899) no fundo, na
-   borda e no anel de foco. Fica fora do bloco `.area-trabalho` porque o rosa
-   está no CSS, não numa utilitária — o remapeamento acima não o alcança.
-   -------------------------------------------------------------------------- */
-html[data-tema="eleitoral"] .btn-acao-card {
-    background-color: var(--tema-primaria-forte);
-    border-color: var(--tema-primaria-forte);
-}
-
-html[data-tema="eleitoral"] .btn-acao-card:hover {
-    background-color: var(--tema-primaria);
-    border-color: var(--tema-primaria);
-}
-
-html[data-tema="eleitoral"] .btn-acao-card:focus-visible {
-    outline-color: var(--tema-primaria-suave);
 }
 
 
