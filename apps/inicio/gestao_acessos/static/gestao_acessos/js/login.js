@@ -16,49 +16,73 @@
  * Garante que a validação de integridade frontend e a requisição Fetch 
  * aconteçam de forma coordenada e sem recarregamento da página.
  */
-document.getElementById('formLogin').addEventListener('submit', function(event) {
-    // Intercepta e previne a ação padrão do navegador (que seria realizar um POST síncrono e recarregar a tela).
-    // Isso nos permite gerenciar o ciclo de vida da requisição dinamicamente via AJAX.
-    event.preventDefault(); 
-    
-    // Captura os valores dos campos de usuário e senha, removendo espaços em branco acidentais
-    // em ambos os extremos usando o método .trim() (boa prática de prevenção de erros comuns de digitação).
-    const usuario = document.getElementById('usuario').value.trim();
-    const senha = document.getElementById('senha').value.trim();
+function initLogin() {
+    const form = document.getElementById('formLogin');
+    if (!form || form.dataset.loginInitialized === 'true') {
+        return;
+    }
+    form.dataset.loginInitialized = 'true';
 
-    /* --------------------------------------------------------------------------
-       1. CAMADA DE VALIDAÇÃO LOCAL (FRONTEND)
-       --------------------------------------------------------------------------
-       Valida a presença de dados nos campos obrigatórios antes do envio de rede.
-       Isso otimiza o uso do servidor Django ao poupar requisições desnecessárias.
-       -------------------------------------------------------------------------- */
-    if (!usuario || !senha) {
-        let mensagem = "Por favor, preencha todos os campos.";
-        if (!usuario) {
-            mensagem = "Ei! O campo Usuário é obrigatório.";
-        } else if (!senha) {
-            mensagem = "Não se esqueça da sua Senha.";
+    form.addEventListener('submit', function(event) {
+        // Intercepta e previne a ação padrão do navegador (que seria realizar um POST síncrono e recarregar a tela).
+        // Isso nos permite gerenciar o ciclo de vida da requisição dinamicamente via AJAX.
+        event.preventDefault(); 
+        
+        // Captura os valores dos campos de usuário e senha, removendo espaços em branco acidentais
+        const usuarioInput = document.getElementById('usuario');
+        const senhaInput = document.getElementById('senha');
+        const usuario = usuarioInput ? usuarioInput.value.trim() : '';
+        const senha = senhaInput ? senhaInput.value.trim() : '';
+
+        /* --------------------------------------------------------------------------
+           1. CAMADA DE VALIDAÇÃO LOCAL (FRONTEND)
+           -------------------------------------------------------------------------- */
+        if (!usuario || !senha) {
+            let mensagem = "Por favor, preencha todos os campos.";
+            if (!usuario) {
+                mensagem = "Ei! O campo Usuário é obrigatório.";
+            } else if (!senha) {
+                mensagem = "Não se esqueça da sua Senha.";
+            }
+
+            // Renderiza o Toast na tela com a mensagem de alerta correspondente
+            mostrarNotificacao(mensagem);
+            return;
         }
 
-        // Renderiza o Toast na tela com a mensagem de alerta correspondente
-        mostrarNotificacao(mensagem);
-    } 
-    /* --------------------------------------------------------------------------
-       2. CAMADA DE ENVIO ASSÍNCRONO SEGURO (POST)
-       -------------------------------------------------------------------------- */
-    else {
-        // Inicializa a variável para armazenar o token CSRF extraído da página.
-        // O Django bloqueia qualquer requisição de alteração de estado (POST) sem esta assinatura de segurança.
+        /* --------------------------------------------------------------------------
+           2. CAMADA DE ENVIO ASSÍNCRONO SEGURO (POST)
+           -------------------------------------------------------------------------- */
         let csrfToken = '';
         const tokenElement = document.querySelector('input[name="csrfmiddlewaretoken"]');
-        
-        if (tokenElement) {
+        if (tokenElement && tokenElement.value) {
             csrfToken = tokenElement.value;
-        } else {
-            // Emite um alerta no console para fins de depuração caso a estrutura de template sofra alterações
+        } else if (typeof CSRF_TOKEN !== 'undefined' && CSRF_TOKEN) {
+            csrfToken = CSRF_TOKEN;
+        }
+
+        if (!csrfToken) {
             console.error("Token CSRF não encontrado na página!");
             mostrarNotificacao("Erro de segurança: Token ausente.");
-            return; // Encerra a execução local imediatamente, prevenindo falha de Bad Request (403) no servidor
+            return;
+        }
+
+        const submitBtn = form.querySelector('button[type="submit"]');
+        let btnTextoOriginal = '';
+        if (submitBtn) {
+            btnTextoOriginal = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = '0.7';
+            submitBtn.style.cursor = 'wait';
+        }
+
+        function restaurarBotao() {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.style.opacity = '';
+                submitBtn.style.cursor = '';
+                submitBtn.innerHTML = btnTextoOriginal;
+            }
         }
 
         // Realiza o disparo da requisição HTTP POST assíncrona para a API do Django
@@ -66,38 +90,38 @@ document.getElementById('formLogin').addEventListener('submit', function(event) 
             method: 'POST', 
             headers: { 
                 'Content-Type': 'application/json',
-                // Define o token CSRF nos headers da requisição, autenticando a origem do payload
-                'X-CSRFToken': CSRF_TOKEN 
+                'X-CSRFToken': csrfToken 
             },
-            // Serializa o payload contendo o usuário e senha como uma string JSON válida
             body: JSON.stringify({ usuario: usuario, senha: senha })
         })
         .then(resposta => {
-            // Verifica o status de resposta do servidor. Se não for bem-sucedido (2xx),
-            // dispara uma exceção para que o fluxo seja direcionado ao bloco .catch().
             if (!resposta.ok) {
                 throw new Error(`HTTP error! status: ${resposta.status}`);
             }
-            // Executa o parse da resposta de forma assíncrona, convertendo a string de resposta para JSON
             return resposta.json();
         })
         .then(dados => {
-            // Trata o retorno configurado em apps/gestao_acessos/views.py (JsonResponse)
             if (dados.sucesso === true) {
-                // Redireciona o usuário para o dashboard do sistema em caso de login bem-sucedido
                 window.location.href = '/inicio/'; 
             } else {
-                // Exibe no Toast a mensagem amigável enviada diretamente pela lógica de negócio do backend
+                restaurarBotao();
                 mostrarNotificacao(dados.mensagem);
             }
         })
         .catch(erro => {
-            // Tratamento geral de falhas: problemas de rede, servidor fora do ar ou incompatibilidade de resposta
+            restaurarBotao();
             mostrarNotificacao("Erro de conexão com o servidor.");
             console.error('Erro de requisição:', erro);
         });
-    }
-});
+    });
+}
+
+// Suporte para carregamento padrão, Turbo e SPA
+document.addEventListener('DOMContentLoaded', initLogin);
+document.addEventListener('turbo:load', initLogin);
+if (document.readyState === 'interactive' || document.readyState === 'complete') {
+    initLogin();
+}
 
 
 /* ==========================================================================

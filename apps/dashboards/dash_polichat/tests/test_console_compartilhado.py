@@ -1,12 +1,12 @@
 """
 === ARQUIVO: apps/dashboards/dash_polichat/tests/test_console_compartilhado.py ===
-Propósito: Vigia o componente `static/css/console.css`, usado pelo console das quatro
+Propósito: Vigia o componente `static/css/console.css`, usado pelo console das três
            telas que não são o Polichat.
 Autor: N/A
 Dependências Principais: unittest, re, playwright (Chromium já instalado)
 
-POR QUÊ EXISTE (E POR QUE MORA AQUI): o Análise IA, o Enquadramento de Cursos e o
-Recálculo de Bolsas não têm suíte própria; o Documentos IA tem, mas o discovery dela está
+POR QUÊ EXISTE (E POR QUE MORA AQUI): o Análise IA e o Enquadramento de Cursos
+não têm suíte própria; o Documentos IA tem, mas o discovery dela está
 quebrado por ter `tests.py` e `tests/` ao mesmo tempo. Deixar o componente sem teste seria
 pior do que hospedá-lo na única suíte do portal que roda hoje. Quando a suíte do
 Documentos IA voltar a rodar, este arquivo pode migrar para lá sem alteração.
@@ -22,7 +22,7 @@ O QUE ELE PROTEGE
    `.text-purple-900` globalmente passaria a pintar qualquer outra tela do portal que use
    a classe hoje sem efeito — mudaria visual congelado onde ninguém pediu.
 
-3. Os dois temas. Claro no padrão, ardósia no eleitoral, para as quatro telas de uma vez.
+3. Os dois temas. Claro no padrão, ardósia no eleitoral, para as três telas de uma vez.
 """
 import pathlib
 import re
@@ -34,7 +34,7 @@ COMPONENTE = RAIZ / "static" / "css" / "console.css"
 BUNDLE = RAIZ / "static" / "css" / "output.css"
 TEMA = RAIZ / "static" / "css" / "tema.css"
 
-# As quatro telas que montam o console e, para cada uma, o JS que escreve nele.
+# As três telas que montam o console e, para cada uma, o JS que escreve nele.
 TELAS = {
     "analise_ia": (
         "apps/automacoes/analise_ia/templates/analise_ia/index.html",
@@ -43,10 +43,6 @@ TELAS = {
     "enquadramento_cursos": (
         "apps/automacoes/enquadramento_cursos/templates/enquadramento_cursos/enquadramento_cursos/index.html",
         "apps/automacoes/enquadramento_cursos/static/enquadramento_cursos/js/enquadramento_cursos.js",
-    ),
-    "recalculo_bolsas": (
-        "apps/automacoes/recalculo_bolsas/templates/recalculo_bolsas/recalculo_bolsas/index.html",
-        "apps/automacoes/recalculo_bolsas/static/recalculo_bolsas/js/recalculo_bolsas.js",
     ),
     "dash_documentos_ia": (
         "apps/dashboards/dash_documentos_ia/templates/dash_documentos_ia/index.html",

@@ -94,10 +94,11 @@ class Command(BaseCommand):
     help = 'Executa o pipeline de extração e tratamento de dados do Polichat'
 
     def add_arguments(self, parser):
-        parser.add_argument('processo_id', type=int)
+        parser.add_argument('processo_id', type=int, nargs='?', default=None,
+                            help='ID do processo (opcional). Se omitido, cria um novo processo automaticamente.')
 
     def handle(self, *args, **options):
-        processo_id = options['processo_id']
+        processo_id = options.get('processo_id')
 
         # ── SIGTERM vira exceção ──────────────────────────────────────────
         # O processo é lançado com prazo de 24h (portal_ggci/processos.py), e
@@ -119,11 +120,18 @@ class Command(BaseCommand):
 
         signal.signal(signal.SIGTERM, _ao_receber_sigterm)
 
-        try:
-            proc = ProcessamentoPolichat.objects.get(id=processo_id)
-        except ProcessamentoPolichat.DoesNotExist:
-            self.stdout.write(self.style.ERROR(f'Processo {processo_id} não encontrado.'))
-            return
+        if processo_id is None:
+            proc = ProcessamentoPolichat.objects.create(
+                status='PENDENTE',
+                usuario_solicitante='Terminal (portal.sh)'
+            )
+            processo_id = proc.id
+        else:
+            try:
+                proc = ProcessamentoPolichat.objects.get(id=processo_id)
+            except ProcessamentoPolichat.DoesNotExist:
+                self.stdout.write(self.style.ERROR(f'Processo {processo_id} não encontrado.'))
+                return
 
         original_stdout = sys.stdout
         sys.stdout = LogCapture(sys.stdout, proc)

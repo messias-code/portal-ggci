@@ -78,11 +78,11 @@ INSTALLED_APPS = [
     'apps.ferramentas.formatador_listas',
     'apps.automacoes.menu_automacoes',
     'apps.automacoes.analise_ia',
-    'apps.automacoes.recalculo_bolsas',
     'apps.automacoes.enquadramento_cursos',
     'apps.dashboards.menu_dashboards',
     'apps.dashboards.dash_documentos_ia',
     'apps.dashboards.dash_polichat',
+    'apps.sugestoes.menu_sugestoes',
 
 ]
 

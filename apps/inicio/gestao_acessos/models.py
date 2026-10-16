@@ -33,10 +33,9 @@ class Usuario(AbstractBaseUser):
     p_formatador_dados = models.BooleanField(default=False)  
     
     p_analise_ia = models.BooleanField(default=False)
-    p_recalculo_bolsas = models.BooleanField(default=False)
     p_enquadramento_cursos = models.BooleanField(default=False)
 
-    p_documentacoes = models.BooleanField(default=False)
+    p_sugestoes = models.BooleanField(default=False)
 
     p_dash_polichat = models.BooleanField(default=False)
     p_gestao_polichat = models.BooleanField(default=False)

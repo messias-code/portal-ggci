@@ -41,7 +41,7 @@ def horario_comercial():
 
 
 class BaseLoop(TestCase):
-    def rodar(self, voltas, entre_voltas=None, ao_disparar=None, piso=None):
+    def rodar(self, voltas, entre_voltas=None, ao_disparar=None, piso=None, plateia=True, ambiente="[DEV]"):
         """Executa `handle()` por N voltas do laço e devolve os disparos observados.
 
         `entre_voltas(n)` roda no fim de cada volta — é o gancho para mexer no banco
@@ -49,6 +49,8 @@ class BaseLoop(TestCase):
         `ao_disparar()` roda quando o comando dispara uma extração, no lugar do
         `executar_polichat` de verdade.
         `piso` sobrescreve o freio entre disparos, para isolar outras regras.
+        `plateia` diz se a tela do Polichat está aberta (só pesa no DEV): bool, ou função
+        para a tela abrir no meio da execução.
         """
         disparos = []
 
@@ -73,6 +75,9 @@ class BaseLoop(TestCase):
             mock.patch.object(modulo.time, "sleep", side_effect=dormir),
             mock.patch.object(modulo.timezone, "localtime", return_value=horario_comercial()),
             mock.patch.object(comando, "stdout", mock.Mock()),
+            (mock.patch.object(modulo, "tela_aberta_recentemente", side_effect=plateia) if callable(plateia)
+             else mock.patch.object(modulo, "tela_aberta_recentemente", return_value=plateia)),
+            mock.patch.object(modulo, "tag_do_ambiente", return_value=ambiente),
         ]
         if piso is not None:
             patches.append(mock.patch.object(modulo, "INTERVALO_MINIMO_ENTRE_DISPAROS", piso))
@@ -209,6 +214,7 @@ class TestFreioDeSeguranca(BaseLoop):
         with mock.patch.object(modulo, "popen_com_limite", side_effect=falhar_na_hora) as popen, \
              mock.patch.object(modulo.time, "sleep", side_effect=dormir), \
              mock.patch.object(modulo.timezone, "localtime", return_value=horario_comercial()), \
+             mock.patch.object(modulo, "tela_aberta_recentemente", return_value=True), \
              mock.patch.object(comando, "stdout", mock.Mock()):
             try:
                 comando.handle()
@@ -252,3 +258,44 @@ class TestSemGradeNemEsperaPorOutroAmbiente(TestCase):
                 "minuto. Como a produção só o reescreve ao fim de cada rodada dela, o "
                 "dev perdia quase um ciclo inteiro parado a cada volta.",
             )
+
+
+class TestDevSoComPlateia(BaseLoop):
+    """No DEV a rodada só sai com a tela do Polichat aberta: cada rodada abre um
+    Chromium e, sem ninguém olhando, era memória gasta o dia inteiro à toa (derrubou
+    a gravação de um vídeo em 15/10/2026). A produção roda sempre."""
+
+    def test_dev_sem_tela_aberta_nao_dispara(self):
+        self.assertEqual(self.rodar(voltas=5, plateia=False, piso=0), [])
+
+    def test_dev_com_tela_aberta_dispara(self):
+        self.assertEqual(len(self.rodar(voltas=1, plateia=True)), 1)
+
+    def test_producao_dispara_mesmo_sem_tela_aberta(self):
+        self.assertEqual(len(self.rodar(voltas=1, plateia=False, ambiente="[PROD]")), 1)
+
+    def test_dev_volta_a_disparar_quando_a_tela_abre(self):
+        """A tela fechada pausa o DEV; aberta, a volta seguinte do laço já dispara."""
+        estado = {"aberta": False}
+
+        def abrir_tela(volta):
+            if volta == 2:
+                estado["aberta"] = True
+
+        disparos = self.rodar(voltas=4, entre_voltas=abrir_tela, plateia=lambda _p: estado["aberta"])
+        self.assertEqual(len(disparos), 1)
+
+
+class TestCarimboDeAtividade(TestCase):
+    def test_le_a_idade_do_carimbo_da_tela(self):
+        import os
+        import tempfile
+        import time
+        with tempfile.TemporaryDirectory() as pasta:
+            self.assertFalse(modulo.tela_aberta_recentemente(pasta), "Sem carimbo, ninguém abriu a tela.")
+            carimbo = os.path.join(pasta, "last_active.txt")
+            open(carimbo, "w").close()
+            self.assertTrue(modulo.tela_aberta_recentemente(pasta))
+            velho = time.time() - modulo.JANELA_ATIVIDADE_DEV - 5
+            os.utime(carimbo, (velho, velho))
+            self.assertFalse(modulo.tela_aberta_recentemente(pasta))

@@ -99,7 +99,7 @@
                 {% endif %}
 
                 <!-- Menu Automações Dinâmico -->
-                {% if user.p_analise_ia or user.p_recalculo_bolsas or user.p_enquadramento_cursos or user.usuario == 'admin@ovg.org.br' %}
+                {% if user.p_analise_ia or user.p_enquadramento_cursos or user.usuario == 'admin@ovg.org.br' %}
                 <a href="{% url 'automacoes' %}"
                     class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
                     <i class="fa-brands fa-whmcs text-[28px] w-6 text-center"></i><span>Automações</span>
@@ -123,16 +123,16 @@
                 </div>
                 {% endif %}
 
-                <!-- Menu Documentações Dinâmico -->
-                {% if user.p_documentacoes or user.usuario == 'admin@ovg.org.br' %}
-                <a href="#"
+                <!-- Menu Sugestões Dinâmico -->
+                {% if user.p_sugestoes or user.usuario == 'admin@ovg.org.br' %}
+                <a href="{% url 'sugestoes' %}"
                     class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
-                    <i class="fa-solid fa-folder-open text-[23px] w-6 text-center"></i><span>Documentações</span>
+                    <i class="fa-solid fa-lightbulb text-[23px] w-6 text-center"></i><span>Sugestões</span>
                 </a>
                 {% else %}
                 <div class="menu-nav-bloqueado flex items-center space-x-4 px-4 py-3 text-gray-400 bg-gray-50/50 rounded-xl font-semibold text-base cursor-not-allowed opacity-70"
                     title="Acesso Restrito">
-                    <i class="fa-solid fa-lock text-[23px] w-6 text-center"></i><span>Documentações</span>
+                    <i class="fa-solid fa-lock text-[23px] w-6 text-center"></i><span>Sugestões</span>
                 </div>
                 {% endif %}
             </nav>
@@ -271,7 +271,7 @@
                                         {% if u.can_edit %}
                                         <!-- Ao clicar, injeta os dados do usuário direto no modal via JS -->
                                         <button
-                                            onclick="abrirModalEdicao({'id': {{ u.id }}, 'nome': '{{ u.nome|escapejs }}', 'usuario': '{{ u.usuario|escapejs }}', 'perfil': '{{ u.perfil }}', 'p_ferramentas': {{ u.p_ferramentas }}, 'p_formatador_listas': {{ u.p_formatador_listas }}, 'p_formatador_dados': {{ u.p_formatador_dados }}, 'p_analise_ia': {{ u.p_analise_ia }}, 'p_recalculo_bolsas': {{ u.p_recalculo_bolsas }}, 'p_enquadramento_cursos': {{ u.p_enquadramento_cursos }}, 'p_documentacoes': {{ u.p_documentacoes }}, 'p_dash_polichat': {{ u.p_dash_polichat }}, 'p_gestao_polichat': {{ u.p_gestao_polichat }}, 'p_dash_documentos_ia': {{ u.p_dash_documentos_ia }} })"
+                                            onclick="abrirModalEdicao({'id': {{ u.id }}, 'nome': '{{ u.nome|escapejs }}', 'usuario': '{{ u.usuario|escapejs }}', 'perfil': '{{ u.perfil }}', 'p_ferramentas': {{ u.p_ferramentas }}, 'p_formatador_listas': {{ u.p_formatador_listas }}, 'p_formatador_dados': {{ u.p_formatador_dados }}, 'p_analise_ia': {{ u.p_analise_ia }}, 'p_enquadramento_cursos': {{ u.p_enquadramento_cursos }}, 'p_sugestoes': {{ u.p_sugestoes }}, 'p_dash_polichat': {{ u.p_dash_polichat }}, 'p_gestao_polichat': {{ u.p_gestao_polichat }}, 'p_dash_documentos_ia': {{ u.p_dash_documentos_ia }} })"
                                             class="ga-acao ga-acao--editar w-9 h-9 rounded-xl bg-amber-100 text-amber-600 hover:bg-amber-500 hover:text-white transition-all flex items-center justify-center shadow-sm relative z-10"
                                             title="Editar Usuário">
                                             <i class="fa-solid fa-pen text-sm"></i>

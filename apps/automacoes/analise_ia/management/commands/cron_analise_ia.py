@@ -264,7 +264,7 @@ class Command(BaseCommand):
         pid_ativo = self._lock_ativo()
         if pid_ativo:
             self._linha("PULADO", f"{ambiente} · já existe um ciclo em andamento (PID {pid_ativo})")
-            return
+            sys.exit(1)
 
         arquivo_detalhado = os.path.join(PASTA_CRON, f"detalhado_{hoje}.log")
         self._rotacionar_detalhados()

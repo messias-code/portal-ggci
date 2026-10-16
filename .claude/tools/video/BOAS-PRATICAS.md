@@ -148,7 +148,7 @@ space, one focal point, no on-screen sentences."*
 - **Logo**: abre se montando (as três peças O, V, G entram em *arcs* com *overshoot*) e vira
   **bug** (marca no canto) pelo resto do vídeo; fecha com **end card** do logo.
 - **Narrador**: "um agente de análise", voz Microsoft Antonio (`pt-BR-AntonioNeural`, 1.08).
-- Modelo de referência: `artefatos explicativos/metodologia do wallyson/video/`.
+- Modelo de referência: `artefatos_explicativos/metodologia do wallyson/video/`.
 
 ---
 
@@ -178,7 +178,7 @@ space, one focal point, no on-screen sentences."*
 
 ## 7. Lições do v6 da metodologia do Wallyson (13/10/2026)
 
-Modelo completo em `artefatos explicativos/metodologia do wallyson/video/metodologia-wallyson-v6/fonte/`
+Modelo completo em `artefatos_explicativos/metodologia do wallyson/video/metodologia-wallyson-v6/fonte/`
 (roteiro → voz → trilha → mixagem → `build.py` → HyperFrames). Comece um vídeo novo copiando essa pasta.
 
 - **Fonte única**: todo número sai do documento oficial publicado (dossiê). Inferência nossa ("como o
@@ -197,7 +197,7 @@ Modelo completo em `artefatos explicativos/metodologia do wallyson/video/metodol
 
 ## 7b. Lições do v7 (13/10/2026, pedido do usuário depois de ver o v6)
 
-Modelo atual: `artefatos explicativos/metodologia do wallyson/video/metodologia-wallyson-v7/fonte/`.
+Modelo atual: `artefatos_explicativos/metodologia do wallyson/video/metodologia-wallyson-v7/fonte/`.
 
 - **Um caso por ponto, bem desenhado.** Mais exemplos confundem. Exceção: um segundo caso só quando o
   primeiro não cobre a variação (ex.: bolsa parcial ao lado da integral).
@@ -224,6 +224,27 @@ Modelo atual: `artefatos explicativos/metodologia do wallyson/video/metodologia-
 - **"julho" que vira "júlio"**: no começo da frase e colado a pausa. "júlho" não resolve; "o mês de julho"
   e "o pagamento de julho" resolvem. Varra TODAS as frases com o Whisper e reescreva só as marcadas.
 - **Limite**: até 12 min; o v7 deu 11min20s com 1.805 palavras faladas (≈ 2,65 palavras/s a 1.04).
+
+## 7c. Arquivo final: 1080p nítido e leve (regra do usuário, 15/10/2026)
+
+- Referência: `metodologia-wallyson-v8.mp4`. É H.264 High, 1920×1080 a 60 fps, com ~1,4 Mbps de vídeo: 136 MB em 12 min.
+  Foi gravado com `npx hyperframes render --quality delivery --fps 60`.
+- **Grave com `--workers 6`** (`npx hyperframes render --quality delivery --fps 60 --workers 6`). O padrão
+  `auto` abre só 2 Chromes. Num trecho de 90 s, o tempo caiu de 248 s para 75 s, com o mesmo tamanho e a
+  mesma nitidez. Com 10 workers caiu só até 69 s, então não compensa a RAM a mais.
+  O gargalo é a captura dos quadros, e o Chrome já desenha na GTX 1650 (o log mostra `browserGpuMode probe → hardware`).
+- **Não use `--gpu`** (NVENC). Sozinho, ele ganhou só 8% e gerou 4× o tamanho (6,2 Mbps).
+  Na taxa do v8 (`--video-bitrate 1400k`), ganhou mais 17%, mas borrou o texto nas transições
+  (o pior quadro ficou com 40 dB, contra 49 dB do x264).
+  O NVENC da 1650 é de geração antiga e perde do x264 em arquivo leve.
+- O arquivo não pode ser pesado e não pode parecer pixelado ou borrado.
+  O guia do RIAF v2 deu **4 GB** por causa da **granulação de filme animada**: um ruído novo a cada quadro não comprime.
+  Recomprimir depois não resolve e perde nitidez.
+- **Não use granulação nem ruído que mude a cada quadro.** Evite também efeito que mude a tela inteira o tempo todo.
+- Antes de entregar, confira com `ffprobe` o tamanho e a taxa do arquivo: o alvo é ~1,5–3 Mbps em 1080p60.
+  Se passar muito disso, ache o elemento que não comprime.
+- Documento ou texto na tela fica **100% nítido**: nada de desfoque nem 3D (`rotateX/Y`, `perspective`) sobre texto.
+  A câmera usa só translação e escala 2D.
 
 ## 8. Anti-padrões (reprovam o vídeo)
 

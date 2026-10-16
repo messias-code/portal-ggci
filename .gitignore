@@ -146,4 +146,5 @@ gestao_acessos_iniciais.json
 # ==========================================
 # ARTEFATOS EXPLICATIVOS
 # ==========================================
-artefatos explicativos/
+artefatos_explicativos/
+relatorio_vulnerabilidades.md

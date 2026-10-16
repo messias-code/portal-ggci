@@ -444,7 +444,7 @@ function setup_full() {
     run_with_stream "/usr/bin/python3 -m venv venv" "Criando Ambiente Virtual"
     source venv/bin/activate
     run_with_stream "pip install --upgrade pip && pip install -r requirements.txt" "Instalando Bibliotecas do Sistema (Pip)"
-    run_with_stream "pip install --upgrade playwright sqlalchemy polars pyarrow fastparquet mysql-connector-python xlsxwriter" "Instalando e Atualizando dependências de Dados (Motor IA)"
+    run_with_stream "pip install --upgrade playwright sqlalchemy polars pyarrow fastparquet mysql-connector-python xlsxwriter psutil" "Instalando e Atualizando dependências de Dados (Motor IA)"
     run_with_stream "playwright install chromium" "Construindo Navegador Headless (Playwright)"
 
     env_wizard
@@ -659,31 +659,12 @@ function run_robot_polichat() {
     print_ovg_logo
     print_phase "🤖 ROBÔ DE EXTRAÇÃO: POLICHAT"
     
-    # 💡 Técnica Sênior: Escrever o script num arquivo real limpa bugs de aspas do Bash
-    cat << 'EOF' > .tmp_robot.py
-import sys, os
-sys.path.insert(0, os.getcwd())
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'portal_ggci.settings')
-import django
-django.setup()
-
-from apps.dashboards.dash_polichat.services.polichat_extrator import executar_pipeline
-try:
-    sucesso = executar_pipeline()
-    sys.exit(0 if sucesso else 1) # Se for False, sai com código de erro 1
-except Exception as e:
-    import traceback
-    traceback.print_exc()
-    sys.exit(1)
-EOF
-
-    run_with_stream "python3 .tmp_robot.py" "Acionando Motor de Extração de Conversas..."
+    run_with_stream "python3 manage.py executar_polichat" "Acionando Motor de Extração de Conversas..."
     local exit_code=$?
-    rm -f .tmp_robot.py # Limpa a sujeira
     
     if [ $exit_code -eq 0 ]; then 
         log_msg "ok" "Pipeline PoliChat executada com sucesso."
-        show_output_folder "dados_polichat/analise_anual"
+        show_output_folder "apps/dashboards/dash_polichat/dados"
     else
         log_msg "err" "A Pipeline falhou ou foi abortada (Timeout/Erro no Metabase)."
     fi
@@ -710,10 +691,12 @@ function run_robot_documentos() {
     
     if [ $exit_code -eq 0 ]; then 
         log_msg "ok" "Pipeline IA executada com sucesso."
-        # O relatório final não fica mais em dados/dados_analise_ia: cada
-        # execução salva dentro da própria pasta proc_<id>. O caminho exato sai
-        # na linha CONCLUIDO do resumo, logo acima.
-        show_output_folder "apps/automacoes/analise_ia/dados/processamento"
+        local latest_proc=$(ls -td apps/automacoes/analise_ia/dados/processamento/proc_* 2>/dev/null | head -n 1)
+        if [ -n "$latest_proc" ] && [ -d "$latest_proc" ]; then
+            show_output_folder "$latest_proc"
+        else
+            show_output_folder "apps/automacoes/analise_ia/dados/processamento"
+        fi
     else
         log_msg "err" "A Pipeline falhou ou encontrou erros de execução."
     fi
@@ -908,8 +891,14 @@ EOF
         echo -e "   ${C_GREE}➤ Acesso Público (Cloudflare):${C_RESET} ${C_WHIT}${cf_url}${C_RESET}"
     fi
 
-    # Roda o Gunicorn em background
-    gunicorn portal_ggci.wsgi:application --bind 127.0.0.1:8001 --workers 4 --threads 8 --worker-class gthread --timeout 300 --pid /tmp/gunicorn.pid &
+    # Roda o Gunicorn em background.
+    # --max-requests recicla o worker depois de ~1000 requisições (com jitter, para
+    # os 4 não reiniciarem juntos). Sem isso cada worker só cresce: pandas e os
+    # relatórios deixam memória que o Python não devolve ao sistema, e em 15/10/2026
+    # eles estavam entre 190 MB e 450 MB cada. A troca é graciosa — o worker termina
+    # a requisição em curso e os outros 3 seguem atendendo —, então não se perde
+    # desempenho nem muda comportamento.
+    gunicorn portal_ggci.wsgi:application --bind 127.0.0.1:8001 --workers 4 --threads 8 --worker-class gthread --timeout 300 --max-requests 1000 --max-requests-jitter 100 --pid /tmp/gunicorn.pid &
     local guni_pid=$!
     
     log_msg "info" "Iniciando Robô Contínuo do PoliChat em background..."
@@ -1281,45 +1270,60 @@ function list_first_parquets() {
     local today=$(date +%Y-%m-%d)
     local found_any=false
     
-    for app_dir in apps/*; do
-        if [ -d "$app_dir" ]; then
-            local app_name=$(basename "$app_dir")
-            local first_parquet=$(find "$app_dir" -type f -name "*.parquet" -newermt "$today" -printf '%T+ %u %p\n' 2>/dev/null | sort | head -n 1)
+    for app_dir in apps/*/*; do
+        [ -d "$app_dir" ] || continue
+        [[ "$app_dir" == *"__pycache__"* ]] && continue
+        
+        local app_name=$(basename "$app_dir")
+        local first_line=$(find "$app_dir" -type f -name "*.parquet" -newermt "$today" -printf '%T@\t%TY-%Tm-%Td %TH:%TM:%TS\t%u\t%p\n' 2>/dev/null | sort -n | head -n 1)
+        
+        if [ -n "$first_line" ]; then
+            local ts="" dh="" p_user="" p_path=""
+            IFS=$'\t' read -r ts dh p_user p_path <<< "$first_line"
             
-            if [ -n "$first_parquet" ]; then
-                local p_time=$(echo "$first_parquet" | awk '{print $1}')
-                local p_user=$(echo "$first_parquet" | awk '{print $2}')
-                local p_path=$(echo "$first_parquet" | awk '{print $3}')
-                
-                # Identificando quem gerou:
-                local gerador="Usuários (Desconhecido)"
-                if [[ "$PWD" == *"-dev"* ]]; then
-                    gerador="Usuários (Dev)"
-                elif [[ "$PWD" == *"-prod"* ]]; then
-                    gerador="Usuários (Prod)"
-                else
-                    gerador="Usuários do Sistema"
-                fi
-                
-                # Checando se foi o Cron (Bot) pelo horário de pico de execução (entre 00:00 e 00:30)
-                # Extrai apenas a hora e o minuto
-                local p_hour_min=$(date -d "${p_time%+*}" +%H:%M 2>/dev/null || echo "12:00")
-                if [[ "$p_hour_min" > "00:00" && "$p_hour_min" < "00:45" ]]; then
-                    gerador="Bot Automático (Cron)"
-                fi
-                
-                echo -e "   ${C_PURP}App:${C_RESET} ${C_WHIT}${app_name}${C_RESET}"
-                echo -e "      ${C_GRAY}Arquivo:${C_RESET} ${p_path}"
-                echo -e "      ${C_GRAY}Gerador:${C_RESET} ${C_YELL}${gerador}${C_RESET}"
-                echo -e "      ${C_GRAY}Data e Hora:${C_RESET} ${C_GREE}${p_time}${C_RESET}"
-                echo ""
-                found_any=true
+            local dh_clean="${dh%.*}"
+            local p_time_fmt=$(date -d "$dh_clean" '+%d/%m/%Y %H:%M:%S' 2>/dev/null || echo "$dh_clean")
+            local p_hour_min=$(date -d "$dh_clean" +%H:%M 2>/dev/null || echo "12:00")
+            
+            # Identificando quem gerou:
+            local gerador="Usuários (Desconhecido)"
+            local is_dev=false
+            if [[ "$PWD" == *"-dev"* ]]; then
+                gerador="Usuários (Dev)"
+                is_dev=true
+            elif [[ "$PWD" == *"-prod"* ]]; then
+                gerador="Usuários (Prod)"
+            else
+                gerador="Usuários do Sistema"
             fi
+            
+            # Checando se foi o Cron (Bot) pelo horário de pico de execução:
+            # - Em DEV, o cron diário roda às 06:00 (--ciclos-dev) -> 360 a 405 min
+            # - Em PROD, o cron diário roda às 00:01 -> 0 a 60 min
+            local h="" m=""
+            IFS=: read -r h m <<< "$p_hour_min"
+            local min_do_dia=$(( 10#${h:-0} * 60 + 10#${m:-0} ))
+            if [ "$is_dev" = true ]; then
+                if (( min_do_dia >= 360 && min_do_dia <= 405 )); then
+                    gerador="Bot Automático (Cron DEV)"
+                fi
+            else
+                if (( min_do_dia >= 0 && min_do_dia <= 60 )); then
+                    gerador="Bot Automático (Cron PROD)"
+                fi
+            fi
+            
+            echo -e "   ${C_PURP}App:${C_RESET} ${C_WHIT}${app_name}${C_RESET} ${C_GRAY}($(dirname "$app_dir"))${C_RESET}"
+            echo -e "      ${C_GRAY}Arquivo:${C_RESET} ${p_path}"
+            echo -e "      ${C_GRAY}Gerador:${C_RESET} ${C_YELL}${gerador}${C_RESET} ${C_GRAY}(Usuário SO: ${p_user})${C_RESET}"
+            echo -e "      ${C_GRAY}Data e Hora:${C_RESET} ${C_GREE}${p_time_fmt}${C_RESET}"
+            echo ""
+            found_any=true
         fi
     done
     
     if [ "$found_any" = false ]; then
-        log_msg "info" "Nenhum arquivo parquet foi gerado no dia de hoje."
+        log_msg "info" "Nenhum arquivo parquet foi gerado no dia de hoje ($today)."
     fi
     
     wait_key

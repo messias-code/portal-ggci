@@ -194,7 +194,7 @@
                 </div>
 
                 <!-- Formulário de Autenticação principal (Interceptado pelo login.js) -->
-                <form id="formLogin" class="space-y-8 font-inter">
+                <form id="formLogin" method="POST" action="/api/verificar-login/" data-turbo="false" class="space-y-8 font-inter">
                     <!-- Token de segurança Django para mitigação de ataques CSRF -->
                     {% csrf_token %}
 
