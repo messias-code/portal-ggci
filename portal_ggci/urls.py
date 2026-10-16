@@ -37,11 +37,13 @@ urlpatterns = [
     # navegação real do portal (hub -> app), no mesmo padrão de /ferramentas/.
     path('automacoes/', include('apps.automacoes.menu_automacoes.urls')),
     path('automacoes/analise-ia/', include('apps.automacoes.analise_ia.urls')),
-    path('automacoes/recalculo-bolsas/', include('apps.automacoes.recalculo_bolsas.urls')),
     path('automacoes/enquadramento-cursos/', include('apps.automacoes.enquadramento_cursos.urls')),
 
     # Dashboards
     path('dashboards/', include('apps.dashboards.menu_dashboards.urls')),
     path('dashboards/polichat/', include('apps.dashboards.dash_polichat.urls')),
     path('dashboards/documentos-ia/', include('apps.dashboards.dash_documentos_ia.urls')),
+
+    # Sugestões
+    path('sugestoes/', include('apps.sugestoes.menu_sugestoes.urls')),
 ]
