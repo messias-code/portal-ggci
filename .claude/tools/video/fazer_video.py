@@ -38,6 +38,8 @@ FORMATO DO roteiro.json:
      "devagar": {"RIAF": 0.65},  # kokoro: essas palavras saem mais lentas (fator na velocidade)
      "pausa": 0.45,              # silêncio entre cenas, em s
      "pausa_frase": 0.18,        # silêncio entre frases da mesma cena
+     "pausa_virgula": 0.7, "pausa_ponto_virgula": 1.0,   # opcional: silêncio exato na vírgula e no ";" (edge)
+     "pausa_virgula": {"curta": 0.28, "media": 0.4, "longa": 0.55},  # ou por tipo de vírgula (ver respirar)
      "folga_inicio": 0.4, "folga_fim": 1.2,
      "largura": 1280, "altura": 720, "escala": 1.5,   # 1280x720 x1.5 = 1080p
      "cenas": [{"id": "abre", "texto": "Frase um. Frase dois.",
@@ -156,15 +158,23 @@ def edge(j, voz, vel, mp3):
                    f'?Ocp-Apim-Subscription-Key={edge_tts.constants.TRUSTED_CLIENT_TOKEN}')
 
     async def falar():
-        c = mod.Communicate(j['texto'], voz, rate=f'{round((vel - 1) * 100):+d}%', boundary='WordBoundary')
-        audio, palavras = bytearray(), []
-        async for ch in c.stream():
-            if ch['type'] == 'audio':
-                audio += ch['data']
-            elif ch['type'] == 'WordBoundary':
-                palavras.append([round(ch['offset'] / 1e7, 3), round((ch['offset'] + ch['duration']) / 1e7, 3), ch['text']])
-        Path(mp3).write_bytes(audio)
-        Path(j['saida'][:-4] + '.palavras.json').write_text(json.dumps(palavras, ensure_ascii=False))
+        for tentativa in range(4):
+            try:
+                c = mod.Communicate(j['texto'], voz, rate=f'{round((vel - 1) * 100):+d}%', boundary='WordBoundary')
+                audio, palavras = bytearray(), []
+                async for ch in c.stream():
+                    if ch['type'] == 'audio':
+                        audio += ch['data']
+                    elif ch['type'] == 'WordBoundary':
+                        palavras.append([round(ch['offset'] / 1e7, 3), round((ch['offset'] + ch['duration']) / 1e7, 3), ch['text']])
+                if audio:
+                    Path(mp3).write_bytes(audio)
+                    Path(j['saida'][:-4] + '.palavras.json').write_text(json.dumps(palavras, ensure_ascii=False))
+                    return
+            except Exception as err:
+                if tentativa == 3:
+                    raise
+                await asyncio.sleep(1.2 * (tentativa + 1))
     asyncio.run(falar())
 
 
@@ -189,6 +199,58 @@ def duracao(wav):
         return w.getnframes() / w.getframerate()
 
 
+def alvo_da_pausa(fala, pos, rot):
+    """Quanto silêncio cabe no sinal em fala[pos]. Um valor fixo para toda vírgula soa exagerado: o Edge já
+    para ~0,25 s sozinho, e vírgula de lista ou de "por exemplo" pede só um respiro. Com pausa_virgula em
+    {curta, media, longa}, a pausa cresce com o trecho MENOR dos dois lados da vírgula (em palavras):
+    até 2 palavras = curta ("Por isso, …", "presencial, semipresencial"), até 5 = media, mais = longa
+    (duas orações inteiras, como "Em julho, a coleta traz a matrícula")."""
+    sinal = fala[pos]
+    if sinal == ';':
+        return rot.get('pausa_ponto_virgula')
+    v = rot.get('pausa_virgula')
+    if not isinstance(v, dict):
+        return v
+    antes = re.split(r'[,;:.!?]', fala[:pos])[-1].split()
+    depois = re.split(r'[,;:.!?]', fala[pos + 1:])[0].split()
+    n = min(len(antes), len(depois))
+    return v['curta'] if n <= 2 else v['media'] if n <= 5 else v['longa']
+
+
+def respirar(wav, fala, rot):
+    """Lê a frase e estica o silêncio depois de cada vírgula e ";" até o valor pedido no roteiro
+    (alvo_da_pausa). A frase é sintetizada inteira (a entonação da vírgula fica a do Edge); o silêncio entra no
+    meio do intervalo entre as duas palavras, achado pelos instantes de palavras.json. Devolve (frames, params, palavras)."""
+    with wave.open(str(wav)) as w:
+        params, dados = w.getparams(), w.readframes(w.getnframes())
+    arq = wav.with_suffix('.palavras.json')
+    pal = json.loads(arq.read_text()) if arq.exists() else []
+    if not pal or not (rot.get('pausa_virgula') or rot.get('pausa_ponto_virgula')):
+        return dados, params, pal
+    cortes, pos = [], 0   # (instante do corte, silêncio a somar)
+    for i, (a, b, p) in enumerate(pal[:-1]):
+        k = fala.find(p, pos)
+        if k < 0:
+            continue
+        pos = k + len(p)
+        alvo = alvo_da_pausa(fala, pos, rot) if fala[pos:pos + 1] in (',', ';') else None
+        if alvo:
+            prox = pal[i + 1][0]
+            cortes.append(((b + prox) / 2, max(0, alvo - (prox - b))))
+    larg = params.sampwidth * params.nchannels
+    saida, ant = bytearray(), 0
+    for t, extra in cortes:
+        p = int(t * params.framerate) * larg
+        saida += dados[ant:p] + bytes(int(extra * params.framerate) * larg)
+        ant = p
+    saida += dados[ant:]
+    novas = []
+    for a, b, p in pal:
+        soma = sum(x for t, x in cortes if t < a)
+        novas.append([a + soma, b + soma, p])
+    return bytes(saida), params, novas
+
+
 def montar_audio(plano, rot, destino):
     """Cola as frases nos instantes da linha do tempo e devolve as cenas com os tempos."""
     pausa, pf = rot.get('pausa', 0.45), rot.get('pausa_frase', 0.18)
@@ -199,25 +261,20 @@ def montar_audio(plano, rot, destino):
         fs = []
         if not itens:
             t += c['silencio']
-        for i, (tx, _, wav) in enumerate(itens):
-            d = duracao(wav)
+        for i, (tx, fl, wav) in enumerate(itens):
+            dados, params, pal = respirar(wav, fl, rot)
+            d = len(dados) / (params.sampwidth * params.nchannels) / params.framerate
             fs.append({'t0': round(t, 3), 't1': round(t + d, 3), 'texto': tx})
-            pal = wav.with_suffix('.palavras.json')
-            if pal.exists():
-                fs[-1]['palavras'] = [[round(t + a, 3), round(t + b, 3), p] for a, b, p in json.loads(pal.read_text())]
-            trechos.append((t, wav))
+            if pal:
+                fs[-1]['palavras'] = [[round(t + a, 3), round(t + b, 3), p] for a, b, p in pal]
+            trechos.append((t, dados))
             t += d + (pf if i + 1 < len(itens) else 0)
         cenas.append({'id': c['id'], 't0': round(t0, 3), 'dur': round(t - t0, 3), 'frases': fs})
         t += c.get('pausa', pausa)
     total = t - pausa + rot.get('folga_fim', 1.2)
-    ref = trechos[0][1]
-    with wave.open(str(ref)) as w:
-        params = w.getparams()
     taxa, larg = params.framerate, params.sampwidth * params.nchannels
     buf = bytearray(int(total * taxa) * larg)
-    for ini, wav in trechos:
-        with wave.open(str(wav)) as w:
-            dados = w.readframes(w.getnframes())
+    for ini, dados in trechos:
         p = int(ini * taxa) * larg
         buf[p:p + len(dados)] = dados
     with wave.open(str(destino), 'wb') as w:

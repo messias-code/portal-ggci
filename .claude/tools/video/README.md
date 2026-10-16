@@ -24,7 +24,7 @@ $PY .claude/tools/video/fazer_video.py minha-pasta --saida minha-pasta/video.mp4
 ```
 
 Gravar leva cerca de 2,5× a duração (2 min de vídeo ≈ 5 min). Modelo pronto para
-copiar: `artefatos explicativos/metodologia do wallyson/video/metodologia-wallyson-v7/` (HyperFrames,
+copiar: `artefatos_explicativos/metodologia do wallyson/video/metodologia-wallyson-v7/` (HyperFrames,
 com roteiro, voz, trilha, mixagem e cenas versionados em `fonte/`; ver o `LEIA-ME.md` dela). O modelo antigo, só
 com o nosso runtime, é o `animacao.html` da pasta `video/` de cima.
 
