@@ -14,13 +14,12 @@
             "p_analise_ia": true,
             "p_dash_documentos_ia": true,
             "p_dash_polichat": true,
-            "p_documentacoes": true,
+            "p_sugestoes": true,
             "p_enquadramento_cursos": true,
             "p_ferramentas": true,
             "p_formatador_dados": true,
             "p_formatador_listas": true,
-            "p_gestao_polichat": true,
-            "p_recalculo_bolsas": true
+            "p_gestao_polichat": true
         }
     }
 ]

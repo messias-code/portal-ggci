@@ -20,12 +20,19 @@ import re
 # --------------------------------------------------------------------------
 def verificar_login(request):
     """
-    Processa a tentativa de login via Fetch API (AJAX).
+    Processa a tentativa de login via Fetch API (AJAX) ou formulário POST padrão.
     Valida as credenciais usando o motor Argon2 do Django.
     """
     if request.method == 'POST':
         try:
-            dados = json.loads(request.body)
+            if request.content_type == 'application/json':
+                dados = json.loads(request.body)
+            else:
+                try:
+                    dados = json.loads(request.body)
+                except Exception:
+                    dados = request.POST
+
             usuario = dados.get('usuario', '').strip()
             senha = dados.get('senha', '')
 
@@ -38,12 +45,18 @@ def verificar_login(request):
 
             if user is not None:
                 login(request, user)
-                return JsonResponse({'sucesso': True})
+                if request.content_type == 'application/json' or request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                    return JsonResponse({'sucesso': True})
+                return redirect('inicio')
             else:
-                return JsonResponse({'sucesso': False, 'mensagem': 'Usuário ou senha incorretos.'})
+                if request.content_type == 'application/json' or request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                    return JsonResponse({'sucesso': False, 'mensagem': 'Usuário ou senha incorretos.'})
+                return redirect('home')
                 
         except Exception as e:
-            return JsonResponse({'sucesso': False, 'mensagem': f'Erro interno: {str(e)}'})
+            if request.content_type == 'application/json' or request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'sucesso': False, 'mensagem': f'Erro interno: {str(e)}'})
+            return redirect('home')
             
     return JsonResponse({'sucesso': False, 'mensagem': 'Método não permitido.'})
 
@@ -112,9 +125,8 @@ def gestao_acessos(request):
             'p_formatador_listas': 1 if u.p_formatador_listas else 0,
             'p_formatador_dados': 1 if u.p_formatador_dados else 0,
             'p_analise_ia': 1 if u.p_analise_ia else 0,
-            'p_recalculo_bolsas': 1 if u.p_recalculo_bolsas else 0,
             'p_enquadramento_cursos': 1 if u.p_enquadramento_cursos else 0,
-            'p_documentacoes': 1 if u.p_documentacoes else 0,
+            'p_sugestoes': 1 if u.p_sugestoes else 0,
             'p_dash_polichat': 1 if u.p_dash_polichat else 0,
             'p_gestao_polichat': 1 if u.p_gestao_polichat else 0,
             'p_dash_documentos_ia': 1 if u.p_dash_documentos_ia else 0,
@@ -184,10 +196,9 @@ def api_salvar_usuario(request):
             p_formatador_dados = 1 if request.POST.get('p_formatador_dados') else 0
             
             p_analise_ia = 1 if request.POST.get('p_analise_ia') else 0
-            p_recalculo_bolsas = 1 if request.POST.get('p_recalculo_bolsas') else 0
             p_enquadramento_cursos = 1 if request.POST.get('p_enquadramento_cursos') else 0
             
-            p_documentacoes = 1 if request.POST.get('p_documentacoes') else 0
+            p_sugestoes = 1 if request.POST.get('p_sugestoes') else 0
 
             p_dash_polichat = 1 if request.POST.get('p_dash_polichat') else 0
             p_gestao_polichat = 1 if request.POST.get('p_gestao_polichat') else 0
@@ -210,9 +221,8 @@ def api_salvar_usuario(request):
                     p_formatador_listas=p_formatador_listas,
                     p_formatador_dados=p_formatador_dados,
                     p_analise_ia=p_analise_ia,
-                    p_recalculo_bolsas=p_recalculo_bolsas,
                     p_enquadramento_cursos=p_enquadramento_cursos,
-                    p_documentacoes=p_documentacoes,
+                    p_sugestoes=p_sugestoes,
                     p_dash_polichat=p_dash_polichat,
                     p_gestao_polichat=p_gestao_polichat,
                     p_dash_documentos_ia=p_dash_documentos_ia
@@ -246,10 +256,9 @@ def api_salvar_usuario(request):
                 alvo.p_formatador_dados = p_formatador_dados
                 
                 alvo.p_analise_ia = p_analise_ia
-                alvo.p_recalculo_bolsas = p_recalculo_bolsas
                 alvo.p_enquadramento_cursos = p_enquadramento_cursos
                 
-                alvo.p_documentacoes = p_documentacoes
+                alvo.p_sugestoes = p_sugestoes
 
                 alvo.p_dash_polichat = p_dash_polichat
                 alvo.p_gestao_polichat = p_gestao_polichat
