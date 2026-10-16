@@ -324,6 +324,11 @@ if [ "${1:-}" = "--models" ]; then
   exit 0
 fi
 
+if [ "${1:-}" = "--providers" ]; then
+  omniroute providers list
+  exit 0
+fi
+
 export ANTHROPIC_BASE_URL="http://$HOST:$PORT"
 export ANTHROPIC_AUTH_TOKEN="$OMNIROUTE_KEY"
 # O Claude Code manda `claude-opus-5` puro e o OmniRoute recusa nome sem prefixo
@@ -351,7 +356,7 @@ WRAPPER
     printf '      omniroute serve --daemon --no-open\n'
     printf '      # logue no dashboard (http://localhost:20128) e crie uma API key,\n'
     printf '      # depois grave com permissão restrita:\n'
-    printf '      umask 077; echo "export OMNIROUTE_KEY=<chave>" > ~/.omniroute/cli.env\n'
+    printf '      umask 077; printf '\''export OMNIROUTE_KEY=<chave>\\nexport OMNIROUTE_API_KEY="\\$OMNIROUTE_KEY"\\n'\'' > ~/.omniroute/cli.env\n'
   fi
 }
 
