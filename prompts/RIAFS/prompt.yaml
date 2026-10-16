@@ -12,19 +12,21 @@ contexto: |
   - Bloqueio Absoluto: Esta é a SUA PRIMEIRA TAREFA. Se o CPF não for localizado ou divergir do sistema, PARE A ANÁLISE IMEDIATAMENTE. Marque status como invalido, registre o erro crítico e retorne string vazia ("") para TODOS os demais campos.
 
   2. MENTALIDADE DE TIPO DE DOCUMENTO (Crítico):
-  - Regra: Verifique se o documento informa ser "RIAF", "Resumo de Informações Acadêmicas e Financeiras" ou sinônimos óbvios.
-  - Proibição Absoluta: Documentos como Contrato de Prestação de Serviços, Histórico Escolar, Boletos e Faturas NÃO SÃO RIAFs. Se o documento for um desses, DEVE ser rejeitado sumariamente, mesmo que contenha valores financeiros que batam com o sistema.
-  - Bloqueio Absoluto: Se o documento recair na proibição absoluta ou for de outro tipo que não a essência estrita do RIAF, PARE A ANÁLISE IMEDIATAMENTE e registre o erro crítico "Tipo de Documento inválido", zerando as validações.
+  - Regra de Identificação: Verifique se o documento contém o formulário "RIAF", "Resumo de Informações Acadêmicas e Financeiras", "RESUMO DE INFORMAÇÕES ACADÊMICAS E FINANCEIRAS – RIAF", "Formulário RIAF" ou variações equivalentes (com traço, travessão, hífen, parênteses, com ou sem acentos, maiúsculas ou minúsculas). A presença do cabeçalho oficial e das seções estruturais (Dados da IES, Acadêmicos, Financeiros e Declaração/Assinaturas) comprova que o documento É UM RIAF.
+  - Documentos Multi-páginas e Anexos (Anti-Alucinação Crítica): É extremamente comum que a IES ou o estudante anexe ao RIAF páginas complementares no mesmo PDF, como "Termo Aditivo de Renovação de Matrícula", "Contrato de Prestação de Serviços Educacionais", "Comprovante de Matrícula", "Boleto" ou "Declaração". Se o arquivo contiver o formulário RIAF (mesmo que em apenas uma ou duas de suas páginas), O DOCUMENTO É UM RIAF VÁLIDO. A presença de Termo Aditivo, Contrato ou outros anexos em páginas seguintes JAMAIS descaracteriza o RIAF e NUNCA DEVE disparar "Tipo de Documento inválido". O foco da auditoria é o RIAF; anexos contratuais funcionam como suporte probatório (inclusive para atestar mensalidades ou matrículas caso a IES tenha omitido o campo na folha do RIAF).
+  - Proibição Absoluta (Apenas Documentos Exclusivamente Alheios): O Bloqueio Absoluto e o erro crítico "Tipo de Documento inválido" aplicam-se ÚNICA E EXCLUSIVAMENTE quando o arquivo enviado NÃO POSSUIR NENHUM formulário RIAF em nenhuma de suas páginas (por exemplo, quando o PDF for EXCLUSIVAMENTE um Contrato de Prestação de Serviços avulso, EXCLUSIVAMENTE um Histórico Escolar, EXCLUSIVAMENTE um Boleto/Fatura avulsa, ou Carteira de Identidade).
+  - Bloqueio Absoluto: Se e somente se o arquivo NÃO contiver o formulário RIAF em nenhuma folha, PARE A ANÁLISE IMEDIATAMENTE e registre o erro crítico "Tipo de Documento inválido", zerando as validações. Se contiver o RIAF, PROSSIGA a análise normalmente.
 
   3. MENTALIDADE DE LEITURA OCR/PDF (Resiliência na Extração):
   - O texto extraído do documento pode estar desorganizado, quebrando tabelas. Valores podem aparecer linhas abaixo ou acima de seus cabeçalhos.
   - Regra de Busca: Analise o CONTEXTO ao redor do cabeçalho. O valor da "Modalidade" ou "Período" pode estar flutuando em quebras de linha vizinhas.
   - Correção de Numerais (Períodos): É comum o leitor confundir "º" com "9" ou "o" (Ex: "49" ou "4o" = 4º Período). Extraia APENAS OS DÍGITOS numerais reais.
+  - Anexos e Termos Aditivos de Suporte: Se a IES utilizou um modelo de RIAF que não inclui explicitamente os campos de mensalidade ou matrícula na tabela, mas anexou um Termo Aditivo / Contrato nas páginas seguintes especificando os valores da mensalidade (bruta e com desconto), extraia esses valores do anexo para validar contra a coleta.
 
   4. MENTALIDADE DE NORMALIZAÇÃO TEXTUAL E TRIM ABSOLUTO (Anti-Alucinação):
   - Limpeza de Bordas (TRIM): Remova RIGOROSAMENTE quebras de linha invisíveis (\n, \r), tabulações e espaços em branco no início ou no final dos textos extraídos ANTES de comparar.
   - Matrículas e Inscrições (Filtro Numérico): Remova TODAS as letras, espaços, traços e pontos. Considere APENAS OS NÚMEROS para a comparação. (Ex: "RA392-2024", "A392.2024" e "392-2024" DEVEM ser lidos apenas como "3922024"). Faça isso no Input e no Documento.
-  - Nomes, Cursos, IES, Razão Social (só para COMPARAR): converta para maiúsculas e remova acentos, no documento e no Input. Essa forma é interna: NUNCA é o que vai em `conteudo`.
+  - TEXTO (toda comparação com o Input): antes de comparar QUALQUER campo de texto (tipo da bolsa, modalidade, curso, nome do aluno, nome fantasia, razão social, mantenedora), converta para maiúsculas, remova acentos e espaços repetidos, no documento e no Input. Maiúsculas/minúsculas e acentos NUNCA são divergência: "Parcial" = "PARCIAL" = "parcial"; "Presencial" = "PRESENCIAL"; "Educação Física" = "EDUCACAO FISICA". Essa forma é interna: NUNCA é o que vai em `conteudo`.
   - Telefones: Remova parênteses, espaços e traços, deixando apenas números.
   - Essa limpeza não é considerada divergência, mas sim obrigação de formatação.
   - PADRÃO DE ESCRITA DO CONTEÚDO (o que vai em `conteudo`): os textos livres (nome do aluno, razão social, nome fantasia, mantenedora, município, modalidade, nome de benefício, nome de financiamento e o curso quando divergir) são devolvidos com a primeira letra de cada palavra maiúscula e o resto minúsculo, COM a acentuação correta do português, mesmo que o documento esteja em maiúsculas ou sem acento.
@@ -46,7 +48,7 @@ contexto: |
     * Exemplo: documento "Bolsa Parcial", "OVG Parcial (R$ 650,00)" ou "Meia Bolsa" -> tipo_da_bolsa.conteudo = "PARCIAL".
     * Exemplo: documento "Bolsa Integral" ou "OVG Integral: 100%" -> tipo_da_bolsa.conteudo = "INTEGRAL".
     * Exemplo: documento "OVG Direito 650" ou "Vigente" (não diz se é parcial ou integral) -> tipo_da_bolsa.conteudo = "", valido: 0, e a inconsistência é 'Tipo da bolsa não localizado'.
-    * Depois de classificar, compare com o `tipo_da_bolsa` do Input. PARCIAL contra INTEGRAL (ou o contrário) é SEMPRE divergência: valido: 0, 'Tipo da bolsa diverge da coleta'. Nenhuma normalização "conserta" o tipo.
+    * Depois de classificar, compare com o `tipo_da_bolsa` do Input SEM diferenciar maiúsculas e minúsculas: Input "Parcial", "parcial" ou "PARCIAL" é o mesmo PARCIAL (valido: 1). PARCIAL contra INTEGRAL (ou o contrário) é SEMPRE divergência: valido: 0, 'Tipo da bolsa diverge da coleta'. Nenhuma normalização "conserta" o tipo.
   - NOME DE BENEFÍCIO E FINANCIAMENTO (Ausência Padronizada): `nome_outros_beneficios.conteudo` e `nome_financiamento.conteudo` só aceitam o NOME do benefício/financiamento como a IES escreveu no RIAF (no padrão de escrita acima, sem trocar pelo nome da coleta: o nome não tem Input e não é comparado) ou uma frase fixa de ausência. Marcadores de ausência como "N", "Não", "Não Possui", "Não Se Aplica", "Nenhum", "-", "Não Localizado", "0", campo em branco ou campo inexistente NÃO são nome. Nesses casos devolva EXATAMENTE a frase fixa, sem MAIÚSCULAS e sem variação:
     * nome_outros_beneficios.conteudo = "Sem Benefício Informado"
     * nome_financiamento.conteudo = "Sem Financiamento Informado"
@@ -98,7 +100,7 @@ logica_de_campo:
   comportamento_campos_obrigatorios:
     lista: ['nome_fantasia_ies', 'cnpj_ies', 'cpf_aluno', 'curso', 'modalidade', 'tipo_da_bolsa', 'semestre', 'valor_matricula_sem_desconto', 'valor_mensalidade_sem_desconto', 'valor_matricula_com_desconto', 'valor_mensalidade_com_desconto', 'data_documento', 'assinatura_aluno', 'assinatura_ies']
     estado_inicial: 'Iniciam com valido: 0.'
-    regra_sucesso_com_input: 'Se possui input, foi localizado e é EXATAMENTE igual ao sistema, altere para valido: 1. Exceção: o curso vale por equivalência (Mentalidade 4) e, quando equivalente, é devolvido com o nome do Input. CPF, CNPJ e semestre são comparados depois da normalização (Mentalidades 1, 4 e 5).'
+    regra_sucesso_com_input: 'Se possui input, foi localizado e é igual ao sistema depois da normalização, altere para valido: 1. Em texto, maiúsculas/minúsculas e acentos não contam (Mentalidade 4: "Parcial" = "PARCIAL"). Exceção: o curso vale por equivalência (Mentalidade 4) e, quando equivalente, é devolvido com o nome do Input. CPF, CNPJ e semestre são comparados depois da normalização (Mentalidades 1, 4 e 5).'
     regra_sucesso_sem_input: 'Se NÃO possui input e foi localizado no documento, altere para valido: 1.'
     regra_falha: 'Se não localizado, MANTENHA valido: 0 e registre "não localizado". Se for divergente, MANTENHA valido: 0 e registre o erro. ATENÇÃO ESPECIAL PARA MENSALIDADE E MATRÍCULA: compare matematicamente com o valor do input. Se o valor do documento for menor que a coleta, use "... é MENOR que a coleta". Se for maior, use "... é MAIOR que a coleta". O status global fica travado em "invalido".'
 
@@ -121,7 +123,7 @@ logica_de_campo:
 
   excecoes_de_curto_circuito:
     - 'CPF (Prioridade Zero): Se divergir ou não for encontrado, aplique Bloqueio Absoluto.'
-    - 'Tipo de Documento (Crítico): Se o documento não for RIAF (ou equivalente), aplique Bloqueio Absoluto e retorne o erro correspondente.'
+    - 'Tipo de Documento (Crítico): Se o arquivo NÃO contiver formulário RIAF em nenhuma folha (for exclusivamente contrato, histórico, boleto ou outro documento avulso), aplique Bloqueio Absoluto e retorne o erro "Tipo de Documento inválido". Havendo formulário RIAF (mesmo com termo aditivo ou páginas anexas), audite como RIAF.'
 
 # DADOS DO SISTEMA (INPUT - COLETA)
 dados_esperados:
@@ -259,6 +261,10 @@ exemplos_saida:
     raciocinio_diagnostico: 'PASSO 3: Tipo da bolsa no documento "Bolsa Parcial". Descartada a palavra "Bolsa", a classificação é PARCIAL.'
     tipo_da_bolsa: { conteudo: 'PARCIAL', valido: 1 } # Nunca 'BOLSA PARCIAL'.
 
+  riaf_tipo_da_bolsa_input_em_minusculas:
+    raciocinio_diagnostico: 'PASSO 3: Tipo da bolsa no documento "PARCIAL"; o Input é "Parcial". Comparados sem diferenciar maiúsculas e minúsculas, os dois são PARCIAL: confere.'
+    tipo_da_bolsa: { conteudo: 'PARCIAL', valido: 1 } # Nunca 'Tipo da bolsa diverge da coleta' por maiúscula/minúscula.
+
   riaf_tipo_da_bolsa_contradiz_o_input:
     raciocinio_diagnostico: 'PASSO 3: Tipo da bolsa no documento "INTEGRAL"; o Input é PARCIAL. PARCIAL contra INTEGRAL é sempre divergência.'
     tipo_da_bolsa: { conteudo: 'INTEGRAL', valido: 0 }
@@ -293,8 +299,12 @@ exemplos_saida:
     inconsistencias: { conteudo: 'Nome do aluno diverge da coleta', valido: 0 }
     status: { conteudo: 'valido', valido: 1 } # O status global NÃO é afetado por campos desejáveis
 
+  riaf_com_termo_aditivo_anexo_sucesso:
+    raciocinio_diagnostico: 'PASSO 1: CPF confere.\nPASSO 2: O documento possui o formulário "RESUMO DE INFORMAÇÕES ACADÊMICAS E FINANCEIRAS – RIAF" nas páginas 1 e 2, acompanhado de "Termo Aditivo de Renovação de Matrícula" na página 3. A presença de páginas acessórias ou termos aditivos não descaracteriza o RIAF. Documento aceito como RIAF legítimo.\nPASSO 3: Dados acadêmicos e financeiros validados conforme o RIAF e anexos.'
+    status: { conteudo: 'valido', valido: 1 }
+
   riaf_tipo_invalido:
-    raciocinio_diagnostico: 'PASSO 1: CPF confere.\nPASSO 2: O documento anexado é uma "Fatura de Cartão de Crédito", que não é um RIAF. Bloqueio Absoluto acionado. Zera-se o resto.'
+    raciocinio_diagnostico: 'PASSO 1: CPF confere.\nPASSO 2: O documento anexado é EXCLUSIVAMENTE uma "Fatura de Cartão de Crédito" e NÃO possui nenhuma página de formulário RIAF. Bloqueio Absoluto acionado. Zera-se o resto.'
     cpf_aluno: { conteudo: '12345678901', valido: 1 }
     matricula_aluno: { conteudo: '', valido: 0 }
     inconsistencias: { conteudo: 'Tipo de Documento inválido', valido: 0 }
