@@ -41,6 +41,27 @@ SEGUNDOS_ENTRE_CHECAGENS = 2
 # está com problema. Antes quem limitava isso era a grade de minuto, que saiu.
 INTERVALO_MINIMO_ENTRE_DISPAROS = 15
 
+# O DEV só extrai com plateia. A rodada abre um Chromium (~1,7 GB somando o da
+# produção, que roda o mesmo laço) e, no DEV, ninguém consome o resultado se a
+# tela não estiver aberta — era memória gasta o dia inteiro à toa, e foi ela que
+# derrubou a gravação de vídeo em 15/10/2026. A tela já carimba
+# `logs/last_active.txt` a cada 3s por aba aberta (status_loop_polichat), então
+# "alguém está mexendo" = carimbo mais novo que esta janela. Abriu a tela, a
+# próxima volta do laço (2s) já dispara. A PRODUÇÃO não passa por esta regra.
+JANELA_ATIVIDADE_DEV = 120
+
+
+def tag_do_ambiente():
+    return "[DEV]" if 'portal-ggci-dev' in str(settings.BASE_DIR) else "[PROD]"
+
+
+def tela_aberta_recentemente(pasta_logs):
+    try:
+        idade = time.time() - os.path.getmtime(os.path.join(pasta_logs, "last_active.txt"))
+    except OSError:
+        return False
+    return idade <= JANELA_ATIVIDADE_DEV
+
 class Command(BaseCommand):
     help = 'Executa o extrator do Polichat em loop infinito.'
 
@@ -48,7 +69,7 @@ class Command(BaseCommand):
         self.stdout.write("Iniciando loop do Polichat em background...")
         pasta_logs = os.path.join(settings.BASE_DIR, "apps", "dashboards", "dash_polichat", "logs")
         os.makedirs(pasta_logs, exist_ok=True)
-        env_tag = "[DEV]" if 'portal-ggci-dev' in str(settings.BASE_DIR) else "[PROD]"
+        env_tag = tag_do_ambiente()
 
         # Limpa zumbis da execução anterior (ex: se o servidor foi reiniciado via Opção 5)
         zumbis = ProcessamentoPolichat.objects.filter(
@@ -87,6 +108,10 @@ class Command(BaseCommand):
                 agora_sp = timezone.localtime()
                 if agora_sp.hour < 8 or agora_sp.hour >= 19:
                     time.sleep(60)
+                    continue
+
+                if env_tag == "[DEV]" and not tela_aberta_recentemente(pasta_logs):
+                    time.sleep(SEGUNDOS_ENTRE_CHECAGENS)
                     continue
 
                 # Uma rodada por vez, e a próxima sai assim que a anterior sair do

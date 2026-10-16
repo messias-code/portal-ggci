@@ -116,6 +116,18 @@ def extrair_relatorio_metabase(primeira_vez_dia=False, extracao_completa=False):
                 print("⏳ Aguardando Metabase renderizar a aba após o carregamento (10s)...")
                 page.wait_for_timeout(10_000)
 
+                # Fecha eventuais modais/popups de sobreposição (ex: "Aviso de Débito", popups de novidades ou cookies)
+                try:
+                    for _ in range(3):
+                        page.keyboard.press("Escape")
+                        time.sleep(0.3)
+                    close_btn = page.locator("button:has(svg.lucide-x), button:has(svg.lucide-xmark), button[aria-label*='close' i], button[aria-label*='fechar' i]").first
+                    if close_btn.count() > 0 and close_btn.is_visible():
+                        close_btn.click(force=True)
+                        time.sleep(0.5)
+                except Exception:
+                    pass
+
                 print("🔍 Procurando iframe principal do Metabase...")
                 frame_ativo = page
                 try:
