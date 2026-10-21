@@ -263,6 +263,59 @@ class MotivosDaDivergenciaTests(SimpleTestCase):
         self.assertEqual(status, ['Inválido'])
         self.assertEqual(motivos, [''])
 
+    def test_curso_com_acento_no_gemini_e_sem_acento_no_sistema_e_valido(self):
+        """
+        A 2133904 em 2026-2: o prompt devolve `Nutrição` (com acento) e o consolidador
+        guarda `Nutricao` (sem acento). A diferença é só grafia e nunca `Falso Válido`.
+        """
+        motivos, status = self._motivos(
+            documento=ggci.DOC_HISTORICO,
+            Inscrição=[2133904],
+            **{'Curso': ['Nutricao'], 'Gemini Curso': ['Nutrição'],
+               'Gemini Inconsistencias': ['Sem inconsistências']},
+        )
+        self.assertEqual(status, ['Válido'])
+        self.assertEqual(motivos, [''])
+
+    def test_riaf_beneficio_financiamento_e_erros_obrigatorios_sao_invalidos(self):
+        """
+        A 2196323 e similares em 2026-2: benefício da coleta do RIAF (`Valor Beneficios`),
+        financiamento lido (`Gemini Valor Financiado`) e erros visuais obrigatórios do
+        catálogo (`Campo preenchido à mão`, `Data não localizada`) invalidam de verdade
+        e não viram `Falso Inválido`.
+        """
+        motivos_ben, status_ben = self._riaf_falso_invalido(
+            2196323, 'Benefício é maior que a coleta',
+            **{'Valor Beneficios': [0.0], 'valor_beneficio': [281.0],
+               'Gemini Valor Beneficio': [281.0]})
+        self.assertEqual(status_ben, ['Inválido'])
+        self.assertEqual(motivos_ben, [''])
+
+        motivos_fin, status_fin = self._riaf_falso_invalido(
+            2218716, 'Financiamento é maior que a coleta',
+            **{'valor_financiamento': [0.0], 'Gemini Valor Financiado': [386.4]})
+        self.assertEqual(status_fin, ['Inválido'])
+        self.assertEqual(motivos_fin, [''])
+
+        motivos_mao, status_mao = self._riaf_falso_invalido(
+            2191992, 'Campo preenchido à mão')
+        self.assertEqual(status_mao, ['Inválido'])
+        self.assertEqual(motivos_mao, [''])
+
+        motivos_data, status_data = self._riaf_falso_invalido(
+            2213244, 'Data não localizada')
+        self.assertEqual(status_data, ['Inválido'])
+        self.assertEqual(motivos_data, [''])
+
+    def test_falso_invalido_do_riaf_descarta_frase_de_beneficio_quando_valores_batem(self):
+        """Se o benefício do sistema e o lido pela IA empatam, a frase de benefício sai do balão."""
+        motivos, status = self._riaf_falso_invalido(
+            2200099, 'Benefício é maior que a coleta, Financiamento é maior que a coleta',
+            **{'valor_beneficio': [200.0], 'Gemini Valor Beneficio': [200.0],
+               'valor_financiamento': [0.0], 'Gemini Valor Financiado': [0.0]})
+        self.assertEqual(status, ['Falso Inválido'])
+        self.assertEqual(motivos, ["O Correto Seria: 'Sem inconsistências'"])
+
     # --- a frase segue o documento ------------------------------------------------
 
     def test_riaf_usa_a_mesma_frase_do_contrato(self):
