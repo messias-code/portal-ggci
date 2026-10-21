@@ -19,5 +19,9 @@ TimeoutStartSec=300
 # em /var/lib e /var/log.
 User=root
 
+# Impede que o systemd envie SIGTERM aos processos filhos (como o Gunicorn
+# recriado via setsid em curar_gunicorn) quando o ciclo oneshot termina.
+KillMode=process
+
 [Install]
 WantedBy=multi-user.target

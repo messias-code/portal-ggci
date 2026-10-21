@@ -2417,8 +2417,17 @@ def calcular_auditoria_ia(df):
     qtd_retroativos = pd.to_numeric(df.get('qtd_pagtos_retroativos', pd.Series([0]*len(df), index=df.index)), errors='coerce').fillna(0)
     cond_inadimplente = ((qtd_pagtos - qtd_retroativos) <= 0) | (total_bolsa <= 0)
     
-    sys_curso = df.get('Curso', pd.Series(['']*len(df), index=df.index)).astype(object).fillna('').astype(str).str.strip().str.upper().replace(['NAN', 'NONE', '<NA>'], '')
-    ia_curso = df.get('Gemini Curso', pd.Series(['']*len(df), index=df.index)).astype(object).fillna('').astype(str).str.strip().str.upper().replace(['NAN', 'NONE', '<NA>'], '')
+    def _texto(nome):
+        return (df.get(nome, pd.Series(['']*len(df), index=df.index)).astype(object).fillna('').astype(str)
+                .str.strip().str.upper().replace(['NAN', 'NONE', '<NA>'], '')
+                .str.replace(r'N[AÃ]O LOCALIZAD[AO]', '', regex=True).str.strip()
+                .str.normalize('NFKD').str.encode('ascii', 'ignore').str.decode('ascii'))
+
+    def _valor(nome):
+        return pd.to_numeric(df.get(nome, pd.Series([0.0]*len(df), index=df.index)), errors='coerce').fillna(0.0).round(2)
+
+    sys_curso = _texto('Curso')
+    ia_curso = _texto('Gemini Curso')
     
     # O CURSO SÓ É COBRADO DE QUEM O CARREGA — Histórico e RIAF.
     #
@@ -2454,19 +2463,17 @@ def calcular_auditoria_ia(df):
         ia_assinatura_ies.str.contains('NÃO LOCALIZADO|NAO LOCALIZADO', regex=True)
     )
     
-    sys_beneficio = pd.to_numeric(df.get('valor_beneficio', pd.Series([0]*len(df), index=df.index)), errors='coerce').fillna(0)
-    ia_beneficio = pd.to_numeric(df.get('Gemini Valor Beneficio', pd.Series([0]*len(df), index=df.index)), errors='coerce').fillna(0)
-    sys_financiamento = pd.to_numeric(df.get('valor_financiamento', pd.Series([0]*len(df), index=df.index)), errors='coerce').fillna(0)
-    ia_financiamento = pd.to_numeric(df.get('Gemini Valor Financiamento', pd.Series([0]*len(df), index=df.index)), errors='coerce').fillna(0)
-    
-    def _texto(nome):
-        return (df.get(nome, pd.Series(['']*len(df), index=df.index)).astype(object).fillna('').astype(str)
-                .str.strip().str.upper().replace(['NAN', 'NONE', '<NA>'], '')
-                .str.replace(r'N[AÃ]O LOCALIZAD[AO]', '', regex=True).str.strip()
-                .str.normalize('NFKD').str.encode('ascii', 'ignore').str.decode('ascii'))
-
-    def _valor(nome):
-        return pd.to_numeric(df.get(nome, pd.Series([0.0]*len(df), index=df.index)), errors='coerce').fillna(0.0).round(2)
+    col_sys_beneficio = 'Valor Beneficios' if 'Valor Beneficios' in df.columns else 'valor_beneficio'
+    sys_beneficio = _valor(col_sys_beneficio)
+    ia_beneficio = _valor('Gemini Valor Beneficio')
+    col_sys_financiamento = 'Valor Financiamentos' if 'Valor Financiamentos' in df.columns else 'valor_financiamento'
+    sys_financiamento = _valor(col_sys_financiamento)
+    col_ia_financiamento = 'Gemini Valor Financiado' if 'Gemini Valor Financiado' in df.columns else 'Gemini Valor Financiamento'
+    ia_financiamento = _valor(col_ia_financiamento)
+    inc_invalida_riaf = inc_original.str.contains(
+        r'Campo preenchido [àa] m[ãa]o|Data (?:do documento )?n[ãa]o localizada|Tipo de Documento inv[áa]lido|Nome fantasia da IES',
+        case=False, regex=True, na=False
+    )
 
     ia_cnpj = _texto('Gemini Cnpj Faculdade').str.replace(r'\.0$', '', regex=True).str.replace(r'\D', '', regex=True)
     ia_cnpj = ia_cnpj.where(ia_cnpj == '', ia_cnpj.str.zfill(14))
@@ -2496,7 +2503,8 @@ def calcular_auditoria_ia(df):
         (ia_modalidade == '') | ((ia_modalidade != '') & (sys_modalidade != '') & (ia_modalidade != sys_modalidade)) |
         (mat_sd_lida == 0) | ((mat_sd_lida != 0) & (mat_sd_sys != 0) & (mat_sd_lida != mat_sd_sys)) |
         (mat_cd_lida == 0) | ((mat_cd_lida != 0) & (mat_cd_sys != 0) & (mat_cd_lida != mat_cd_sys)) |
-        (mcd_lida == 0) | ((mcd_lida != 0) & (mcd_esperada != 0) & (mcd_lida != mcd_esperada))
+        (mcd_lida == 0) | ((mcd_lida != 0) & (mcd_esperada != 0) & (mcd_lida != mcd_esperada)) |
+        inc_invalida_riaf
     )
 
     # ERRO NA INCONSISTÊNCIA — a frase do Gemini não bate com o valor que ele mesmo extraiu.
@@ -4427,7 +4435,11 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
 
 
     if check_riaf and os.path.exists(arq_riaf):
-        df_riaf = converter_colunas_para_salvamento(pd.read_parquet(arq_riaf))
+        df_riaf = pd.read_parquet(arq_riaf).rename(columns={
+            'Valor Beneficios': 'valor_beneficio',
+            'Valor Financiamentos': 'valor_financiamento',
+        })
+        df_riaf = converter_colunas_para_salvamento(df_riaf)
         if 'Faculdade' in df_riaf.columns:
             df_riaf = df_riaf[~df_riaf['Faculdade'].astype(str).str.upper().str.contains('FACULDADE TESTE', na=False)]
         print(f"[GGCI       | LIDO          | RIAF  ] {len(df_riaf)} linhas base.")
@@ -4449,6 +4461,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                         'gemini_cnpj_faculdade': 'Gemini Cnpj Faculdade', 'gemini_mensalidade_sem_desconto': 'Gemini Mensalidade S/ Desconto',
                         'gemini_mensalidade_com_desconto': 'Gemini Mensalidade C/ Desconto', 'gemini_valor_beneficio': 'Gemini Valor Beneficio',
                         'gemini_valor_financiado': 'Gemini Valor Financiado', 'gemini_valor_financiamento': 'Gemini Valor Financiado', 'gemini_matricula_sem_desconto': 'Gemini Matricula Sem Desconto',
+                        'valor_financiado': 'valor_financiamento',
                         'gemini_matricula_com_desconto': 'Gemini Matricula Com Desconto', 'gemini_razao_social': 'Gemini Razao Social',
                         'gemini_nome_faculdade': 'Gemini Nome Faculdade', 'gemini_beneficio_nome': 'Gemini Beneficio Nome',
                         'gemini_nome_mantenedora': 'Gemini Nome Mantenedora', 'gemini_nome_financiamento': 'Gemini Nome Financiamento',

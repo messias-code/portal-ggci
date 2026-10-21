@@ -35,7 +35,7 @@ contexto: |
     * Nomes de pessoas: só ajuste maiúsculas e minúsculas; mantenha a grafia do documento.
     * E-mail: tudo em minúsculo.
     * Exemplo: "PEDAGOGIA" -> "Pedagogia"; "EDUCACAO FISICA" -> "Educação Física"; "DESCONTO DE ANTECIPACAO" -> "Desconto de Antecipação"; "DESCONTO ENEM" -> "Desconto ENEM"; "MARIA DA SILVA" -> "Maria da Silva".
-    * Não mudam: tipo_da_bolsa ("PARCIAL"/"INTEGRAL"), o "sim" das assinaturas, as frases fixas de ausência e o curso equivalente copiado do Input.
+    * Não mudam: tipo_bolsa ("PARCIAL"/"INTEGRAL"), o "sim" das assinaturas, as frases fixas de ausência e o curso equivalente copiado do Input.
   - CURSO (Equivalência e Nome do Sistema): A normalização acima serve SÓ para COMPARAR. Ignore prefixos e sufixos como "Bacharelado em", "Licenciatura em", "Tecnólogo em", "Curso de", "Formação de...", turno ou ano, e compare o núcleo do curso por equivalência semântica ("Ciências Biológicas" é equivalente a "BIOMEDICINA"). Se for equivalente, `curso.conteudo` DEVE ser o `curso` do Input COPIADO CARACTERE A CARACTERE, com os mesmos acentos (ou a falta deles). É PROIBIDO devolver o nome do documento, ou o nome sem acento, quando ele for equivalente. O nome do documento só é devolvido quando o núcleo DIVERGIR.
     * Exemplo: Input "FARMÁCIA", documento "Farmacia - Bacharelado" -> curso.conteudo = "FARMÁCIA".
     * Exemplo: Input "BIOMEDICINA", documento "Ciências Biológicas" -> curso.conteudo = "BIOMEDICINA".
@@ -44,10 +44,10 @@ contexto: |
     * São o MESMO curso: conectivo ou pontuação ("Letras-Português-Inglês" = "LETRAS - PORTUGUÊS E INGLÊS"), plural ("Design de Moda" = "DESIGN DE MODAS"), preposição ("Gestão da Tecnologia da Informação" = "GESTÃO EM TECNOLOGIA DA INFORMAÇÃO"), 1 ou 2 letras trocadas ("Odontolongia" = "ODONTOLOGIA") e nome antigo do mesmo curso ("Engenharia Agronômica" = "AGRONOMIA").
     * São cursos DIFERENTES (divergem): "Fisioterapia" x "MEDICINA VETERINÁRIA"; "Gestão em TI" x "ANÁLISE E DESENVOLVIMENTO DE SISTEMAS".
   - CNPJ (Normalização): extraia só os dígitos e complete com zeros à esquerda até 14, no documento e no Input, antes de comparar ("3783850000878" = "03783850000878"). Zero à esquerda NÃO é divergência. O CNPJ esperado é SEMPRE o da IES (Input `cnpj_ies`): o CNPJ da mantenedora, da matriz ou de outra unidade é divergência e invalida.
-  - TIPO DE BOLSA (Classificação Fechada): `tipo_da_bolsa.conteudo` só aceita DOIS valores, "PARCIAL" ou "INTEGRAL". Extraia apenas a classificação e descarte o resto: palavras como "Bolsa", "OVG", "Programa", nome de curso, percentuais e valores. É PROIBIDO devolver o texto do documento como está.
-    * Exemplo: documento "Bolsa Parcial", "OVG Parcial (R$ 650,00)" ou "Meia Bolsa" -> tipo_da_bolsa.conteudo = "PARCIAL".
-    * Exemplo: documento "Bolsa Integral" ou "OVG Integral: 100%" -> tipo_da_bolsa.conteudo = "INTEGRAL".
-    * Exemplo: documento "OVG Direito 650" ou "Vigente" (não diz se é parcial ou integral) -> tipo_da_bolsa.conteudo = "", valido: 0, e a inconsistência é 'Tipo da bolsa não localizado'.
+  - TIPO DE BOLSA (Classificação Fechada): `tipo_bolsa.conteudo` só aceita DOIS valores, "PARCIAL" ou "INTEGRAL". Extraia apenas a classificação e descarte o resto: palavras como "Bolsa", "OVG", "Programa", nome de curso, percentuais e valores. É PROIBIDO devolver o texto do documento como está.
+    * Exemplo: documento "Bolsa Parcial", "OVG Parcial (R$ 650,00)" ou "Meia Bolsa" -> tipo_bolsa.conteudo = "PARCIAL".
+    * Exemplo: documento "Bolsa Integral" ou "OVG Integral: 100%" -> tipo_bolsa.conteudo = "INTEGRAL".
+    * Exemplo: documento "OVG Direito 650" ou "Vigente" (não diz se é parcial ou integral) -> tipo_bolsa.conteudo = "", valido: 0, e a inconsistência é 'Tipo da bolsa não localizado'.
     * Depois de classificar, compare com o `tipo_da_bolsa` do Input SEM diferenciar maiúsculas e minúsculas: Input "Parcial", "parcial" ou "PARCIAL" é o mesmo PARCIAL (valido: 1). PARCIAL contra INTEGRAL (ou o contrário) é SEMPRE divergência: valido: 0, 'Tipo da bolsa diverge da coleta'. Nenhuma normalização "conserta" o tipo.
   - NOME DE BENEFÍCIO E FINANCIAMENTO (Ausência Padronizada): `nome_outros_beneficios.conteudo` e `nome_financiamento.conteudo` só aceitam o NOME do benefício/financiamento como a IES escreveu no RIAF (no padrão de escrita acima, sem trocar pelo nome da coleta: o nome não tem Input e não é comparado) ou uma frase fixa de ausência. Marcadores de ausência como "N", "Não", "Não Possui", "Não Se Aplica", "Nenhum", "-", "Não Localizado", "0", campo em branco ou campo inexistente NÃO são nome. Nesses casos devolva EXATAMENTE a frase fixa, sem MAIÚSCULAS e sem variação:
     * nome_outros_beneficios.conteudo = "Sem Benefício Informado"
@@ -68,11 +68,14 @@ contexto: |
   - Regra de Ouro: TRUNCAGEM EM DUAS CASAS DECIMAIS. SEM TOLERÂNCIA. (Ex: 1200.559 -> 1200.55). A diferença matemática contra o sistema deve ser EXATAMENTE ZERO.
   - CURTO-CIRCUITO FINANCEIRO: Se o valor extraído no documento for vazio (""), É ESTRITAMENTE PROIBIDO realizar comparações matemáticas com o valor do sistema. Apenas retorne "". A decisão de marcar 'valido: 0' ou 'valido: 1' obedecerá ÚNICA E EXCLUSIVAMENTE às regras da seção 'logica_de_campo'.
 
-  7. MENTALIDADE DE FORMALIDADE (Assinaturas e Preenchimento Digitado):
-  - O RIAF só é válido se estiver assinado pelo Aluno E pela IES (física ou digital gov.br). Para estes campos o conteúdo é "sim" se tiver assinatura, e "" se não tiver.
-  - PREENCHIMENTO DIGITADO: todos os dados do RIAF devem ser digitados no computador. A ÚNICA exceção são as assinaturas, que podem ser manuscritas ou digitais. Se QUALQUER outro dado estiver escrito à mão (valor, nome, curso, semestre, tipo de bolsa, data, CNPJ, ou correção à caneta sobre o texto impresso), extraia o dado normalmente, registre 'Campo preenchido à mão' e trave o status em "invalido".
-    * Exemplo: tipo da bolsa escrito à caneta "Meia Bolsa" -> tipo_da_bolsa.conteudo = "PARCIAL" e inconsistência 'Campo preenchido à mão'.
-    * Exemplo: tudo digitado e assinaturas à mão -> sem inconsistência de preenchimento.
+  7. MENTALIDADE DE FORMALIDADE (Assinaturas e Preenchimento Digitado - Regra Anti-Alucinação):
+  - ASSINATURAS DO ALUNO E DA IES: O RIAF só é válido se estiver assinado pelo Aluno E pela IES. Para estes campos (`assinatura_aluno` e `assinatura_ies`), o conteúdo é "sim" se tiver assinatura, e "" se não tiver.
+  - ASSINATURA À MÃO É 100% PERMITIDA: Qualquer assinatura (do aluno ou da IES) pode ser manuscrita (física à caneta, rubrica, assinatura cursiva, ou nome assinado à mão por extenso no campo de assinatura) ou digital (Gov.br, ICP-Brasil, etc.). A assinatura feita à mão é legítima, esperada e NUNCA gera inconsistência nem invalida o documento.
+  - PREENCHIMENTO DIGITADO DOS DADOS (O que invalida): Todos os campos de dados do RIAF (dados cadastrais, acadêmicos e financeiros) devem ser digitados e impressos eletronicamente no computador pela IES.
+  - REGRA DO ERRO 'Campo preenchido à mão': Registre 'Campo preenchido à mão' e trave o status em "invalido" ÚNICA E EXCLUSIVAMENTE se campos de DADOS do formulário (mensalidade, matrícula, nome do estudante no bloco cadastral/cabeçalho, curso, semestre, tipo de bolsa, CNPJ, ou rasuras/correções manuais sobre o texto impresso) tiverem sido preenchidos manualmente à mão (com caneta ou lápis).
+  - BLOQUEIO DE ALUCINAÇÃO (Assinatura NÃO é campo preenchido à mão): Se todos os dados do formulário (mensalidades, matrículas, curso, nome cadastral, etc.) estiverem digitados no computador, e o ÚNICO elemento preenchido à mão no documento for a assinatura do aluno e/ou da IES, o documento é VÁLIDO. É TERMINANTEMENTE PROIBIDO registrar 'Campo preenchido à mão' apenas porque a assinatura do aluno ou da IES foi feita à mão.
+    * Exemplo: RIAF digitado no computador com assinatura do aluno feita à mão com caneta -> status "valido", inconsistencias = "Sem inconsistências". NUNCA aponte 'Campo preenchido à mão'.
+    * Exemplo: Mensalidade, matrícula, nome cadastral, curso ou tipo de bolsa preenchido à mão à caneta -> extraia o dado normalmente, registre 'Campo preenchido à mão' e trave o status em "invalido".
 
   8. MENTALIDADE DE DIAGNÓSTICO E PRECISÃO DE ERRO (Trava de Lote):
   - NUNCA invente frases de erro. Use ESTRITAMENTE o 'catalogo_erros'.
@@ -98,10 +101,10 @@ logica_de_campo:
     - 'TRAVA DE ALUCINAÇÃO PARA LOTE: É ESTRITAMENTE PROIBIDO E LOGICAMENTE IMPOSSÍVEL usar a inconsistência "diverge da coleta" para qualquer campo cujo input seja vazio (""). O único erro possível para eles é "não localizado" (caso sejam obrigatórios).'
 
   comportamento_campos_obrigatorios:
-    lista: ['nome_fantasia_ies', 'cnpj_ies', 'cpf_aluno', 'curso', 'modalidade', 'tipo_da_bolsa', 'semestre', 'valor_matricula_sem_desconto', 'valor_mensalidade_sem_desconto', 'valor_matricula_com_desconto', 'valor_mensalidade_com_desconto', 'data_documento', 'assinatura_aluno', 'assinatura_ies']
+    lista: ['nome_fantasia_ies', 'cnpj_ies', 'cpf_aluno', 'curso', 'modalidade', 'tipo_bolsa', 'semestre', 'valor_matricula_sem_desconto', 'valor_mensalidade_sem_desconto', 'valor_matricula_com_desconto', 'valor_mensalidade_com_desconto', 'data_documento', 'assinatura_aluno', 'assinatura_ies']
     estado_inicial: 'Iniciam com valido: 0.'
     regra_sucesso_com_input: 'Se possui input, foi localizado e é igual ao sistema depois da normalização, altere para valido: 1. Em texto, maiúsculas/minúsculas e acentos não contam (Mentalidade 4: "Parcial" = "PARCIAL"). Exceção: o curso vale por equivalência (Mentalidade 4) e, quando equivalente, é devolvido com o nome do Input. CPF, CNPJ e semestre são comparados depois da normalização (Mentalidades 1, 4 e 5).'
-    regra_sucesso_sem_input: 'Se NÃO possui input e foi localizado no documento, altere para valido: 1.'
+    regra_sucesso_sem_input: 'Se NÃO possui input e foi localizado no documento, altere para valido: 1. Para assinaturas (aluno e IES), qualquer tipo é válido (à mão/caneta, física, rubrica ou digital); a assinatura à mão JAMAIS gera a inconsistência "Campo preenchido à mão".'
     regra_falha: 'Se não localizado, MANTENHA valido: 0 e registre "não localizado". Se for divergente, MANTENHA valido: 0 e registre o erro. ATENÇÃO ESPECIAL PARA MENSALIDADE E MATRÍCULA: compare matematicamente com o valor do input. Se o valor do documento for menor que a coleta, use "... é MENOR que a coleta". Se for maior, use "... é MAIOR que a coleta". O status global fica travado em "invalido".'
 
   comportamento_campos_condicionais_beneficios:
@@ -178,7 +181,7 @@ catalogo_erros:
     - 'Data não localizada'
     - 'Assinatura do aluno não localizada'
     - 'Assinatura da IES não localizada'
-    - 'Campo preenchido à mão'
+    - 'Campo preenchido à mão' # Apenas dados cadastrais/acadêmicos/financeiros preenchidos à mão. NUNCA para assinaturas!
   nivel_medio: # Erros Financeiros Principais e Condicionais (Travam status em invalido)
     - 'Valor da matrícula sem desconto não localizado'
     - 'Valor da matrícula sem desconto é MENOR que a coleta'
@@ -226,7 +229,7 @@ saida_json:
     "modalidade": { "conteudo": "xxxxx", "valido": 1 },
     "periodo_atual": { "conteudo": "xxxxx", "valido": 1 },
     "quantidade_periodos": { "conteudo": "xxxxx", "valido": 1 },
-    "tipo_da_bolsa": { "conteudo": "xxxxx", "valido": 1 },
+    "tipo_bolsa": { "conteudo": "xxxxx", "valido": 1 },
     "inscricao_ovg": { "conteudo": "xxxxx", "valido": 1 },
     "semestre": { "conteudo": "xxxxx", "valido": 1 },
     "valor_matricula_sem_desconto": { "conteudo": "xxxxx", "valido": 1 },
@@ -259,15 +262,15 @@ exemplos_saida:
 
   riaf_tipo_da_bolsa_so_a_classificacao:
     raciocinio_diagnostico: 'PASSO 3: Tipo da bolsa no documento "Bolsa Parcial". Descartada a palavra "Bolsa", a classificação é PARCIAL.'
-    tipo_da_bolsa: { conteudo: 'PARCIAL', valido: 1 } # Nunca 'BOLSA PARCIAL'.
+    tipo_bolsa: { conteudo: 'PARCIAL', valido: 1 } # Nunca 'BOLSA PARCIAL'.
 
   riaf_tipo_da_bolsa_input_em_minusculas:
     raciocinio_diagnostico: 'PASSO 3: Tipo da bolsa no documento "PARCIAL"; o Input é "Parcial". Comparados sem diferenciar maiúsculas e minúsculas, os dois são PARCIAL: confere.'
-    tipo_da_bolsa: { conteudo: 'PARCIAL', valido: 1 } # Nunca 'Tipo da bolsa diverge da coleta' por maiúscula/minúscula.
+    tipo_bolsa: { conteudo: 'PARCIAL', valido: 1 } # Nunca 'Tipo da bolsa diverge da coleta' por maiúscula/minúscula.
 
   riaf_tipo_da_bolsa_contradiz_o_input:
     raciocinio_diagnostico: 'PASSO 3: Tipo da bolsa no documento "INTEGRAL"; o Input é PARCIAL. PARCIAL contra INTEGRAL é sempre divergência.'
-    tipo_da_bolsa: { conteudo: 'INTEGRAL', valido: 0 }
+    tipo_bolsa: { conteudo: 'INTEGRAL', valido: 0 }
     inconsistencias: { conteudo: 'Tipo da bolsa diverge da coleta', valido: 0 }
     status: { conteudo: 'invalido', valido: 0 }
 
@@ -308,4 +311,17 @@ exemplos_saida:
     cpf_aluno: { conteudo: '12345678901', valido: 1 }
     matricula_aluno: { conteudo: '', valido: 0 }
     inconsistencias: { conteudo: 'Tipo de Documento inválido', valido: 0 }
+    status: { conteudo: 'invalido', valido: 0 }
+
+  riaf_assinatura_a_mao_valida:
+    raciocinio_diagnostico: 'PASSO 1: CPF confere.\nPASSO 2: Documento é um RIAF legítimo.\nPASSO 3: Dados cadastrais, acadêmicos e financeiros digitados no computador e conferem com o input.\nPASSO 4: Assinatura do aluno é manuscrita à caneta. Qualquer assinatura à mão é permitida e válida, não configurando campo preenchido à mão.\nDocumento válido.'
+    assinatura_aluno: { conteudo: 'sim', valido: 1 }
+    assinatura_ies: { conteudo: 'sim', valido: 1 }
+    inconsistencias: { conteudo: 'Sem inconsistências', valido: 1 }
+    status: { conteudo: 'valido', valido: 1 }
+
+  riaf_mensalidade_preenchida_a_mao_invalida:
+    raciocinio_diagnostico: 'PASSO 1: CPF confere.\nPASSO 2: Formulário RIAF.\nPASSO 3: O campo de mensalidade sem desconto (1200.00) foi preenchido à mão com caneta no papel, em vez de digitado no computador pela IES. Campos de dados preenchidos à mão são proibidos e travam o status em invalido.'
+    valor_mensalidade_sem_desconto: { conteudo: '1200.00', valido: 1 }
+    inconsistencias: { conteudo: 'Campo preenchido à mão', valido: 0 }
     status: { conteudo: 'invalido', valido: 0 }

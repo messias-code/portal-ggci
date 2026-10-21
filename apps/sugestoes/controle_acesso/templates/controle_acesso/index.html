@@ -1,0 +1,471 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <!--
+    ======================================================================
+    TEMPLATE: Controle de Acesso (index.html)
+    O QUE FAZ: Tela de consulta do beneficiário por Inscrição ou CPF.
+    POR QUÊ EXISTE: Primeiro módulo do hub de Sugestões.
+    COMO FUNCIONA: Mesma casca do Documentos IA: cabeçalho com logo, divisória,
+                   ícone do card e título à esquerda; busca, tema e Voltar à
+                   direita. Abaixo, a ficha com as 5 seções, preenchida pelo
+                   controle_acesso.js a partir de `api/consultar/`, que lê os
+                   Parquets gravados pelo botão "Atualizar" (mesma caixa, console
+                   e acompanhamento do Documentos IA).
+    ======================================================================
+    -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Acesso - Portal GGCI</title>
+
+    <!-- MOTOR DE TEMAS — síncrono no <head> para não piscar o tema padrão. -->
+    <script src="{% static 'js/tema.js' %}"></script>
+
+    <link rel="stylesheet" href="{% static 'css/output.css' %}">
+    <!-- Tokens de cor dos temas e o botão sol/lua (compartilhado por todo o portal) -->
+    <link rel="stylesheet" href="{% static 'css/tema.css' %}">
+    <!-- Fundo da página e halos no modo eleitoral, compartilhados com os menus -->
+    <link rel="stylesheet" href="{% static 'css/tema-menu.css' %}">
+    <!-- Console de atualização compartilhado (o mesmo do Documentos IA) -->
+    <link rel="stylesheet" href="{% static 'css/console.css' %}?v=1">
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <link rel="stylesheet" href="{% static 'controle_acesso/css/controle_acesso.css' %}">
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@8.0.4/dist/turbo.es.2017-esm.js"></script>
+</head>
+
+<body class="grid-bg bg-[#f8f6fb] text-gray-800 ca-pagina transition-colors duration-500">
+
+    <!-- HALOS DE FUNDO — os mesmos dos menus (o eleitoral os repinta em tema-menu.css) -->
+    <div class="menu-blob menu-blob--1 absolute top-[-20%] left-[-15%] w-[70vw] h-[70vh] bg-pink-500/70 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="menu-blob menu-blob--2 absolute top-[-20%] right-[-15%] w-[70vw] h-[70vh] bg-yellow-400/75 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="menu-blob menu-blob--3 absolute bottom-[-20%] left-[-15%] w-[70vw] h-[70vh] bg-purple-700/60 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="menu-blob menu-blob--4 absolute bottom-[-20%] right-[-15%] w-[70vw] h-[70vh] bg-green-600/65 rounded-full blur-[140px] pointer-events-none z-0"></div>
+
+    <!-- A moldura cresce com a ficha: quem rola é a página, não uma caixa interna -->
+    <div class="menu-shell w-full bg-white/70 backdrop-blur-2xl border border-white/80 rounded-[2rem] shadow-2xl flex overflow-hidden relative z-10" style="min-width: 0;">
+
+        <main class="flex-1 flex flex-col relative" style="min-width: 0;">
+            <!-- CABEÇALHO — mesma estrutura do Documentos IA -->
+            <header class="menu-divisoria relative h-28 px-8 lg:px-10 flex justify-between items-center border-b border-purple-100/50 shrink-0 gap-4">
+                <div class="menu-header absolute inset-0 bg-white/70 backdrop-blur-md z-0"></div>
+                <div class="flex items-center gap-6 min-w-0 flex-1 relative z-10">
+                    <!--
+                        As duas versões da logo são publicadas e o CSS de
+                        tema decide qual fica visível. O elemento oculto sai
+                        da árvore de acessibilidade, então o leitor de tela
+                        anuncia apenas uma.
+                    -->
+                    <img src="{% static 'img/logos/ovg.png' %}" alt="OVG Logo"
+                        class="logo-tema logo-tema--claro h-[4.46rem] drop-shadow-md shrink-0">
+                    <img src="{% static 'img/logos/ovg-eleitoral.png' %}" alt="OVG Logo"
+                        class="logo-tema logo-tema--eleitoral h-[4.46rem] drop-shadow-md shrink-0">
+                    <div class="menu-header-divisor h-12 w-px bg-purple-200/50 shrink-0"></div>
+
+                    <div class="flex items-center gap-4 min-w-0 flex-1">
+                        <div class="tela-header-icone w-14 h-14 rounded-2xl bg-gradient-to-br from-pink-100 to-pink-200 text-pink-600 flex items-center justify-center shadow-inner shrink-0 hidden sm:flex">
+                            <i class="fa-solid fa-id-card text-2xl drop-shadow-sm"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <h2 class="menu-header-titulo text-2xl lg:text-3xl font-extrabold text-gray-800 tracking-tight truncate">Controle de Acesso</h2>
+                            <p class="menu-header-sub text-sm lg:text-md text-gray-500 font-medium mt-1">Consulta dos dados do beneficiário</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3 shrink-0 relative z-10">
+                    <!-- BUSCA — campo único que aceita Inscrição ou CPF, na caixa de controles -->
+                    <form id="formConsulta" class="ca-busca" data-turbo="false" autocomplete="off"
+                        data-url="{% url 'controle_acesso_consultar' %}">
+                        <i class="fa-solid fa-magnifying-glass ca-busca__lupa"></i>
+                        <input id="termo" name="termo" type="text" inputmode="numeric" maxlength="14"
+                            aria-label="Inscrição ou CPF"
+                            placeholder="Inscrição ou CPF">
+                        <!-- Selo que mostra o que o texto digitado parece ser -->
+                        <span id="termoTipo" class="ca-busca__tipo" hidden></span>
+                        <div class="ca-busca__divisor"></div>
+                        <button type="submit" class="ca-busca__btn">Consultar</button>
+                    </form>
+
+                    <!--
+                        ATUALIZAR — a mesma caixa do Documentos IA: "Atualizar | data da última
+                        atualização concluída" e o botão do console. `ca-caixa-atualizar` é o
+                        gancho do modo eleitoral (as regras do Documentos IA moram no CSS dele).
+                        Sem o escopo configurável: aqui toda atualização traz o universo inteiro;
+                        o botão Bruta escolhe só COMO (cache do dia e envios lidos do site).
+                    -->
+                    <div class="ca-caixa-atualizar flex items-center bg-white/80 rounded-2xl shadow-sm border border-pink-100 h-10 transition-all text-sm overflow-hidden flex-nowrap shrink-0 focus-within:ring-2 focus-within:ring-pink-200"
+                         data-url-iniciar="{% url 'controle_acesso_iniciar' %}"
+                         data-url-status="{% url 'controle_acesso_status' 0 %}"
+                         data-url-parar="{% url 'controle_acesso_parar' 0 %}">
+                        <button type="button" id="btn-atualizar" class="h-full px-5 text-pink-600 font-bold flex items-center gap-2 hover:bg-pink-50 transition-colors shrink-0">
+                            <span>Atualizar</span> <span class="text-gray-400 font-medium whitespace-nowrap">| <span id="data-atualizacao">{{ data_atualizacao }}</span></span>
+                        </button>
+                        <div class="h-6 w-px bg-pink-100 shrink-0"></div>
+                        <!-- BRUTA — ligado, o Atualizar ignora o cache do dia e lê do site os
+                             documentos enviados. Só o usuário liga e desliga; a escolha fica
+                             guardada no navegador. -->
+                        <button type="button" id="btn-bruta" class="ca-bruta" aria-pressed="false"
+                            title="Atualização bruta: consulta o banco de novo e lê do site os documentos enviados hoje">
+                            <i class="fa-solid fa-arrows-rotate ca-bruta__desligada"></i><i class="fa-solid fa-check ca-bruta__ligada"></i><span>Bruta</span>
+                        </button>
+                        <div class="h-6 w-px bg-pink-100 shrink-0"></div>
+                        <button type="button" id="btn-abrir-console" class="h-full px-3 text-pink-500 hover:text-pink-700 hover:bg-pink-50 transition-colors shrink-0 flex items-center justify-center" title="Console da atualização">
+                            <i class="fa-solid fa-terminal"></i>
+                        </button>
+                    </div>
+
+                    <button type="button" class="tela-voltar tema-toggle shrink-0 w-10 h-10 flex items-center justify-center bg-white/80 hover:bg-pink-50 text-pink-600 rounded-xl transition-all shadow-sm border border-pink-100" data-tema-toggle aria-label="Alternar tema" aria-pressed="false">
+                        <svg class="tema-toggle__icone tema-toggle__icone--lua w-5 h-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"
+                                stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <svg class="tema-toggle__icone tema-toggle__icone--sol w-5 h-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.6"/>
+                            <path d="M12 2.4V4.4M12 19.6V21.6M21.6 12H19.6M4.4 12H2.4M18.79 5.21L17.38 6.62M6.62 17.38L5.21 18.79M18.79 18.79L17.38 17.38M6.62 6.62L5.21 5.21" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+
+                    <a href="{% url 'sugestoes' %}" class="tela-voltar h-10 px-5 bg-white/80 hover:bg-pink-50 text-pink-600 font-bold rounded-xl transition-all shadow-sm border border-pink-100 inline-flex items-center justify-center text-sm">
+                        <i class="fa-solid fa-arrow-left mr-2 mt-[1px]"></i>
+                        <span class="leading-none">Voltar</span>
+                    </a>
+                </div>
+            </header>
+
+            <!-- ÁREA DE TRABALHO — a ficha do beneficiário, um formulário já preenchido -->
+            <div class="flex-1 p-4 lg:p-6 flex flex-col" style="min-width: 0;">
+                <!-- FICHA DO BENEFICIÁRIO — 1ª linha com 2 cards; depois Situações, Coleta, Pagamentos e Documentos em largura total -->
+                <div class="ca-ficha" id="ficha">
+                    <!-- Aviso da consulta (não encontrado, erro de rede) — preenchido pelo JS -->
+                    <div id="avisoConsulta" class="ca-aviso" role="status" hidden></div>
+
+                    <!--
+                        ÁREA INICIAL — a mensagem, no lugar da ficha, até a primeira consulta.
+                    -->
+                    <div id="boasVindas" class="ca-boas-vindas">
+                        <span class="ca-boas-vindas__icone"><i class="fa-solid fa-magnifying-glass"></i></span>
+                        <h3>Consulte um beneficiário</h3>
+                        <p>Digite a <strong>Inscrição</strong> ou o <strong>CPF</strong> na busca acima e clique em
+                            <strong>Consultar</strong> para ver o espelho completo do beneficiário: dados pessoais
+                            e acadêmicos, situações, coletas, pagamentos e documentos comprobatórios.</p>
+                    </div>
+
+                    <!--
+                        ESCOLHA DE INSCRIÇÃO — quando o CPF tem mais de uma inscrição, no lugar
+                        da mensagem: um card como os da ficha, uma linha por inscrição.
+                    -->
+                    <section id="escolhaInscricoes" class="ca-secao ca-escolha-secao" hidden>
+                        <h2 class="ca-secao__titulo">
+                            <i class="fa-solid fa-id-card"></i><span id="opcoesTitulo">Inscrições deste CPF</span>
+                            <span class="ca-secao__resumo ca-secao__resumo--neutro" id="opcoesResumo"></span>
+                        </h2>
+                        <p class="ca-escolha-secao__dica">Clique na inscrição para abrir a ficha.</p>
+                        <div class="ca-tabela">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Inscrição</th>
+                                        <th>Bolsa</th>
+                                        <th>Ano da Inscrição</th>
+                                        <th>Data de Ingresso</th>
+                                        <th>Faculdade</th>
+                                        <th>Curso</th>
+                                        <th>Última Situação</th>
+                                        <th class="ca-acao"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="listaInscricoes"></tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <div class="ca-colunas" id="fichaColunas" hidden>
+                        <!-- 1ª LINHA: beneficiário e acadêmico lado a lado, com a mesma altura -->
+                        <section class="ca-secao ca-area-benef">
+                            <h2 class="ca-secao__titulo"><i class="fa-solid fa-user"></i>Dados do Beneficiário</h2>
+                            <div class="ca-grade">
+                                <label class="ca-info ca-info--2"><span>Inscrição</span><input type="text" readonly value="—" data-campo="beneficiario.inscricao"></label>
+                                <label class="ca-info ca-info--4"><span>Nome</span><input type="text" readonly value="—" data-campo="beneficiario.nome"></label>
+                                <label class="ca-info ca-info--3"><span>CPF</span><input type="text" readonly value="—" data-campo="beneficiario.cpf"></label>
+                                <label class="ca-info ca-info--3"><span>Data de Nascimento</span><input type="text" readonly value="—" data-campo="beneficiario.data_nascimento"></label>
+                                <label class="ca-info ca-info--2"><span>Sexo</span><input type="text" readonly value="—" data-campo="beneficiario.sexo"></label>
+                                <label class="ca-info ca-info--2"><span>Tipo da Bolsa</span><input type="text" readonly value="—" data-campo="beneficiario.tipo_bolsa"></label>
+                                <label class="ca-info ca-info--2"><span>Perfil</span><input type="text" readonly value="—" data-campo="beneficiario.perfil"></label>
+                            </div>
+                        </section>
+
+                        <section class="ca-secao ca-area-acad">
+                            <h2 class="ca-secao__titulo"><i class="fa-solid fa-graduation-cap"></i>Dados Acadêmicos</h2>
+                            <div class="ca-grade">
+                                <!-- Faculdade na linha inteira: o nome é longo e precisa ficar legível -->
+                                <label class="ca-info ca-info--6"><span>Faculdade</span><input type="text" readonly value="—" data-campo="academico.faculdade"></label>
+                                <label class="ca-info ca-info--2"><span>Data de Ingresso</span><input type="text" readonly value="—" data-campo="academico.data_ingresso"></label>
+                                <label class="ca-info ca-info--2"><span>Curso</span><input type="text" readonly value="—" data-campo="academico.curso"></label>
+                                <label class="ca-info ca-info--2"><span>Matrícula</span><input type="text" readonly value="—" data-campo="academico.matricula"></label>
+                                <label class="ca-info ca-info--3"><span>Período Atual</span><input type="text" readonly value="—" data-campo="academico.periodo_atual"></label>
+                                <label class="ca-info ca-info--3"><span>Período Total</span><input type="text" readonly value="—" data-campo="academico.periodo_total"></label>
+                            </div>
+                        </section>
+
+                        <!-- LINHAS SEGUINTES: tabelas em largura total, crescendo com os registros -->
+                        <!-- HISTÓRICO DE BOLSAS — só quando o CPF tem mais de uma inscrição: uma linha
+                             por inscrição, da mais nova para a mais antiga; clicar abre a ficha dela. -->
+                        <section class="ca-secao ca-area-hist" id="historicoBolsas" hidden>
+                            <h2 class="ca-secao__titulo">
+                                <i class="fa-solid fa-layer-group"></i>Histórico de Bolsas
+                                <span id="historicoResumo" class="ca-secao__resumo ca-secao__resumo--neutro"></span>
+                            </h2>
+                            <div class="ca-tabela">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Inscrição</th>
+                                            <th>Bolsa</th>
+                                            <th>Faculdade</th>
+                                            <th>Curso</th>
+                                            <th>Vigência</th>
+                                            <th>Última Situação</th>
+                                            <th>Última Atualização</th>
+                                            <th>Troca de IES</th>
+                                            <th class="ca-acao"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabelaHistorico"></tbody>
+                                </table>
+                            </div>
+                        </section>
+
+                        <section class="ca-secao ca-area-situ">
+                            <h2 class="ca-secao__titulo">
+                                <i class="fa-solid fa-clock-rotate-left"></i>Situações
+                                <div class="ca-filtro-semestres" data-filtro-semestre role="group" aria-label="Filtrar por semestre" hidden></div>
+                            </h2>
+                            <div class="ca-tabela">
+                            <table>
+                                <thead>
+                                    <tr><th>Data</th><th>Situação</th><th>Motivo</th><th>Observação</th></tr>
+                                </thead>
+                                <tbody id="tabelaSituacoes">
+                                    <tr class="ca-vazio"><td colspan="4">Nenhuma consulta realizada.</td></tr>
+                                </tbody>
+                            </table>
+                            </div>
+                        </section>
+
+                        <section class="ca-secao ca-area-coleta">
+                            <h2 class="ca-secao__titulo">
+                                <i class="fa-solid fa-clipboard-list"></i>Coleta de Dados
+                                <div class="ca-filtro-semestres" data-filtro-semestre role="group" aria-label="Filtrar por semestre" hidden></div>
+                            </h2>
+                            <div class="ca-tabela ca-tabela--larga">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Situação</th>
+                                            <th class="ca-num">Mensalidade sem Desconto</th>
+                                            <th class="ca-num">Mensalidade com Desconto</th>
+                                            <th class="ca-num">Matrícula sem Desconto</th>
+                                            <th class="ca-num">Matrícula com Desconto</th>
+                                            <th class="ca-num">Valor Benefícios</th>
+                                            <th>Qual Benefício</th>
+                                            <th class="ca-num">Valor Financiamento</th>
+                                            <th>Qual Financiamento</th>
+                                            <th>Data de Criação</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabelaColetas">
+                                        <tr class="ca-vazio"><td colspan="10">Nenhuma consulta realizada.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+
+                        <section class="ca-secao ca-area-pag">
+                            <h2 class="ca-secao__titulo">
+                                <i class="fa-solid fa-money-check-dollar"></i>Pagamentos
+                                <div class="ca-filtro-semestres" data-filtro-semestre role="group" aria-label="Filtrar por semestre" hidden></div>
+                            </h2>
+                            <div class="ca-tabela ca-tabela--larga">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Mês do Pagamento</th>
+                                            <th>Ano</th>
+                                            <th>Data do Pagamento</th>
+                                            <th class="ca-num">Mensalidade/Matrícula com Desconto</th>
+                                            <th class="ca-num">Valor Bolsa</th>
+                                            <th class="ca-num">Complemento</th>
+                                            <th class="ca-num">Ressarcimento</th>
+                                            <th class="ca-num">Total</th>
+                                            <th>Bolsa</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabelaPagamentos">
+                                        <tr class="ca-vazio"><td colspan="9">Nenhuma consulta realizada.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+
+                        <!-- DOCUMENTOS COMPROBATÓRIOS — um tipo por linha, com a pendência de envio de cada um.
+                             O olho abre a janela do documento, com uma aba por semestre. -->
+                        <section class="ca-secao ca-area-docs">
+                            <h2 class="ca-secao__titulo">
+                                <i class="fa-solid fa-folder-open"></i>Documentos Comprobatórios
+                                <span id="docsResumo" class="ca-secao__resumo" hidden></span>
+                            </h2>
+                            <div class="ca-tabela">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Documento</th>
+                                            <th>Situação</th>
+                                            <th>Períodos Pendentes</th>
+                                            <th>Períodos Enviados</th>
+                                            <th>Último Envio</th>
+                                            <th class="ca-acao">Ação</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabelaDocumentos">
+                                    <tr data-doc="contrato">
+                                        <td><span class="ca-doc-nome"><i class="fa-solid fa-file-signature"></i>Contratos</span></td>
+                                        <td data-doc-campo="situacao">—</td>
+                                        <td data-doc-campo="periodos_pendentes">—</td>
+                                        <td data-doc-campo="periodos_enviados">—</td>
+                                        <td data-doc-campo="ultimo_envio">—</td>
+                                        <td class="ca-acao"><button type="button" class="ca-ver" data-doc="contrato" title="Ver por semestre" aria-label="Ver Contratos por semestre"><i class="fa-solid fa-eye"></i></button></td>
+                                    </tr>
+                                    <tr data-doc="riaf">
+                                        <td><span class="ca-doc-nome"><i class="fa-solid fa-file-invoice-dollar"></i>RIAF</span></td>
+                                        <td data-doc-campo="situacao">—</td>
+                                        <td data-doc-campo="periodos_pendentes">—</td>
+                                        <td data-doc-campo="periodos_enviados">—</td>
+                                        <td data-doc-campo="ultimo_envio">—</td>
+                                        <td class="ca-acao"><button type="button" class="ca-ver" data-doc="riaf" title="Ver por semestre" aria-label="Ver RIAF por semestre"><i class="fa-solid fa-eye"></i></button></td>
+                                    </tr>
+                                    <tr data-doc="historico">
+                                        <td><span class="ca-doc-nome"><i class="fa-solid fa-file-lines"></i>Históricos</span></td>
+                                        <td data-doc-campo="situacao">—</td>
+                                        <td data-doc-campo="periodos_pendentes">—</td>
+                                        <td data-doc-campo="periodos_enviados">—</td>
+                                        <td data-doc-campo="ultimo_envio">—</td>
+                                        <td class="ca-acao"><button type="button" class="ca-ver" data-doc="historico" title="Ver por semestre" aria-label="Ver Históricos por semestre"><i class="fa-solid fa-eye"></i></button></td>
+                                    </tr>
+                                    <tr data-doc="beneficio">
+                                        <td><span class="ca-doc-nome"><i class="fa-solid fa-hand-holding-dollar"></i>Benefícios</span></td>
+                                        <td data-doc-campo="situacao">—</td>
+                                        <td data-doc-campo="periodos_pendentes">—</td>
+                                        <td data-doc-campo="periodos_enviados">—</td>
+                                        <td data-doc-campo="ultimo_envio">—</td>
+                                        <td class="ca-acao"><button type="button" class="ca-ver" data-doc="beneficio" title="Ver por semestre" aria-label="Ver Benefícios por semestre"><i class="fa-solid fa-eye"></i></button></td>
+                                    </tr>
+                                    <tr data-doc="financiamento">
+                                        <td><span class="ca-doc-nome"><i class="fa-solid fa-building-columns"></i>Financiamentos</span></td>
+                                        <td data-doc-campo="situacao">—</td>
+                                        <td data-doc-campo="periodos_pendentes">—</td>
+                                        <td data-doc-campo="periodos_enviados">—</td>
+                                        <td data-doc-campo="ultimo_envio">—</td>
+                                        <td class="ca-acao"><button type="button" class="ca-ver" data-doc="financiamento" title="Ver por semestre" aria-label="Ver Financiamentos por semestre"><i class="fa-solid fa-eye"></i></button></td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- CONSOLE DA ATUALIZAÇÃO — o mesmo do Documentos IA (componente `static/css/console.css`) -->
+    <div id="modal-console" class="hidden items-center justify-center p-4" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1200; background-color: rgba(15, 23, 42, 0.4); backdrop-filter: blur(4px);">
+        <div class="console-ggci rounded-[1.5rem] flex flex-col overflow-hidden border" style="width: 95%; max-width: 1200px; height: 70vh; max-height: 650px; min-height: 400px;">
+
+            <!-- Barra de título, no estilo de uma janela de terminal -->
+            <div class="console-ggci__cromo px-5 py-2.5 flex items-center justify-between border-b shrink-0">
+                <div class="flex space-x-2.5">
+                    <div class="w-3.5 h-3.5 rounded-full bg-[#ff5f56] shadow-sm"></div>
+                    <div class="w-3.5 h-3.5 rounded-full bg-[#ffbd2e] shadow-sm"></div>
+                    <div class="w-3.5 h-3.5 rounded-full bg-[#27c93f] shadow-sm"></div>
+                </div>
+                <span class="text-purple-800 text-[11px] font-mono tracking-widest font-bold flex items-center gap-2">
+                    <i class="fa-solid fa-terminal text-pink-500"></i> ATUALIZAÇÃO DE DADOS
+                </span>
+                <div class="flex items-center gap-3">
+                    <span id="console-status" class="text-[10px] font-mono uppercase tracking-widest text-purple-400 shrink-0">Aguardando</span>
+                    <button type="button" id="btn-parar-console" class="ca-console-parar" hidden>
+                        <i class="fa-solid fa-stop"></i><span>Parar</span>
+                    </button>
+                    <button type="button" id="btn-fechar-console"
+                            class="text-purple-400 hover:text-pink-600 w-8 h-8 flex items-center justify-center rounded-lg transition-colors">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Saída -->
+            <div id="console-logs"
+                 class="console-ggci__log p-6 flex-1 overflow-y-auto overflow-x-hidden font-mono text-[13px] leading-relaxed text-gray-700 whitespace-pre-wrap break-words">
+                <div class="flex flex-wrap items-center gap-1 mb-1.5 font-mono text-[14px] break-words">
+                    <span class="text-pink-600 font-bold">ovg@probem-ai:</span>
+                    <span class="text-purple-600">~</span>
+                    <span class="text-purple-400">$</span>
+                    <span class="text-purple-900 font-bold animate-pulse">extracao_controle_acesso --run</span>
+                </div>
+                <div class="text-pink-500 italic mb-2">
+                    <i class="fa-solid fa-angle-right"></i> Aguardando início...
+                </div>
+                <span class="console-spinner"></span>
+            </div>
+
+            <!-- Barra de progresso -->
+            <div class="console-ggci__cromo px-5 py-3 border-t shrink-0 flex items-center gap-4">
+                <div class="console-ggci__trilho flex-1 rounded-xl h-7 border shadow-inner relative flex items-center justify-center overflow-hidden">
+                    <div id="console-progress-bar"
+                         class="console-ggci__barra absolute top-0 left-0 h-full bg-gradient-to-r from-pink-400 to-purple-500 transition-all duration-500 ease-out"
+                         style="width: 0%;"></div>
+                    <span id="console-progress-text"
+                          class="relative z-10 text-[12px] font-black text-gray-700 tracking-wide">0%</span>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!--
+        JANELA DO DOCUMENTO — aberta pelo olho da coluna Ação. Uma aba por semestre;
+        no RIAF, cada aba lista as coletas que pagaram (um RIAF por coleta).
+        <dialog> nativo: o navegador cuida do fundo escurecido, do Esc e do foco.
+    -->
+    <dialog id="dialogoDocumento" class="ca-dialogo ca-dialogo--doc" aria-labelledby="documentoTitulo"
+            data-url-pdf="{% url 'controle_acesso_pdf' %}" data-url-anexo="{% url 'controle_acesso_anexo' %}">
+        <form method="dialog" class="ca-dialogo__corpo">
+            <header class="ca-dialogo__cab">
+                <span class="ca-dialogo__icone"><i class="fa-solid fa-folder-open"></i></span>
+                <div>
+                    <h3 id="documentoTitulo">Documento</h3>
+                    <p>Situação do envio em cada semestre</p>
+                </div>
+                <button type="submit" value="fechar" class="ca-dialogo__fechar" aria-label="Fechar">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </header>
+            <!-- Só no RIAF: a cobrança muda conforme a metodologia escolhida -->
+            <div id="documentoMetodologia" class="ca-metodologia" role="group" aria-label="Metodologia de cobrança do RIAF" hidden>
+                <button type="button" data-metodologia="atual" aria-pressed="true">Metodologia Atual</button>
+                <button type="button" data-metodologia="ggci" aria-pressed="false">Metodologia GGCI</button>
+            </div>
+            <div id="documentoAbas" class="ca-abas" role="tablist"></div>
+            <div id="documentoCorpo" class="ca-doc-janela" role="tabpanel"></div>
+        </form>
+    </dialog>
+
+    <script>window.CSRF_TOKEN = "{{ csrf_token }}";</script>
+    <!-- Busca, reconhecimento de Inscrição/CPF, preenchimento da ficha e o botão Atualizar -->
+    <script src="{% static 'controle_acesso/js/controle_acesso.js' %}"></script>
+</body>
+</html>

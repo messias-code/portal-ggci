@@ -83,6 +83,7 @@ INSTALLED_APPS = [
     'apps.dashboards.dash_documentos_ia',
     'apps.dashboards.dash_polichat',
     'apps.sugestoes.menu_sugestoes',
+    'apps.sugestoes.controle_acesso',
 
 ]
 

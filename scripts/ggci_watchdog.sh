@@ -218,6 +218,7 @@ curar_gunicorn() {
         portal_ggci.wsgi:application \
         --bind "127.0.0.1:${PORTA_GUNICORN}" \
         --workers 4 --threads 8 --worker-class gthread --timeout 300 \
+        --max-requests 1000 --max-requests-jitter 100 \
         --pid "$GUNICORN_PID" \
         >> "$LOG" 2>&1 < /dev/null &
     sleep 10
@@ -312,6 +313,10 @@ main() {
             log "FALHA: Gunicorn não responde em 127.0.0.1:${PORTA_GUNICORN} (${falhas_locais} ciclos)"
             curar_gunicorn
             marcar_acao
+            # Se o Gunicorn estava fora, o Nginx devolvia 502 por falta de upstream;
+            # retestamos agora que o Gunicorn subiu para não reiniciar o Nginx à toa.
+            nginx_fora=0
+            http_local_ok "$PORTA_NGINX" || nginx_fora=1
         fi
         if (( nginx_fora )); then
             log "FALHA: Nginx não responde em 127.0.0.1:${PORTA_NGINX} (${falhas_locais} ciclos)"

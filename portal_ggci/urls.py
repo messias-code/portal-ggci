@@ -46,4 +46,5 @@ urlpatterns = [
 
     # Sugestões
     path('sugestoes/', include('apps.sugestoes.menu_sugestoes.urls')),
+    path('sugestoes/controle-acesso/', include('apps.sugestoes.controle_acesso.urls')),
 ]
