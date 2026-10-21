@@ -1,0 +1,1487 @@
+/* ==========================================================================
+   CONTROLE DE ACESSO
+   A casca é a do Documentos IA (menu-shell, cabeçalho com logo, divisória,
+   ícone, título, tema e Voltar). Aqui fica só o que é desta tela: a caixa
+   de busca do cabeçalho e a ficha do beneficiário.
+
+   A ficha tem densidade de tela de consulta: texto de 12–13 px, espaçamentos
+   curtos e nada de card dentro de card — as seções se separam por fios finos.
+
+   CSS manual em vez de utilitárias: `output.css` é um bundle Tailwind purgado
+   e sem build no repositório — classe nova simplesmente não existiria nele.
+   As cores saem dos tokens `--tema-*` (static/css/tema.css), que já trocam de
+   valor no modo eleitoral; o bloco do fim cobre só o que não é token.
+   ========================================================================== */
+
+.grid-bg {
+    background-image:
+        linear-gradient(var(--tema-grade) 1px, transparent 1px),
+        linear-gradient(90deg, var(--tema-grade) 1px, transparent 1px);
+    background-size: 113px 75px;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+}
+
+
+/* --------------------------------------------------------------------------
+   1. CABEÇALHO
+   -------------------------------------------------------------------------- */
+
+/* Caixa de busca: mesma pele da caixa "Atualizar" do Documentos IA
+   (bg-white/80, borda rosa, h-10, cantos de 1rem). */
+.ca-busca {
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: 2.5rem;
+    width: 22rem;
+    background-color: rgba(255, 255, 255, 0.8);
+    border: 1px solid #fce7f3;
+    border-radius: 1rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+    transition: box-shadow .2s ease;
+}
+
+.ca-busca:focus-within {
+    box-shadow: 0 0 0 2px #fbcfe8;
+}
+
+.ca-busca__lupa {
+    position: absolute;
+    left: 0.875rem;
+    font-size: 0.75rem;
+    color: #f472b6;
+    pointer-events: none;
+}
+
+.ca-busca input {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    padding: 0 0.75rem 0 2.25rem;
+    border: 0;
+    background: transparent;
+    font-family: inherit;
+    font-size: 0.8125rem;
+    color: var(--tema-texto-forte);
+    outline: none;
+}
+
+.ca-busca input::placeholder {
+    color: var(--tema-texto-fraco);
+}
+
+/* Selo de reconhecimento: Inscrição em roxo, CPF em verde. */
+.ca-busca__tipo {
+    flex-shrink: 0;
+    margin-right: 0.5rem;
+    padding: 0.0625rem 0.4375rem;
+    border-radius: 9999px;
+    font-size: 0.5625rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--tema-primaria-forte);
+    background-color: var(--tema-primaria-lavada);
+    border: 1px solid var(--tema-primaria-borda);
+}
+
+.ca-busca__tipo--cpf {
+    color: #15803d;
+    background-color: #f0fdf4;
+    border-color: #bbf7d0;
+}
+
+.ca-busca__divisor {
+    flex-shrink: 0;
+    width: 1px;
+    height: 1.5rem;
+    background-color: #fce7f3;
+}
+
+/* Mesmo tratamento do botão "Atualizar" da caixa do Documentos IA. */
+.ca-busca__btn {
+    flex-shrink: 0;
+    height: 100%;
+    padding: 0 1.25rem;
+    border: 0;
+    background: transparent;
+    font-family: inherit;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #db2777;
+    cursor: pointer;
+    transition: background-color .2s ease;
+}
+
+.ca-busca__btn:hover {
+    background-color: #fdf2f8;
+}
+
+
+/* --------------------------------------------------------------------------
+   ATUALIZAR E CONSOLE — mesmas peças do Documentos IA
+   A caixa e o modal usam as classes do Tailwind e o `static/css/console.css`;
+   aqui ficam só o botão Parar e a barra de falha, que no Documentos IA moram
+   no CSS dele (`.docia-console-parar`, `.docia-barra--falha`).
+   -------------------------------------------------------------------------- */
+.ca-console-parar {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    height: 2rem;
+    padding: 0 0.75rem;
+    border: 1px solid #FECACA;
+    border-radius: 0.5rem;
+    background-color: #FEF2F2;
+    color: #DC2626;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+}
+
+.ca-console-parar:hover:not(:disabled) {
+    background-color: #DC2626;
+    border-color: #DC2626;
+    color: #FFFFFF;
+}
+
+.ca-console-parar:disabled { opacity: 0.6; cursor: wait; }
+/* O `display` acima ganharia do `[hidden]` do navegador. */
+.ca-console-parar[hidden] { display: none; }
+.ca-console-parar:focus-visible { outline: 2px solid #DC2626; outline-offset: 2px; }
+
+/* Barra do console depois de uma parada ou falha: cheia e vermelha. */
+.console-ggci__barra.ca-barra--falha {
+    background-image: none;
+    background-color: #DC2626;
+}
+
+.console-ggci__barra.ca-barra--falha + #console-progress-text { color: #FFFFFF; }
+
+
+/* --------------------------------------------------------------------------
+   0. PÁGINA — a rolagem é a do navegador
+   A moldura de vidro cresce com a ficha (Situações, Coleta e Pagamentos
+   crescem com os registros), então nada aqui trava altura. Os halos ficam
+   parados ao fundo enquanto o conteúdo rola por cima.
+   -------------------------------------------------------------------------- */
+.ca-pagina {
+    min-height: 100vh;
+    padding: 1rem;
+}
+
+/* A moldura ocupa pelo menos a tela inteira (menos o respiro da página), como nas
+   outras telas; com a ficha aberta, continua crescendo com ela. */
+.ca-pagina .menu-shell {
+    min-height: calc(100vh - 2rem);
+}
+
+@media (min-width: 1024px) {
+    .ca-pagina {
+        padding: 1.5rem;
+    }
+
+    .ca-pagina .menu-shell {
+        min-height: calc(100vh - 3rem);
+    }
+}
+
+.ca-pagina .menu-blob {
+    position: fixed;
+}
+
+/* Barra de rolagem rosa, fina e quase invisível; ganha um pouco de cor só
+   sob o cursor. Vale para a página e para a rolagem lateral das tabelas.
+   Este CSS só é carregado nesta tela, então o `html` não vaza para o portal. */
+html {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(236, 72, 153, 0.22) transparent;
+}
+
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: rgba(236, 72, 153, 0.22);
+    border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(236, 72, 153, 0.45);
+}
+
+
+/* --------------------------------------------------------------------------
+   2. FICHA — formulário já preenchido, somente leitura
+   1ª linha: Documentos, Beneficiário e Acadêmico lado a lado, com a mesma
+   altura. Depois, Situações, Coleta e Pagamentos em largura total.
+   -------------------------------------------------------------------------- */
+.ca-ficha {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    transition: opacity .2s ease;
+}
+
+.ca-ficha--carregando {
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+.ca-colunas {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+        "benef  acad"
+        "hist   hist"
+        "situ   situ"
+        "coleta coleta"
+        "pag    pag"
+        "docs   docs";
+    gap: 1rem;
+}
+
+.ca-area-docs   { grid-area: docs; }
+.ca-area-benef  { grid-area: benef; }
+.ca-area-acad   { grid-area: acad; }
+.ca-area-hist   { grid-area: hist; }
+
+/* Sem histórico (inscrição única), a linha "hist" sai da grade: vazia, ela ainda
+   somaria um espaçamento a mais entre os cards. */
+.ca-colunas:has(.ca-area-hist[hidden]) {
+    grid-template-areas:
+        "benef  acad"
+        "situ   situ"
+        "coleta coleta"
+        "pag    pag"
+        "docs   docs";
+}
+.ca-area-situ   { grid-area: situ; }
+.ca-area-coleta { grid-area: coleta; }
+.ca-area-pag    { grid-area: pag; }
+
+/* Tabelas largas (Coleta e Pagamentos): títulos longos quebram linha, para
+   que a largura das colunas seja ditada pelos valores, não pelo título.
+   O seletor duplo é proposital: `.ca-tabela th` (nowrap) vem depois no
+   arquivo e, com a mesma especificidade, ganharia. */
+.ca-tabela.ca-tabela--larga th {
+    white-space: normal;
+    vertical-align: bottom;
+    line-height: 1.3;
+}
+
+/* Texto livre ("Qual Benefício", "Qual Financiamento") quebra linha; valores
+   (.ca-num) e datas, que não têm espaço, continuam numa linha só. */
+.ca-tabela.ca-tabela--larga td:not(.ca-num) {
+    white-space: normal;
+}
+
+/* Situações: Motivo e Observação são texto livre e quebram linha. */
+.ca-area-situ .ca-tabela td {
+    white-space: normal;
+}
+
+.ca-area-situ .ca-tabela td:first-child {
+    white-space: nowrap;
+}
+
+/* Abaixo disso os 2 cards da 1ª linha não cabem lado a lado: empilham. */
+@media (max-width: 1100px) {
+    .ca-colunas {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas: "benef" "acad" "hist" "situ" "coleta" "pag" "docs";
+    }
+
+    .ca-colunas:has(.ca-area-hist[hidden]) {
+        grid-template-areas: "benef" "acad" "situ" "coleta" "pag" "docs";
+    }
+}
+
+/* Aviso da consulta: não encontrado, termo vazio ou falha de rede. */
+.ca-aviso {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid #fde68a;
+    background-color: #fffbeb;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #92400e;
+}
+
+.ca-aviso::before {
+    content: "\f071";
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    font-size: 0.75rem;
+}
+
+.ca-aviso[hidden] {
+    display: none;
+}
+
+/* `display: grid` do .ca-colunas ganharia do [hidden] do navegador. */
+.ca-colunas[hidden] {
+    display: none;
+}
+
+/* Área inicial: ocupa o lugar da ficha até a primeira consulta, preenchendo a
+   área de trabalho com a mensagem no centro. */
+.ca-boas-vindas {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.625rem;
+    padding: 3.5rem 1.5rem;
+    text-align: center;
+    background-color: #fff;
+    border: 1px dashed var(--tema-borda-forte);
+    border-radius: 1rem;
+}
+
+.ca-boas-vindas[hidden] {
+    display: none;
+}
+
+.ca-boas-vindas__icone {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.5rem;
+    height: 3.5rem;
+    margin-bottom: 0.25rem;
+    border-radius: 1rem;
+    background: linear-gradient(135deg, #fce7f3, #fbcfe8);
+    color: #db2777;
+    font-size: 1.375rem;
+}
+
+.ca-boas-vindas h3 {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--tema-texto-forte);
+}
+
+.ca-boas-vindas p {
+    max-width: 34rem;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: var(--tema-texto-medio);
+}
+
+.ca-boas-vindas strong {
+    font-weight: 600;
+    color: var(--tema-texto-forte);
+}
+
+/* Botão da busca enquanto a consulta está em curso. */
+.ca-busca--carregando .ca-busca__btn {
+    opacity: 0.6;
+    cursor: progress;
+}
+
+/* Card de seção: mesma pele dos blocos do Documentos IA. */
+.ca-secao {
+    background-color: #fff;
+    border: 1px solid var(--tema-borda);
+    border-radius: 1rem;
+    padding: 1rem 1.25rem 1.25rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.ca-secao__titulo {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    white-space: nowrap;
+    gap: 0.5rem;
+    margin-bottom: 0.875rem;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--tema-texto-forte);
+}
+
+.ca-secao__titulo i {
+    font-size: 0.8125rem;
+    color: #db2777;
+}
+
+/* Filtro de semestres nos cards de Situações, Coleta de Dados e Pagamentos. */
+.ca-filtro-semestres {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-left: 0.375rem;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.ca-filtro-semestres[hidden] {
+    display: none;
+}
+
+.ca-filtro-semestres button {
+    height: 1.625rem;
+    padding: 0 0.625rem;
+    border: 1px solid var(--tema-borda);
+    border-radius: 9999px;
+    background-color: var(--tema-superficie-3);
+    font-family: inherit;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--tema-texto-medio);
+    cursor: pointer;
+    transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+}
+
+.ca-filtro-semestres button:hover {
+    border-color: #f9a8d4;
+    background-color: #fdf2f8;
+    color: #db2777;
+}
+
+.ca-filtro-semestres button[aria-pressed="true"] {
+    border-color: #f472b6;
+    background-color: #fce7f3;
+    color: #be185d;
+}
+
+.ca-filtro-semestres button:focus-visible {
+    outline: 2px solid #f472b6;
+    outline-offset: 1px;
+}
+
+/* Campos do formulário: rótulo em cima, caixa somente leitura embaixo.
+   Grade de 6 colunas; os spans no HTML fecham Beneficiário e Acadêmico em 3
+   linhas cada, para os dois cards terem a mesma altura lado a lado. */
+.ca-grade {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 0.75rem 0.875rem;
+}
+
+.ca-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+}
+
+.ca-info--2 { grid-column: span 2; }
+.ca-info--3 { grid-column: span 3; }
+.ca-info--4 { grid-column: span 4; }
+.ca-info--6 { grid-column: span 6; }
+
+.ca-info span {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--tema-texto-medio);
+}
+
+.ca-info input {
+    width: 100%;
+    height: 2.25rem;
+    padding: 0 0.75rem;
+    border: 1px solid var(--tema-borda);
+    border-radius: 0.625rem;
+    background-color: var(--tema-superficie-3);
+    font-family: inherit;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--tema-texto-forte);
+    outline: none;
+    cursor: default;
+    text-overflow: ellipsis;
+}
+
+.ca-info input:focus {
+    border-color: var(--tema-primaria-borda);
+}
+
+/* Tabelas: rolagem horizontal própria (a de Coleta tem 10 colunas). */
+.ca-tabela {
+    overflow-x: auto;
+    border: 1px solid var(--tema-borda);
+    border-radius: 0.625rem;
+}
+
+.ca-tabela table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+}
+
+.ca-tabela th {
+    padding: 0.625rem 0.875rem;
+    text-align: left;
+    white-space: nowrap;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--tema-texto-medio);
+    background-color: var(--tema-superficie-3);
+    border-bottom: 1px solid var(--tema-borda);
+}
+
+.ca-tabela td {
+    padding: 0.625rem 0.875rem;
+    color: var(--tema-texto-forte);
+    border-bottom: 1px solid var(--tema-borda);
+    white-space: nowrap;
+}
+
+.ca-tabela tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.ca-tabela tbody tr:not(.ca-vazio):hover td {
+    background-color: var(--tema-primaria-lavada);
+}
+
+/* Colunas de valor alinhadas à direita, com algarismos de largura fixa. */
+.ca-tabela .ca-num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.ca-tabela .ca-forte {
+    font-weight: 700;
+}
+
+/* Selo da coluna Situação. */
+.ca-selo {
+    display: inline-block;
+    white-space: nowrap;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    border: 1px solid;
+    font-size: 0.6875rem;
+    font-weight: 600;
+}
+
+.ca-selo--ok     { color: #15803d; background-color: #f0fdf4; border-color: #bbf7d0; }
+.ca-selo--alerta { color: #b45309; background-color: #fffbeb; border-color: #fde68a; }
+.ca-selo--erro   { color: #b91c1c; background-color: #fef2f2; border-color: #fecaca; }
+.ca-selo--neutro { color: var(--tema-texto-medio); background-color: var(--tema-superficie-3); border-color: var(--tema-borda); }
+
+.ca-vazio td {
+    padding: 1rem 0.875rem;
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--tema-texto-fraco);
+}
+
+
+/* --------------------------------------------------------------------------
+   VÍNCULO COLETA ↔ PAGAMENTO
+   A cor vem do JS em `--vinc` na própria linha (uma por coleta); a coleta e os
+   pagamentos feitos com base nela repetem a mesma cor e o mesmo selo (C1, C2…).
+   -------------------------------------------------------------------------- */
+.ca-tabela tr[data-vinculo] td:first-child {
+    box-shadow: inset 4px 0 0 var(--vinc);
+}
+
+.ca-vinc {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.75rem;
+    margin-right: 0.5rem;
+    padding: 0.0625rem 0.375rem;
+    border-radius: 0.375rem;
+    border: 1px solid color-mix(in srgb, var(--vinc) 45%, transparent);
+    background-color: color-mix(in srgb, var(--vinc) 14%, transparent);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: color-mix(in srgb, var(--vinc) 80%, #111827);
+    cursor: default;
+}
+
+/* Foco: ao passar o mouse numa linha vinculada, as do mesmo vínculo ganham um
+   fundo na cor dele e as demais das duas tabelas esmaecem. */
+.ca-tabela tr[data-vinculo] td {
+    transition: opacity .15s ease, background-color .15s ease;
+}
+
+.ca-vinculando .ca-area-coleta tbody tr:not(.ca-vinc-ativo) td,
+.ca-vinculando .ca-area-pag tbody tr:not(.ca-vinc-ativo) td {
+    opacity: 0.35;
+}
+
+.ca-tabela tbody tr.ca-vinc-ativo td,
+.ca-tabela tbody tr.ca-vinc-ativo:hover td {
+    background-color: color-mix(in srgb, var(--vinc) 9%, transparent);
+}
+
+
+
+/* --------------------------------------------------------------------------
+   3. DOCUMENTOS COMPROBATÓRIOS — um tipo por linha, com a pendência de envio
+   -------------------------------------------------------------------------- */
+
+/* Resumo no cabeçalho do card ("2 pendentes" / "Nenhuma pendência"). */
+.ca-secao__resumo {
+    margin-left: 0.25rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    border: 1px solid #fde68a;
+    background-color: #fffbeb;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+    color: #b45309;
+}
+
+.ca-secao__resumo--ok {
+    border-color: #bbf7d0;
+    background-color: #f0fdf4;
+    color: #15803d;
+}
+
+.ca-secao__resumo[hidden] {
+    display: none;
+}
+
+.ca-doc-nome {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    font-weight: 600;
+}
+
+.ca-doc-nome i {
+    width: 1rem;
+    text-align: center;
+    color: #db2777;
+}
+
+.ca-tabela .ca-acao {
+    width: 1%;
+    text-align: right;
+}
+
+.ca-ver {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid #fbcfe8;
+    border-radius: 0.625rem;
+    background-color: #fff;
+    font-size: 0.8125rem;
+    color: #db2777;
+    cursor: pointer;
+    transition: background-color .15s ease, border-color .15s ease;
+}
+
+.ca-ver:hover {
+    border-color: #f9a8d4;
+    background-color: #fdf2f8;
+}
+
+.ca-ver:focus-visible {
+    outline: 2px solid #f472b6;
+    outline-offset: 2px;
+}
+
+
+/* --------------------------------------------------------------------------
+   4. JANELA DO DOCUMENTO (<dialog>)
+   -------------------------------------------------------------------------- */
+.ca-dialogo {
+    /* O reset do Tailwind zera a margem de tudo; é o `margin: auto` do
+       navegador que centraliza o <dialog> modal na tela. */
+    margin: auto;
+    width: min(26rem, calc(100vw - 2rem));
+    padding: 0;
+    border: 1px solid var(--tema-borda);
+    border-radius: 1.25rem;
+    background-color: #fff;
+    color: var(--tema-texto-forte);
+    font-family: 'Poppins', sans-serif;
+    box-shadow: 0 25px 60px -15px rgba(76, 29, 149, 0.35);
+}
+
+.ca-dialogo[open] {
+    animation: ca-dialogo-entra .18s ease-out;
+}
+
+@keyframes ca-dialogo-entra {
+    from { opacity: 0; transform: translateY(8px) scale(.98); }
+    to   { opacity: 1; transform: none; }
+}
+
+.ca-dialogo::backdrop {
+    background-color: rgba(30, 27, 46, 0.35);
+    backdrop-filter: blur(3px);
+}
+
+.ca-dialogo__corpo {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.25rem;
+}
+
+.ca-dialogo__cab {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.ca-dialogo__icone {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.75rem;
+    color: #db2777;
+    background: linear-gradient(135deg, #fce7f3, #fbcfe8);
+}
+
+.ca-dialogo__cab h3 {
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.ca-dialogo__cab p {
+    font-size: 0.75rem;
+    color: var(--tema-texto-medio);
+}
+
+.ca-dialogo__fechar {
+    margin-left: auto;
+    align-self: flex-start;
+    width: 1.75rem;
+    height: 1.75rem;
+    border: 0;
+    border-radius: 9999px;
+    background: transparent;
+    color: var(--tema-texto-fraco);
+    cursor: pointer;
+}
+
+.ca-dialogo__fechar:hover {
+    color: var(--tema-texto-forte);
+    background-color: var(--tema-superficie-3);
+}
+
+
+
+/* --------------------------------------------------------------------------
+   5. HISTÓRICO DE BOLSAS e ESCOLHA DE INSCRIÇÃO
+   -------------------------------------------------------------------------- */
+.ca-area-hist[hidden] {
+    display: none;
+}
+
+.ca-area-hist td {
+    white-space: normal;
+}
+
+/* Inscrição com as marcas, vigência, situação e datas: numa linha só. */
+.ca-area-hist td:nth-child(1),
+.ca-area-hist td:nth-child(5),
+.ca-area-hist td:nth-child(6),
+.ca-area-hist td:nth-child(7) {
+    white-space: nowrap;
+}
+
+.ca-hist-bolsa,
+.ca-hist-aqui {
+    margin-left: 0.25rem;
+    padding: 0.0625rem 0.4375rem;
+    border-radius: 9999px;
+    font-size: 0.625rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.ca-hist-bolsa--atual  { background-color: #dcfce7; color: #15803d; }
+.ca-hist-bolsa--antiga { background-color: var(--tema-superficie-3); color: var(--tema-texto-medio); border: 1px solid var(--tema-borda); }
+.ca-hist-aqui          { background-color: #fce7f3; color: #be185d; }
+
+/* A ficha aberta: fundo rosado e um fio à esquerda. */
+.ca-hist-aqui-linha td {
+    background-color: #fdf2f8;
+}
+
+.ca-hist-aqui-linha td:first-child {
+    box-shadow: inset 3px 0 0 #ec4899;
+}
+
+.ca-hist-troca {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.125rem 0.5rem;
+    border: 1px solid #fde68a;
+    border-radius: 9999px;
+    background-color: #fffbeb;
+    font-size: 0.6875rem;
+    color: #b45309;
+    white-space: nowrap;
+}
+
+.ca-hist-troca strong {
+    font-weight: 700;
+}
+
+.ca-hist-mesma {
+    font-size: 0.75rem;
+    color: var(--tema-texto-fraco);
+}
+
+/* Escolha de inscrição: card como os da ficha, no topo da área de trabalho, com
+   uma linha clicável por inscrição (a mais recente primeiro). */
+.ca-escolha-secao[hidden] {
+    display: none;
+}
+
+.ca-escolha-secao__dica {
+    margin: -0.375rem 0 0.75rem;
+    font-size: 0.75rem;
+    color: var(--tema-texto-fraco);
+}
+
+.ca-secao__resumo--neutro {
+    border-color: var(--tema-borda);
+    background-color: var(--tema-superficie-3);
+    color: var(--tema-texto-medio);
+}
+
+.ca-escolha-linha {
+    cursor: pointer;
+}
+
+.ca-escolha-linha td {
+    white-space: normal;
+    transition: background-color .15s ease;
+}
+
+/* Inscrição com o selo e situação com a data ficam numa linha só; quem quebra
+   é o texto longo (faculdade). */
+.ca-escolha-linha td:first-child,
+.ca-escolha-linha td:nth-child(7) {
+    white-space: nowrap;
+}
+
+.ca-escolha-linha:hover td,
+.ca-escolha-linha:focus-visible td {
+    background-color: #fdf2f8;
+}
+
+.ca-escolha-linha:focus-visible {
+    outline: 2px solid #f472b6;
+    outline-offset: -2px;
+}
+
+.ca-escolha-linha__atual {
+    margin-left: 0.375rem;
+    padding: 0.0625rem 0.4375rem;
+    border-radius: 9999px;
+    background-color: #fce7f3;
+    font-size: 0.625rem;
+    font-weight: 700;
+    color: #be185d;
+    white-space: nowrap;
+}
+
+.ca-escolha-linha:hover .ca-ver {
+    border-color: #f9a8d4;
+    background-color: #fdf2f8;
+}
+
+/* --------------------------------------------------------------------------
+   BOTÃO BRUTA (na caixa do Atualizar) — uma cápsula dentro da caixa:
+   desligada, só o texto discreto; ligada, cápsula rosa clara com ✓.
+   -------------------------------------------------------------------------- */
+.ca-bruta {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    flex-shrink: 0;
+    height: 1.75rem;
+    margin: 0 0.375rem;
+    padding: 0 0.625rem;
+    border: 1px solid transparent;
+    border-radius: 9999px;
+    background: transparent;
+    font-family: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--tema-texto-fraco);
+    cursor: pointer;
+    transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+}
+
+.ca-bruta i {
+    font-size: 0.6875rem;
+}
+
+/* O ✓ só existe ligada; desligada, o ícone de girar. */
+.ca-bruta__ligada,
+.ca-bruta[aria-pressed="true"] .ca-bruta__desligada {
+    display: none;
+}
+
+.ca-bruta[aria-pressed="true"] .ca-bruta__ligada {
+    display: inline;
+}
+
+.ca-bruta:hover {
+    background-color: #fdf2f8;
+    color: #db2777;
+}
+
+.ca-bruta[aria-pressed="true"] {
+    border-color: #f9a8d4;
+    background-color: #fce7f3;
+    color: #be185d;
+}
+
+.ca-bruta:focus-visible {
+    outline: 2px solid #f472b6;
+    outline-offset: 1px;
+}
+
+
+/* --------------------------------------------------------------------------
+   6. JANELA DO DOCUMENTO — abas por semestre
+   -------------------------------------------------------------------------- */
+.ca-dialogo--doc {
+    width: min(82rem, calc(100vw - 2rem));
+}
+
+/* Seletor de metodologia do RIAF: dois botões segmentados, um ligado. */
+.ca-metodologia {
+    display: inline-flex;
+    align-self: flex-start;
+    padding: 0.1875rem;
+    border: 1px solid var(--tema-borda);
+    border-radius: 0.75rem;
+    background-color: var(--tema-superficie-3);
+}
+
+.ca-metodologia[hidden] {
+    display: none;
+}
+
+.ca-metodologia button {
+    height: 1.875rem;
+    padding: 0 0.875rem;
+    border: 0;
+    border-radius: 0.5625rem;
+    background: transparent;
+    font-family: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--tema-texto-medio);
+    cursor: pointer;
+    transition: background-color .15s ease, color .15s ease;
+}
+
+.ca-metodologia button[aria-pressed="true"] {
+    background-color: #fff;
+    color: #db2777;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.ca-metodologia button:focus-visible {
+    outline: 2px solid #f472b6;
+    outline-offset: 1px;
+}
+
+.ca-abas {
+    display: flex;
+    gap: 0.375rem;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+}
+
+.ca-abas[hidden] {
+    display: none;
+}
+
+/* O pontinho diz a situação do semestre antes de abrir a aba. */
+.ca-aba {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4375rem;
+    flex-shrink: 0;
+    height: 2.125rem;
+    padding: 0 0.875rem;
+    border: 1px solid var(--tema-borda);
+    border-radius: 0.625rem;
+    background-color: var(--tema-superficie-3);
+    font-family: inherit;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--tema-texto-medio);
+    cursor: pointer;
+}
+
+.ca-aba::before {
+    content: "";
+    width: 0.4375rem;
+    height: 0.4375rem;
+    border-radius: 9999px;
+    background-color: var(--tema-texto-fraco);
+}
+
+.ca-aba--pendente::before { background-color: #f59e0b; }
+.ca-aba--enviado::before  { background-color: #22c55e; }
+
+.ca-aba[aria-selected="true"] {
+    border-color: #f472b6;
+    background-color: #fdf2f8;
+    color: #db2777;
+}
+
+.ca-aba:focus-visible {
+    outline: 2px solid #f472b6;
+    outline-offset: 2px;
+}
+
+.ca-doc-janela {
+    min-height: 6rem;
+}
+
+.ca-doc-janela .ca-tabela td {
+    white-space: normal;
+}
+
+.ca-doc-janela .ca-tabela td:first-child {
+    white-space: nowrap;
+}
+
+/* Meses Pagos numa linha só, até os seis meses do semestre. */
+.ca-doc-janela .ca-tabela td:nth-child(2) {
+    min-width: 22rem;
+}
+
+/* Coluna Documento: Anexar (falta enviar) ou Anexado (enviado). */
+.ca-anexar-doc {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    height: 1.75rem;
+    padding: 0 0.75rem;
+    border: 1px dashed #f9a8d4;
+    border-radius: 0.5625rem;
+    background-color: #fff;
+    font-family: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #db2777;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.ca-anexar-doc:hover {
+    border-style: solid;
+    background-color: #fdf2f8;
+}
+
+.ca-anexado {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #15803d;
+    white-space: nowrap;
+}
+
+/* Coluna Ação: Abrir o PDF, Analisar e Excluir; apagados enquanto não há documento. */
+.ca-acoes-doc {
+    display: inline-flex;
+    gap: 0.25rem;
+}
+
+/* Anexo manual, guardado no portal: roxo para não se confundir com o envio do SIBU.
+   É botão (clicar troca o PDF), sem a cara de botão. */
+.ca-anexado--portal {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: #7c3aed;
+    cursor: pointer;
+}
+
+.ca-anexado--portal:hover {
+    text-decoration: underline;
+}
+
+.ca-acao-doc {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border: 1px solid var(--tema-borda);
+    border-radius: 0.5rem;
+    background-color: #fff;
+    font-size: 0.75rem;
+    color: var(--tema-texto-medio);
+    cursor: pointer;
+    transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+}
+
+.ca-acao-doc:hover:not(:disabled) {
+    border-color: #f9a8d4;
+    background-color: #fdf2f8;
+    color: #db2777;
+}
+
+.ca-acao-doc--perigo:hover:not(:disabled) {
+    border-color: #fecaca;
+    background-color: #fef2f2;
+    color: #b91c1c;
+}
+
+.ca-acao-doc:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.ca-doc-janela__fraco {
+    font-size: 0.6875rem;
+    color: var(--tema-texto-fraco);
+}
+
+.ca-doc-janela__vazio {
+    padding: 1.5rem 0;
+    text-align: center;
+    font-size: 0.8125rem;
+    color: var(--tema-texto-fraco);
+}
+
+
+/* --------------------------------------------------------------------------
+   TELAS ESTREITAS
+   -------------------------------------------------------------------------- */
+@media (max-width: 1600px) {
+    .ca-busca {
+        width: 16rem;
+    }
+}
+
+@media (max-width: 760px) {
+    .ca-grade {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ca-info--2,
+    .ca-info--3,
+    .ca-info--4 {
+        grid-column: span 1;
+    }
+}
+
+
+/* ==========================================================================
+   MODO ELEITORAL
+   Fundo, halos, cabeçalho, ícone e Voltar vêm de `static/css/tema-menu.css`.
+   ========================================================================== */
+
+html[data-tema="eleitoral"] .menu-header-divisor {
+    background-color: var(--tema-borda);
+}
+
+html[data-tema="eleitoral"] .ca-busca {
+    background-color: rgba(255, 255, 255, 0.06);
+    border-color: var(--tema-borda-forte);
+}
+
+html[data-tema="eleitoral"] .ca-busca:focus-within {
+    box-shadow: 0 0 0 2px var(--tema-primaria-borda);
+}
+
+html[data-tema="eleitoral"] .ca-busca__lupa,
+html[data-tema="eleitoral"] .ca-busca__btn {
+    color: var(--tema-primaria-suave);
+}
+
+html[data-tema="eleitoral"] .ca-busca__btn:hover {
+    background-color: var(--tema-primaria-lavada);
+}
+
+html[data-tema="eleitoral"] .ca-busca__divisor {
+    background-color: var(--tema-borda);
+}
+
+html[data-tema="eleitoral"] .ca-busca__tipo {
+    color: var(--tema-primaria-suave);
+}
+
+html[data-tema="eleitoral"] .ca-busca__tipo--cpf {
+    color: var(--tema-status-sucesso);
+    background-color: rgba(98, 209, 145, 0.12);
+    border-color: rgba(98, 209, 145, 0.35);
+}
+
+/* Cards um degrau acima do shell — no escuro, elevação é claridade. */
+html[data-tema="eleitoral"] .ca-secao {
+    background-color: rgba(66, 76, 91, 0.7);
+    border-color: var(--tema-borda);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+html[data-tema="eleitoral"] .ca-secao__titulo i {
+    color: var(--tema-primaria);
+}
+
+html[data-tema="eleitoral"] .ca-info input,
+html[data-tema="eleitoral"] .ca-tabela th {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+html[data-tema="eleitoral"] .ca-boas-vindas {
+    background-color: rgba(66, 76, 91, 0.7);
+}
+
+html[data-tema="eleitoral"] .ca-boas-vindas__icone {
+    background: var(--tema-primaria-lavada);
+    color: var(--tema-primaria);
+}
+
+html[data-tema="eleitoral"] .ca-bruta:hover {
+    background-color: var(--tema-primaria-lavada);
+    color: var(--tema-primaria);
+}
+
+html[data-tema="eleitoral"] .ca-bruta[aria-pressed="true"] {
+    border-color: var(--tema-primaria-borda);
+    background-color: var(--tema-primaria-lavada);
+    color: var(--tema-primaria);
+}
+
+html[data-tema="eleitoral"] .ca-metodologia button[aria-pressed="true"] {
+    background-color: var(--tema-primaria-lavada);
+    color: var(--tema-primaria);
+}
+
+html[data-tema="eleitoral"] .ca-anexar-doc,
+html[data-tema="eleitoral"] .ca-acao-doc {
+    background-color: rgba(255, 255, 255, 0.04);
+    border-color: var(--tema-primaria-borda);
+    color: var(--tema-primaria-suave);
+}
+
+html[data-tema="eleitoral"] .ca-anexado {
+    color: var(--tema-status-sucesso);
+}
+
+html[data-tema="eleitoral"] .ca-anexado--portal {
+    color: var(--tema-primaria-suave);
+}
+
+html[data-tema="eleitoral"] .ca-ver {
+    background-color: rgba(255, 255, 255, 0.04);
+    border-color: var(--tema-primaria-borda);
+    color: var(--tema-primaria-suave);
+}
+
+html[data-tema="eleitoral"] .ca-ver:hover,
+html[data-tema="eleitoral"] .ca-aba[aria-selected="true"],
+html[data-tema="eleitoral"] .ca-filtro-semestres button:hover,
+html[data-tema="eleitoral"] .ca-filtro-semestres button[aria-pressed="true"] {
+    border-color: var(--tema-primaria);
+    background-color: var(--tema-primaria-lavada);
+    color: var(--tema-primaria);
+}
+
+html[data-tema="eleitoral"] .ca-escolha-linha:hover td,
+html[data-tema="eleitoral"] .ca-escolha-linha:focus-visible td {
+    background-color: var(--tema-primaria-lavada);
+}
+
+html[data-tema="eleitoral"] .ca-secao__resumo.ca-secao__resumo--neutro {
+    color: var(--tema-texto-medio);
+    background-color: rgba(255, 255, 255, 0.05);
+    border-color: var(--tema-borda);
+}
+
+html[data-tema="eleitoral"] .ca-hist-aqui-linha td {
+    background-color: var(--tema-primaria-lavada);
+}
+
+html[data-tema="eleitoral"] .ca-hist-aqui-linha td:first-child {
+    box-shadow: inset 3px 0 0 var(--tema-primaria);
+}
+
+html[data-tema="eleitoral"] .ca-hist-aqui {
+    background-color: var(--tema-primaria-lavada);
+    color: var(--tema-primaria);
+}
+
+html[data-tema="eleitoral"] .ca-hist-bolsa--atual {
+    background-color: rgba(98, 209, 145, 0.14);
+    color: var(--tema-status-sucesso);
+}
+
+html[data-tema="eleitoral"] .ca-hist-troca {
+    color: var(--tema-status-alerta);
+    background-color: rgba(239, 177, 105, 0.12);
+    border-color: rgba(239, 177, 105, 0.35);
+}
+
+html[data-tema="eleitoral"] .ca-escolha-linha__atual {
+    background-color: var(--tema-primaria-lavada);
+    color: var(--tema-primaria);
+}
+
+html[data-tema="eleitoral"] .ca-aviso {
+    color: var(--tema-status-alerta);
+    background-color: rgba(239, 177, 105, 0.10);
+    border-color: rgba(239, 177, 105, 0.35);
+}
+
+html[data-tema="eleitoral"] .ca-selo--ok {
+    color: var(--tema-status-sucesso);
+    background-color: rgba(98, 209, 145, 0.12);
+    border-color: rgba(98, 209, 145, 0.35);
+}
+
+html[data-tema="eleitoral"] .ca-selo--alerta {
+    color: var(--tema-status-alerta);
+    background-color: rgba(239, 177, 105, 0.12);
+    border-color: rgba(239, 177, 105, 0.35);
+}
+
+html[data-tema="eleitoral"] .ca-selo--erro {
+    color: var(--tema-status-erro);
+    background-color: rgba(242, 147, 125, 0.12);
+    border-color: rgba(242, 147, 125, 0.35);
+}
+
+html[data-tema="eleitoral"] .ca-selo--neutro {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Documentos comprobatórios e janela de período. */
+html[data-tema="eleitoral"] .ca-doc-nome i {
+    color: var(--tema-primaria-suave);
+}
+
+html[data-tema="eleitoral"] .ca-secao__resumo {
+    color: var(--tema-status-alerta);
+    background-color: rgba(239, 177, 105, 0.12);
+    border-color: rgba(239, 177, 105, 0.35);
+}
+
+html[data-tema="eleitoral"] .ca-secao__resumo--ok {
+    color: var(--tema-status-sucesso);
+    background-color: rgba(98, 209, 145, 0.12);
+    border-color: rgba(98, 209, 145, 0.35);
+}
+
+html[data-tema="eleitoral"] .ca-dialogo__icone {
+    color: var(--tema-primaria-suave);
+    background: var(--tema-primaria-lavada);
+}
+
+html[data-tema="eleitoral"] .ca-dialogo {
+    background-color: var(--tema-superficie-2);
+    border-color: var(--tema-borda-forte);
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.55);
+}
+
+html[data-tema="eleitoral"] .ca-dialogo::backdrop {
+    background-color: rgba(10, 14, 22, 0.55);
+}
+
+/* Barra de rolagem: no escuro, o rosa vira o acento do tema, igualmente discreto. */
+html[data-tema="eleitoral"] {
+    scrollbar-color: rgba(111, 211, 191, 0.22) transparent;
+}
+
+html[data-tema="eleitoral"] ::-webkit-scrollbar-thumb {
+    background-color: rgba(111, 211, 191, 0.22);
+}
+
+html[data-tema="eleitoral"] ::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(111, 211, 191, 0.45);
+}
+
+/* Selo do vínculo: no escuro, o texto clareia em vez de escurecer. */
+html[data-tema="eleitoral"] .ca-vinc {
+    color: color-mix(in srgb, var(--vinc) 55%, #ffffff);
+    background-color: color-mix(in srgb, var(--vinc) 22%, transparent);
+}
+
+html[data-tema="eleitoral"] .ca-tabela tbody tr.ca-vinc-ativo td {
+    background-color: color-mix(in srgb, var(--vinc) 16%, transparent);
+}
+
+/* Caixa do Atualizar e console: as mesmas regras do Documentos IA. */
+html[data-tema="eleitoral"] .ca-caixa-atualizar {
+    background-color: rgba(255, 255, 255, 0.06) !important;
+    border-color: var(--tema-borda-forte) !important;
+}
+
+html[data-tema="eleitoral"] .ca-caixa-atualizar #btn-atualizar,
+html[data-tema="eleitoral"] .ca-caixa-atualizar #btn-abrir-console {
+    color: var(--tema-primaria-suave) !important;
+}
+
+html[data-tema="eleitoral"] .ca-caixa-atualizar #btn-atualizar:hover,
+html[data-tema="eleitoral"] .ca-caixa-atualizar #btn-abrir-console:hover {
+    background-color: rgba(111, 211, 191, 0.16) !important;
+}
+
+html[data-tema="eleitoral"] .ca-caixa-atualizar .bg-pink-100 {
+    background-color: var(--tema-borda) !important;
+}
+
+html[data-tema="eleitoral"] .ca-caixa-atualizar .text-gray-400 {
+    color: var(--tema-texto-fraco) !important;
+}
+
+html[data-tema="eleitoral"] .ca-console-parar {
+    border-color: rgba(242, 147, 125, 0.30);
+    background-color: rgba(242, 147, 125, 0.12);
+    color: var(--tema-status-erro);
+}
+
+html[data-tema="eleitoral"] .ca-console-parar:hover:not(:disabled) {
+    background-color: var(--tema-solido-erro);
+    border-color: var(--tema-solido-erro);
+    color: #FFFFFF;
+}
+
+html[data-tema="eleitoral"] .console-ggci__barra.ca-barra--falha {
+    background-image: none;
+    background-color: var(--tema-solido-erro);
+}
