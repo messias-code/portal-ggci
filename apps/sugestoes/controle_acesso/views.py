@@ -31,8 +31,8 @@ STATUS_ATIVOS = ['PENDENTE', 'EXTRAINDO']
 
 
 def _tem_acesso(user):
-    """Sem permissão própria, a tela herda a do hub (p_sugestoes ou admin)."""
-    return user.p_sugestoes or user.usuario == 'admin@ovg.org.br'
+    """Permissão própria do card (p_controle_acesso), como os demais submódulos — ou admin."""
+    return user.p_controle_acesso or user.usuario == 'admin@ovg.org.br'
 
 
 @login_required(login_url='/')
