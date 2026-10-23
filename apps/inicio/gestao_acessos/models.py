@@ -36,6 +36,7 @@ class Usuario(AbstractBaseUser):
     p_enquadramento_cursos = models.BooleanField(default=False)
 
     p_sugestoes = models.BooleanField(default=False)
+    p_controle_acesso = models.BooleanField(default=False)
 
     p_dash_polichat = models.BooleanField(default=False)
     p_gestao_polichat = models.BooleanField(default=False)
