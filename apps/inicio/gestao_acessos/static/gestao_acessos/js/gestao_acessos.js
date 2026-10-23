@@ -259,7 +259,7 @@ function abrirModalNovo() {
     // Dispara reset visual das permissões granulares
     const campos = [
         'p_ferramentas', 'p_formatador_listas', 'p_formatador_dados', 
-        'p_analise_ia', 'p_enquadramento_cursos', 'p_sugestoes',
+        'p_analise_ia', 'p_enquadramento_cursos', 'p_sugestoes', 'p_controle_acesso',
         'p_dash_polichat', 'p_gestao_polichat', 'p_dash_documentos_ia'
     ];
     campos.forEach(campo => {
@@ -308,7 +308,7 @@ function abrirModalEdicao(user) {
     // Marca os acessos modulares e granulares do usuário de forma segura
     const camposBooleanos = [
         'p_ferramentas', 'p_formatador_listas', 'p_formatador_dados', 
-        'p_analise_ia', 'p_enquadramento_cursos', 'p_sugestoes',
+        'p_analise_ia', 'p_enquadramento_cursos', 'p_sugestoes', 'p_controle_acesso',
         'p_dash_polichat', 'p_gestao_polichat', 'p_dash_documentos_ia'
     ];
     
@@ -355,7 +355,7 @@ function abrirModalEdicao(user) {
                     containerLabel.style.pointerEvents = 'auto';
                     containerLabel.style.cursor = 'pointer';
                     // Limpa o CSS inline para deixar o Tailwind e o evento 'change' assumirem de novo
-                    if(elemento.classList.contains('menu-toggle') || campo === 'p_sugestoes') {
+                    if(elemento.classList.contains('menu-toggle')) {
                         containerLabel.style.opacity = '1';
                     }
                     containerLabel.style.backgroundColor = '';
