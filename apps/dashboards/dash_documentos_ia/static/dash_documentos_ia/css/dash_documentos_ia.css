@@ -1520,6 +1520,7 @@ body { font-family: 'Poppins', sans-serif; }
                 inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
+
 /* --- As grades segmentadas da barra de filtros ----------------------------
    `docia-grade-seg` (período, modo, vínculo, perfil, mudanças) e
    `docia-grade-doc` (os cinco documentos) são o mesmo controle com duas
@@ -1685,6 +1686,31 @@ body { font-family: 'Poppins', sans-serif; }
 .docia-faixa-graficos { flex: 1.4 1 0; min-height: 0; min-width: 0; }
 
 html[data-tela-cheia="1"] .docia-faixa-graficos { flex: 1.5 1 0; }
+
+/*  NO RIAF A FAIXA TEM SEIS GRÁFICOS DE BARRA em três colunas iguais — mensalidade,
+    matrícula, benefício com financiamento (ver o template). A de mensalidade desce
+    de 1,15 para 1, igual às duas vizinhas, e o piso de 250px desce para 200px: é o que
+    faz as três caberem com a barra de filtros aberta.
+
+    O VEREDITO GANHA UM PISO, que fora daqui não tem: com três colunas pedindo largura,
+    a proporção de 0,55 o deixava com ~110px a 1280, e a legenda dele são oito linhas
+    com nome, número e percentual.
+
+    `!important` porque as medidas de antes moram no `style` do template, que é onde
+    as outras abas continuam lendo — o RIAF é a exceção, e é ela que precisa ganhar.  */
+.docia-faixa--riaf > .docia-coluna-mensalidade {
+    flex: 1 1 0 !important;
+    min-width: 200px !important;
+}
+.docia-faixa--riaf > .docia-coluna-veredito { min-width: 210px !important; }
+
+/*  QUANDO NEM OS PISOS CABEM, A FAIXA ROLA EM VEZ DE CORTAR. Os quatro pisos somam
+    ~843px, e a 1024px com a barra de filtros aberta sobram 601: Benefício e
+    Financiamento ficavam além da borda, cortados pelo `overflow: hidden` do
+    `#main-content`, sem caminho nenhum até eles. Abaixo dos pisos as barras perdem
+    o número (ver `medidasDeitadas`), então encolher mais não era saída; rolar deixa
+    os quatro inteiros. Onde cabe, não aparece barra de rolagem nenhuma.  */
+.docia-faixa--riaf { overflow-x: auto; }
 
 /*  O `min-height` acompanha o corpo maior — ele reserva a altura da legenda
     ANTES de haver conteúdo, e o comentário no topo do bloco `.docia-legenda`
@@ -2688,6 +2714,17 @@ html[data-tela-cheia="1"] .docia-legenda__pct { width: 44px; }
     overflow: hidden;
 }
 
+/*  AS ETIQUETAS DA ANÁLISE IA TÊM TETO DE DUAS LINHAS, e o resto rola dentro delas.
+    O card da tabela tem altura fixa, e as etiquetas dividem essa altura com as
+    linhas: sem teto, cada filtro novo comia uma linha da tabela, e com recortes
+    grandes (vereditos, barras dos seis cards, frases) a tabela sumia inteira e as
+    etiquetas passavam da altura do card. 58px = duas etiquetas de 25px e o vão de
+    8px entre elas; 2px de folga para a sombra não ser cortada.  */
+#ia-tabela-filtros {
+    max-height: 60px;
+    overflow-y: auto;
+}
+
 /*  A MARCA SÓLIDA COBRE A BORDA, e é isso que a margem negativa faz.
 
     `align-self: stretch` estica o bloco até a caixa de CONTEÚDO, que termina por
@@ -3322,7 +3359,15 @@ body :is(button, a[href]):disabled { cursor: not-allowed; }
     Ela existe porque as frases são INTEIRAS ("Mensalidade com desconto no
     contrato é menor que o esperado") e são até 48 no RIAF: numa barra de 335px
     isso vira uma coluna de texto quebrado que ninguém varre. */
+/*  `position: relative` É O QUE SEGURA A CAIXA ESCONDIDA DENTRO DO ITEM. O `input` é
+    `sr-only` (absoluto), e sem um ancestral posicionado ele se ancorava fora da lista
+    rolável — não rolava com ela. Clicar na frase dá foco a ele, e o navegador rolava
+    o que fosse preciso para mostrá-lo, inclusive `#main-content`, que tem
+    `overflow: hidden` mas aceita rolagem por foco: o painel inteiro subia 600px e a
+    tela ficava em branco ou pela metade, conforme a altura da frase na lista. As
+    grades da barra já tinham o `relative` no `label`; este item não tinha.  */
 .docia-inc-item {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 0.75rem;
@@ -3758,6 +3803,69 @@ html[data-tela-cheia="1"] .docia-anel-e-lista--estreito > .docia-legenda--ia {
 }
 .docia-anel-e-lista--estreito > .docia-legenda--ia .docia-legenda__valor { width: 42px; }
 .docia-anel-e-lista--estreito > .docia-legenda--ia .docia-legenda__pct { width: 36px; }
+
+/*  O FILTRO DE INCONSISTÊNCIAS DA BARRA — só no RIAF (ver `modoFiltroInc`).
+
+    A LISTA TEM TETO E ROLA SOZINHA: são até 48 frases, e soltas elas empurravam
+    Situação, Modalidade e Instituição para o fim de uma barra que já rola.
+
+    OS ITENS SÃO OS DA TELINHA (`docia-inc-item`), com o respiro apertado: lá a
+    linha tem a largura do modal, aqui tem os 335px da barra, e o padding de lá
+    deixava a frase com metade do espaço. */
+.docia-filtro-inc {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.docia-filtro-inc__topo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 1.5rem;
+}
+.docia-filtro-inc__topo .docia-chip--acao { flex-shrink: 0; }
+.docia-filtro-inc__total {
+    margin: 0;
+    font-size: 10px;
+    font-weight: 600;
+    color: #9CA3AF;
+    font-variant-numeric: tabular-nums;
+}
+/*  O painel recolhido (ver `abrirFiltroInc`). Modificador e não `.hidden`: a regra
+    de cima declara `display`, e esta folha carrega depois do bundle — a `.hidden`
+    perderia para ela.  */
+.docia-filtro-inc__painel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.docia-filtro-inc__painel--fechado { display: none; }
+.docia-filtro-inc__lista {
+    max-height: 320px;
+    overflow-y: auto;
+    background-color: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 0.75rem;
+    padding: 4px;
+}
+.docia-filtro-inc__lista .docia-inc-vazio { padding: 1.25rem 0.75rem; font-size: 11px; }
+.docia-filtro-inc__lista .docia-inc-vazio__icone { font-size: 1.25rem; }
+.docia-filtro-inc .docia-inc-item {
+    gap: 0.5rem;
+    padding: 0.3rem 0.5rem;
+    border-radius: 0.5rem;
+}
+.docia-filtro-inc .docia-inc-item:hover { background-color: #F9FAFB; }
+.docia-filtro-inc .docia-inc-item__caixa { width: 0.9375rem; height: 0.9375rem; }
+.docia-filtro-inc .docia-inc-item input:checked + .docia-inc-item__caixa::after {
+    left: 0.25rem;
+    top: 0.0625rem;
+    width: 0.28rem;
+    height: 0.52rem;
+}
+.docia-filtro-inc .docia-inc-item__texto { font-size: 11px; }
+.docia-filtro-inc .docia-inc-item__n { font-size: 11px; color: #6B7280; }
 
 
 /* ==========================================================================
@@ -4368,6 +4476,18 @@ html .rounded-r-xl       { border-radius: 0 var(--docia-r-campo) var(--docia-r-c
     color: var(--docia-nord-0);
 }
 
+/*  A FAIXA DA ANÁLISE IA É MAIS COMPACTA que a de Envios & Pendências: lá são
+    quatro cards de duas linhas, aqui são seis de três, e a altura que eles
+    devolvem vai para os gráficos logo abaixo. Rótulo e base descem um degrau
+    (11px para 10px) e a entrelinha fica justa — são linhas únicas, com
+    `nowrap` e reticências, então não há segunda linha para encostar. O valor
+    desce no próprio template (1,4rem para 1,2rem), que é onde ele é declarado.
+    `!important` pelo mesmo motivo da regra acima: é ela que precisa perder.  */
+#ia-vista-performance .docia-kpi-card p {
+    font-size: 10px !important;
+    line-height: 1.25;
+}
+
 
 /* --------------------------------------------------------------------------
    6. OS FILTROS
@@ -4854,3 +4974,22 @@ html[data-entrada="mouse"] .area-trabalho :focus-visible {
 }
 /* O "100%" é cinza sobre o trilho claro; sobre o vermelho cheio some. */
 .console-ggci__barra.docia-barra--falha + #console-progress-text { color: #FFFFFF; }
+
+/* ==========================================================================
+   MARGENS DA TELA PRINCIPAL
+   ==========================================================================
+   No desktop (`lg`) o respiro desce de 1.5rem para 1rem, tanto em volta do
+   casco (`body`) quanto dentro dele (`.docia-tela`): a largura devolvida vai
+   para os cards e tabelas. Abaixo de `lg` nada muda — lá já é 1rem.
+
+   AQUI, E NÃO NO HTML. `lg:p-4` não existe no `output.css` purgado; trocar a
+   utilitária no template falharia calado.
+
+   SÓ O INDEX. `docia-corpo` está apenas no `<body>` do index e `.docia-tela`
+   só na área de trabalho dele: as outras telas que carregam esta folha
+   (histórico, RIAF, relatórios) e o resto do portal seguem com 1.5rem.
+   ========================================================================== */
+@media (min-width: 1024px) {
+    body.docia-corpo,
+    .area-trabalho.docia-tela { padding: 1rem; }
+}
