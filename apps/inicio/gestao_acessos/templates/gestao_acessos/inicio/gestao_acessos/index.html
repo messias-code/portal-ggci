@@ -271,7 +271,7 @@
                                         {% if u.can_edit %}
                                         <!-- Ao clicar, injeta os dados do usuário direto no modal via JS -->
                                         <button
-                                            onclick="abrirModalEdicao({'id': {{ u.id }}, 'nome': '{{ u.nome|escapejs }}', 'usuario': '{{ u.usuario|escapejs }}', 'perfil': '{{ u.perfil }}', 'p_ferramentas': {{ u.p_ferramentas }}, 'p_formatador_listas': {{ u.p_formatador_listas }}, 'p_formatador_dados': {{ u.p_formatador_dados }}, 'p_analise_ia': {{ u.p_analise_ia }}, 'p_enquadramento_cursos': {{ u.p_enquadramento_cursos }}, 'p_sugestoes': {{ u.p_sugestoes }}, 'p_dash_polichat': {{ u.p_dash_polichat }}, 'p_gestao_polichat': {{ u.p_gestao_polichat }}, 'p_dash_documentos_ia': {{ u.p_dash_documentos_ia }} })"
+                                            onclick="abrirModalEdicao({'id': {{ u.id }}, 'nome': '{{ u.nome|escapejs }}', 'usuario': '{{ u.usuario|escapejs }}', 'perfil': '{{ u.perfil }}', 'p_ferramentas': {{ u.p_ferramentas }}, 'p_formatador_listas': {{ u.p_formatador_listas }}, 'p_formatador_dados': {{ u.p_formatador_dados }}, 'p_analise_ia': {{ u.p_analise_ia }}, 'p_enquadramento_cursos': {{ u.p_enquadramento_cursos }}, 'p_sugestoes': {{ u.p_sugestoes }}, 'p_controle_acesso': {{ u.p_controle_acesso }}, 'p_dash_polichat': {{ u.p_dash_polichat }}, 'p_gestao_polichat': {{ u.p_gestao_polichat }}, 'p_dash_documentos_ia': {{ u.p_dash_documentos_ia }} })"
                                             class="ga-acao ga-acao--editar w-9 h-9 rounded-xl bg-amber-100 text-amber-600 hover:bg-amber-500 hover:text-white transition-all flex items-center justify-center shadow-sm relative z-10"
                                             title="Editar Usuário">
                                             <i class="fa-solid fa-pen text-sm"></i>
@@ -343,7 +343,7 @@
 
     <!-- JS Externo: Contém a lógica de busca local, abertura/fechamento dos modais e submissão dos dados -->
     <!-- Arquivo localizado em: static/js/menu/inicio/gestao_acessos.js -->
-    <script src="{% static 'gestao_acessos/js/gestao_acessos.js' %}?v=2" defer></script>
+    <script src="{% static 'gestao_acessos/js/gestao_acessos.js' %}?v=3" defer></script>
 </body>
 
 </html>
