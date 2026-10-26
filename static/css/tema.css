@@ -252,7 +252,7 @@ html[data-tema="eleitoral"] .logo-tema--eleitoral {
 /* ==========================================================================
    4. BOTÃO DE ALTERNÂNCIA (SOL / LUA)
    --------------------------------------------------------------------------
-   Botão circular único, na convenção já consagrada de dark mode: o ícone
+   Botão único, na convenção já consagrada de dark mode: o ícone
    mostrado é sempre o do modo para o qual se vai, não o do modo atual.
        modo claro ativo      → mostra a LUA  (clique leva ao escuro)
        modo eleitoral ativo  → mostra o SOL  (clique leva ao claro)
@@ -264,6 +264,12 @@ html[data-tema="eleitoral"] .logo-tema--eleitoral {
    Escrito em CSS puro de propósito: `static/css/output.css` é um bundle
    Tailwind pré-compilado e purgado, sem processo de build no projeto, então
    classes utilitárias novas simplesmente não existem nele.
+
+   A MEDIDA É A DO DOCUMENTOS IA, validada lá e adotada como padrão: o
+   quadrado de cantos de 8px na altura dos botões `h-10` vizinhos (Voltar,
+   Atualizar). Em `rem`, e não em px, para acompanhar a fonte-base de cada
+   tela — 36px onde ela é 90%, 40px onde é 100% —, que é o que os vizinhos
+   fazem. Era um círculo de 42px fixos, 3px mais alto que a fileira em volta.
    ========================================================================== */
 
 .tema-toggle {
@@ -271,10 +277,10 @@ html[data-tema="eleitoral"] .logo-tema--eleitoral {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 42px;
-    height: 42px;
+    width: 2.5rem;
+    height: 2.5rem;
     padding: 0;
-    border-radius: 50%;
+    border-radius: 8px;
     border: 1px solid var(--tema-borda-forte);
     background-color: var(--tema-superficie-2);
     color: var(--tema-texto-medio);
@@ -354,12 +360,12 @@ html[data-tema="eleitoral"] .logo-tema--eleitoral {
 
 /*  O anel do clique. Ele nasce na borda e se apaga para fora; `:active` dura o
     tempo do botão pressionado, que é curto o bastante para o pulso não virar
-    animação em laço.  */
+    animação em laço. O raio é o do botão, para o anel seguir a borda.  */
 .tema-toggle::after {
     content: '';
     position: absolute;
     inset: 0;
-    border-radius: 50%;
+    border-radius: inherit;
     border: 2px solid var(--tema-primaria);
     opacity: 0;
     transform: scale(1);
@@ -382,7 +388,7 @@ html[data-tema="eleitoral"] .logo-tema--eleitoral {
 }
 
 /*  O ícone acompanha: um giro curto no hover, na mesma direção em que ele sai
-    quando o tema troca. Escala de 1,1 e não mais — em 19px, crescer demais
+    quando o tema troca. Escala de 1,1 e não mais — em 17px, crescer demais
     borra o traço de 1,6px do desenho.  */
 .tema-toggle:hover .tema-toggle__icone {
     transform: rotate(-14deg) scale(1.1);
@@ -416,11 +422,13 @@ html[data-tema="eleitoral"] .tema-toggle:hover {
     color: #B4EEE0;
 }
 
-/* Os dois ícones ocupam exatamente a mesma célula, sobrepostos. */
+/*  Os dois ícones ocupam exatamente a mesma célula, sobrepostos. A medida
+    acompanha a do botão: 17px nos 36px (a proporção validada no Documentos IA),
+    ~19px nos 40px.  */
 .tema-toggle__icone {
     position: absolute;
-    width: 19px;
-    height: 19px;
+    width: calc(2.5rem * 17 / 36);
+    height: calc(2.5rem * 17 / 36);
     transition:
         opacity .32s ease,
         transform .42s cubic-bezier(.34, 1.4, .64, 1);

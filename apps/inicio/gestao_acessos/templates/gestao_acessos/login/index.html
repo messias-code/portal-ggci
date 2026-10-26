@@ -33,11 +33,11 @@
     <!-- Tokens de cor dos temas e componente do seletor (compartilhado por todo o portal) -->
     <link rel="stylesheet" href="{% static 'css/tema.css' %}">
 
-    <!-- Importação de Fontes Premium do Google Fonts: Inter, Poppins, Manrope e Oswald -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@400;500;600&family=Manrope:wght@500;600;700&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+    <!-- Importação de Fontes Premium do Google Fonts: Plus Jakarta Sans, Inter, Poppins, Manrope e Oswald -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=Inter:wght@400;500;600&family=Poppins:wght@400;500;600&family=Manrope:wght@500;600;700&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
     
     <!-- Link para a Folha de Estilo Customizada (Contém animações, sombras dinâmicas e o grid de fundo) -->
-    <link rel="stylesheet" href="{% static 'gestao_acessos/css/login.css' %}">
+    <link rel="stylesheet" href="{% static 'gestao_acessos/css/login.css' %}?v=6">
     
     <script type="module" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@8.0.4/dist/turbo.es.2017-esm.js"></script>
 </head>
@@ -111,11 +111,18 @@
                     alt="Equipe trabalhando"
                     class="login-ilustracao login-ilustracao--eleitoral w-full max-w-md drop-shadow-2xl mx-auto">
 
-                <!-- Slogan Institucional do Portal -->
-                <p class="login-slogan mt-10 font-display text-2xl md:text-3xl leading-none tracking-tighter text-purple-800">
-                    Conectando pessoas,<br>
-                    <span class="text-purple-700 font-medium">transformando gestão</span>
-                </p>
+                <!-- Slogan Institucional do Portal (Redesign Tipográfico) -->
+                <div class="login-slogan-wrap mt-10">
+                    <p class="login-slogan">
+                        <span class="login-slogan__prefixo">Conectando pessoas,</span>
+                        <span class="login-slogan__destaque">transformando gestão</span>
+                    </p>
+                    <div class="login-slogan__assinatura" aria-hidden="true">
+                        <span class="login-slogan__linha login-slogan__linha--esq"></span>
+                        <span class="login-slogan__ponto"></span>
+                        <span class="login-slogan__linha login-slogan__linha--dir"></span>
+                    </div>
+                </div>
             </div>
         </div>
 

@@ -15,6 +15,7 @@
             "p_dash_documentos_ia": true,
             "p_dash_polichat": true,
             "p_sugestoes": true,
+            "p_controle_acesso": true,
             "p_enquadramento_cursos": true,
             "p_ferramentas": true,
             "p_formatador_dados": true,

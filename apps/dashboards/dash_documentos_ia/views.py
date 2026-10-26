@@ -1685,13 +1685,11 @@ def _diferenca_de_mensalidade(processados, chave):
 def _contagem_de_mensalidade(processados, coluna):
     """Os quatro baldes de uma das colunas `*_doc`, na ordem de `ORDEM_MENSALIDADE`."""
     contagem = {balde: 0 for balde in ORDEM_MENSALIDADE}
-    if coluna not in processados.columns or len(processados) == 0:
+    if not _tem_medida(processados, coluna) or len(processados) == 0:
         return contagem, False
 
-    bruto = processados[coluna].astype('string').str.strip().str.upper()
-    for valor, quantas in bruto.value_counts().items():
-        balde = MENSALIDADE_BALDES.get(valor)
-        if balde:
+    for balde, quantas in _baldes_da_coluna(processados, coluna).value_counts().items():
+        if balde in contagem:
             contagem[balde] += int(quantas)
 
     # "Tem dado" é ter alguma leitura de verdade. Só "não localizado" em tudo é o
@@ -2532,7 +2530,67 @@ def _aplicar_inconsistencias(df, request):
 
 #  O NOME DO PARÂMETRO DE CADA CARD DE MENSALIDADE, e a coluna que ele recorta. São os
 #  mesmos dois de `MEDIDAS_DE_MENSALIDADE`, com o nome curto que viaja na query string.
-PARAMETRO_DE_MENSALIDADE = {'msd': 'msd_doc', 'mcd': 'mcd_doc'}
+#
+#  OS DOIS DE MATRÍCULA ENTRAM NA MESMA LISTA, e não numa mecânica própria: o motor
+#  grava `matricula_sd_doc`/`matricula_cd_doc` com as MESMAS frases de `msd_doc`/`mcd_doc`
+#  (ver `Matricula_SD_Doc` em `analise_ia/services/ggci.py`), então os quatro baldes, o
+#  recorte e o "ignorar o próprio card" são os mesmos. Só o RIAF traz essas colunas, e
+#  os parâmetros só nascem na tela dele.
+PARAMETRO_DE_MENSALIDADE = {'msd': 'msd_doc', 'mcd': 'mcd_doc',
+                            'matsd': 'matricula_sd_doc', 'matcd': 'matricula_cd_doc',
+                            'ben': 'beneficio_doc', 'fin': 'financiamento_doc'}
+
+#  BENEFÍCIO E FINANCIAMENTO NÃO TÊM COLUNA DE BALDE no Parquet — `beneficio_doc` e
+#  `financiamento_doc` são nomes desta tela, não do motor. O balde sai aqui, do par
+#  sistema × IA, pela MESMA comparação com que o motor invalida o RIAF
+#  (`matematica_invalida_riaf_extra` em `analise_ia/services/ggci.py`): os dois valores
+#  arredondados em duas casas, e qualquer diferença é divergência.
+#
+#  A ÚNICA COISA QUE O MOTOR NÃO SEPARA é a IA sem valor nenhum: lá ela vira zero. Aqui
+#  ela vira "Não localizado", o mesmo balde de quando a IA não acha a mensalidade — zero
+#  é um valor que a IA LEU (o aluno sem benefício), e vazio é o que ela não devolveu.
+VALORES_COMPARADOS = {
+    'beneficio_doc': ('valor_beneficio', 'gemini_valor_beneficio'),
+    'financiamento_doc': ('valor_financiamento', 'gemini_valor_financiamento'),
+}
+
+
+def _tem_medida(df, coluna):
+    """A medida existe no recorte: a coluna de balde, ou o par de valores comparados."""
+    if coluna in VALORES_COMPARADOS:
+        return set(VALORES_COMPARADOS[coluna]) <= set(df.columns)
+    return coluna in df.columns
+
+
+def _baldes_da_coluna(df, coluna):
+    """
+    O balde de cada linha ('Bateu', 'Maior', 'Menor', 'Não localizado'), ou ausente.
+
+    Nas colunas `*_doc` do motor é o `MENSALIDADE_BALDES` sobre a frase gravada; em
+    benefício e financiamento é a comparação de `VALORES_COMPARADOS`. Quem conta as barras
+    e quem recorta por elas passam os dois por aqui, então o recorte não diverge do número.
+    """
+    import pandas as pd
+
+    if coluna not in VALORES_COMPARADOS:
+        return df[coluna].astype('string').str.strip().str.upper().map(MENSALIDADE_BALDES)
+
+    no_sistema, na_ia = VALORES_COMPARADOS[coluna]
+    sistema = pd.to_numeric(df[no_sistema], errors='coerce').fillna(0.0).round(2)
+    lido = pd.to_numeric(df[na_ia], errors='coerce').round(2)
+    balde = pd.Series('Menor', index=df.index, dtype='object')
+    balde[lido > sistema] = 'Maior'
+    balde[lido == sistema] = 'Bateu'
+    balde[lido.isna()] = 'Não localizado'
+    #  SÓ HÁ BALDE ONDE A IA LEU O DOCUMENTO. No pendente e no não processado a coluna da
+    #  IA também vem vazia, e sem este corte eles caíam em "Não localizado" — o filtro
+    #  trazia 3.592 linhas para uma barra de 2.513 (2026-1), a diferença exata dos 1.079
+    #  pendentes. Nas colunas do motor esse corte já vem pronto: ali a frase gravada é
+    #  "Não Processado" ou "Documento Corrompido", e nenhuma das duas é balde.
+    if 'status_ia' in df.columns:
+        lida = df['status_ia'].isin(STATUS_PROCESSADO - {'CORROMPIDO'})
+        balde[~lida] = pd.NA
+    return balde
 
 
 def _aplicar_mensalidade(df, request, ignorar=None):
@@ -2559,16 +2617,15 @@ def _aplicar_mensalidade(df, request, ignorar=None):
     — exatamente o cuidado que a rosca e a lista de inconsistências já tomam logo acima.
     """
     for parametro, coluna in PARAMETRO_DE_MENSALIDADE.items():
-        if parametro == ignorar or coluna not in df.columns or len(df) == 0:
+        if parametro == ignorar or not _tem_medida(df, coluna) or len(df) == 0:
             continue
         escolhidos = set(_lista_do_parametro(request, parametro, separador='||'))
         if not escolhidos:
             continue
-        bruto = df[coluna].astype('string').str.strip().str.upper()
         #  `map` sobre o dicionário dos baldes e NÃO uma comparação de texto: a linha sem
         #  valor na coluna vira `pd.NA`, e `pd.NA` num `isin` devolve `False` — que é o que
         #  se quer, mas só depois do `fillna`, porque no dtype `string` o `NA` não é `False`.
-        balde = bruto.map(MENSALIDADE_BALDES)
+        balde = _baldes_da_coluna(df, coluna)
         df = df[balde.isin(escolhidos).fillna(False).astype(bool)]
     return df
 
@@ -2701,6 +2758,32 @@ def api_resumo_ia(request):
     livre_com, _ = _contagem_de_mensalidade(proc_livre, 'mcd_doc')
     regua_mensalidade = max([0, *livre_sem.values(), *livre_com.values()])
 
+    #  OS PARES DE CARDS SÓ DO RIAF — matrícula e benefício/financiamento. É o único
+    #  documento que traz essas colunas. Mesma regra dos de mensalidade: cada card ignora
+    #  o próprio filtro, e a régua do par sai de `proc_livre`. RÉGUA PRÓPRIA POR PAR, e não
+    #  a da mensalidade: dividir uma só régua mudaria o desenho das barras vizinhas sem
+    #  que o dado delas tivesse mudado.
+    def _par_do_riaf(pares):
+        quadro = {}
+        for parametro, chave in pares:
+            frente = _aplicar_historico(
+                _aplicar_mensalidade(sem_mensalidade, request, ignorar=parametro), request)
+            proc = _processados(frente)
+            contagem, tem = _contagem_de_mensalidade(proc, PARAMETRO_DE_MENSALIDADE[parametro])
+            quadro[chave] = {'contagem': contagem, 'tem_dado': tem,
+                             'total': int(len(frente)), 'processados': int(len(proc))}
+        regua = max([0, *(n for parametro, _ in pares for n in _contagem_de_mensalidade(
+            proc_livre, PARAMETRO_DE_MENSALIDADE[parametro])[0].values())])
+        return quadro, regua
+
+    matricula, regua_matricula = None, 0
+    beneficio_financiamento, regua_beneficio_financiamento = None, 0
+    if rotulo == 'RIAF':
+        matricula, regua_matricula = _par_do_riaf(
+            (('matsd', 'sem_desconto'), ('matcd', 'com_desconto')))
+        beneficio_financiamento, regua_beneficio_financiamento = _par_do_riaf(
+            (('ben', 'beneficio'), ('fin', 'financiamento')))
+
     #  OS DOIS CARDS DO HISTÓRICO, um recorte cada, pela mesma regra dos de mensalidade
     #  logo acima: o card que recebeu o clique ignora o próprio filtro.
     #
@@ -2745,6 +2828,11 @@ def api_resumo_ia(request):
         },
         'ordem_mensalidade': ORDEM_MENSALIDADE,
         'regua_mensalidade': int(regua_mensalidade),
+        #  Só o RIAF os traz; nos outros documentos são `None` e as colunas nem aparecem.
+        'matricula': matricula,
+        'regua_matricula': int(regua_matricula),
+        'beneficio_financiamento': beneficio_financiamento,
+        'regua_beneficio_financiamento': int(regua_beneficio_financiamento),
         'diferencas': {
             'sem_desconto': _diferenca_de_mensalidade(processados, 'sem_desconto'),
             'com_desconto': _diferenca_de_mensalidade(processados, 'com_desconto'),

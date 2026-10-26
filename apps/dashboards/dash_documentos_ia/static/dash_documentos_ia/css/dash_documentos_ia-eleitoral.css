@@ -238,6 +238,29 @@ html[data-tema="eleitoral"] .docia-legenda__item--estatico:hover {
     background-color: transparent;
 }
 
+/* --- Filtro de inconsistências do RIAF -------------------------------------
+   Os itens são os da telinha, com cinza e roxo escritos à mão no CSS claro —
+   reapresentados aqui só dentro da seção da barra, onde o fundo é o do tema. */
+html[data-tema="eleitoral"] .docia-filtro-inc__lista {
+    background-color: var(--tema-superficie-2);
+    border-color: var(--tema-borda);
+}
+html[data-tema="eleitoral"] .docia-filtro-inc__total { color: var(--tema-texto-fraco); }
+html[data-tema="eleitoral"] .docia-filtro-inc .docia-inc-item:hover {
+    background-color: var(--tema-superficie-3);
+    border-color: transparent;
+}
+html[data-tema="eleitoral"] .docia-filtro-inc .docia-inc-item__texto { color: var(--tema-texto-medio); }
+html[data-tema="eleitoral"] .docia-filtro-inc .docia-inc-item__n { color: var(--tema-texto-fraco); }
+html[data-tema="eleitoral"] .docia-filtro-inc .docia-inc-item__caixa {
+    background-color: transparent;
+    border-color: var(--tema-texto-fraco);
+}
+html[data-tema="eleitoral"] .docia-filtro-inc .docia-inc-item input:checked + .docia-inc-item__caixa {
+    background-color: var(--tema-primaria);
+    border-color: var(--tema-primaria);
+}
+
 /* --- Pílulas dos filtros do Detalhamento ---------------------------------
    Mesmo caso da legenda: borda escrita à mão no CSS claro, reapresentada aqui. */
 html[data-tema="eleitoral"] .docia-pilula-filtro { border-color: var(--tema-borda); }

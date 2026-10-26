@@ -51,13 +51,13 @@
     -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
     
-    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia.css' %}?v=20260921c">
+    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia.css' %}?v=20261023d">
 
     <!-- Camada escura desta tela: o que os arquivos compartilhados não alcançam -->
-    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia-eleitoral.css' %}?v=20260921c">
+    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia-eleitoral.css' %}?v=20261022a">
 </head>
 
-<body class="grid-bg bg-[#f8f6fb] text-gray-800 fixed inset-0 p-4 lg:p-6 flex transition-colors duration-500 overflow-hidden">
+<body class="docia-corpo grid-bg bg-[#f8f6fb] text-gray-800 fixed inset-0 p-4 lg:p-6 flex transition-colors duration-500 overflow-hidden">
 
     <div class="menu-blob menu-blob--1 absolute top-[-20%] left-[-15%] w-[70vw] h-[70vh] bg-pink-500/70 rounded-full blur-[140px] pointer-events-none z-0"></div>
     <div class="menu-blob menu-blob--2 absolute top-[-20%] right-[-15%] w-[70vw] h-[70vh] bg-yellow-400/75 rounded-full blur-[140px] pointer-events-none z-0"></div>
@@ -536,62 +536,70 @@
                             `max-height`, então é quem estava no teto e quem podia ceder
                             meia linha sem mudar de tamanho de letra; os anéis e as
                             barras, esses, encolheriam de verdade.
+
+                            E DEPOIS ENCOLHEU DE NOVO, de propósito (21/10/2026): de ~74px
+                            para ~60px, para abrir espaço aos futuros gráficos financeiros
+                            de matrícula, benefício e financiamento. `py-2` virou
+                            `py-1.5`, o valor desceu de 1,4rem para 1,2rem, e rótulo e
+                            base desceram de 11px para 10px com entrelinha mais justa
+                            (ver `#ia-vista-performance .docia-kpi-card p` no CSS). Nada
+                            saiu: as três linhas, o ícone e as cores continuam iguais.
                         -->
-                        <div class="flex w-full gap-3 lg:gap-4 mb-4 shrink-0">
-                            <div class="flex-1 bg-white border border-gray-200 shadow-sm hover:border-gray-300 transition-colors rounded-2xl py-2 px-4 flex items-center justify-between group cursor-default docia-kpi-card">
+                        <div class="flex w-full gap-3 lg:gap-4 mb-3 shrink-0">
+                            <div class="flex-1 bg-white border border-gray-200 shadow-sm hover:border-gray-300 transition-colors rounded-2xl py-1.5 px-4 flex items-center justify-between group cursor-default docia-kpi-card">
                                 <div class="pr-2" style="min-width: 0;">
                                     <p class="docia-kpi-rotulo m-0" style="font-size: 8px; font-weight: 600; letter-spacing: 0.04em;">QTDE DE BENEFICIÁRIOS</p>
-                                    <h4 class="docia-kpi-valor font-black text-gray-800 transition-colors" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 1.4rem;" id="ia-kpi-beneficiarios">0</h4>
+                                    <h4 class="docia-kpi-valor font-black text-gray-800 transition-colors" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 1.2rem;" id="ia-kpi-beneficiarios">0</h4>
                                     <p class="docia-kpi-base m-0" id="ia-kpi-beneficiarios-base"></p>
                                 </div>
                                 <div class="docia-kpi-icone docia-kpi-icone--ovg-rosa w-10 h-10 rounded-2xl flex items-center justify-center shrink-0">
                                     <i class="fa-solid fa-users text-base"></i>
                                 </div>
                             </div>
-                            <div class="flex-1 bg-white border border-gray-200 shadow-sm hover:border-gray-300 transition-colors rounded-2xl py-2 px-4 flex items-center justify-between group cursor-default docia-kpi-card">
+                            <div class="flex-1 bg-white border border-gray-200 shadow-sm hover:border-gray-300 transition-colors rounded-2xl py-1.5 px-4 flex items-center justify-between group cursor-default docia-kpi-card">
                                 <div class="pr-2" style="min-width: 0;">
                                     <p class="docia-kpi-rotulo m-0" style="font-size: 8px; font-weight: 600; letter-spacing: 0.04em;">QTDE DE DOCUMENTOS</p>
-                                    <h4 class="docia-kpi-valor font-black text-gray-800 transition-colors" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 1.4rem;" id="ia-kpi-documentos">0</h4>
+                                    <h4 class="docia-kpi-valor font-black text-gray-800 transition-colors" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 1.2rem;" id="ia-kpi-documentos">0</h4>
                                     <p class="docia-kpi-base m-0" id="ia-kpi-documentos-base"></p>
                                 </div>
                                 <div class="docia-kpi-icone docia-kpi-icone--ovg-roxo w-10 h-10 rounded-2xl flex items-center justify-center shrink-0">
                                     <i class="fa-solid fa-file-lines text-base"></i>
                                 </div>
                             </div>
-                            <div class="flex-1 bg-white border border-gray-200 shadow-sm hover:border-gray-300 transition-colors rounded-2xl py-2 px-4 flex items-center justify-between group cursor-default docia-kpi-card">
+                            <div class="flex-1 bg-white border border-gray-200 shadow-sm hover:border-gray-300 transition-colors rounded-2xl py-1.5 px-4 flex items-center justify-between group cursor-default docia-kpi-card">
                                 <div class="pr-2" style="min-width: 0;">
                                     <p class="docia-kpi-rotulo m-0" style="font-size: 8px; font-weight: 600; letter-spacing: 0.04em;">BOLSA PARCIAL</p>
-                                    <h4 class="docia-kpi-valor font-black text-gray-800 transition-colors" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 1.4rem;" id="ia-kpi-parcial">0</h4>
+                                    <h4 class="docia-kpi-valor font-black text-gray-800 transition-colors" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 1.2rem;" id="ia-kpi-parcial">0</h4>
                                     <p class="docia-kpi-base m-0" id="ia-kpi-parcial-base"></p>
                                 </div>
                                 <div class="docia-kpi-icone docia-kpi-icone--ovg-verde w-10 h-10 rounded-2xl flex items-center justify-center shrink-0">
                                     <i class="fa-solid fa-circle-half-stroke text-base"></i>
                                 </div>
                             </div>
-                            <div class="flex-1 bg-white border border-gray-200 shadow-sm hover:border-gray-300 transition-colors rounded-2xl py-2 px-4 flex items-center justify-between group cursor-default docia-kpi-card">
+                            <div class="flex-1 bg-white border border-gray-200 shadow-sm hover:border-gray-300 transition-colors rounded-2xl py-1.5 px-4 flex items-center justify-between group cursor-default docia-kpi-card">
                                 <div class="pr-2" style="min-width: 0;">
                                     <p class="docia-kpi-rotulo m-0" style="font-size: 8px; font-weight: 600; letter-spacing: 0.04em;">BOLSA INTEGRAL</p>
-                                    <h4 class="docia-kpi-valor font-black text-gray-800 transition-colors" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 1.4rem;" id="ia-kpi-integral">0</h4>
+                                    <h4 class="docia-kpi-valor font-black text-gray-800 transition-colors" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 1.2rem;" id="ia-kpi-integral">0</h4>
                                     <p class="docia-kpi-base m-0" id="ia-kpi-integral-base"></p>
                                 </div>
                                 <div class="docia-kpi-icone docia-kpi-icone--ovg-azul w-10 h-10 rounded-2xl flex items-center justify-center shrink-0">
                                     <i class="fa-solid fa-circle text-base"></i>
                                 </div>
                             </div>
-                            <div class="flex-1 bg-white border border-gray-200 shadow-sm hover:border-gray-300 transition-colors rounded-2xl py-2 px-4 flex items-center justify-between group cursor-default docia-kpi-card">
+                            <div class="flex-1 bg-white border border-gray-200 shadow-sm hover:border-gray-300 transition-colors rounded-2xl py-1.5 px-4 flex items-center justify-between group cursor-default docia-kpi-card">
                                 <div class="pr-2" style="min-width: 0;">
                                     <p class="docia-kpi-rotulo m-0" style="font-size: 8px; font-weight: 600; letter-spacing: 0.04em;">PAGO A MAIS (S/ DESC)</p>
-                                    <h4 class="docia-kpi-valor font-black text-gray-800 transition-colors" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 1.4rem;" id="ia-kpi-dif-sem">—</h4>
+                                    <h4 class="docia-kpi-valor font-black text-gray-800 transition-colors" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 1.2rem;" id="ia-kpi-dif-sem">—</h4>
                                     <p class="docia-kpi-base m-0" id="ia-kpi-dif-sem-base"></p>
                                 </div>
                                 <div class="docia-kpi-icone docia-kpi-icone--ovg-vermelho w-10 h-10 rounded-2xl flex items-center justify-center shrink-0">
                                     <i class="fa-solid fa-scale-unbalanced text-base"></i>
                                 </div>
                             </div>
-                            <div class="flex-1 bg-white border border-gray-200 shadow-sm hover:border-gray-300 transition-colors rounded-2xl py-2 px-4 flex items-center justify-between group cursor-default docia-kpi-card">
+                            <div class="flex-1 bg-white border border-gray-200 shadow-sm hover:border-gray-300 transition-colors rounded-2xl py-1.5 px-4 flex items-center justify-between group cursor-default docia-kpi-card">
                                 <div class="pr-2" style="min-width: 0;">
                                     <p class="docia-kpi-rotulo m-0" style="font-size: 8px; font-weight: 600; letter-spacing: 0.04em;">PAGO A MAIS (C/ DESC)</p>
-                                    <h4 class="docia-kpi-valor font-black text-gray-800 transition-colors" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 1.4rem;" id="ia-kpi-dif-com">—</h4>
+                                    <h4 class="docia-kpi-valor font-black text-gray-800 transition-colors" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 1.2rem;" id="ia-kpi-dif-com">—</h4>
                                     <p class="docia-kpi-base m-0" id="ia-kpi-dif-com-base"></p>
                                 </div>
                                 <div class="docia-kpi-icone docia-kpi-icone--ovg-vermelho w-10 h-10 rounded-2xl flex items-center justify-center shrink-0">
@@ -655,7 +663,7 @@
                                 ao mesmo tempo. Aqui cada uma leva o que o conteúdo
                                 dela mede.
                             -->
-                            <div class="docia-card-doc bg-white border border-gray-200 shadow-sm rounded-2xl py-4 px-2 flex flex-col"
+                            <div class="docia-card-doc docia-coluna-veredito bg-white border border-gray-200 shadow-sm rounded-2xl py-4 px-2 flex flex-col"
                                  style="flex: 0.55 1 0; min-width: 0; min-height: 0;">
                                 <h3 class="text-sm font-extrabold text-gray-700 m-0 text-center shrink-0" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">VEREDITO DA IA</h3>
                                 <!--
@@ -715,7 +723,7 @@
                                 aparece quando a janela aperta, e o que ele tira vem do
                                 card das inconsistências, que a 1280px ainda tem 700px.
                             -->
-                            <div class="flex flex-col gap-3" style="flex: 1.15 1 0; min-width: 250px; min-height: 0;">
+                            <div class="docia-coluna-mensalidade flex flex-col gap-3" style="flex: 1.15 1 0; min-width: 250px; min-height: 0;">
                                 <div class="docia-card-doc bg-white border border-gray-200 shadow-sm rounded-2xl py-3 px-2 flex flex-col"
                                      id="ia-card-msd" style="flex: 1 1 0; min-width: 0; min-height: 0;">
                                     <h3 class="text-sm font-extrabold text-gray-700 m-0 text-center shrink-0" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">MENSALIDADE SEM DESCONTO</h3>
@@ -766,8 +774,58 @@
                                 </div>
                             </div>
 
+                            <!--
+                                AS DUAS COLUNAS DO RIAF — matrícula, e benefício com
+                                financiamento —, no espaço que o card de inconsistências
+                                deixa ao virar filtro da barra. São gêmeas da coluna de
+                                mensalidade: mesmo par empilhado, mesmos quatro baldes e
+                                mesmo clique que filtra (ver `CARDS_DE_MENSALIDADE` em
+                                `analise_ia.js`). Lado a lado, a Conforme de uma fica na
+                                altura da Conforme da outra, e é por isso que as colunas
+                                encolhem na largura e não na altura.
+
+                                AS TRÊS COLUNAS DIVIDEM A FAIXA EM PARTES IGUAIS no RIAF, e
+                                a de mensalidade desce de 1,15 para 1 e de 250px para
+                                200px de piso (ver `.docia-faixa--riaf` no CSS). Fora do
+                                RIAF ela volta ao que era.
+
+                                QUEM MOSTRA É O JS (`mostrarColunasDoRiaf`). Nascem
+                                escondidas: a tela abre no CONTRATO, que não tem essas colunas.
+                            -->
+                            <div class="docia-coluna-riaf flex flex-col gap-3 hidden" id="ia-coluna-matricula" style="flex: 1 1 0; min-width: 200px; min-height: 0;">
+                                <div class="docia-card-doc bg-white border border-gray-200 shadow-sm rounded-2xl py-3 px-2 flex flex-col"
+                                     id="ia-card-matsd" style="flex: 1 1 0; min-width: 0; min-height: 0;">
+                                    <h3 class="text-sm font-extrabold text-gray-700 m-0 text-center shrink-0" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">MATRÍCULA SEM DESCONTO</h3>
+                                    <p class="docia-grafico-base text-[10px] text-gray-400 text-center m-0 shrink-0" id="ia-base-matsd"></p>
+                                    <div class="docia-grafico-ia w-full flex justify-center items-center" id="ia-gr-matsd" style="flex: 1 1 0; min-height: 0;"></div>
+                                </div>
+
+                                <div class="docia-card-doc bg-white border border-gray-200 shadow-sm rounded-2xl py-3 px-2 flex flex-col"
+                                     id="ia-card-matcd" style="flex: 1 1 0; min-width: 0; min-height: 0;">
+                                    <h3 class="text-sm font-extrabold text-gray-700 m-0 text-center shrink-0" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">MATRÍCULA COM DESCONTO</h3>
+                                    <p class="docia-grafico-base text-[10px] text-gray-400 text-center m-0 shrink-0" id="ia-base-matcd"></p>
+                                    <div class="docia-grafico-ia w-full flex justify-center items-center" id="ia-gr-matcd" style="flex: 1 1 0; min-height: 0;"></div>
+                                </div>
+                            </div>
+
+                            <div class="docia-coluna-riaf flex flex-col gap-3 hidden" id="ia-coluna-beneficio-financiamento" style="flex: 1 1 0; min-width: 200px; min-height: 0;">
+                                <div class="docia-card-doc bg-white border border-gray-200 shadow-sm rounded-2xl py-3 px-2 flex flex-col"
+                                     id="ia-card-ben" style="flex: 1 1 0; min-width: 0; min-height: 0;">
+                                    <h3 class="text-sm font-extrabold text-gray-700 m-0 text-center shrink-0" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">BENEFÍCIO</h3>
+                                    <p class="docia-grafico-base text-[10px] text-gray-400 text-center m-0 shrink-0" id="ia-base-ben"></p>
+                                    <div class="docia-grafico-ia w-full flex justify-center items-center" id="ia-gr-ben" style="flex: 1 1 0; min-height: 0;"></div>
+                                </div>
+
+                                <div class="docia-card-doc bg-white border border-gray-200 shadow-sm rounded-2xl py-3 px-2 flex flex-col"
+                                     id="ia-card-fin" style="flex: 1 1 0; min-width: 0; min-height: 0;">
+                                    <h3 class="text-sm font-extrabold text-gray-700 m-0 text-center shrink-0" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">FINANCIAMENTO</h3>
+                                    <p class="docia-grafico-base text-[10px] text-gray-400 text-center m-0 shrink-0" id="ia-base-fin"></p>
+                                    <div class="docia-grafico-ia w-full flex justify-center items-center" id="ia-gr-fin" style="flex: 1 1 0; min-height: 0;"></div>
+                                </div>
+                            </div>
+
                             <div class="docia-card-doc bg-white border border-gray-200 shadow-sm rounded-2xl py-4 px-2 flex flex-col"
-                                 style="flex: 1.35 1 0; min-width: 0; min-height: 0;">
+                                 id="ia-card-inconsistencias" style="flex: 1.35 1 0; min-width: 0; min-height: 0;">
                                 <h3 class="text-sm font-extrabold text-gray-700 m-0 text-center shrink-0" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">INCONSISTÊNCIAS</h3>
                                 <p class="docia-grafico-base text-[10px] text-gray-400 text-center m-0 mb-1 shrink-0" id="ia-base-inconsistencias"></p>
                                 <!--
@@ -1617,6 +1675,69 @@
                             </div>
                         </section>
 
+                        <!--
+                            INCONSISTÊNCIAS — SÓ NO RIAF, e no lugar do gráfico. No RIAF
+                            o card de inconsistências SAI da faixa de gráficos (o espaço
+                            dele fica para os gráficos que vêm) e a pergunta "quem tem
+                            ESTE problema" passa a ser respondida aqui, como filtro. Nos
+                            outros documentos esta seção some e o card volta como era.
+
+                            QUEM TROCA É O JS (`modoFiltroInc` em `analise_ia.js`), porque
+                            o documento se escolhe sem recarregar a página. Nasce
+                            escondida: a tela abre no CONTRATO.
+
+                            AS OPÇÕES E OS NÚMEROS são os da telinha de inconsistências
+                            (`corpo.inconsistencias`), e a escolha é o MESMO
+                            `inconsistenciasEscolhidas` — então a etiqueta da tabela, o
+                            "Limpar filtros", o contador do cabeçalho e a troca de
+                            documento já sabem desfazê-la.
+                        -->
+                        <section class="docia-filtro-secao" id="filtro-inconsistencias-ia" style="display: none;">
+                            <div class="docia-filtro-cabecalho">
+                                <h4 class="docia-filtro-titulo">Inconsistências</h4>
+                                <span class="docia-filtro-contador" id="contador-inconsistencias" style="display: none;">0</span>
+                            </div>
+                            <!--
+                                AS OPÇÕES NASCEM RECOLHIDAS. São até 40 frases, e abertas elas
+                                empurravam Situação, Modalidade e Instituição para o fim da
+                                barra só por o documento ser o RIAF. O gatilho é o mesmo do
+                                "Ordenar por" (`docia-ordem-gatilho`) e o texto dele é o de
+                                `atualizarRotuloInc`, que diz o que está valendo com o painel
+                                fechado. O painel abre NO LUGAR, empurrando as seções de baixo,
+                                e não por cima delas: marcar várias exige que ele continue
+                                aberto entre um clique e outro.
+                            -->
+                            <div class="docia-filtro-inc">
+                                <div class="docia-filtro-inc__topo">
+                                    <p class="docia-filtro-inc__total" id="ia-filtro-inc-total"></p>
+                                    <button type="button" id="ia-filtro-inc-limpar" class="docia-chip docia-chip--acao" style="display: none;">Limpar seleção</button>
+                                </div>
+                                <button type="button" id="ia-filtro-inc-gatilho" class="docia-ordem-gatilho"
+                                        aria-expanded="false" aria-controls="ia-filtro-inc-painel">
+                                    <span class="docia-ordem-gatilho__icone"><i class="fa-solid fa-triangle-exclamation"></i></span>
+                                    <span id="ia-inconsistencias-texto" class="docia-ordem-gatilho__texto">Inconsistências</span>
+                                    <i class="fa-solid fa-chevron-down docia-ordem-gatilho__seta"></i>
+                                </button>
+                                <div class="docia-filtro-inc__painel docia-filtro-inc__painel--fechado" id="ia-filtro-inc-painel">
+                                <div class="relative">
+                                    <i class="fa-solid fa-magnifying-glass absolute text-gray-400 text-xs" style="left: 10px; top: 50%; transform: translateY(-50%);"></i>
+                                    <input type="text" id="ia-filtro-inc-busca" placeholder="Pesquisar inconsistência..."
+                                           class="text-xs bg-white border border-gray-200 rounded-lg py-2 text-gray-700 focus:outline-none focus:border-pink-400 transition-colors"
+                                           style="padding-left: 28px; padding-right: 26px; width: 100%;">
+                                    <button type="button" id="ia-filtro-inc-limpar-busca"
+                                            class="hidden absolute text-gray-400 hover:text-pink-600 transition-colors"
+                                            style="right: 8px; top: 50%; transform: translateY(-50%);"
+                                            aria-label="Limpar a pesquisa">
+                                        <i class="fa-solid fa-circle-xmark text-xs"></i>
+                                    </button>
+                                </div>
+                                <div class="docia-filtro-inc__lista custom-scrollbar-light" id="ia-filtro-inc-lista">
+                                    <!-- Montado pelo JS -->
+                                </div>
+                                </div>
+                            </div>
+                        </section>
+
 
 
                         <!--
@@ -2359,6 +2480,6 @@
     -->
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/pt.js"></script>
-    <script src="{% static 'dash_documentos_ia/js/analise_ia.js' %}?v=20260925a"></script>
+    <script src="{% static 'dash_documentos_ia/js/analise_ia.js' %}?v=20261023a"></script>
 </body>
 </html>

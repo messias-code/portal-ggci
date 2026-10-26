@@ -286,13 +286,23 @@
             servidor ('Bateu', 'Maior', 'Menor', 'Não localizado'), e não os rótulos
             curtos de `ROTULO_MENSALIDADE`: o que se lê na barra é enfeite da tela, o
             que viaja é o balde.  */
-        const recorteMensalidade = { msd: new Set(), mcd: new Set() };
+        const recorteMensalidade = { msd: new Set(), mcd: new Set(), matsd: new Set(), matcd: new Set(),
+                                     ben: new Set(), fin: new Set() };
 
-        /*  O card, o parâmetro que ele manda e o nome do card na etiqueta. A ordem é a
-            dos dois cards na tela, de cima para baixo.  */
+        /*  O card, o parâmetro que ele manda, a chave dele na resposta, o nome do card
+            na etiqueta e o grupo da resposta de onde ele lê. A ordem é a da tela.
+
+            OS DE MATRÍCULA, BENEFÍCIO E FINANCIAMENTO SÃO DESTA LISTA, e não de uma
+            própria: mesmos baldes, mesmo clique, mesmo recorte no servidor (ver
+            `PARAMETRO_DE_MENSALIDADE`). Só existem no RIAF — fora dele o grupo deles vem
+            nulo na resposta e a coluna some.  */
         const CARDS_DE_MENSALIDADE = [
-            ['msd', 'ia-gr-msd', 'sem_desconto', 'Mensalidade integral'],
-            ['mcd', 'ia-gr-mcd', 'com_desconto', 'Mensalidade c/ desconto'],
+            ['msd', 'ia-gr-msd', 'sem_desconto', 'Mensalidade integral', 'mensalidade'],
+            ['mcd', 'ia-gr-mcd', 'com_desconto', 'Mensalidade c/ desconto', 'mensalidade'],
+            ['matsd', 'ia-gr-matsd', 'sem_desconto', 'Matrícula integral', 'matricula'],
+            ['matcd', 'ia-gr-matcd', 'com_desconto', 'Matrícula c/ desconto', 'matricula'],
+            ['ben', 'ia-gr-ben', 'beneficio', 'Benefício', 'beneficio_financiamento'],
+            ['fin', 'ia-gr-fin', 'financiamento', 'Financiamento', 'beneficio_financiamento'],
         ];
 
         /*  Esvazia OS CONJUNTOS, sem trocá-los por conjuntos novos: o callback de
@@ -454,7 +464,7 @@
                 + marcados(nosFiltros('.filter-possui-qualquer')).length);
             total += contador('contador-data-proc-ia', dataProcEscolhida() ? 1 : 0);
             total += contador('contador-inconsistencias', inconsistenciasEscolhidas.size);
-            total += recorteMensalidade.msd.size + recorteMensalidade.mcd.size;
+            CARDS_DE_MENSALIDADE.forEach(([parametro]) => { total += recorteMensalidade[parametro].size; });
             total += recorteHistorico.sit.size + recorteHistorico.alerta.size;
             total += contador('contador-ies-ia', iesDaAba().length);
             contador('contador-filtros', total);
@@ -944,8 +954,8 @@
 
             A folga é o ar entre o fim do nome e o começo da barra.  */
         const FOLGA_DO_NOME = 12;
-        const larguraDaFaixa = (categorias) => FOLGA_DO_NOME + Math.ceil(Math.max(
-            ...categorias.map((t) => larguraDoTexto(t, '600 10px Poppins, sans-serif'))));
+        const larguraDaFaixa = (categorias, corpo = 10) => FOLGA_DO_NOME + Math.ceil(Math.max(
+            ...categorias.map((t) => larguraDoTexto(t, '600 ' + corpo + 'px Poppins, sans-serif'))));
 
         /*  O AR ENTRE A PONTA DA BARRA E O NÚMERO: os 10px do `dataLabels.offsetX`
             mais 2px de arredondamento — o Apex corta o rótulo na borda da área de
@@ -968,6 +978,17 @@
             dela que vinha o vão da direita.  */
         const AR_DA_ESQUERDA = 24;
         const AR_DA_DIREITA = 10;
+
+        /*  O CARD ESTREITO APERTA O DESENHO, e não o conteúdo. No RIAF as seis barras
+            dividem a faixa em três colunas, e com a barra de filtros aberta o card
+            desce a ~190px (janela de 1280) — ali "13.930 (89,4%)" não cabia depois
+            da própria barra e era escrito em cima dela. Abaixo de 290px, que é onde
+            isso começava a acontecer, o nome desce de 10 para 9px, o número de 11
+            para 10px e o ar da esquerda de 24 para 10px. Nenhuma linha some.  */
+        const LARGURA_COMPACTA = 290;
+        const medidasDeitadas = (largura) => (largura < LARGURA_COMPACTA
+            ? { nome: 9, valor: 10, esquerda: 10 }
+            : { nome: 10, valor: 11, esquerda: AR_DA_ESQUERDA });
 
         /*  O VÃO ENTRE O NOME E A BARRA. O Apex encosta um no outro: a faixa que ele
             reserva para o eixo tem a largura do texto mais longo, e o texto, alinhado
@@ -993,16 +1014,41 @@
 
             O piso de 30% é para o card estreito demais para o texto: ali nada cabe
             direito, e uma barra curta ainda diz mais que uma barra invisível.  */
-        const fatorDeitado = (alvo, valores, faixa, totalParaPct) => {
-            const faixaDasBarras = (alvo.clientWidth || 0)
-                - faixa - AR_DA_ESQUERDA - AR_DA_DIREITA;
+        //  O ar que a escala de raiz deixa acima da maior barra (ver `maximoVisual`).
+        const FOLGA_DA_RAIZ = 1.15;
+
+        const faixaDasBarrasDe = (alvo, faixa, medidas) =>
+            (alvo.clientWidth || 0) - faixa - medidas.esquerda - AR_DA_DIREITA;
+        const maiorRotulo = (valores, totalParaPct, medidas) => Math.max(...valores.map(
+            (valor) => larguraDoTexto(rotuloDoValor(valor, totalParaPct),
+                                      '700 ' + medidas.valor + 'px Poppins, sans-serif')));
+
+        const fatorDeitado = (alvo, valores, faixa, totalParaPct, medidas = medidasDeitadas(Infinity)) => {
+            const faixaDasBarras = faixaDasBarrasDe(alvo, faixa, medidas);
             if (faixaDasBarras <= 0) return 1.35;
 
-            const texto = Math.max(...valores.map((valor) => larguraDoTexto(
-                rotuloDoValor(valor, totalParaPct), '700 11px Poppins, sans-serif')));
+            const texto = maiorRotulo(valores, totalParaPct, medidas);
             const sobra = Math.max(faixaDasBarras - texto - FOLGA_DO_VALOR,
                                    faixaDasBarras * 0.3);
-            return faixaDasBarras / sobra;
+            /*  A CONTA É NA ESCALA DO DESENHO, que é a raiz (ver `maximoVisual` em
+                `opcoesDeBarraHorizontal`): a barra de `base` ocupa
+                √(1/fator) ÷ FOLGA_DA_RAIZ da faixa. A conta linear que estava aqui
+                (`faixa / sobra`) era de antes da raiz, e com ela a barra que devia
+                parar em 30% da faixa parava em 48% — o número que vinha depois não
+                cabia, e nos cards estreitos do RIAF caía em cima da barra.  */
+            return 1 / Math.pow(FOLGA_DA_RAIZ * sobra / faixaDasBarras, 2);
+        };
+
+        /*  O PERCENTUAL SÓ VAI NA PONTA DA BARRA SE COUBER, já com as medidas
+            compactas: os 30% de barra mínima do `fatorDeitado` mais o rótulo
+            inteiro. Não cabendo, a ponta fica só com o número e o percentual
+            continua no balão — que sempre o traz (ver `conteudoDoBalao`). É o caso
+            do card de ~190px; a partir de ~220px ele volta.  */
+        const cabeOPercentual = (alvo, valores, faixa, totalParaPct, medidas) => {
+            if (!totalParaPct) return true;
+            const faixaDasBarras = faixaDasBarrasDe(alvo, faixa, medidas);
+            return faixaDasBarras * 0.7
+                >= maiorRotulo(valores, totalParaPct, medidas) + FOLGA_DO_VALOR;
         };
 
         /*  DEITADO, o eixo das CATEGORIAS é o Y e o dos VALORES é o X — e é aí que este
@@ -1027,7 +1073,7 @@
 
             É ali também que mora a frase inteira do alerta, porque o eixo só comporta o
             nome curto (ver `ALERTAS_DO_HISTORICO`, na view).  */
-        const opcoesDeBarraHorizontal = (categorias, valores, cores, maximo, altura, faixa, formato, totalParaPct, aoClicar = null, marcados = null, nota = null) => {
+        const opcoesDeBarraHorizontal = (categorias, valores, cores, maximo, altura, faixa, formato, totalParaPct, aoClicar = null, marcados = null, nota = null, medidas = medidasDeitadas(Infinity), pctNoRotulo = true) => {
             /*  A ESCOLHA SE MARCA COMO NO CHIP DA ROSCA, e não só lavando as outras.
 
                 Lavar a barra que ficou de fora é o recado de "esta não", mas ele só se
@@ -1073,7 +1119,7 @@
                 ficaria com 2% da largura — uma linha invisível. A raiz quadrada infla as
                 diferenças na base, fazendo a barra de 400 ocupar ~15% do espaço e a de
                 1.000 ocupar ~25%. Os rótulos e balões continuam mostrando o valor real.  */
-            const maximoVisual = Math.pow(maximo, 0.5) * 1.15;
+            const maximoVisual = Math.pow(maximo, 0.5) * FOLGA_DA_RAIZ;
             const valoresVisuais = valores.map(v => v > 0 ? Math.pow(v, 0.5) : 0);
 
             return {
@@ -1152,7 +1198,7 @@
                         maxWidth: faixa,
                         offsetX: -VAO_ATE_A_BARRA,
                         offsetY: RECUO_DO_NOME,
-                        style: { colors: tintasDosRotulos, fontSize: '10px', fontWeight: 600 },
+                        style: { colors: tintasDosRotulos, fontSize: medidas.nome + 'px', fontWeight: 600 },
                     },
                     axisBorder: { show: false },
                     axisTicks: { show: false },
@@ -1175,7 +1221,7 @@
                         ela começa. Os 8px saem do alto e entram embaixo, que é metade
                         da diferença medida — é o que centra as barras na caixa.  */
                     padding: {
-                        left: AR_DA_ESQUERDA,
+                        left: medidas.esquerda,
                         right: AR_DA_DIREITA,
                         top: -8 - AR_QUE_O_APEX_GUARDA,
                         bottom: -8 + AR_QUE_O_APEX_GUARDA,
@@ -1205,8 +1251,17 @@
                     offsetY: 2,
                     textAnchor: 'start',
                     formatter: (valorVis, opcoes) =>
-                        rotuloDoValor(valores[opcoes.dataPointIndex], totalParaPct),
-                    style: { fontSize: '11px', fontWeight: 700, colors: tintasDosRotulos },
+                        rotuloDoValor(valores[opcoes.dataPointIndex], pctNoRotulo ? totalParaPct : 0),
+                    style: { fontSize: medidas.valor + 'px', fontWeight: 700, colors: tintasDosRotulos },
+                    /*  SEM O AFASTAMENTO AUTOMÁTICO DO APEX. Desde a 8.x (o CDN não fixa
+                        versão) ele compara as caixas dos rótulos e, nas barras deitadas,
+                        afasta na HORIZONTAL os que se tocam. Aqui cada número mora na sua
+                        própria linha, e as caixas só se tocam porque a linha do texto é
+                        mais alta que o passo entre as barras em card baixo: a 90px de
+                        altura o "249" ia parar 12px dentro da própria barra e o "1.242"
+                        33px depois dela, enquanto a 127px os quatro ficavam a 10px da
+                        ponta. Desligado, cada número fica onde a barra dele termina.  */
+                    avoidOverlap: false,
                     background: { enabled: false },
                     dropShadow: { enabled: false },
                 },
@@ -1715,14 +1770,18 @@
                 fator fixo acerta numa janela e erra na outra — 1,35 servia ao card de
                 509px (janela de 1600) e, no de 396px (janela de 1280), desenhava
                 "13.629 (89,5%)" 24px POR CIMA da própria barra.  */
-            const faixa = virada ? larguraDaFaixa(categorias) : 0;
+            const medidas = medidasDeitadas(alvo.clientWidth || 0);
+            const faixa = virada ? larguraDaFaixa(categorias, medidas.nome) : 0;
+            const pctNoRotulo = !virada || cabeOPercentual(alvo, valores, faixa, totalParaPct, medidas);
             const teto = Math.max(base || 0, ...valores, 1)
-                * (virada ? fatorDeitado(alvo, valores, faixa, totalParaPct) : 1.12);
+                * (virada ? fatorDeitado(alvo, valores, faixa,
+                                         pctNoRotulo ? totalParaPct : 0, medidas) : 1.12);
             const opcoes = virada
-                ? opcoesDeBarraHorizontal(categorias, valores, cores, teto, alturaDe(alvo), faixa, formato, totalParaPct, aoClicar, marcados, nota)
+                ? opcoesDeBarraHorizontal(categorias, valores, cores, teto, alturaDe(alvo), faixa, formato, totalParaPct, aoClicar, marcados, nota, medidas, pctNoRotulo)
                 : opcoesDeBarra(categorias, valores, cores, teto, alturaDe(alvo), formato);
             if (graficos[id] && graficos[id].__tipo === 'bar') {
                 graficos[id].updateOptions(opcoes, false, true);
+                graficos[id].__larguraDoDesenho = virada ? alvo.clientWidth : 0;
                 return;
             }
             /*  `__tipo` guardado na instância: o card do veredito pode ter sido
@@ -1732,6 +1791,8 @@
             alvo.innerHTML = '';
             graficos[id] = new ApexCharts(alvo, opcoes);
             graficos[id].__tipo = 'bar';
+            //  A largura em que o rótulo foi medido — ver `ajustarAlturasIA`.
+            graficos[id].__larguraDoDesenho = virada ? alvo.clientWidth : 0;
             graficos[id].render();
         };
 
@@ -1841,6 +1902,14 @@
             const legenda = document.getElementById('ia-legenda-inconsistencias');
             const alvo = document.getElementById(id);
             if (!alvo) return;
+
+            //  No RIAF o card sai e vira filtro na barra — ver `modoFiltroInc`.
+            const comoFiltro = corpo.documento === DOCUMENTO_COM_FILTRO_INC;
+            modoFiltroInc(comoFiltro);
+            if (comoFiltro) {
+                pintarFiltroInc(corpo);
+                return;
+            }
 
             /*  A legenda é o nome das fatias: sem fatia, ela não tem o que dizer — e
                 sem lista, a coluna dela também não tem por que existir. A classe é o
@@ -2049,9 +2118,11 @@
             const alvo = elInc('ia-inconsistencias-texto');
             if (!alvo) return;
             const n = inconsistenciasEscolhidas.size;
-            alvo.textContent = n === 0 ? 'Todas as inconsistências'
+            alvo.textContent = n === 0 ? 'Inconsistências'
                 : n === 1 ? Array.from(inconsistenciasEscolhidas)[0]
                 : n + ' inconsistências selecionadas';
+            //  O gatilho corta com reticências; a lista inteira fica no `title`.
+            alvo.title = n ? Array.from(inconsistenciasEscolhidas).join('\n') : '';
         };
 
         const abrirInc = () => {
@@ -2166,6 +2237,172 @@
         };
 
         /* ==================================================================
+           O FILTRO DE INCONSISTÊNCIAS DO RIAF
+           ==================================================================
+           No RIAF o card de inconsistências sai da faixa de gráficos e vira esta
+           seção da barra de filtros (ver o comentário no template). Nada novo por baixo: as opções
+           são `opcoesInconsistencia`, que `receberInconsistencias` guarda a cada
+           resposta, e a escolha é `inconsistenciasEscolhidas`, a mesma que a
+           telinha e a legenda escrevem. Por isso o recorte chega à tabela, ao
+           veredito e às mensalidades sem caminho novo no servidor.
+
+           A DIFERENÇA PARA A TELINHA é que aqui cada clique já aplica, como em
+           toda seção da barra, e não há o que "Cancelar".
+           ================================================================== */
+
+        const DOCUMENTO_COM_FILTRO_INC = 'RIAF';
+
+        const modoFiltroInc = (ligado) => {
+            const card = elInc('ia-card-inconsistencias');
+            if (card) card.classList.toggle('hidden', ligado);
+            const secao = elInc('filtro-inconsistencias-ia');
+            if (secao) secao.style.display = ligado ? '' : 'none';
+            if (ligado) {
+                /*  A INSTÂNCIA DO ANEL NÃO FICA: escondida, a caixa mede zero, e o
+                    `ajustarAlturasIA` e o próximo `updateOptions` trabalhariam sobre
+                    essa medida. Ao voltar para outro documento ela nasce de novo.  */
+                const id = 'ia-gr-inconsistencias';
+                if (graficos[id]) { graficos[id].destroy(); delete graficos[id]; }
+                return;
+            }
+            //  A pesquisa é da lista do RIAF; fora dele ela não tem o que recortar.
+            const busca = elInc('ia-filtro-inc-busca');
+            if (busca) busca.value = '';
+            const limparBusca = elInc('ia-filtro-inc-limpar-busca');
+            if (limparBusca) limparBusca.classList.add('hidden');
+            //  E a próxima volta ao RIAF encontra as opções recolhidas de novo.
+            abrirFiltroInc(false);
+        };
+
+        /*  ABRE OU RECOLHE AS OPÇÕES (ver o comentário no template). Só o gatilho
+            fecha: marcar uma frase não fecha nada, senão a segunda pediria abrir de
+            novo. Ao abrir, o foco vai para a pesquisa, que é o primeiro gesto.  */
+        const abrirFiltroInc = (aberto) => {
+            const painel = elInc('ia-filtro-inc-painel');
+            const gatilho = elInc('ia-filtro-inc-gatilho');
+            if (painel) painel.classList.toggle('docia-filtro-inc__painel--fechado', !aberto);
+            if (gatilho) gatilho.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+            if (aberto && elInc('ia-filtro-inc-busca')) elInc('ia-filtro-inc-busca').focus();
+        };
+
+        if (elInc('ia-filtro-inc-gatilho')) {
+            elInc('ia-filtro-inc-gatilho').addEventListener('click', (evento) => {
+                abrirFiltroInc(evento.currentTarget.getAttribute('aria-expanded') !== 'true');
+            });
+        }
+
+        const pintarFiltroInc = (corpo) => {
+            const caixa = elInc('ia-filtro-inc-lista');
+            const base = elInc('ia-filtro-inc-total');
+            const limpar = elInc('ia-filtro-inc-limpar');
+            if (limpar) limpar.style.display = inconsistenciasEscolhidas.size ? '' : 'none';
+            if (!caixa) return;
+
+            /*  "Sem inconsistências" fica fora da CONTA pelo mesmo motivo de ficar fora
+                da linha de base da rosca: não é um tipo de problema. Mas fica na LISTA,
+                por último, como na legenda da rosca: no RIAF a rosca sai da tela, e
+                sem esta linha não haveria como recortar os documentos limpos.  */
+            const ehLimpa = (o) => semAcento(o.frase) === SEM_INCONSISTENCIA;
+            const tipos = opcoesInconsistencia.filter((o) => !ehLimpa(o));
+
+            /*  A ESCOLHIDA QUE SUMIU DO RECORTE CONTINUA NA LISTA, com zero. Outro
+                filtro pode tirá-la do contexto, e sem a linha dela não haveria onde
+                desmarcar — o recorte ficaria valendo sem caixa nenhuma acesa.  */
+            const presentes = new Set(opcoesInconsistencia.map((o) => o.frase));
+            const ausentes = Array.from(inconsistenciasEscolhidas)
+                .filter((frase) => !presentes.has(frase))
+                .map((frase) => ({ frase, linhas: 0 }));
+            const opcoes = tipos.concat(ausentes.filter((o) => !ehLimpa(o)),
+                opcoesInconsistencia.filter(ehLimpa), ausentes.filter(ehLimpa));
+
+            /*  O VAZIO DA LISTA É O DO MENU, não o do recorte. `corpo.processados` conta
+                o recorte JÁ filtrado pelas frases, e uma seleção que zera a tela zerava
+                também a lista — sumia junto a caixa marcada, e não sobrava onde
+                desmarcar. O menu ignora o próprio filtro, então só fica vazio quando o
+                semestre e os outros filtros não têm documento lido nenhum.  */
+            const semLeitura = !opcoes.length && !corpo.processados;
+
+            if (base) {
+                const n = inconsistenciasEscolhidas.size;
+                base.textContent = semLeitura
+                    ? 'nenhum documento processado'
+                    : formatarNumero(tipos.length) + ' tipos de inconsistência'
+                      + (n ? ' · ' + formatarNumero(n) + (n === 1 ? ' selecionado' : ' selecionados') : '');
+            }
+
+            const vazio = (icone, texto) => '<div class="docia-inc-vazio">'
+                + '<i class="fa-solid ' + icone + ' docia-inc-vazio__icone"></i>'
+                + '<span>' + texto + '</span></div>';
+
+            if (semLeitura) {
+                caixa.innerHTML = vazio('fa-hourglass-half', 'A IA ainda não leu nenhum documento neste recorte.');
+                return;
+            }
+            if (!opcoes.length) {
+                caixa.innerHTML = vazio('fa-check-circle', 'Nenhuma inconsistência encontrada neste recorte.');
+                return;
+            }
+
+            const termo = semAcento(elInc('ia-filtro-inc-busca') ? elInc('ia-filtro-inc-busca').value : '');
+            const visiveis = termo
+                ? opcoes.filter((o) => semAcento(o.frase).includes(termo))
+                : opcoes;
+            if (!visiveis.length) {
+                caixa.innerHTML = vazio('fa-magnifying-glass', 'Nenhuma inconsistência com esse texto.');
+                return;
+            }
+
+            //  A lista é redesenhada a cada resposta; sem guardar a rolagem, marcar
+            //  uma frase lá embaixo devolveria a lista ao topo.
+            const rolagem = caixa.scrollTop;
+            caixa.innerHTML = visiveis.map((o) =>
+                '<label class="docia-inc-item">'
+                + '<input type="checkbox" class="sr-only" value="' + escaparHtml(o.frase) + '"'
+                + (inconsistenciasEscolhidas.has(o.frase) ? ' checked' : '') + '>'
+                + '<span class="docia-inc-item__caixa"></span>'
+                + '<span class="docia-inc-item__texto">' + escaparHtml(o.frase) + '</span>'
+                + '<span class="docia-inc-item__n">' + formatarNumero(o.linhas) + '</span>'
+                + '</label>').join('');
+            caixa.scrollTop = rolagem;
+        };
+
+        if (elInc('ia-filtro-inc-lista')) {
+            elInc('ia-filtro-inc-lista').addEventListener('change', (evento) => {
+                const caixa = evento.target.closest('input[type="checkbox"]');
+                if (!caixa) return;
+                if (caixa.checked) inconsistenciasEscolhidas.add(caixa.value);
+                else inconsistenciasEscolhidas.delete(caixa.value);
+                atualizarRotuloInc();
+                recarregar();
+            });
+        }
+        if (elInc('ia-filtro-inc-limpar')) {
+            elInc('ia-filtro-inc-limpar').addEventListener('click', () => {
+                inconsistenciasEscolhidas.clear();
+                atualizarRotuloInc();
+                recarregar();
+            });
+        }
+        //  A pesquisa só recorta a lista na tela: ela acha a frase, quem filtra é a caixa.
+        if (elInc('ia-filtro-inc-busca')) {
+            elInc('ia-filtro-inc-busca').addEventListener('input', (evento) => {
+                const limpar = elInc('ia-filtro-inc-limpar-busca');
+                if (limpar) limpar.classList.toggle('hidden', evento.target.value.length === 0);
+                if (ultimoResumo) pintarFiltroInc(ultimoResumo);
+            });
+        }
+        if (elInc('ia-filtro-inc-limpar-busca')) {
+            elInc('ia-filtro-inc-limpar-busca').addEventListener('click', () => {
+                const busca = elInc('ia-filtro-inc-busca');
+                if (!busca) return;
+                busca.value = '';
+                elInc('ia-filtro-inc-limpar-busca').classList.add('hidden');
+                if (ultimoResumo) pintarFiltroInc(ultimoResumo);
+                busca.focus();
+            });
+        }
+
+        /* ==================================================================
            OS DOIS CARDS DO HISTÓRICO
            ==================================================================
            O QUE ELES RESPONDEM, e por que só aqui: o Histórico é o único documento
@@ -2197,6 +2434,16 @@
                     const card = document.getElementById(id);
                     if (card) card.classList.toggle('hidden', !visivel);
                 });
+        };
+
+        /*  As duas colunas do RIAF — mesma troca de classe, pelo mesmo motivo. A faixa
+            ganha `docia-faixa--riaf`, que é o que divide a largura entre as três colunas
+            (ver o CSS); fora do RIAF a coluna de mensalidade volta às medidas de antes.  */
+        const mostrarColunasDoRiaf = (visivel) => {
+            document.querySelectorAll('.docia-coluna-riaf')
+                .forEach((coluna) => coluna.classList.toggle('hidden', !visivel));
+            const faixa = document.querySelector('#ia-vista-performance .docia-faixa-graficos');
+            if (faixa) faixa.classList.toggle('docia-faixa--riaf', visivel);
         };
 
         /*  A COR DE CADA SITUAÇÃO E DE CADA ALERTA, na ordem em que o servidor as manda.
@@ -2577,6 +2824,7 @@
                 pintarSituacao(corpo, tema);
                 pintarAlertas(corpo);
             }
+            mostrarColunasDoRiaf(!!corpo.matricula);
 
             /*  MENSALIDADE — só dos PROCESSADOS. `tem_dado` falso é o documento que
                 não carrega esse valor (o histórico), e ali desenhar uma barra de
@@ -2607,12 +2855,16 @@
                     return ordem.map((b) => c[b] || 0);
                 }));
 
-            CARDS_DE_MENSALIDADE.forEach(([parametro, idGr, chave]) => {
+            CARDS_DE_MENSALIDADE.forEach(([parametro, idGr, chave, , grupo]) => {
                 //  Escondidos no Histórico: desenhar dentro de um `display: none` faz
-                //  o Apex medir zero de largura e travar a caixa nisso.
-                if (noHistorico) return;
+                //  o Apex medir zero de largura e travar a caixa nisso. Os do RIAF,
+                //  pelo mesmo motivo, fora dele.
+                const doRiaf = grupo !== 'mensalidade';
+                if (doRiaf ? !corpo[grupo] : noHistorico) return;
                 const idBase = idGr.replace('ia-gr-', 'ia-base-');
-                const medida = (corpo.mensalidade || {})[chave] || {};
+                const medida = (corpo[grupo] || {})[chave] || {};
+                //  Cada par tem a sua régua (ver `_par_do_riaf` na view).
+                const regua = doRiaf ? (corpo['regua_' + grupo] || 1) : reguaComum;
                 const contagem = medida.contagem || {};
                 const alvoBase = document.getElementById(idBase);
 
@@ -2631,8 +2883,9 @@
                 }
                 if (!medida.tem_dado) {
                     if (alvoBase) alvoBase.textContent = '';
-                    mostrarVazio(idGr, 'fa-ban',
-                                 'Este documento não traz valor de mensalidade.');
+                    mostrarVazio(idGr, 'fa-ban', doRiaf
+                                 ? 'Este recorte não traz esse valor.'
+                                 : 'Este documento não traz valor de mensalidade.');
                     return;
                 }
                 if (alvoBase) {
@@ -2682,7 +2935,7 @@
                 const alvoGr = document.getElementById(idGr);
                 if (alvoGr) alvoGr.style.cursor = 'pointer';
 
-                desenhar(idGr, cats, vals, colors, reguaComum, 'numero', true, lidos,
+                desenhar(idGr, cats, vals, colors, regua, 'numero', true, lidos,
                          (i) => {
                              const balde = ordem[i];
                              if (balde === undefined) return;
@@ -2709,6 +2962,30 @@
             sem ir ao servidor: o recorte não mudou, só as cores.  */
         let ultimoResumo = null;
 
+        /*  A TROCA DE SEMESTRE PEDE UMA PODA, uma vez (ver `exclusividadeSemestre`).
+            A lista de frases da resposta IGNORA o próprio filtro (ver `api_resumo_ia`),
+            então ela diz quais frases o semestre novo tem mesmo com a seleção antiga
+            valendo. A escolhida que não está ali sai, e o pedido é refeito sem ela; a
+            resposta vazia não é pintada, e a tela não pisca em branco.
+
+            A COMPARAÇÃO É SEM ACENTO E SEM CAIXA, a mesma chave do servidor
+            (`_chave_da_inconsistencia`): a grafia que a lista mostra pode mudar de um
+            semestre para o outro sem que a frase deixe de ser a mesma.  */
+        let podarNaProximaResposta = false;
+
+        const podarFrasesOrfas = (corpo) => {
+            if (!podarNaProximaResposta) return false;
+            podarNaProximaResposta = false;
+            const existem = new Set((corpo.inconsistencias || []).map((i) => semAcento(i.frase)));
+            const orfas = Array.from(inconsistenciasEscolhidas)
+                .filter((frase) => !existem.has(semAcento(frase)));
+            if (!orfas.length) return false;
+            orfas.forEach((frase) => inconsistenciasEscolhidas.delete(frase));
+            atualizarRotuloInc();
+            recarregar();
+            return true;
+        };
+
         /*  DUAS CHAMADAS PARA O MESMO RECORTE, e não uma. A tabela tem teto de
             linhas e os gráficos contam o recorte inteiro — juntar as duas faria a
             resposta da tabela carregar contagens que ela não usa, ou os gráficos
@@ -2723,6 +3000,7 @@
                 .then((corpo) => {
                     if (minhaVez !== pedidoAtual) return;
                     if (corpo.status !== 'ok') throw new Error(corpo.mensagem || 'resposta inesperada');
+                    if (podarFrasesOrfas(corpo)) return;
                     ultimoResumo = corpo;
                     receberInconsistencias(corpo.inconsistencias, corpo.documento);
                     pintarGraficos(corpo);
@@ -2742,13 +3020,14 @@
                         anterior, prontos para reaparecer como se fossem a resposta ao
                         documento novo.  */
                     ['ia-base-veredito', 'ia-base-msd', 'ia-base-mcd',
+                     'ia-base-matsd', 'ia-base-matcd', 'ia-base-ben', 'ia-base-fin',
                      'ia-base-sit', 'ia-base-alerta',
                      'ia-base-inconsistencias'].forEach((id) => {
                         const alvo = document.getElementById(id);
                         if (alvo) alvo.textContent = 'não foi possível atualizar';
                     });
-                    ['ia-gr-veredito', 'ia-gr-msd', 'ia-gr-mcd',
-                     'ia-gr-sit', 'ia-gr-alerta',
+                    ['ia-gr-veredito', 'ia-gr-msd', 'ia-gr-mcd', 'ia-gr-matsd', 'ia-gr-matcd',
+                     'ia-gr-ben', 'ia-gr-fin', 'ia-gr-sit', 'ia-gr-alerta',
                      'ia-gr-inconsistencias'].forEach((id) =>
                         mostrarVazio(id, 'fa-triangle-exclamation',
                                      'Erro ao carregar. Refaça o filtro para tentar de novo.'));
@@ -2765,6 +3044,14 @@
                             anel.parentElement.classList.add('docia-anel-e-lista--sozinho');
                         }
                     });
+                    //  No RIAF o filtro da barra faz o papel do card, e os números dele também
+                    //  são do recorte anterior.
+                    const listaInc = document.getElementById('ia-filtro-inc-lista');
+                    if (listaInc) {
+                        listaInc.innerHTML = '<div class="docia-inc-vazio">'
+                            + '<i class="fa-solid fa-triangle-exclamation docia-inc-vazio__icone"></i>'
+                            + '<span>Erro ao carregar. Refaça o filtro para tentar de novo.</span></div>';
+                    }
                 });
         };
 
@@ -2892,8 +3179,22 @@
                     : iesEscolhidas.length + ' instituições', 'ies:*'));
             }
 
-            inconsistenciasEscolhidas.forEach(
-                (frase) => etiquetas.push(chip('Inconsistência', frase, 'inconsistencia:' + frase)));
+            /*  DUAS OU MAIS FRASES VIRAM UMA ETIQUETA SÓ, como as instituições logo
+                acima. Uma etiqueta por frase empilhava linhas de texto longo sobre a
+                tabela, e o card dela tem altura fixa: a 1366×768, com 7 frases as
+                etiquetas comiam a tabela inteira, e com mais elas passavam da altura do
+                próprio card — era a "tela pela metade". A lista inteira fica no `title`
+                e no botão da barra; o × desta etiqueta limpa todas.  */
+            if (inconsistenciasEscolhidas.size === 1) {
+                const [frase] = inconsistenciasEscolhidas;
+                etiquetas.push(chip('Inconsistência', frase, 'inconsistencia:' + frase));
+            } else if (inconsistenciasEscolhidas.size > 1) {
+                etiquetas.push(chip('Inconsistências',
+                    inconsistenciasEscolhidas.size + ' selecionadas', 'inconsistencia:*')
+                    .replace('<span class="docia-chip', '<span title="'
+                        + escaparHtml(Array.from(inconsistenciasEscolhidas).join('\n'))
+                        + '" class="docia-chip'));
+            }
 
             recorteVereditos.forEach(
                 (v) => etiquetas.push(chip('Veredito', rotuloDoVeredito(v), 'veredito:' + v)));
@@ -2960,7 +3261,9 @@
                 else if (tipo === 'ies') {
                     if (typeof window.resetFiltroIES === 'function') window.resetFiltroIES();
                 } else if (tipo === 'inconsistencia') {
-                    inconsistenciasEscolhidas.delete(valor);
+                    //  `*` é a etiqueta que agrupa várias frases: o × dela limpa todas.
+                    if (valor === '*') inconsistenciasEscolhidas.clear();
+                    else inconsistenciasEscolhidas.delete(valor);
                     atualizarRotuloInc();
                 } else if (tipo === 'veredito') recorteVereditos.delete(valor);
                 else if (recorteMensalidade[tipo]) recorteMensalidade[tipo].delete(valor);
@@ -3208,9 +3511,48 @@
             caixasSemestre.forEach((caixa) => {
                 if (caixa !== evento.target) caixa.checked = false;
             });
+            /*  AS FRASES ESCOLHIDAS PODEM NÃO EXISTIR NO SEMESTRE NOVO. O catálogo do
+                RIAF mudou em 2026-2 ("diverge do sistema" virou "diverge da coleta"), e
+                30 das 40 frases de 2026-1 não aparecem lá: levadas adiante, elas zeravam
+                a tela inteira — tabela "0 de 0", KPIs e gráficos vazios. Não dá para
+                zerar a seleção como na troca de documento, porque 10 frases existem nos
+                dois semestres e continuam valendo; quem decide quais saem é a lista do
+                semestre novo, que só chega com a resposta (ver `podarFrasesOrfas`).  */
+            if (inconsistenciasEscolhidas.size) podarNaProximaResposta = true;
             recarregar();
         };
         caixasSemestre.forEach((caixa) => caixa.addEventListener('change', exclusividadeSemestre));
+
+        /*  O RIAF SÓ EXISTE A PARTIR DE 2026-1. A aba dele no Parquet não tem linha
+            nenhuma de 2025-1 nem de 2025-2, e oferecer esses dois no RIAF era oferecer
+            uma tela vazia. Com o RIAF escolhido eles somem da grade, e a grade passa a
+            ter as colunas que sobraram.
+
+            O SEMESTRE MARCADO QUE SOME É TROCADO por 2026-1, o primeiro que o RIAF
+            tem: a tela abre no semestre mais antigo, e este é o mais antigo dele.
+            Devolve se trocou, para quem chama saber que o recorte mudou.  */
+        const SEMESTRES_SEM_RIAF = ['2025-1', '2025-2'];
+
+        const semestresDoDocumento = (documento) => {
+            const semRiaf = documento === 'RIAF';
+            let visiveis = 0;
+            let trocou = false;
+            caixasSemestre.forEach((caixa) => {
+                const esconder = semRiaf && SEMESTRES_SEM_RIAF.includes(caixa.value);
+                const rotulo = caixa.closest('label');
+                if (rotulo) rotulo.classList.toggle('hidden', esconder);
+                if (!esconder) visiveis++;
+                if (esconder && caixa.checked) { caixa.checked = false; trocou = true; }
+            });
+            if (trocou) {
+                const primeiro = Array.from(caixasSemestre).find((c) => c.value === '2026-1');
+                if (primeiro) primeiro.checked = true;
+            }
+            const grade = caixasSemestre[0] && caixasSemestre[0].closest('.docia-grade-seg');
+            if (grade) grade.style.gridTemplateColumns = 'repeat(' + visiveis + ', minmax(0, 1fr))';
+            return trocou;
+        };
+        semestresDoDocumento(marcados(caixasDocumento)[0]);
 
         /*  DOCUMENTO É ESCOLHA ÚNICA E OBRIGATÓRIA — diferente da aba Envios &
             Pendências, onde ele é atalho de fatia e pode ficar vazio.
@@ -3232,6 +3574,7 @@
 
         caixasDocumento.forEach((caixa) => caixa.addEventListener('change', () => {
             if (!exclusividadeDocumento(caixa)) return;
+            semestresDoDocumento(caixa.value);
             /*  As frases do documento que sai não existem no que entra — as do RIAF
                 falam de assinatura, as do contrato de mensalidade. Levá-las adiante
                 deixaria um recorte impossível valendo em silêncio, e a tabela
@@ -3580,6 +3923,23 @@
            cuida da ALTURA. Os dois juntos são o que a outra aba já tinha.
            ================================================================== */
         const ajustarAlturasIA = () => {
+            /*  A BARRA DEITADA QUE MUDOU DE LARGURA É REDESENHADA, e não só esticada.
+                O espaço do número na ponta (`fatorDeitado`) e o modo compacto
+                (`medidasDeitadas`) são medidos na largura do desenho; abrir a barra
+                de filtros depois dele tira ~80px de cada card do RIAF, e o Apex
+                esticava as barras com as medidas antigas — o número caía em cima da
+                barra. Repinta da última resposta, sem ir ao servidor, como a troca
+                de tema. 8px de tolerância para não repintar por arredondamento.  */
+            const larguraMudou = Object.keys(graficos).some((id) => {
+                const largura = graficos[id] && graficos[id].__larguraDoDesenho;
+                const alvo = document.getElementById(id);
+                return largura && alvo && alvo.clientWidth
+                    && Math.abs(alvo.clientWidth - largura) > 8;
+            });
+            if (larguraMudou && ultimoResumo) {
+                pintarGraficos(ultimoResumo);
+                return;
+            }
             Object.keys(graficos).forEach((id) => {
                 const alvo = document.getElementById(id);
                 if (!alvo || !graficos[id]) return;
@@ -3623,7 +3983,8 @@
                 pendente = setTimeout(ajustarAlturasIA, 250);
             });
             if (vistaPerformance) observador.observe(vistaPerformance);
-            ['ia-gr-veredito', 'ia-gr-msd', 'ia-gr-mcd', 'ia-gr-sit', 'ia-gr-alerta',
+            ['ia-gr-veredito', 'ia-gr-msd', 'ia-gr-mcd', 'ia-gr-matsd', 'ia-gr-matcd',
+             'ia-gr-ben', 'ia-gr-fin', 'ia-gr-sit', 'ia-gr-alerta',
              'ia-gr-inconsistencias'].forEach((id) => {
                 const caixa = document.getElementById(id);
                 if (caixa) observador.observe(caixa);
