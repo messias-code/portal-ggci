@@ -137,3 +137,27 @@ body { font-family: 'Poppins', sans-serif; }
     opacity: 1;
 }
 
+/* =========================================
+   CARD: POLICHAT - FINANCEIRO (ROXO INSTITUCIONAL OVG)
+   Modo Claro: tom extraído diretamente do "V" da logo da OVG (#816BAE)
+========================================= */
+.card-modulo--c {
+    background-color: var(--ovg-roxo-medio, #7660a1);
+    background-image: linear-gradient(to bottom right, var(--ovg-roxo-claro, #8c76b8), var(--ovg-roxo-medio, #7660a1));
+    background-clip: padding-box;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    box-shadow: 0 16px 32px -8px rgba(118, 96, 161, 0.35);
+}
+
+.card-modulo--c:hover {
+    box-shadow: 0 25px 50px -12px rgba(121, 101, 164, 0.45);
+}
+
+.card-modulo--c .card-modulo__desc {
+    color: rgba(255, 255, 255, 0.90);
+}
+
+.card-modulo--c .card-modulo__btn {
+    color: var(--ovg-roxo-profundo, #523f78);
+}
+
