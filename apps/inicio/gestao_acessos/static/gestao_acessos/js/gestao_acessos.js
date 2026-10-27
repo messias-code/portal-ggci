@@ -222,11 +222,45 @@ if (inputNomeCompleto) {
 
 /* ==========================================================================
    6. CONTROLE DE PERFIL
-   Promover a Administrador liga junto o acesso à Gestão de Acessos.
+   Promover a Administrador seleciona automaticamente todos os menus e
+   acessos modulares internos.
    ========================================================================== */
+function sincronizarAcessosAdmin(isAdmin) {
+    if (checkGestaoAcessos && !checkGestaoAcessos.disabled) {
+        checkGestaoAcessos.checked = isAdmin;
+    }
+
+    // 1. Atualiza todos os checkboxes de "Liberar Menu" (.menu-toggle)
+    const escopo = form || document;
+    const menuToggles = escopo.querySelectorAll('.menu-toggle');
+    menuToggles.forEach(toggle => {
+        toggle.checked = isAdmin;
+        toggle.dispatchEvent(new Event('change'));
+    });
+
+    // 2. Atualiza todos os subitens/cards modulares internos vinculados a cada menu
+    menuToggles.forEach(toggle => {
+        const targetClass = toggle.getAttribute('data-target');
+        if (!targetClass) return;
+
+        const cards = escopo.querySelectorAll(targetClass);
+        cards.forEach(card => {
+            card.disabled = !isAdmin;
+            card.checked = isAdmin;
+            card.dispatchEvent(new Event('change'));
+
+            const container = card.closest('.card-container');
+            if (container) {
+                container.style.opacity = isAdmin ? '1' : '0.5';
+                container.style.cursor = isAdmin ? 'pointer' : 'not-allowed';
+            }
+        });
+    });
+}
+
 if (toggleAdminGeral) {
     toggleAdminGeral.addEventListener('change', function() { 
-        if (checkGestaoAcessos && !checkGestaoAcessos.disabled) checkGestaoAcessos.checked = this.checked; 
+        sincronizarAcessosAdmin(this.checked);
         atualizarPreviews();
     });
 }
@@ -259,7 +293,8 @@ function abrirModalNovo() {
     // Dispara reset visual das permissões granulares
     const campos = [
         'p_ferramentas', 'p_formatador_listas', 'p_formatador_dados', 
-        'p_analise_ia', 'p_enquadramento_cursos', 'p_sugestoes', 'p_controle_acesso',
+        'toggle_menu_automacoes', 'p_analise_ia', 'p_enquadramento_cursos',
+        'p_sugestoes', 'p_controle_acesso',
         'p_dash_polichat', 'p_gestao_polichat', 'p_dash_documentos_ia'
     ];
     campos.forEach(campo => {
