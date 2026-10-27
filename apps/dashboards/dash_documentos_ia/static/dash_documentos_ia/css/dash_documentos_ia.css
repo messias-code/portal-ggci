@@ -1017,18 +1017,29 @@ body { font-family: 'Poppins', sans-serif; }
    --------------------------------------------------------------------------
    Escrito à mão, e não em utilitária do Tailwind, pela razão de sempre nesta
    folha: o bundle é purgado e não há build no repositório — classe nova não
-   chega ao `output.css` e falha calada. As cores saem dos tokens de tema mais
-   o roxo da marca, e o eleitoral corrige o roxo nominalmente em
-   `dash_documentos_ia-eleitoral.css`, como já faz com o selo do contador.
+   chega ao `output.css` e falha calada. O eleitoral troca as cores em
+   `dash_documentos_ia-eleitoral.css`, como faz com a calha e o "Ordenar por".
 
-   A CAIXA É A `<div>`, NÃO O `<input>`: a borda, o fundo e o foco vivem no
-   invólucro, e o campo por dentro fica transparente e sem borda. É o que
-   permite pôr o ícone e a frase de vazio DENTRO da mesma moldura sem que eles
-   disputem espaço com o texto — e é por isso que o foco é `:focus-within`.
+   MESMO DESENHO DO "ORDENAR POR" (`.docia-ordem-gatilho`). Era um retângulo
+   branco de borda fina — o único controle da barra fora do vocabulário da
+   calha, entre duas calhas (Documento acima, Situação do aluno abaixo). Agora
+   é a mesma calha lilás de 5px + 2.5rem + 5px, com o ícone numa peça branca
+   levantada à esquerda, o rótulo em caixa alta e a seta à direita: é um
+   controle que abre uma lista, e se desenha igual ao outro que faz isso.
 
-   A ALTURA É A MESMA DAS GRADES SEGMENTADAS (2.5rem) de propósito: esta seção
-   fica entre "Documento" e "Situação do aluno", e um campo mais baixo abriria
-   um degrau no meio da régua vertical em que a coluna inteira se apoia.
+   A CAIXA É A `<div>`, NÃO O `<input>`: o fundo, a calha e o foco vivem no
+   invólucro, e o campo por dentro fica transparente e sem borda, esticado
+   sobre ele inteiro — é o campo que recebe o clique e abre o calendário. Ícone
+   e seta são decorativos (`pointer-events: none`) e ficam por cima dele.
+
+   DOIS ESTADOS QUE O CSS LÊ SOZINHO, sem JS novo:
+     `.active`              o flatpickr põe no campo enquanto o calendário está
+                            aberto — a seta gira e a calha ganha o anel de foco;
+     `:placeholder-shown`   campo vazio. Com data, a peça do ícone vira a pastilha
+                            roxa das opções escolhidas: o filtro aceso se lê
+                            como a escolha acesa das calhas vizinhas.
+   O `:not(.flatpickr-input)` tira da conta o `<input>` original, que o
+   flatpickr esconde e que não tem placeholder nenhum.
    ========================================================================== */
 
 .docia-campo-data {
@@ -1036,49 +1047,99 @@ body { font-family: 'Poppins', sans-serif; }
     display: flex;
     align-items: center;
     width: 100%;
-    height: 2.5rem;
-    border: 1px solid var(--tema-borda-forte);
-    border-radius: 0.75rem;
-    background-color: var(--tema-superficie);
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    height: 3.125rem;
+    border-radius: 0.875rem;
+    background-color: rgba(107, 0, 123, 0.05);
+    box-shadow: inset 0 0 0 1px rgba(107, 0, 123, 0.09),
+                0 1px 2px rgba(17, 24, 39, 0.04);
+    transition: background-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .docia-campo-data:hover {
-    border-color: #6B007B;
+    background-color: rgba(107, 0, 123, 0.08);
 }
 
-.docia-campo-data:focus-within {
-    border-color: #6B007B;
-    box-shadow: 0 0 0 3px rgba(107, 0, 123, 0.1);
+.docia-campo-data:focus-within,
+.docia-campo-data:has(.docia-campo-data__entrada.active) {
+    box-shadow: inset 0 0 0 1px rgba(107, 0, 123, 0.28),
+                0 0 0 3px rgba(107, 0, 123, 0.08);
 }
 
-/*  DECORATIVO, e por isso `pointer-events: none`: quem abre o calendário é o
-    indicador nativo esticado por cima de tudo (abaixo). Um ícone clicável aqui
-    roubaria o clique dele e não abriria nada.  */
+/*  A peça branca do ícone — as mesmas medidas da do "Ordenar por".  */
 .docia-campo-data__icone {
     position: absolute;
-    left: 0.875rem;
-    font-size: 0.8125rem;
+    top: 5px;
+    bottom: 5px;
+    left: 5px;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    border-radius: 0.625rem;
+    background-color: #FFFFFF;
     color: #6B007B;
+    font-size: 0.8125rem;
+    box-shadow: 0 1px 2px rgba(17, 24, 39, 0.08),
+                inset 0 0 0 1px rgba(107, 0, 123, 0.08);
+    transition: background-color 0.18s ease, color 0.18s ease,
+                box-shadow 0.18s ease;
     pointer-events: none;
 }
 
+.docia-campo-data:has(.docia-campo-data__entrada:not(.flatpickr-input):not(:placeholder-shown))
+    .docia-campo-data__icone {
+    background-color: #6B007B;
+    color: #FFFFFF;
+    box-shadow: 0 1px 1px rgba(17, 24, 39, 0.10),
+                0 4px 10px -3px rgba(107, 0, 123, 0.45),
+                inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.docia-campo-data__seta {
+    position: absolute;
+    right: 0.875rem;
+    z-index: 1;
+    font-size: 0.625rem;
+    color: #6B007B;
+    transition: transform 0.2s ease;
+    pointer-events: none;
+}
+
+.docia-campo-data:has(.docia-campo-data__entrada.active) .docia-campo-data__seta {
+    transform: rotate(180deg);
+}
+
+/*  À esquerda: 5px de calha + 2.5rem da peça + 0.625rem de respiro, o mesmo
+    `gap` do "Ordenar por". À direita, o espaço da seta.  */
 .docia-campo-data__entrada {
     position: relative;
     width: 100%;
     height: 100%;
-    padding: 0 0.875rem 0 2.375rem;
+    padding: 0 2.25rem 0 calc(5px + 2.5rem + 0.625rem);
     border: 0;
     border-radius: inherit;
     background: transparent;
     color: var(--tema-texto-forte);
-    font-size: 0.75rem;
+    font-size: 0.6875rem;
     font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.04em;
     line-height: 1;
+    cursor: pointer;
+}
+
+/*  A frase de vazio fala como os rótulos das calhas: caixa alta em 10px.  */
+.docia-campo-data__entrada::placeholder {
+    color: var(--tema-texto-medio);
+    font-size: 0.625rem;
+    text-transform: uppercase;
+    opacity: 1;
 }
 
 .docia-campo-data__entrada:focus {
     outline: none;
+    cursor: text;
 }
 
 
@@ -2554,7 +2615,10 @@ html[data-tela-cheia="1"] .docia-legenda__pct { width: 44px; }
     background-color: #6B007B !important;
     color: #FFFFFF;
 }
-.docia-aba--ativa:hover { background-color: #5A0068 !important; }
+/*  O branco é repetido no hover porque `.docia-aba:hover`, acima, pinta o texto
+    de roxo com a mesma especificidade (0-2-0) — sem isto a aba escolhida ficava
+    com o rótulo roxo sobre o próprio fundo roxo ao passar o mouse.  */
+.docia-aba--ativa:hover { background-color: #5A0068 !important; color: #FFFFFF; }
 
 /* --- "Ordenar por" (vista IES) ---------------------------------------------
    Mesmo vocabulário da calha segmentada logo acima: o gatilho É uma calha
