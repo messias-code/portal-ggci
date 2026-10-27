@@ -32,17 +32,7 @@ html[data-tema="eleitoral"] .tela-header-icone {
     color: var(--tema-primaria-suave);
 }
 
-html[data-tema="eleitoral"] .tela-voltar {
-    background-color: rgba(255, 255, 255, 0.06);
-    border-color: var(--tema-borda-forte);
-    color: var(--tema-texto-medio);
-}
-
-html[data-tema="eleitoral"] .tela-voltar:hover {
-    background-color: rgba(111, 211, 191, 0.16);
-    border-color: var(--tema-primaria-borda);
-    color: var(--tema-primaria-suave);
-}
+/* O "Voltar" segue o botão de tema: ver `static/css/tema.css`, seção 5. */
 
 
 /* --------------------------------------------------------------------------
