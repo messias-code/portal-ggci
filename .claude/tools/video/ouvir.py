@@ -60,13 +60,22 @@ def ouvir(wav, esperado):
     palavras = [w for s in segs for w in s.words]
     ouvido = ' '.join(w.word.strip() for w in palavras)
     a, b = norm(esperado), norm(ouvido)
-    #  Homófonos e grafias de pronúncia ("Pró-Bem" sai "pro bem") não são erro.
-    a = norm(' '.join(a).replace('por que', 'porque').replace('pro bem', 'probem'))
+    #  Homófonos e grafias de pronúncia ("Pró-Bem" sai "pro bem", "ô-vê-gê" sai "ovg",
+    #  "Póli cháti" sai "polishat"/"polichat", "uats ápi" sai "whatsapp") não são erro.
+    def _eq(l):
+        s = ' '.join(l)
+        for de, para in [('por que', 'porque'), ('pro bem', 'probem'), ('o ve ge', 'ovg'),
+                         ('poli chati', 'polichat'), ('poli chat', 'polichat'), ('polishat', 'polichat'),
+                         ('uats api', 'whatsapp'), ('whats app', 'whatsapp')]:
+            s = s.replace(de, para)
+        return norm(s)
+    a, b = _eq(a), _eq(b)
     #  E/I átono final soam iguais em pt-BR ("riafe" = "riafi"); "ríafii" é grafia só de voz.
     #  A sigla lida devagar ("Rí-á-fi") ele escreve "RIAF", "Riafi" ou "riaffi": tudo é a sigla.
     a = [re.sub(r'ii$', 'i', x) for x in a]
     a, b = ([('riafi' if re.fullmatch(r'riaf+[ei]?', x) else 'riafis' if re.fullmatch(r'riaf+[ei]?s', x) else x) for x in l] for l in (a, b))
-    b = norm(' '.join(b).replace('por que', 'porque').replace('pro bem', 'probem'))
+    #  Na voz do dublador (VoiceStudio) o ProBem sai certo de ouvido e o Whisper escreve "Proben".
+    b = ['probem' if x == 'proben' else x for x in b]
     sm = difflib.SequenceMatcher(None, a, b)
     erros = [(' '.join(a[i1:i2]), ' '.join(b[j1:j2])) for op, i1, i2, j1, j2 in sm.get_opcodes() if op != 'equal']
     #  O Whisper escreve número em dígitos ("R$ 289,80") mesmo quando a fala foi por

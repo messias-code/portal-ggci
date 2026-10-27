@@ -6,7 +6,7 @@ Dependências Principais: playwright, imageio-ffmpeg, faster-whisper, piper-tts 
     `.venv`; Kokoro no `.venv-kokoro`. Os dois são criados pelo `setup.sh`.
 
 POR QUÊ EXISTE: explicar um achado para quem não lê página longa. A narração roda
-LOCAL (Kokoro ou Piper), então os números do SIBU que vão no texto não saem da máquina.
+LOCAL (dublador VoiceStudio, Kokoro ou Piper), então os números do SIBU que vão no texto não saem da máquina.
 EXCEÇÃO: os motores "edge" (Microsoft) e "elevenlabs" mandam o texto da narração para a internet.
 
 COMO FUNCIONA:
@@ -31,9 +31,9 @@ USO:
                 animacao.html. É a ponte para compor a imagem no HyperFrames.
 
 FORMATO DO roteiro.json:
-    {"motor": "kokoro",          # ou "piper", ou "edge"/"elevenlabs" (ONLINE)
-     "voz": "pm_alex",           # kokoro: pm_alex, pm_santa, pf_dora, ou mistura "pm_alex,am_puck" | piper: pt_BR-faber-medium | edge: pt-BR-AntonioNeural | elevenlabs: id da voz
-     "velocidade": 1.0,          # kokoro, edge e elevenlabs (0.7–1.2): >1 fala mais rápido | piper: <1 fala mais rápido
+    {"motor": "voicestudio",     # PADRÃO: o dublador (VoiceStudio/SKILL.md) | "kokoro", "piper", ou "edge"/"elevenlabs" (ONLINE)
+     "voz": "pm_alex",           # kokoro: pm_alex, pm_santa, pf_dora, ou mistura "pm_alex,am_puck" | piper: pt_BR-faber-medium | edge: pt-BR-AntonioNeural | elevenlabs: id da voz | voicestudio: ignora, a voz é a de VoiceStudio/voz.json
+     "velocidade": 1.0,          # kokoro, edge, elevenlabs e voicestudio (0.7–1.2): >1 fala mais rápido | piper: <1 fala mais rápido
      "pronuncia": {"RIAF": "Rí-á-fi", "ProBem": "Pró-Bem"},  # troca só no que a voz lê
      "devagar": {"RIAF": 0.65},  # kokoro: essas palavras saem mais lentas (fator na velocidade)
      "pausa": 0.45,              # silêncio entre cenas, em s
@@ -87,6 +87,11 @@ def narrar(pasta, rot):
     motor, voz, vel = rot.get('motor', 'kokoro'), rot.get('voz', 'pm_alex'), rot.get('velocidade', 1.0)
     cache = cache_de(pasta)
     troca = rot.get('pronuncia', {})
+    if motor == 'voicestudio':
+        #  O dublador do projeto: voz e pronúncias vêm de VoiceStudio/; o roteiro só acrescenta.
+        sys.path.insert(0, str(AQUI.parents[2] / 'VoiceStudio'))
+        import dublar
+        voz, troca = dublar.assinatura(), {**dublar.PRONUNCIAS, **troca}
     devagar = {falado(k, troca): v for k, v in rot.get('devagar', {}).items()}
     plano, faltam = [], []
     for c in rot['cenas']:
@@ -128,6 +133,9 @@ def narrar(pasta, rot):
                 subprocess.run([imageio_ffmpeg.get_ffmpeg_exe(), '-y', '-loglevel', 'error', '-i', mp3,
                                 '-ac', '1', '-ar', '24000', j['saida']], check=True)
                 Path(mp3).unlink()
+        elif motor == 'voicestudio':
+            for j in faltam:
+                dublar.falar(j['texto'], j['saida'], vel, ja_pronunciado=True)
         else:
             modelo = AQUI / 'voz' / f'{voz}.onnx'
             if not modelo.exists():
@@ -135,6 +143,12 @@ def narrar(pasta, rot):
             for j in faltam:
                 subprocess.run([str(AQUI / '.venv' / 'bin' / 'piper'), '-m', str(modelo), '--length-scale', str(vel),
                                 '-f', j['saida']], input=j['texto'].encode(), check=True, capture_output=True)
+    if motor == 'voicestudio':
+        #  O VoiceStudio não devolve o tempo das palavras; sem ele, as pausas do roteiro e o data-at não funcionam.
+        for c, itens in plano:
+            for _, f, wav in itens:
+                if not wav.with_suffix('.palavras.json').exists():
+                    alinhar_palavras(wav, f)
     return plano
 
 
@@ -192,6 +206,37 @@ def elevenlabs(j, voz, vel, mp3):
                                  headers={'xi-api-key': chave, 'Content-Type': 'application/json'})
     with urllib.request.urlopen(req, timeout=120) as r:
         Path(mp3).write_bytes(r.read())
+
+
+def alinhar_palavras(wav, fala):
+    """Grava <frase>.palavras.json (como o do Edge) para o motor que não informa o tempo das palavras.
+    O Whisper ouve a frase e as palavras dele são casadas com as da `fala` (difflib). O trecho que ele
+    escreveu diferente (número em dígitos, sigla) divide o próprio tempo entre as palavras da fala."""
+    import difflib
+    from ouvir import ler_wav, modelo, norm
+    segs, _ = modelo().transcribe(ler_wav(wav), language='pt', beam_size=5, word_timestamps=True)
+    ouv = [w for s in segs for w in s.words if norm(w.word)]
+    b = [' '.join(norm(w.word)) for w in ouv]
+    toks = [t for t in fala.split() if norm(t)]
+    a = [' '.join(norm(t)) for t in toks]
+    tempo = [None] * len(toks)
+    for op, i1, i2, j1, j2 in difflib.SequenceMatcher(None, a, b, autojunk=False).get_opcodes():
+        if op == 'equal':
+            for k in range(i2 - i1):
+                tempo[i1 + k] = (ouv[j1 + k].start, ouv[j1 + k].end)
+        elif i2 > i1 and j2 > j1:
+            ini, fim = ouv[j1].start, ouv[j2 - 1].end
+            passo = (fim - ini) / (i2 - i1)
+            for k in range(i2 - i1):
+                tempo[i1 + k] = (ini + k * passo, ini + (k + 1) * passo)
+    #  Palavra que o Whisper não ouviu: encaixa entre as vizinhas.
+    for i, t in enumerate(tempo):
+        if t is None:
+            ant = next((tempo[k][1] for k in range(i - 1, -1, -1) if tempo[k]), 0.0)
+            prox = next((tempo[k][0] for k in range(i + 1, len(tempo)) if tempo[k]), ant)
+            tempo[i] = (ant, max(ant, prox))
+    pal = [[round(x, 3), round(y, 3), t.strip('.,;:!?"()')] for (x, y), t in zip(tempo, toks)]
+    wav.with_suffix('.palavras.json').write_text(json.dumps(pal, ensure_ascii=False))
 
 
 def duracao(wav):

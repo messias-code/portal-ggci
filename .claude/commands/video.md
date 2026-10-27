@@ -5,6 +5,7 @@ argument-hint: [assunto ou link] [duração aproximada]
 
 Faça um vídeo explicando: $ARGUMENTS
 
+A voz é a do agente dublador: leia @VoiceStudio/SKILL.md antes do roteiro e use `"motor": "voicestudio"`.
 Use a ferramenta de `.claude/tools/video/`; leia o README dela antes (@.claude/tools/video/README.md)
 e as boas práticas (@.claude/tools/video/BOAS-PRATICAS.md).
 Se `.claude/tools/video/.venv-kokoro` não existir, rode `.claude/tools/video/setup.sh`.

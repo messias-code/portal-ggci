@@ -33,7 +33,7 @@ direção em inglês, shot list, identidade OVG, checklist e anti-padrões).
 
 ## Dois motores de imagem
 
-A VOZ sai sempre daqui (Antonio, pronúncias, `--conferir`). A IMAGEM tem dois caminhos:
+A VOZ sai sempre daqui (dublador VoiceStudio, pronúncias, `--conferir`). A IMAGEM tem dois caminhos:
 
 1. **Nosso runtime** (`animacao.html` + `runtime.js`): CSS com atraso preso a `--t0`/`--f1`.
    É o caminho do modelo do Wallyson e grava o MP4 inteiro com um comando.
@@ -66,7 +66,12 @@ A VOZ sai sempre daqui (Antonio, pronúncias, `--conferir`). A IMAGEM tem dois c
 
 ## Voz
 
-- **A voz PADRÃO é a Microsoft Antonio** (ver abaixo). Kokoro `pm_alex` a 1.08 foi a anterior
+- **A voz PADRÃO é a do agente dublador** (27/10/2026): `"motor": "voicestudio"`, voz03 local, com voz e
+  pronúncias em `VoiceStudio/` (leia `VoiceStudio/SKILL.md`). O VoiceStudio não informa o tempo das palavras:
+  o `fazer_video.py` tira com o Whisper (`alinhar_palavras`), e assim as pausas de vírgula e de ponto e vírgula e
+  o `data-at` funcionam como no Edge. As notas abaixo sobre Antonio, Kokoro e Piper
+  valem para esses motores, não para o dublador.
+- A Microsoft Antonio foi a padrão de 09/10 a 27/10/2026 (ver abaixo). Kokoro `pm_alex` a 1.08 foi a anterior
   e roda offline (o usuário "odiou a voz"). O Kokoro aceita mistura: `"voz": "pm_alex,am_puck"`.
   Mistura com voz inglesa passa no Whisper, mas pode trazer sotaque: ouça antes.
 - **`texto`** é a legenda; **`fala`** é o que a voz lê, com números por extenso
@@ -81,7 +86,7 @@ A VOZ sai sempre daqui (Antonio, pronúncias, `--conferir`). A IMAGEM tem dois c
   fonema (ver `falar_kokoro.py`). Entre 0.6 e 0.8 o Whisper ainda ouve "RIAF".
 - **Voz tipo "Jarvis"**: não há em pt-BR no Kokoro (só `pm_alex`, `pm_santa`, `pf_dora`);
   misturar com voz inglesa traz sotaque.
-- **Voz padrão (09/10/2026): Microsoft Antonio** (`"motor": "edge"`, `pt-BR-AntonioNeural`,
+- **Voz padrão de 09/10 a 27/10/2026: Microsoft Antonio** (`"motor": "edge"`, `pt-BR-AntonioNeural`,
   1.04 desde o v7; a 1.10 o "julho" já vira "júlio" em várias frases). É ONLINE: o texto vai para a Microsoft. RIAF = `"riáfi"`, força no "á" e o "i" final
   audível ("Rí-afi" joga a força no "rí" e engole o "i"; "riáf" sai cortado). ProBem =
   `"Prô Bém"` (com hífen ele lê "PRO com acento circunflexo"). O Whisper ouve "riáfi"
