@@ -175,6 +175,245 @@ tbody tr { background-color: transparent; }
 }
 
 
+/* ==========================================================================
+   BADGES DE RESUMO E FILTROS DE PERFIL (REDESIGN SÊNIOR — IDENTIDADE OVG)
+   ========================================================================== */
+.ga-badges-container {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 0.625rem !important; /* 10px */
+    flex: 1 1 0% !important;
+    width: 100% !important;
+    min-width: 0 !important;
+}
+
+.ga-badges-container .ga-badge {
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    height: 2.875rem !important; /* 46px - proporcional ao input de busca */
+    display: grid !important;
+    grid-template-columns: 1.75rem 1fr 1.75rem !important; /* Coluna 1: Ícone | Coluna 2: Texto Centralizado | Coluna 3: Contrapeso simétrico */
+    align-items: center !important;
+    padding: 0 0.5rem !important;
+    white-space: nowrap !important;
+    border-radius: 0.75rem !important; /* 12px */
+    box-sizing: border-box !important;
+    position: relative !important;
+    background: rgba(255, 255, 255, 0.82) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(129, 107, 174, 0.16) !important;
+    box-shadow: 0 2px 8px -2px rgba(129, 107, 174, 0.08), 0 1px 3px rgba(0, 0, 0, 0.03) !important;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+@media (max-width: 1024px) {
+    .ga-badges-container {
+        flex-wrap: wrap !important;
+    }
+    .ga-badges-container .ga-badge {
+        flex: 1 1 calc(50% - 0.35rem) !important;
+        min-width: calc(50% - 0.35rem) !important;
+    }
+}
+
+/* Container do Ícone (Posicionado estritamente na ponta esquerda) */
+.ga-badge-icon {
+    grid-column: 1 !important;
+    justify-self: start !important;
+    width: 1.75rem !important; /* 28px */
+    height: 1.75rem !important; /* 28px */
+    border-radius: 0.5rem !important; /* 8px */
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+    font-size: 0.8125rem !important; /* 13px */
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Cores e fundos semânticos de cada ícone */
+.ga-badge--total .ga-badge-icon {
+    background-color: rgba(129, 107, 174, 0.13);
+    color: var(--ovg-roxo-medio, #7660a1);
+}
+
+.ga-badge--online .ga-badge-icon {
+    background-color: rgba(16, 185, 129, 0.13);
+    color: #059669;
+}
+
+.ga-badge--admin .ga-badge-icon {
+    background-color: rgba(124, 58, 237, 0.13);
+    color: #7c3aed;
+}
+
+.ga-badge--comum .ga-badge-icon {
+    background-color: rgba(99, 102, 241, 0.13);
+    color: #6366f1;
+}
+
+/* Bloco de Informações (Coluna 2: rigorosamente centralizado no card, baseline nivelada) */
+.ga-badge-info {
+    grid-column: 2 !important;
+    justify-self: center !important;
+    display: inline-flex !important;
+    align-items: baseline !important;
+    justify-content: center !important;
+    gap: 0.35rem !important;
+    min-width: 0 !important;
+    white-space: nowrap !important;
+    margin: 0 auto !important;
+}
+
+/* Rótulo (Label) */
+.ga-badge-label {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: #4b5563 !important;
+    letter-spacing: -0.01em !important;
+    transition: color 0.25s ease !important;
+}
+
+/* Valor / Contador de KPI */
+.ga-badge-valor {
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+    font-variant-numeric: tabular-nums !important;
+    letter-spacing: -0.02em !important;
+    transition: all 0.25s ease !important;
+}
+
+.ga-badge--total .ga-badge-valor {
+    color: #1f2937;
+}
+
+.ga-badge--online .ga-badge-valor {
+    color: #059669;
+}
+
+.ga-badge--admin .ga-badge-valor {
+    color: #7c3aed;
+}
+
+.ga-badge--comum .ga-badge-valor {
+    color: #4f46e5;
+}
+
+/* Microinterações e Estados de Hover */
+.ga-badge--filtro {
+    cursor: pointer;
+}
+
+.ga-badge--filtro:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px -3px rgba(129, 107, 174, 0.14), 0 2px 6px -1px rgba(0, 0, 0, 0.04) !important;
+}
+
+.ga-badge--online.ga-badge--filtro:hover {
+    border-color: rgba(16, 185, 129, 0.40) !important;
+    background-color: rgba(255, 255, 255, 0.95) !important;
+    box-shadow: 0 6px 18px -3px rgba(16, 185, 129, 0.18), 0 2px 6px -1px rgba(0, 0, 0, 0.04) !important;
+}
+
+.ga-badge--admin.ga-badge--filtro:hover {
+    border-color: rgba(124, 58, 237, 0.38) !important;
+    background-color: rgba(255, 255, 255, 0.95) !important;
+    box-shadow: 0 6px 18px -3px rgba(124, 58, 237, 0.18), 0 2px 6px -1px rgba(0, 0, 0, 0.04) !important;
+}
+
+.ga-badge--comum.ga-badge--filtro:hover {
+    border-color: rgba(99, 102, 241, 0.38) !important;
+    background-color: rgba(255, 255, 255, 0.95) !important;
+    box-shadow: 0 6px 18px -3px rgba(99, 102, 241, 0.18), 0 2px 6px -1px rgba(0, 0, 0, 0.04) !important;
+}
+
+.ga-badge--filtro:active {
+    transform: translateY(0) scale(0.98);
+}
+
+/* Estado Ativo: Online */
+.ga-badge--online.ga-badge--ativo {
+    background: linear-gradient(135deg, #059669, #10b981) !important;
+    border-color: rgba(16, 185, 129, 0.6) !important;
+    color: #ffffff !important;
+    box-shadow: 0 6px 18px rgba(16, 185, 129, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+}
+
+.ga-badge--online.ga-badge--ativo .ga-badge-icon {
+    background-color: rgba(255, 255, 255, 0.22) !important;
+    color: #ffffff !important;
+}
+
+.ga-badge--online.ga-badge--ativo .ga-badge-label,
+.ga-badge--online.ga-badge--ativo .ga-badge-valor {
+    color: #ffffff !important;
+}
+
+/* Estado Ativo: Administradores */
+.ga-badge--admin.ga-badge--ativo {
+    background: linear-gradient(135deg, #7c3aed, #9333ea) !important;
+    border-color: rgba(124, 58, 237, 0.6) !important;
+    color: #ffffff !important;
+    box-shadow: 0 6px 18px rgba(124, 58, 237, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+}
+
+.ga-badge--admin.ga-badge--ativo .ga-badge-icon {
+    background-color: rgba(255, 255, 255, 0.22) !important;
+    color: #ffffff !important;
+}
+
+.ga-badge--admin.ga-badge--ativo .ga-badge-label,
+.ga-badge--admin.ga-badge--ativo .ga-badge-valor {
+    color: #ffffff !important;
+}
+
+/* Estado Ativo: Comuns */
+.ga-badge--comum.ga-badge--ativo {
+    background: linear-gradient(135deg, #4f46e5, #6366f1) !important;
+    border-color: rgba(79, 70, 229, 0.6) !important;
+    color: #ffffff !important;
+    box-shadow: 0 6px 18px rgba(79, 70, 229, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+}
+
+.ga-badge--comum.ga-badge--ativo .ga-badge-icon {
+    background-color: rgba(255, 255, 255, 0.22) !important;
+    color: #ffffff !important;
+}
+
+.ga-badge--comum.ga-badge--ativo .ga-badge-label,
+.ga-badge--comum.ga-badge--ativo .ga-badge-valor {
+    color: #ffffff !important;
+}
+
+/* ==========================================================================
+   INDICADORES VISUAIS DE STATUS NA TABELA (BOLINHAS ONLINE / OFFLINE)
+   ========================================================================== */
+.ga-status-dot {
+    display: inline-block;
+    width: 0.625rem; /* 10px */
+    height: 0.625rem;
+    border-radius: 9999px;
+    flex-shrink: 0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ga-status-dot--online {
+    background-color: #22c55e;
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.7);
+}
+
+.ga-status-dot--offline {
+    background-color: #ef4444;
+    opacity: 0.8;
+}
+
+
 
 /* ==========================================================================
    ==========================================================================
@@ -236,6 +475,132 @@ html[data-tema="eleitoral"] .ga-busca-icone {
 html[data-tema="eleitoral"] .ga-btn-novo {
     background-image: linear-gradient(to right, var(--tema-acento-esmeralda), var(--tema-acento-ciano));
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.40);
+}
+
+/* Badges no Modo Eleitoral */
+html[data-tema="eleitoral"] .ga-badge {
+    background: rgba(56, 65, 79, 0.75) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.10) !important;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25) !important;
+}
+
+html[data-tema="eleitoral"] .ga-badge-label {
+    color: var(--tema-texto-fraco, #9ca3af) !important;
+}
+
+html[data-tema="eleitoral"] .ga-badge--total .ga-badge-valor {
+    color: var(--tema-texto-forte, #f2f5f9) !important;
+}
+
+html[data-tema="eleitoral"] .ga-badge--total .ga-badge-icon {
+    background-color: rgba(150, 229, 212, 0.14) !important;
+    color: var(--tema-primaria-suave, #96e5d4) !important;
+}
+
+html[data-tema="eleitoral"] .ga-badge--online .ga-badge-valor {
+    color: #34d399 !important;
+}
+
+html[data-tema="eleitoral"] .ga-badge--online .ga-badge-icon {
+    background-color: rgba(16, 185, 129, 0.18) !important;
+    color: #34d399 !important;
+}
+
+html[data-tema="eleitoral"] .ga-badge--admin .ga-badge-valor {
+    color: #c084fc !important;
+}
+
+html[data-tema="eleitoral"] .ga-badge--admin .ga-badge-icon {
+    background-color: rgba(192, 132, 252, 0.16) !important;
+    color: #c084fc !important;
+}
+
+html[data-tema="eleitoral"] .ga-badge--comum .ga-badge-valor {
+    color: #93c5fd !important;
+}
+
+html[data-tema="eleitoral"] .ga-badge--comum .ga-badge-icon {
+    background-color: rgba(147, 197, 253, 0.16) !important;
+    color: #93c5fd !important;
+}
+
+html[data-tema="eleitoral"] .ga-badge--filtro:hover {
+    border-color: rgba(255, 255, 255, 0.22) !important;
+    background-color: rgba(66, 76, 91, 0.90) !important;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35) !important;
+}
+
+html[data-tema="eleitoral"] .ga-badge--online.ga-badge--filtro:hover {
+    border-color: rgba(52, 211, 153, 0.45) !important;
+}
+
+html[data-tema="eleitoral"] .ga-badge--admin.ga-badge--filtro:hover {
+    border-color: rgba(192, 132, 252, 0.45) !important;
+}
+
+html[data-tema="eleitoral"] .ga-badge--comum.ga-badge--filtro:hover {
+    border-color: rgba(147, 197, 253, 0.45) !important;
+}
+
+html[data-tema="eleitoral"] .ga-badge--online.ga-badge--ativo {
+    background: linear-gradient(135deg, #059669, #047857) !important;
+    border-color: rgba(52, 211, 153, 0.5) !important;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45) !important;
+}
+
+html[data-tema="eleitoral"] .ga-badge--online.ga-badge--ativo .ga-badge-icon {
+    background-color: rgba(255, 255, 255, 0.22) !important;
+    color: #ffffff !important;
+}
+
+html[data-tema="eleitoral"] .ga-badge--online.ga-badge--ativo .ga-badge-label,
+html[data-tema="eleitoral"] .ga-badge--online.ga-badge--ativo .ga-badge-valor {
+    color: #ffffff !important;
+}
+
+html[data-tema="eleitoral"] .ga-badge--admin.ga-badge--ativo {
+    background: linear-gradient(135deg, #7c3aed, #6d28d9) !important;
+    border-color: rgba(192, 132, 252, 0.5) !important;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45) !important;
+}
+
+html[data-tema="eleitoral"] .ga-badge--admin.ga-badge--ativo .ga-badge-icon {
+    background-color: rgba(255, 255, 255, 0.22) !important;
+    color: #ffffff !important;
+}
+
+html[data-tema="eleitoral"] .ga-badge--admin.ga-badge--ativo .ga-badge-label,
+html[data-tema="eleitoral"] .ga-badge--admin.ga-badge--ativo .ga-badge-valor {
+    color: #ffffff !important;
+}
+
+html[data-tema="eleitoral"] .ga-badge--comum.ga-badge--ativo {
+    background: linear-gradient(135deg, #3730a3, #1e1b4b) !important;
+    border-color: rgba(147, 197, 253, 0.5) !important;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45) !important;
+}
+
+html[data-tema="eleitoral"] .ga-badge--comum.ga-badge--ativo .ga-badge-icon {
+    background-color: rgba(255, 255, 255, 0.22) !important;
+    color: #ffffff !important;
+}
+
+html[data-tema="eleitoral"] .ga-badge--comum.ga-badge--ativo .ga-badge-label,
+html[data-tema="eleitoral"] .ga-badge--comum.ga-badge--ativo .ga-badge-valor {
+    color: #ffffff !important;
+}
+
+/* Indicadores de status no Modo Eleitoral */
+html[data-tema="eleitoral"] .ga-status-dot--online {
+    background-color: #10b981;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.7);
+}
+
+html[data-tema="eleitoral"] .ga-status-dot--offline {
+    background-color: #f87171;
+    opacity: 0.85;
 }
 
 
@@ -592,4 +957,29 @@ html[data-tema="eleitoral"] #modalConteudo .text-amber-800 {
 html[data-tema="eleitoral"] #modalNovoUsuario,
 html[data-tema="eleitoral"] #modalExcluirUsuario {
     background-color: rgba(0, 0, 0, 0.62);
+}
+
+
+/* ==========================================================================
+   ALINHAMENTO EM GRADE DOS CARDS DE ACESSOS MODULARES (MODAL)
+   Padroniza todos os menus para exibir os cards alinhados de 2 em 2
+   (lado a lado: 1º e 2º na primeira linha, 3º e 4º na segunda, etc.)
+   ========================================================================== */
+.ga-modal-cards-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.75rem !important; /* 12px (gap-3) */
+}
+
+@media (max-width: 639px) {
+    .ga-modal-cards-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 0.5rem !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .ga-modal-cards-grid {
+        grid-template-columns: 1fr !important;
+    }
 }

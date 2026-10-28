@@ -25,6 +25,7 @@ urlpatterns = [
     path('inicio/', include('apps.inicio.menu_inicio.urls')),
     path('inicio/gestao-acessos/', gestao_acessos_views.gestao_acessos, name='gestao_acessos'),
     path('api/salvar-usuario/', gestao_acessos_views.api_salvar_usuario, name='api_salvar_usuario'),
+    path('api/metricas-acessos/', gestao_acessos_views.api_metricas_acessos, name='api_metricas_acessos'),
     path('inicio/alterar-senha/', include('apps.inicio.alteracao_senha.urls')),
     
     # Ferramentas

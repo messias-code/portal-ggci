@@ -40,77 +40,263 @@ if (document.readyState === 'loading') {
 }
 
 /* ==========================================================================
-   1. SISTEMA DE BUSCA E FILTRAGEM NA TABELA
+   1. SISTEMA DE BUSCA E FILTRAGEM COMBINADA NA TABELA
+   - Filtro textual restrito a: Nome, Login e Email (ignora ID e Perfil)
+   - Filtro interativo por status (Online) e por perfil (Administradores / Comuns)
    ========================================================================== */
+let filtroAtivo = null; // null | 'online' | 'administrador' | 'comum'
+
 function initGestaoAcessosBusca() {
     const tbody = document.getElementById('tabelaUsuarios');
-    if (!tbody || tbody.dataset.searchInited) return;
-    tbody.dataset.searchInited = '1';
-    
-    // Salva as linhas originais carregadas pelo Django para restaurar depois
-    const originalRows = Array.from(tbody.querySelectorAll('tr'));
-    if (originalRows.length === 0 || (originalRows.length === 1 && originalRows[0].children.length === 1)) return;
-    
-    const inputBusca = document.getElementById('inputBusca');
-    if (!inputBusca) return;
+    if (!tbody) return;
 
-    // Escuta a digitação no campo de busca superior
-    inputBusca.addEventListener('input', function(e) {
-        // Normaliza o texto (remove acentos e deixa minúsculo)
-        const termo = e.target.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        const posicoes = new Map();
-        originalRows.forEach(row => posicoes.set(row, row.getBoundingClientRect().top));
-        
-        const matches = [];
-        const nonMatches = [];
-        
-        // Separa as linhas que combinam com a busca das que não combinam
-        originalRows.forEach(row => {
-            const texto = row.innerText.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            if (termo === '') {
-                matches.push(row);
-                row.style.opacity = '1';
-                row.style.filter = 'grayscale(0%)';
-                row.classList.remove('bg-purple-50/70');
-            } else if (texto.includes(termo)) {
-                matches.push(row);
-                row.style.opacity = '1';
-                row.style.filter = 'grayscale(0%)';
-                row.classList.add('bg-purple-50/70'); // Destaca o resultado
+    // Linhas de dados de usuários na tabela
+    const rows = Array.from(tbody.querySelectorAll('tr.ga-linha'));
+    if (rows.length === 0) return;
+
+    const inputBusca = document.getElementById('inputBusca');
+    const btnFiltroOnline = document.getElementById('badgeFiltroOnline');
+    const btnFiltroAdmin = document.getElementById('badgeFiltroAdmin');
+    const btnFiltroComum = document.getElementById('badgeFiltroComum');
+
+    // Linha de feedback quando nenhum resultado for encontrado
+    let linhaVazia = document.getElementById('ga-linha-vazia-busca');
+    if (!linhaVazia) {
+        linhaVazia = document.createElement('tr');
+        linhaVazia.id = 'ga-linha-vazia-busca';
+        linhaVazia.className = 'hidden';
+        linhaVazia.innerHTML = `
+            <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                <div class="flex flex-col items-center justify-center gap-2">
+                    <i class="fa-solid fa-filter-circle-xmark text-2xl text-purple-400"></i>
+                    <p class="font-semibold text-sm">Nenhum usuário encontrado para os filtros selecionados.</p>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(linhaVazia);
+    }
+
+    // Função central que aplica tanto o termo textual quanto o filtro interativo selecionado
+    function aplicarFiltros() {
+        const termo = inputBusca
+            ? inputBusca.value.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+            : "";
+
+        let totalVisiveis = 0;
+
+        rows.forEach(row => {
+            // Extrai exclusivamente Nome, Login e Email (removendo ID e Perfil da busca textual)
+            const nome = (row.dataset.nome || row.children[1]?.innerText || "")
+                .toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const login = (row.dataset.login || row.children[2]?.innerText || "")
+                .toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const email = (row.dataset.email || row.children[3]?.innerText || "")
+                .toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const perfil = (row.dataset.perfil || "").toLowerCase();
+            const isOnline = (row.dataset.online === 'true');
+
+            // Checagem textual restrita: Nome, Login ou Email
+            const matchTermo = (termo === "") || nome.includes(termo) || login.includes(termo) || email.includes(termo);
+
+            // Checagem do filtro selecionado (Online, Administrador ou Comum)
+            let matchFiltro = true;
+            if (filtroAtivo === 'online') {
+                matchFiltro = isOnline;
+            } else if (filtroAtivo === 'administrador') {
+                matchFiltro = (perfil === 'administrador');
+            } else if (filtroAtivo === 'comum') {
+                matchFiltro = (perfil === 'comum');
+            }
+
+            if (matchTermo && matchFiltro) {
+                row.style.display = "";
+                row.style.opacity = "1";
+                if (termo !== "") {
+                    row.classList.add("bg-purple-50/70");
+                } else {
+                    row.classList.remove("bg-purple-50/70");
+                }
+                totalVisiveis++;
             } else {
-                nonMatches.push(row);
-                row.style.opacity = '0.3';
-                row.style.filter = 'grayscale(100%)';
-                row.classList.remove('bg-purple-50/70');
+                row.style.display = "none";
+                row.classList.remove("bg-purple-50/70");
             }
         });
-        
-        // Reordena a tabela: primeiro os que combinam, depois os ocultos
-        matches.forEach(row => tbody.appendChild(row));
-        nonMatches.forEach(row => tbody.appendChild(row));
-        
-        // Animação de transição suave (Move as linhas pela tela em vez de pular direto)
-        originalRows.forEach(row => {
-            const novaPos = row.getBoundingClientRect().top;
-            const antigaPos = posicoes.get(row);
-            const deltaY = antigaPos - novaPos;
-            if (deltaY !== 0) {
-                row.style.transform = `translateY(${deltaY}px)`;
-                row.style.transition = 'none';
-                row.offsetHeight; // Força o reflow do navegador
-                row.style.transition = 'transform 0.6s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease, filter 0.4s ease, background-color 0.4s ease';
-                row.style.transform = '';
+
+        if (linhaVazia) {
+            if (totalVisiveis === 0) {
+                linhaVazia.classList.remove('hidden');
             } else {
-                row.style.transition = 'opacity 0.4s ease, filter 0.4s ease, background-color 0.4s ease';
+                linhaVazia.classList.add('hidden');
             }
+        }
+
+        // Atualiza estilo visual das badges ativas
+        if (btnFiltroOnline) {
+            btnFiltroOnline.classList.toggle('ga-badge--ativo', filtroAtivo === 'online');
+        }
+        if (btnFiltroAdmin) {
+            btnFiltroAdmin.classList.toggle('ga-badge--ativo', filtroAtivo === 'administrador');
+        }
+        if (btnFiltroComum) {
+            btnFiltroComum.classList.toggle('ga-badge--ativo', filtroAtivo === 'comum');
+        }
+    }
+
+    // Torna a função acessível para atualização via polling
+    window.gaAplicarFiltros = aplicarFiltros;
+
+    // Escuta a digitação no input de busca
+    if (inputBusca && !inputBusca.dataset.searchBound) {
+        inputBusca.dataset.searchBound = "1";
+        inputBusca.addEventListener("input", aplicarFiltros);
+    }
+
+    // Toggle do filtro de Usuários Online: 1º clique filtra, 2º clique limpa
+    if (btnFiltroOnline && !btnFiltroOnline.dataset.filterBound) {
+        btnFiltroOnline.dataset.filterBound = "1";
+        btnFiltroOnline.addEventListener("click", function() {
+            filtroAtivo = (filtroAtivo === "online") ? null : "online";
+            aplicarFiltros();
         });
-    });
+    }
+
+    // Toggle do filtro de Administradores: 1º clique filtra, 2º clique limpa
+    if (btnFiltroAdmin && !btnFiltroAdmin.dataset.filterBound) {
+        btnFiltroAdmin.dataset.filterBound = "1";
+        btnFiltroAdmin.addEventListener("click", function() {
+            filtroAtivo = (filtroAtivo === "administrador") ? null : "administrador";
+            aplicarFiltros();
+        });
+    }
+
+    // Toggle do filtro de Comuns: 1º clique filtra, 2º clique limpa
+    if (btnFiltroComum && !btnFiltroComum.dataset.filterBound) {
+        btnFiltroComum.dataset.filterBound = "1";
+        btnFiltroComum.addEventListener("click", function() {
+            filtroAtivo = (filtroAtivo === "comum") ? null : "comum";
+            aplicarFiltros();
+        });
+    }
+
+    // Aplica o filtro inicial se já houver estado ativo
+    aplicarFiltros();
 }
 document.addEventListener('turbo:load', initGestaoAcessosBusca);
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initGestaoAcessosBusca);
 } else {
     initGestaoAcessosBusca();
+}
+
+/* ==========================================================================
+   1.1 ATUALIZAÇÃO EM TEMPO REAL DAS FLAGS/BADGES E STATUS ONLINE NA TABELA
+   Consulta periodicamente o endpoint /api/metricas-acessos/ para refletir
+   logins, logouts, contadores e bolinhas verde/vermelha em tempo real sem reload.
+   ========================================================================== */
+let timerMetricasTempoReal = null;
+
+async function atualizarMetricasTempoReal() {
+    const badgeOnline = document.getElementById('badgeOnlineQtd');
+    if (!badgeOnline) return;
+
+    try {
+        const url = '/api/metricas-acessos/?_=' + Date.now();
+        const response = await fetch(url, {
+            cache: 'no-store',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        });
+        if (!response.ok) return;
+        const dados = await response.json();
+        if (dados.sucesso) {
+            const badgeTotal = document.getElementById('badgeTotalQtd');
+            const badgeAdmin = document.getElementById('badgeAdminQtd');
+            const badgeComum = document.getElementById('badgeComumQtd');
+
+            if (badgeTotal) badgeTotal.textContent = String(dados.total_usuarios);
+            if (badgeAdmin) badgeAdmin.textContent = String(dados.total_administradores);
+            if (badgeComum) badgeComum.textContent = String(dados.total_comuns);
+
+            if (badgeOnline && badgeOnline.textContent !== String(dados.total_online)) {
+                badgeOnline.textContent = String(dados.total_online);
+                badgeOnline.classList.add('scale-125', 'text-emerald-400');
+                setTimeout(() => {
+                    badgeOnline.classList.remove('scale-125', 'text-emerald-400');
+                }, 400);
+            }
+
+            // Atualização dinâmica em tempo real das bolinhas de status na tabela
+            if (Array.isArray(dados.online_ids)) {
+                const onlineSet = new Set(dados.online_ids.map(Number));
+                let houveMudancaStatus = false;
+
+                document.querySelectorAll('tr.ga-linha[data-user-id]').forEach(row => {
+                    const uid = parseInt(row.dataset.userId, 10);
+                    const estaOnlineAgora = onlineSet.has(uid);
+                    const estavaOnline = (row.dataset.online === 'true');
+
+                    if (estavaOnline !== estaOnlineAgora) {
+                        houveMudancaStatus = true;
+                        row.dataset.online = estaOnlineAgora ? 'true' : 'false';
+
+                        const dot = row.querySelector('.ga-status-dot');
+                        if (dot) {
+                            if (estaOnlineAgora) {
+                                dot.classList.remove('ga-status-dot--offline');
+                                dot.classList.add('ga-status-dot--online');
+                                dot.setAttribute('title', 'Online agora');
+                                dot.setAttribute('aria-label', 'Online');
+                            } else {
+                                dot.classList.remove('ga-status-dot--online');
+                                dot.classList.add('ga-status-dot--offline');
+                                dot.setAttribute('title', 'Offline');
+                                dot.setAttribute('aria-label', 'Offline');
+                            }
+                        }
+                    }
+                });
+
+                // Se o filtro 'online' estiver ativo e houve alteração no status de alguém, reaplica os filtros
+                if (houveMudancaStatus && filtroAtivo === 'online') {
+                    if (typeof window.gaAplicarFiltros === 'function') {
+                        window.gaAplicarFiltros();
+                    }
+                }
+            }
+        }
+    } catch (e) {
+        // Falha silenciosa de conexão
+    }
+}
+
+function iniciarPollingMetricas() {
+    if (timerMetricasTempoReal) clearInterval(timerMetricasTempoReal);
+    setTimeout(atualizarMetricasTempoReal, 200);
+    timerMetricasTempoReal = setInterval(atualizarMetricasTempoReal, 2000);
+}
+
+function pararPollingMetricas() {
+    if (timerMetricasTempoReal) {
+        clearInterval(timerMetricasTempoReal);
+        timerMetricasTempoReal = null;
+    }
+}
+
+document.addEventListener('turbo:load', iniciarPollingMetricas);
+document.addEventListener('turbo:before-cache', pararPollingMetricas);
+window.addEventListener('beforeunload', pararPollingMetricas);
+document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) {
+        atualizarMetricasTempoReal();
+    }
+});
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', iniciarPollingMetricas);
+} else {
+    iniciarPollingMetricas();
 }
 
 /* ==========================================================================
@@ -282,12 +468,13 @@ function abrirModalNovo() {
     document.getElementById('opcoes_edicao').classList.add('hidden');
     inputNomeCompleto.readOnly = false; 
     
-    // Reseta bloqueios baseados no poder do usuário logado (Master Admin)
-    if (toggleAdminGeral) toggleAdminGeral.disabled = !IS_MASTER_ADMIN;
-
-    if(!IS_MASTER_ADMIN) { 
-        if (toggleAdminGeral) toggleAdminGeral.checked = false; 
-        if (checkGestaoAcessos && !checkGestaoAcessos.disabled) checkGestaoAcessos.checked = false; 
+    // Libera a opção de promover para qualquer administrador
+    if (toggleAdminGeral) {
+        toggleAdminGeral.disabled = false;
+        toggleAdminGeral.checked = false;
+    }
+    if (checkGestaoAcessos && !checkGestaoAcessos.disabled) {
+        checkGestaoAcessos.checked = false;
     }
     
     // Dispara reset visual das permissões granulares
@@ -295,7 +482,7 @@ function abrirModalNovo() {
         'p_ferramentas', 'p_formatador_listas', 'p_formatador_dados', 
         'toggle_menu_automacoes', 'p_analise_ia', 'p_enquadramento_cursos',
         'p_sugestoes', 'p_controle_acesso',
-        'p_dash_polichat', 'p_gestao_polichat', 'p_dash_documentos_ia'
+        'p_dash_polichat', 'p_gestao_polichat', 'p_dash_documentos_ia', 'p_polichat_financeiro'
     ];
     campos.forEach(campo => {
         const el = document.getElementById(campo);
@@ -334,7 +521,7 @@ function abrirModalEdicao(user) {
         if (checkGestaoAcessos) { checkGestaoAcessos.checked = true; }
     } else {
         if (toggleAdminGeral) { 
-            toggleAdminGeral.disabled = !IS_MASTER_ADMIN; 
+            toggleAdminGeral.disabled = false; 
             toggleAdminGeral.checked = (user.perfil === 'administrador'); 
         }
         if (checkGestaoAcessos) { checkGestaoAcessos.checked = (user.perfil === 'administrador'); }
@@ -344,7 +531,7 @@ function abrirModalEdicao(user) {
     const camposBooleanos = [
         'p_ferramentas', 'p_formatador_listas', 'p_formatador_dados', 
         'p_analise_ia', 'p_enquadramento_cursos', 'p_sugestoes', 'p_controle_acesso',
-        'p_dash_polichat', 'p_gestao_polichat', 'p_dash_documentos_ia'
+        'p_dash_polichat', 'p_gestao_polichat', 'p_dash_documentos_ia', 'p_polichat_financeiro'
     ];
     
     let isMasterUser = (user.usuario === 'admin@ovg.org.br');

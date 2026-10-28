@@ -41,6 +41,7 @@ class Usuario(AbstractBaseUser):
     p_dash_polichat = models.BooleanField(default=False)
     p_gestao_polichat = models.BooleanField(default=False)
     p_dash_documentos_ia = models.BooleanField(default=False)
+    p_polichat_financeiro = models.BooleanField(default=False)
 
     # Controles internos do Django
     is_active = models.BooleanField(default=True)
