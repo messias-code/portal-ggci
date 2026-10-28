@@ -11,7 +11,11 @@ def dashboards(request):
                    hub — ou ao admin. Checar só p_dash_polichat barrava quem
                    tivesse apenas o dashboard de Documentos IA.
     """
-    tem_acesso = request.user.p_dash_polichat or request.user.p_dash_documentos_ia
+    tem_acesso = (
+        request.user.p_dash_polichat
+        or request.user.p_dash_documentos_ia
+        or getattr(request.user, 'p_polichat_financeiro', False)
+    )
     if not tem_acesso and request.user.usuario != 'admin@ovg.org.br':
         return redirect('inicio')
     return render(request, 'menu_dashboards/index.html')

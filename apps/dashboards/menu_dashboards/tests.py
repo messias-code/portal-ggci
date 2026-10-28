@@ -12,6 +12,7 @@ class TestMenuDashboards(TestCase):
             nome="Analista GGCI",
             p_dash_polichat=True,
             p_dash_documentos_ia=True,
+            p_polichat_financeiro=True,
         )
 
     def setUp(self):
@@ -33,4 +34,5 @@ class TestMenuDashboards(TestCase):
         self.assertIn("Polichat - Financeiro", conteudo)
         self.assertIn("card-modulo--c", conteudo)
         self.assertIn("fa-comments-dollar", conteudo)
+        self.assertIn(reverse('polichat_financeiro'), conteudo)
         self.assertIn("Análise comparativa do custo de mensagens, impacto das mudanças da Meta pós-contrato e projeções financeiras para 2025.", conteudo)
