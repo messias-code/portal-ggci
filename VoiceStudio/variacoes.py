@@ -12,6 +12,7 @@ USO:
     python3 VoiceStudio/variacoes.py gerar Polichat "Hoje vamos falar sobre o Polichat." \
         "Polichat" "Póli tchét" "Póli xát" ... [--saida pasta]
     python3 VoiceStudio/variacoes.py aplicar Polichat "Póli tchét"
+    --voz <vídeo>/voz/voz.json gera com a voz daquele vídeo (a aprovação vale para a voz em que foi ouvida).
 """
 import argparse
 import json
@@ -25,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import dublar  # noqa: E402
 
 
-def gerar(palavra, frase, grafias, saida):
+def gerar(palavra, frase, grafias, saida, voz=None):
     if not re.search(rf'\b{re.escape(palavra)}\b', frase):
         sys.exit(f'a frase não contém "{palavra}"')
     #  Versão nova, nunca por cima: pronuncia-polichat, pronuncia-polichat-v2...
@@ -37,13 +38,14 @@ def gerar(palavra, frase, grafias, saida):
     pasta.mkdir(parents=True)
     #  As outras pronúncias aprovadas continuam valendo; só a palavra testada sai do dicionário.
     outras = {k: v for k, v in dublar.PRONUNCIAS.items() if k.lower() != palavra.lower()}
+    vs = dublar.carregar_voz(voz) if voz else dublar.VOZ
     registro = []
     for i, g in enumerate(grafias, 1):
         texto = re.sub(rf'\b{re.escape(palavra)}\b', g, frase)
         for a, b in outras.items():
             texto = re.sub(rf'\b{re.escape(a)}\b', b, texto)
         wav = pasta / f'{i:02d}.wav'
-        dublar.falar(texto, wav, ja_pronunciado=True)
+        dublar.falar(texto, wav, ja_pronunciado=True, voz=vs)
         registro.append({'numero': i, 'arquivo': wav.name, 'grafia': g, 'texto_falado': texto})
         print(f'{i:02d}  {g}', flush=True)
     with tempfile.TemporaryDirectory() as tmp:
@@ -54,7 +56,8 @@ def gerar(palavra, frase, grafias, saida):
         lista.write_text(''.join(f"file '{(pasta / r['arquivo']).resolve()}'\nfile '{pausa}'\n" for r in registro))
         subprocess.run(['ffmpeg', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', str(lista),
                         '-c:a', 'libmp3lame', '-b:a', '128k', str(pasta / 'todas_em_sequencia.mp3')], check=True)
-    (pasta / 'variacoes.json').write_text(json.dumps({'palavra': palavra, 'frase': frase, 'variacoes': registro},
+    (pasta / 'variacoes.json').write_text(json.dumps({'palavra': palavra, 'frase': frase, 'voz': vs['perfil'],
+                                                      'variacoes': registro},
                                                      ensure_ascii=False, indent=1))
     print(pasta / 'todas_em_sequencia.mp3')
 
@@ -80,12 +83,13 @@ def main():
     g.add_argument('frase')
     g.add_argument('grafias', nargs='+')
     g.add_argument('--saida', help='pasta de saída (padrão: ./pronuncia-<palavra>)')
+    g.add_argument('--voz', help='voz.json de um vídeo (padrão: a voz do projeto)')
     a = sub.add_parser('aplicar')
     a.add_argument('palavra')
     a.add_argument('grafia')
     args = ap.parse_args()
     if args.acao == 'gerar':
-        gerar(args.palavra, args.frase, args.grafias, args.saida)
+        gerar(args.palavra, args.frase, args.grafias, args.saida, args.voz)
     else:
         aplicar(args.palavra, args.grafia)
 

@@ -24,7 +24,18 @@ import uuid
 from pathlib import Path
 
 AQUI = Path(__file__).resolve().parent
-VOZ = json.loads((AQUI / 'voz.json').read_text())
+
+
+def carregar_voz(caminho=AQUI / 'voz.json'):
+    """Lê um voz.json; a `referencia` é relativa à pasta dele. Outra voz só quando o usuário pede (ex.: um vídeo)."""
+    caminho = Path(caminho).resolve()
+    voz = json.loads(caminho.read_text())
+    voz['_wav'] = caminho.parent / voz['referencia']
+    voz['_json'] = caminho
+    return voz
+
+
+VOZ = carregar_voz()
 PRONUNCIAS = json.loads((AQUI / 'pronuncias.json').read_text())
 
 
@@ -35,9 +46,9 @@ def pronunciar(texto):
     return texto
 
 
-def assinatura():
+def assinatura(voz=VOZ):
     """Muda quando a voz muda: entra no hash do cache de frases do fazer_video.py."""
-    h = hashlib.sha1((AQUI / 'voz.json').read_bytes() + (AQUI / VOZ['referencia']).read_bytes())
+    h = hashlib.sha1(voz['_json'].read_bytes() + voz['_wav'].read_bytes())
     return h.hexdigest()[:10]
 
 
@@ -56,26 +67,26 @@ def _api(caminho, corpo=None, tipo='application/json', tentativas=6):
             sys.exit('VoiceStudio fora do ar. Rode VoiceStudio/iniciar.sh e tente de novo.')
 
 
-def perfil():
-    """Id do perfil da voz padrão; cria a partir de voz_padrao.wav se esta máquina ainda não tem."""
+def perfil(voz=VOZ):
+    """Id do perfil da voz; cria a partir do WAV de referência se esta máquina ainda não tem."""
     for p in json.loads(_api('/profiles')):
-        if p['name'] == VOZ['perfil']:
+        if p['name'] == voz['perfil']:
             return p['id']
     limite = uuid.uuid4().hex
-    campos = {'name': VOZ['perfil'], 'kind': 'clone', 'language': 'Portuguese',
-              'instruct': VOZ['instruct'], 'ref_text': VOZ['texto_referencia']}
+    campos = {'name': voz['perfil'], 'kind': 'clone', 'language': 'Portuguese',
+              'instruct': voz['instruct'], 'ref_text': voz['texto_referencia']}
     corpo = b''.join(f'--{limite}\r\nContent-Disposition: form-data; name="{k}"\r\n\r\n{v}\r\n'.encode()
                      for k, v in campos.items())
-    corpo += (f'--{limite}\r\nContent-Disposition: form-data; name="ref_audio"; filename="{VOZ["referencia"]}"\r\n'
-              'Content-Type: audio/wav\r\n\r\n').encode() + (AQUI / VOZ['referencia']).read_bytes()
+    corpo += (f'--{limite}\r\nContent-Disposition: form-data; name="ref_audio"; filename="{voz["referencia"]}"\r\n'
+              'Content-Type: audio/wav\r\n\r\n').encode() + voz['_wav'].read_bytes()
     corpo += f'\r\n--{limite}--\r\n'.encode()
     return json.loads(_api('/profiles', corpo, f'multipart/form-data; boundary={limite}'))['id']
 
 
-def falar(texto, saida, velocidade=1.0, ja_pronunciado=False):
-    """Grava `texto` em `saida` (WAV mono 24 kHz) com a voz padrão."""
-    corpo = {'model': 'omnivoice', 'voice': perfil(), 'language': VOZ['idioma'], 'seed': VOZ['seed'],
-             'num_step': VOZ['num_step'], 'speed': velocidade, 'response_format': 'wav',
+def falar(texto, saida, velocidade=1.0, ja_pronunciado=False, voz=VOZ):
+    """Grava `texto` em `saida` (WAV mono 24 kHz) com a voz padrão (ou a `voz` de carregar_voz)."""
+    corpo = {'model': 'omnivoice', 'voice': perfil(voz), 'language': voz['idioma'], 'seed': voz['seed'],
+             'num_step': voz['num_step'], 'speed': velocidade, 'response_format': 'wav',
              'input': texto if ja_pronunciado else pronunciar(texto)}
     audio = _api('/v1/audio/speech', json.dumps(corpo).encode())
     if audio[:4] != b'RIFF':
@@ -89,11 +100,12 @@ def main():
     ap.add_argument('saida')
     ap.add_argument('--arquivo', help='lê o texto deste arquivo em vez do argumento')
     ap.add_argument('--velocidade', type=float, default=1.0)
+    ap.add_argument('--voz', help='outro voz.json (só quando o usuário pede outra voz)')
     a = ap.parse_args()
     texto = Path(a.arquivo).read_text() if a.arquivo else a.texto
     if not texto:
         ap.error('informe o texto ou --arquivo')
-    falar(texto, a.saida, a.velocidade)
+    falar(texto, a.saida, a.velocidade, voz=carregar_voz(a.voz) if a.voz else VOZ)
     print(a.saida)
 
 

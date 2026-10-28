@@ -19,6 +19,10 @@ ouvido**. Vídeo, áudio solto ou teste de voz: leia este arquivo antes de escre
 | Arquivos | `voz.json` (parâmetros) + `voz_padrao.wav` (a amostra que fixa o timbre) |
 | Perfil no VoiceStudio | `Agente GGCI (voz03)`. O `dublar.py` cria sozinho a partir do WAV se a máquina não tiver |
 
+Outra voz, só quando o usuário pede, por vídeo (`"voz": "voz/voz.json"` no roteiro). As que ele já usou ficam em
+`vozes/`: **voz10** feminina madura (`female, elderly, moderate pitch`, seed 310), escolhida para o vídeo
+Polichat v3 em 27/10/2026. Copie `vozes/voz10/` para a pasta `voz/` do vídeo.
+
 Não troque a voz nem os parâmetros de `voz.json` sem o usuário pedir. A mesma seed com
 texto diferente, mas **sem** o perfil, muda o timbre; por isso a fala passa sempre pelo perfil.
 
@@ -36,8 +40,10 @@ VoiceStudio/iniciar.sh          # sobe e espera o /health; "parar" encerra
   `--conferir` como sempre (ver `.claude/tools/video/README.md`).
 - **Pausas e sincronia (27/10/2026)**: o VoiceStudio não informa o tempo de cada palavra. O
   `fazer_video.py` tira esse tempo com o Whisper (`alinhar_palavras`, grava `<frase>.palavras.json`
-  no cache) e, com ele, estica as pausas do roteiro e sincroniza a animação (`data-at`). Pausas
-  pedidas pelo usuário: `"pausa_virgula": 0.70` e `"pausa_ponto_virgula": 1.00`.
+  no cache) e, com ele, estica as pausas do roteiro e sincroniza a animação (`data-at`).
+  **Não insira silêncio na vírgula** (`pausa_virgula`): no vídeo Polichat v4 o corte caiu dentro de
+  consoantes e o usuário ouviu fim de palavra cortado (28/10/2026). A pausa vai entre frases, e a
+  vírgula fica com a pausa natural da voz. Para ritmo constante, use `"ritmo": {"min": 5.6, "max": 1.12}`.
 - **Ritmo**: 2,9 palavras por segundo (medido nas variações de OVG). Some as pausas: no vídeo
   Polichat v2, 1.353 palavras deram ~9,7 min.
 - **Áudio solto**:
@@ -49,6 +55,9 @@ VoiceStudio/iniciar.sh          # sobe e espera o /health; "parar" encerra
 
 ## Pronúncias
 
+As amostras de cada escolha (`pronuncia-<palavra>/`) são descartáveis: depois de aplicada, a grafia vive só no
+`pronuncias.json` e nesta tabela (as da primeira rodada foram apagadas a pedido do usuário em 28/10/2026).
+
 `pronuncias.json` troca a grafia **só no que a voz lê** (palavra inteira, maiúsculas
 contam). A legenda continua com a grafia normal.
 
@@ -56,9 +65,12 @@ contam). A legenda continua com a grafia normal.
 |---|---|---|
 | GGCI | `GGCI` (a sigla pura) | aprovada de ouvido em 27/10/2026. Grafias fonéticas ("gê gê cê í", "gê-gê-cê-í") deixam a sigla lenta e arrastada |
 | ProBem | `Pró Bem` (o `pronuncias.json` troca sozinho) | aprovada de ouvido em 27/10/2026. O Whisper escreve "Proben", e o `ouvir.py` aceita |
-| OVG | `OVG` (o `pronuncias.json` troca por `ô-vê-gê`) | aprovada de ouvido em 27/10/2026 (variação 02 de `artefatos_explicativos/polichat_financeiro/voicestudio/pronuncia-ovg/`) |
-| Polichat | `Polichat` (o `pronuncias.json` troca por `Póli cháti`) | aprovada de ouvido em 27/10/2026 (variação 02 de `artefatos_explicativos/polichat_financeiro/voicestudio/pronuncia-polichat/`) |
-| WhatsApp | `WhatsApp` (o `pronuncias.json` troca por `uats ápi`) | aprovada de ouvido em 27/10/2026 (variação 05 de `artefatos_explicativos/polichat_financeiro/voicestudio/pronuncia-whatsapp/`) |
+| OVG | `OVG` (o `pronuncias.json` troca por `ô-vê-gê`) | aprovada de ouvido em 27/10/2026 (variação 02) e de novo na voz10 em 28/10/2026 (variação 02) |
+| Polichat | `Polichat` (o `pronuncias.json` troca por `Póli cháti`) | aprovada de ouvido em 27/10/2026 (variação 02) |
+| WhatsApp | `WhatsApp` (o `pronuncias.json` troca por `uats ápi`) | aprovada de ouvido em 27/10/2026 (variação 05) |
+| Elisangela | `Elisangela` (o `pronuncias.json` troca por `Elisângela`) | aprovada de ouvido na voz10 em 28/10/2026 (variação 02) |
+| NeoHype | `NeoHype` (o `pronuncias.json` troca por `Nilraipe`) | o usuário ditou "nilraipe" e aprovou de ouvido na voz10 em 28/10/2026 (variação 01). As grafias "Neo Hype"/"Néo Ráipe" foram todas recusadas |
+| 24 horas | o `fala` sai "vinte e quatro horas"; o `"pronuncia"` do roteiro troca por `vinti-quatro horas` | aprovada de ouvido na voz10 em 28/10/2026 (variação 07). Por extenso normal, sai lento. Fica no roteiro do vídeo (Polichat v4), não no `pronuncias.json`: só foi ouvida nessa voz |
 
 As grafias que valiam para a voz Antonio (Edge), como `riáfi` e `Prô Bém`, **não valem
 aqui**: teste antes de usar.
@@ -78,6 +90,9 @@ O usuário pede `/dublador pronúncia <palavra>`, às vezes citando a frase do v
    ```
    Saem `01.wav` a `10.wav`, `todas_em_sequencia.mp3` e `variacoes.json`. As outras
    pronúncias aprovadas continuam valendo na frase. Pasta já existente vira `-v2`, `-v3`.
+   Vídeo com voz própria (`"voz": "voz/voz.json"`): gere com `--voz <vídeo>/voz/voz.json`. A
+   aprovação foi feita de ouvido **numa voz**; a mesma grafia pode soar diferente em outra
+   (28/10/2026: o usuário estranhou "ô-vê-gê" na voz10 feminina da v3 do Polichat).
 4. Entregue o caminho do MP3 e a lista numerada das grafias. **O usuário escolhe de
    ouvido.** Não escolha por ele: o Whisper "corrige" para palavras que existem.
 5. Com o número escolhido:

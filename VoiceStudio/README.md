@@ -41,6 +41,8 @@ Direto pelo terminal (o Claude usa os mesmos):
 python3 VoiceStudio/dublar.py "Olá, eu sou um agente da GGCI." saida.wav
 python3 VoiceStudio/variacoes.py gerar Polichat "Hoje vamos falar sobre o Polichat." "Polichat" "Póli tchét" ...
 python3 VoiceStudio/variacoes.py aplicar Polichat "Póli tchét"
+# vídeo com voz própria: as variações saem na voz dele
+python3 VoiceStudio/variacoes.py gerar OVG "..." "OVG" "ô-vê-gê" ... --voz <vídeo>/voz/voz.json
 ```
 
 ## Pronúncias aprovadas
@@ -49,9 +51,12 @@ python3 VoiceStudio/variacoes.py aplicar Polichat "Póli tchét"
 |---|---|---|
 | GGCI | escrita como sigla (`GGCI`) | 27/10/2026 |
 | ProBem | `Pró Bem` (a troca é automática) | 27/10/2026 |
-| OVG | `ô-vê-gê` (a troca é automática) | 27/10/2026 |
+| OVG | `ô-vê-gê` (a troca é automática) | 27/10/2026 (voz03) e 28/10/2026 (voz10) |
 | Polichat | `Póli cháti` (a troca é automática) | 27/10/2026 |
 | WhatsApp | `uats ápi` (a troca é automática) | 27/10/2026 |
+| Elisangela | `Elisângela` (a troca é automática) | 28/10/2026 (voz10) |
+| NeoHype | `Nilraipe` (a troca é automática) | 28/10/2026 (voz10) |
+| 24 horas | `vinti-quatro horas`, só no roteiro do vídeo Polichat v4 (voz10) | 28/10/2026 |
 
 A tabela completa e atualizada fica no `SKILL.md`.
 

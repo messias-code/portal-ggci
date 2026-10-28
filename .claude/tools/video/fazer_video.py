@@ -32,7 +32,7 @@ USO:
 
 FORMATO DO roteiro.json:
     {"motor": "voicestudio",     # PADRÃO: o dublador (VoiceStudio/SKILL.md) | "kokoro", "piper", ou "edge"/"elevenlabs" (ONLINE)
-     "voz": "pm_alex",           # kokoro: pm_alex, pm_santa, pf_dora, ou mistura "pm_alex,am_puck" | piper: pt_BR-faber-medium | edge: pt-BR-AntonioNeural | elevenlabs: id da voz | voicestudio: ignora, a voz é a de VoiceStudio/voz.json
+     "voz": "pm_alex",           # kokoro: pm_alex, pm_santa, pf_dora, ou mistura "pm_alex,am_puck" | piper: pt_BR-faber-medium | edge: pt-BR-AntonioNeural | elevenlabs: id da voz | voicestudio: a de VoiceStudio/voz.json, ou "voz/voz.json" (relativo à pasta) para outra voz
      "velocidade": 1.0,          # kokoro, edge, elevenlabs e voicestudio (0.7–1.2): >1 fala mais rápido | piper: <1 fala mais rápido
      "pronuncia": {"RIAF": "Rí-á-fi", "ProBem": "Pró-Bem"},  # troca só no que a voz lê
      "devagar": {"RIAF": 0.65},  # kokoro: essas palavras saem mais lentas (fator na velocidade)
@@ -40,11 +40,13 @@ FORMATO DO roteiro.json:
      "pausa_frase": 0.18,        # silêncio entre frases da mesma cena
      "pausa_virgula": 0.7, "pausa_ponto_virgula": 1.0,   # opcional: silêncio exato na vírgula e no ";" (edge)
      "pausa_virgula": {"curta": 0.28, "media": 0.4, "longa": 0.55},  # ou por tipo de vírgula (ver respirar)
+     "ritmo": {"min": 5.6, "max": 1.12},  # opcional: frase abaixo de 5,6 sílabas/s é acelerada (até 1,12×, sem mudar o tom)
      "folga_inicio": 0.4, "folga_fim": 1.2,
      "largura": 1280, "altura": 720, "escala": 1.5,   # 1280x720 x1.5 = 1080p
      "cenas": [{"id": "abre", "texto": "Frase um. Frase dois.",
                 "fala": "opcional: grafia só para a voz, com o MESMO número de frases"},
                {"id": "fecho", "silencio": 3}]}
+    "pausas": [0.3, 1.1] na cena = silêncio depois de cada frase dela (no lugar de pausa_frase).
     Uma cena pode trocar a pausa que vem depois dela: {"id": "abre", "pausa": 0, ...} emenda
     a fala na cena seguinte (a abertura que termina em "quero apresentar:").
 """
@@ -91,7 +93,9 @@ def narrar(pasta, rot):
         #  O dublador do projeto: voz e pronúncias vêm de VoiceStudio/; o roteiro só acrescenta.
         sys.path.insert(0, str(AQUI.parents[2] / 'VoiceStudio'))
         import dublar
-        voz, troca = dublar.assinatura(), {**dublar.PRONUNCIAS, **troca}
+        #  "voz": "voz/voz.json" (relativo à pasta do vídeo) troca a voz padrão só neste vídeo.
+        vs = dublar.carregar_voz(pasta / rot['voz']) if str(rot.get('voz', '')).endswith('.json') else dublar.VOZ
+        voz, troca = dublar.assinatura(vs), {**dublar.PRONUNCIAS, **troca}
     devagar = {falado(k, troca): v for k, v in rot.get('devagar', {}).items()}
     plano, faltam = [], []
     for c in rot['cenas']:
@@ -135,7 +139,7 @@ def narrar(pasta, rot):
                 Path(mp3).unlink()
         elif motor == 'voicestudio':
             for j in faltam:
-                dublar.falar(j['texto'], j['saida'], vel, ja_pronunciado=True)
+                dublar.falar(j['texto'], j['saida'], vel, ja_pronunciado=True, voz=vs)
         else:
             modelo = AQUI / 'voz' / f'{voz}.onnx'
             if not modelo.exists():
@@ -262,6 +266,40 @@ def alvo_da_pausa(fala, pos, rot):
     return v['curta'] if n <= 2 else v['media'] if n <= 5 else v['longa']
 
 
+def silencio_real(dados, params, t, busca=0.25, passo=0.01, minimo=0.04):
+    """Acha, no próprio áudio, o trecho de silêncio mais próximo de `t` (±`busca` s). Devolve (centro, duração)
+    ou None se a voz não para ali. O tempo das palavras vem do Whisper e erra por décimos: cortar nele joga o
+    silêncio no meio da palavra, e a voz parece travar ou cortar (vídeo do Gemini, 27/10/2026)."""
+    import numpy as np
+    x = np.frombuffer(dados, '<i2').astype(np.float32)
+    if params.nchannels > 1:
+        x = x.reshape(-1, params.nchannels).mean(axis=1)
+    n = int(params.framerate * passo)
+    q = len(x) // n
+    rms = np.sqrt((x[:q * n].reshape(q, n) ** 2).mean(axis=1))
+    voz = np.percentile(rms, 90) or 1
+    mudo = rms < voz * 0.06
+    a, b = max(0, int((t - busca) / passo)), min(q, int((t + busca) / passo) + 1)
+    melhor = None
+    i = a
+    while i < b:
+        if mudo[i]:
+            j = i
+            while j > 0 and mudo[j - 1]:
+                j -= 1
+            k = i
+            while k + 1 < q and mudo[k + 1]:
+                k += 1
+            dur = (k - j + 1) * passo
+            centro = (j + k + 1) / 2 * passo
+            if dur >= minimo and (melhor is None or abs(centro - t) < abs(melhor[0] - t)):
+                melhor = (centro, dur)
+            i = k + 1
+        else:
+            i += 1
+    return melhor
+
+
 def respirar(wav, fala, rot):
     """Lê a frase e estica o silêncio depois de cada vírgula e ";" até o valor pedido no roteiro
     (alvo_da_pausa). A frase é sintetizada inteira (a entonação da vírgula fica a do Edge); o silêncio entra no
@@ -281,7 +319,11 @@ def respirar(wav, fala, rot):
         alvo = alvo_da_pausa(fala, pos, rot) if fala[pos:pos + 1] in (',', ';') else None
         if alvo:
             prox = pal[i + 1][0]
-            cortes.append(((b + prox) / 2, max(0, alvo - (prox - b))))
+            sil = silencio_real(dados, params, (b + prox) / 2)
+            if sil is None:
+                continue   # a voz não para ali: inserir silêncio cortaria uma palavra ("trava")
+            centro, dur = sil
+            cortes.append((centro, max(0, alvo - dur)))
     larg = params.sampwidth * params.nchannels
     saida, ant = bytearray(), 0
     for t, extra in cortes:
@@ -296,6 +338,36 @@ def respirar(wav, fala, rot):
     return bytes(saida), params, novas
 
 
+def silabas(t):
+    """Núcleos vocálicos da fala: aproximação de sílabas, boa o bastante para comparar o ritmo entre frases."""
+    return len(re.findall(r'[aeiouáéíóúâêôãõàü]+', t.lower()))
+
+
+def ritmar(dados, params, pal, fala, ritmo):
+    """Acelera (atempo, sem mudar o tom) a frase que saiu mais lenta que ritmo['min'] sílabas por segundo. A mesma voz
+    varia ~±10% de uma frase para outra, e o usuário ouviu a narração "perder velocidade" (Polichat v4, 28/10/2026).
+    O ritmo é medido só no trecho com voz, sem as folgas das pontas. Devolve (frames, palavras)."""
+    import numpy as np
+    larg = params.sampwidth * params.nchannels
+    x = np.frombuffer(dados, '<i2').astype(np.float32)
+    n = int(params.framerate * 0.01)
+    q = len(x) // (n * params.nchannels)
+    rms = np.sqrt((x[:q * n * params.nchannels].reshape(q, -1) ** 2).mean(axis=1))
+    voz = np.where(rms > (np.percentile(rms, 90) or 1) * 0.06)[0]
+    dur = (voz[-1] - voz[0] + 1) * 0.01 if len(voz) > 1 else 0
+    if not dur:
+        return dados, pal
+    taxa = silabas(fala) / dur
+    if taxa >= ritmo['min']:
+        return dados, pal
+    f = min(ritmo.get('max', 1.12), ritmo['min'] / taxa)
+    fmt = ['-f', 's16le', '-ar', str(params.framerate), '-ac', str(params.nchannels)]
+    r = subprocess.run([imageio_ffmpeg.get_ffmpeg_exe(), '-loglevel', 'error', *fmt, '-i', 'pipe:0',
+                        '-af', f'atempo={f:.4f}', *fmt, 'pipe:1'], input=dados, capture_output=True, check=True)
+    saida = r.stdout[:len(r.stdout) // larg * larg]
+    return saida, [[a / f, b / f, p] for a, b, p in pal]
+
+
 def montar_audio(plano, rot, destino):
     """Cola as frases nos instantes da linha do tempo e devolve as cenas com os tempos."""
     pausa, pf = rot.get('pausa', 0.45), rot.get('pausa_frase', 0.18)
@@ -308,12 +380,16 @@ def montar_audio(plano, rot, destino):
             t += c['silencio']
         for i, (tx, fl, wav) in enumerate(itens):
             dados, params, pal = respirar(wav, fl, rot)
+            if rot.get('ritmo'):
+                dados, pal = ritmar(dados, params, pal, fl, rot['ritmo'])
             d = len(dados) / (params.sampwidth * params.nchannels) / params.framerate
             fs.append({'t0': round(t, 3), 't1': round(t + d, 3), 'texto': tx})
             if pal:
                 fs[-1]['palavras'] = [[round(t + a, 3), round(t + b, 3), p] for a, b, p in pal]
             trechos.append((t, dados))
-            t += d + (pf if i + 1 < len(itens) else 0)
+            #  "pausas": [0.3, 1.1, ...] = silêncio depois de cada frase da cena (fecho de raciocínio respira mais).
+            ps = c.get('pausas') or []
+            t += d + ((ps[i] if i < len(ps) and ps[i] is not None else pf) if i + 1 < len(itens) else 0)
         cenas.append({'id': c['id'], 't0': round(t0, 3), 'dur': round(t - t0, 3), 'frases': fs})
         t += c.get('pausa', pausa)
     total = t - pausa + rot.get('folga_fim', 1.2)

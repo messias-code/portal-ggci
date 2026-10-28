@@ -1,0 +1,1 @@
+{"perfil":"Agente GGCI (voz10 feminina)","referencia":"voz10_madura_media.wav","texto_referencia":"Olá, eu sou uma agente desenvolvida pela GGCI, para auxiliar nas demandas do Pró Bem.","instruct":"female, elderly, moderate pitch","idioma":"pt","seed":310,"num_step":16,"backend":"http://localhost:3900"}
