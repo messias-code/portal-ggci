@@ -29,7 +29,7 @@
     <!-- Console de atualização: utilitárias que o bundle purgou + os dois temas. -->
     <link rel="stylesheet" href="{% static 'css/console.css' %}?v=1">
     <!-- Aviso de motor ocupado: impede as duas atualizações de brigarem pelo SIBU. -->
-    <link rel="stylesheet" href="{% static 'css/motor-ocupado.css' %}?v=1">
+    <link rel="stylesheet" href="{% static 'css/motor-ocupado.css' %}?v=2">
 
     <!-- Tokens de cor dos temas e a troca de logo (compartilhado por todo o portal) -->
     <link rel="stylesheet" href="{% static 'css/tema.css' %}">
@@ -2464,9 +2464,9 @@
         ApexCharts é a biblioteca de gráficos do portal — a mesma que o Polichat
         usa. Esta tela era a única ainda em ECharts.
     -->
-    <script src="{% static 'js/motor-ocupado.js' %}?v=1"></script>
+    <script src="{% static 'js/motor-ocupado.js' %}?v=3"></script>
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-    <script src="{% static 'dash_documentos_ia/js/dash_documentos_ia.js' %}?v=20260924b"></script>
+    <script src="{% static 'dash_documentos_ia/js/dash_documentos_ia.js' %}?v=20261103c"></script>
     <!--
         A ABA ANÁLISE IA. Depois de `dash_documentos_ia.js` porque o filtro de
         instituições e o console de atualização vivem lá e são compartilhados; este
@@ -2481,6 +2481,6 @@
     -->
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/pt.js"></script>
-    <script src="{% static 'dash_documentos_ia/js/analise_ia.js' %}?v=20261026a"></script>
+    <script src="{% static 'dash_documentos_ia/js/analise_ia.js' %}?v=20261103b"></script>
 </body>
 </html>

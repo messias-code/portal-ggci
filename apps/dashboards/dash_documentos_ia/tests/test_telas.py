@@ -471,14 +471,16 @@ class TestApiDeAcompanhamento(BaseTelas):
         )
 
     def test_parar_marca_falha(self):
-        # O `os.system` é simulado: de verdade, ele roda `pkill` na máquina. Em 24/09/2026
-        # esta suíte matou uma atualização real e todos os Chromium do servidor.
-        with patch("apps.dashboards.dash_documentos_ia.views.os.system") as sistema:
+        # O encerramento é simulado: de verdade, ele mata processos na máquina. Em 24/09/2026
+        # esta suíte (ainda com `pkill`) matou uma atualização real e todos os Chromium do
+        # servidor. O alvo exato (id inteiro, só este projeto) é testado em
+        # `portal_ggci/test_processos.py`, contra processos falsos.
+        with patch("portal_ggci.processos.encerrar_execucao") as encerrar:
             self.cliente.post(reverse("dash_documentos_ia_parar", args=[self.processo.id]))
         self.processo.refresh_from_db()
         self.assertEqual(self.processo.status, "FALHA")
-        # Âncora no fim: parar o 18 não pode casar com o 181.
-        self.assertIn(f"executar_doc_ia {self.processo.id}$'", sistema.call_args_list[0].args[0])
+        self.assertIn("abortado manualmente", self.processo.log)
+        encerrar.assert_called_once_with("executar_doc_ia", self.processo.id)
 
     def test_parar_processo_inexistente_nao_estoura(self):
         resposta = self.cliente.post(reverse("dash_documentos_ia_parar", args=[999999]))

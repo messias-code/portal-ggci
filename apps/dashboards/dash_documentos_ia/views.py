@@ -23,7 +23,7 @@ from django.shortcuts import redirect, render
 from django.utils.timezone import localtime
 from django.views.decorators.csrf import csrf_exempt
 
-from portal_ggci.processos import popen_com_limite
+from portal_ggci.processos import abortar_execucao, execucao_viva, popen_com_limite
 
 from .models import ProcessamentoDocIA
 
@@ -256,12 +256,13 @@ def _bloqueio_do_outro_motor(request, eu):
                              'msg': "O %s está atualizando agora." % outro['rotulo']},
                             status=409)
 
-    # "Abortar e iniciar": para o outro pela própria view dele.
-    from django.test import Client as _ClienteInterno
+    # "Abortar e iniciar": para o outro e só volta com ele morto. Antes isto passava por
+    # um `django.test.Client` com `force_login(request.user)` — o login falso disparava o
+    # signal que grava `Usuario.session_key`, e o `SingleSessionMiddleware` deslogava a
+    # pessoa de verdade no pedido seguinte. Era o "abortei e tive que logar de novo".
+    from portal_ggci.execucoes import abortar_motor
 
-    interno = _ClienteInterno()
-    interno.force_login(request.user)
-    interno.post(outro['url_parar'])
+    abortar_motor(outro['motor'], outro['processo_id'])
     return None
 
 
@@ -289,11 +290,9 @@ def iniciar_atualizacao_docia(request):
 
     ativos = ProcessamentoDocIA.objects.filter(status__in=STATUS_ATIVOS)
 
-    rodando = False
-    try:
-        rodando = bool(subprocess.check_output(['pgrep', '-f', 'manage.py executar_doc_ia']).strip())
-    except subprocess.CalledProcessError:
-        pass
+    # Só conta processo DESTE projeto: o `pgrep -f` de antes também via o executar_doc_ia
+    # da produção (mesma máquina, mesmo usuário) e adotava uma execução que não era daqui.
+    rodando = execucao_viva('executar_doc_ia')
 
     if ativos.exists():
         if rodando:
@@ -356,11 +355,10 @@ def status_atualizacao_docia(request, processo_id):
 @csrf_exempt
 def parar_atualizacao_docia(request, processo_id):
     """
-    O QUE FAZ: Aborta uma atualização em andamento.
-    POR QUÊ EXISTE: O front chama isto via sendBeacon quando o usuário sai da página no
-        meio da extração — sem isso o Chromium do Playwright ficaria órfão consumindo RAM.
-    COMO FUNCIONA: marca FALHA no banco e mata o processo e os navegadores no SO.
-    EFEITOS COLATERAIS: encerra processos abruptamente.
+    O QUE FAZ: Aborta uma atualização em andamento (botão Parar ou saída da página).
+    COMO FUNCIONA: mata a árvore do motor DESTE processo (Python, Playwright e os Chromium
+        dele — e nenhum outro) e só depois grava FALHA. Ver `abortar_execucao`. Quando a
+        resposta chega, o motor já morreu: dá para iniciar outra atualização na sequência.
 
     Sem `login_required` de propósito: o sendBeacon do `pagehide` não carrega a sessão de
     forma confiável em todos os navegadores, e o alvo é sempre um ID específico já criado.
@@ -368,27 +366,12 @@ def parar_atualizacao_docia(request, processo_id):
     if request.method != 'POST':
         return JsonResponse({'status': 'erro', 'msg': 'Método não permitido.'}, status=400)
 
-    try:
-        processo = ProcessamentoDocIA.objects.get(id=processo_id)
-    except ProcessamentoDocIA.DoesNotExist:
+    aviso = "\n\n🚨 [SISTEMA] Processo abortado manualmente pelo usuário!"
+    encontrou = abortar_execucao(ProcessamentoDocIA, 'executar_doc_ia', processo_id, aviso)
+    for outro_id in ProcessamentoDocIA.objects.filter(status__in=STATUS_ATIVOS).exclude(id=processo_id).values_list('id', flat=True):
+        abortar_execucao(ProcessamentoDocIA, 'executar_doc_ia', outro_id, aviso)
+    if not encontrou:
         return JsonResponse({'status': 'erro', 'msg': f'Processo {processo_id} não encontrado.'})
-
-    processo.status = 'FALHA'
-    processo.progresso = 100
-    processo.log += "\n\n🚨 [SISTEMA] Processo abortado manualmente pelo usuário!"
-    processo.save()
-
-    try:
-        # O `$` é o que faz o alvo ser ESTE processo. O `pkill -f` casa por trecho da
-        # linha de comando, então sem âncora parar o 18 também matava o 181 e o 1810. Foi
-        # assim que, em 24/09/2026, a suíte de testes (processo de teste com id pequeno)
-        # derrubou a execução 181 no meio, deixando-a EXTRAINDO no banco para sempre.
-        os.system(f"pkill -f 'executar_doc_ia {processo_id}$'")
-        os.system("pkill -f chromium")
-        os.system("pkill -f playwright")
-    except Exception:
-        pass
-
     return JsonResponse({'status': 'ok'})
 
 
@@ -2901,7 +2884,7 @@ COLUNAS_ANALISE_IA = {
         'matricula_sd_doc', 'matricula_com_desc', 'gemini_matricula_com_desc',
         'matricula_cd_doc', 'mensalidade_sem_desc', 'gemini_mensalidade_sem_desc',
         'msd_doc', 'mensalidade_com_desc', 'gemini_mensalidade_com_desc', 'mcd_doc',
-        'valor_beneficio', 'gemini_valor_beneficio', 'soma_valor_beneficio', 'beneficio', 'gemini_nome_beneficio',
+        'valor_beneficio', 'beneficio', 'soma_valor_beneficio', 'gemini_valor_beneficio', 'gemini_nome_beneficio',
         'valor_financiamento', 'gemini_valor_financiamento',
         'soma_valor_financiamento', 'financiamento', 'gemini_nome_financiamento', 'soma_ovg_devia_pagar_sis',
         'soma_ovg_devia_pagar_ia', 'soma_prejuizo_ovg', 'soma_economia_ovg',

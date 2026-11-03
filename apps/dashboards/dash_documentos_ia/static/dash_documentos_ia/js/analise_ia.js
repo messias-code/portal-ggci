@@ -447,8 +447,11 @@
         };
 
         const atualizarContadores = () => {
+            /*  O SEMESTRE PINTA O SELO DA SEÇÃO, MAS FICA FORA DO TOTAL: ele está
+                sempre marcado, e o total do cabeçalho conta só de "Data de
+                processamento" para baixo — que é onde começa o recorte opcional.  */
+            contador('contador-semestres-ia', marcados(caixasSemestre).length);
             let total = 0;
-            total += contador('contador-semestres-ia', marcados(caixasSemestre).length);
             total += contador('contador-situacao-ia',
                 marcados(nosFiltros('.filter-vinculo')).length
                 + marcados(nosFiltros('.filter-perfil')).length);
@@ -467,7 +470,12 @@
             CARDS_DE_MENSALIDADE.forEach(([parametro]) => { total += recorteMensalidade[parametro].size; });
             total += recorteHistorico.sit.size + recorteHistorico.alerta.size;
             total += contador('contador-ies-ia', iesDaAba().length);
-            contador('contador-filtros', total);
+            /*  O selo do cabeçalho é dividido com Envios & Pendências: com a outra
+                aba no ar, o total daqui ficaria pintado lá. A volta para esta aba
+                repinta (ver o ouvinte de `docia:aba`).  */
+            if (!window.dociaAbaAtiva || window.dociaAbaAtiva() === 'analise') {
+                contador('contador-filtros', total);
+            }
         };
 
         /* ==================================================================
@@ -3783,6 +3791,18 @@
                         evento.preventDefault();
                     });
 
+                    /*  ROLAR FECHA O CALENDÁRIO. Ele mora no `<body>`, posicionado uma
+                        vez só na abertura: rolar a barra de filtros levava o campo
+                        embora e deixava o calendário parado no ar, por cima dos
+                        outros filtros. `scroll` não borbulha, por isso a CAPTURA no
+                        `document` — é ela que ouve a rolagem de qualquer caixa, a
+                        barra de filtros inclusive. Fechar é fechar-sem-confirmar: o
+                        `onClose` devolve o campo à data que está valendo.  */
+                    document.addEventListener('scroll', (evento) => {
+                        if (!fp.isOpen || fp.calendarContainer.contains(evento.target)) return;
+                        fp.close();
+                    }, true);
+
                     /*  ENTER É O OK DE QUEM ESTÁ DIGITANDO — e para ser o OK ele
                         precisa chegar antes do Enter DO WIDGET, que faz outra coisa:
                         absorve o texto, fecha o calendário e tira o foco do campo. Era
@@ -4017,6 +4037,7 @@
            ================================================================== */
         document.addEventListener('docia:aba', (evento) => {
             if (!evento.detail || evento.detail.aba !== 'analise') return;
+            atualizarContadores();
             requestAnimationFrame(() => {
                 if (pendenteDeRecarga) recarregar();
                 else if (temaPendenteIA && ultimoResumo) {

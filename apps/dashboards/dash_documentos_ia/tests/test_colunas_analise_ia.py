@@ -134,7 +134,7 @@ class TestRecorteDoRiaf(unittest.TestCase):
             'gemini_matricula_com_desc', 'matricula_cd_doc', 'mensalidade_sem_desc',
             'gemini_mensalidade_sem_desc', 'msd_doc', 'mensalidade_com_desc',
             'gemini_mensalidade_com_desc', 'mcd_doc', 'valor_beneficio',
-            'gemini_valor_beneficio', 'soma_valor_beneficio', 'beneficio', 'gemini_nome_beneficio',
+            'beneficio', 'soma_valor_beneficio', 'gemini_valor_beneficio', 'gemini_nome_beneficio',
             'valor_financiamento', 'gemini_valor_financiamento',
             'soma_valor_financiamento', 'financiamento', 'gemini_nome_financiamento', 'soma_ovg_devia_pagar_sis',
             'soma_ovg_devia_pagar_ia', 'soma_prejuizo_ovg', 'soma_economia_ovg',
