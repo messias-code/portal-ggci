@@ -196,7 +196,16 @@ def checar_status_ia(request, processo_id):
     """
     try:
         processo = ProcessamentoAnaliseIA.objects.get(id=processo_id)
-        
+        if processo.status in STATUS_ATIVOS and not execucao_viva('executar_motor_ia', processo_id):
+            processo.status = 'FALHA'
+            processo.data_fim = timezone.now()
+            aviso = (
+                "\n\n🚨 [SISTEMA] Processo interrompido inesperadamente pelo sistema operacional "
+                "(falta de memória / OOM Killer ou encerramento externo)."
+            )
+            processo.log = (processo.log or "") + aviso
+            processo.save(update_fields=['status', 'data_fim', 'log'])
+
         return JsonResponse({
             'status_codigo': processo.status,
             'status_texto': processo.get_status_display(),
