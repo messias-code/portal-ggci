@@ -13,6 +13,11 @@
    valor no modo eleitoral; o bloco do fim cobre só o que não é token.
    ========================================================================== */
 
+/*  A fonte-base de 90% de todas as telas do portal (Documentos IA, Polichat,
+    Análise IA, menus…). Sem ela, tudo que é medido em rem — cabeçalho, Atualizar,
+    tema, Voltar, Consultar — saía ~11% maior que nas outras telas.  */
+html { font-size: 90%; }
+
 .grid-bg {
     background-image:
         linear-gradient(var(--tema-grade) 1px, transparent 1px),
