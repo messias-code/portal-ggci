@@ -323,13 +323,31 @@
                                     <td class="px-6 py-4">{{ u.username_only }}</td>
                                     <td class="px-6 py-4">{{ u.usuario }}</td>
 
-                                    <!-- Estilização Condicional do Badge de Perfil -->
+                                    <!-- Estilização do Badge de Perfil (Design Pill com Ícone Circular) -->
                                     <td class="px-6 py-4 text-center">
-                                        <span class="px-3 py-1 rounded-full text-xs font-bold border 
-                                                {% if u.perfil == 'administrador' %}bg-purple-100 text-purple-700
-                                                {% else %}bg-gray-100 text-gray-600{% endif %}">
-                                            {{ u.perfil|title }}
+                                        {% if u.perfil == 'administrador' %}
+                                        <span class="ga-perfil-tag ga-perfil-tag--admin" title="Perfil Administrador">
+                                            <span class="ga-perfil-tag__icone" aria-hidden="true">
+                                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                                    <path d="M3 7l5 4 4-7 4 7 5-4-2 13H5L3 7z"/>
+                                                    <circle cx="3" cy="6" r="2"/>
+                                                    <circle cx="12" cy="3" r="2"/>
+                                                    <circle cx="21" cy="6" r="2"/>
+                                                </svg>
+                                            </span>
+                                            <span class="ga-perfil-tag__texto">Administrador</span>
                                         </span>
+                                        {% else %}
+                                        <span class="ga-perfil-tag ga-perfil-tag--comum" title="Perfil Usuário Comum">
+                                            <span class="ga-perfil-tag__icone" aria-hidden="true">
+                                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                                    <circle cx="12" cy="7" r="4"/>
+                                                    <path d="M4 21v-2a8 8 0 0 1 16 0v2z"/>
+                                                </svg>
+                                            </span>
+                                            <span class="ga-perfil-tag__texto">Comum</span>
+                                        </span>
+                                        {% endif %}
                                     </td>
 
                                     <!-- Coluna de Botões de Ação (Editar / Excluir) -->

@@ -414,6 +414,102 @@ tbody tr { background-color: transparent; }
 }
 
 
+/* ==========================================================================
+   BADGES DE PERFIL NA TABELA (ADMINISTRADOR E COMUM — DESIGN PILL)
+   ========================================================================== */
+.ga-perfil-tag {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    height: 1.75rem; /* 28px - altura compacta e harmoniosa para linha da tabela */
+    padding: 0.125rem 0.65rem 0.125rem 0.2rem;
+    border-radius: 9999px;
+    font-size: 0.75rem; /* 12px */
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+    user-select: none;
+    -webkit-user-select: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: transform 180ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 180ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ga-perfil-tag:hover {
+    transform: translateY(-1px);
+}
+
+/* Ícone em círculo preenchido à esquerda */
+.ga-perfil-tag__icone {
+    flex-shrink: 0;
+    width: 1.375rem; /* 22px */
+    height: 1.375rem; /* 22px */
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+}
+
+.ga-perfil-tag__icone svg {
+    width: 0.75rem; /* 12px */
+    height: 0.75rem; /* 12px */
+    display: block;
+}
+
+/* Texto descritivo central */
+.ga-perfil-tag__texto {
+    position: relative;
+    z-index: 2;
+    letter-spacing: -0.01em;
+}
+
+/* Variante: Administrador (Identidade Institucional OVG Roxo/Lilás) */
+.ga-perfil-tag--admin {
+    color: #6d28d9;
+    border: 1px solid rgba(124, 58, 237, 0.28);
+    background: linear-gradient(110deg, #f5f0ff 0%, #faf5ff 60%, #eee4ff 100%);
+    box-shadow: 0 2px 8px rgba(112, 40, 232, 0.08);
+}
+
+.ga-perfil-tag--admin .ga-perfil-tag__icone {
+    background: linear-gradient(145deg, #a855f7, #6d28d9);
+    box-shadow: 0 1px 3px rgba(109, 40, 217, 0.35);
+}
+
+.ga-perfil-tag--admin:hover {
+    box-shadow: 0 4px 12px rgba(112, 40, 232, 0.16);
+}
+
+/* Variante: Comum (Tons sóbrios e equilibrados em Slate/Cinza) */
+.ga-perfil-tag--comum {
+    color: #334155;
+    border: 1px solid rgba(148, 163, 184, 0.32);
+    background: linear-gradient(110deg, #f8fafc 0%, #f1f5f9 100%);
+    box-shadow: 0 1px 4px rgba(51, 65, 85, 0.05);
+}
+
+.ga-perfil-tag--comum .ga-perfil-tag__icone {
+    background: linear-gradient(145deg, #94a3b8, #64748b);
+    box-shadow: 0 1px 3px rgba(71, 85, 105, 0.25);
+}
+
+.ga-perfil-tag--comum:hover {
+    box-shadow: 0 3px 10px rgba(51, 65, 85, 0.12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ga-perfil-tag {
+        transition: none;
+    }
+    .ga-perfil-tag:hover {
+        transform: none;
+    }
+}
+
+
 
 /* ==========================================================================
    ==========================================================================
@@ -432,14 +528,39 @@ tbody tr { background-color: transparent; }
 
 
 /* --------------------------------------------------------------------------
-   CABEÇALHO: ÍCONE DECORATIVO E BOTÃO VOLTAR
+   CABEÇALHO: ÍCONE DECORATIVO E BOTÕES (TEMA E VOLTAR)
    -------------------------------------------------------------------------- */
 html[data-tema="eleitoral"] .tela-header-icone {
     background-image: linear-gradient(to bottom right, rgba(111, 211, 191, 0.22), rgba(111, 211, 191, 0.10));
     color: var(--tema-primaria-suave);
 }
 
-/* O "Voltar" segue o botão de tema: ver `static/css/tema.css`, seção 5. */
+/* Remove o halo radial (efeito de blur em ::before) e qualquer sombra desfocada
+   no hover dos botões de alternância de modo (sol/lua) e voltar, mantendo cores e transições */
+.tema-toggle::before,
+.tema-toggle::after,
+.tela-voltar::before,
+.tela-voltar::after {
+    display: none !important;
+    content: none !important;
+    opacity: 0 !important;
+}
+
+.tema-toggle:hover,
+.tela-voltar:hover {
+    box-shadow: none !important;
+    filter: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+html[data-tema="eleitoral"] .tema-toggle:hover,
+html[data-tema="eleitoral"] .tela-voltar:hover {
+    box-shadow: none !important;
+    filter: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
 
 
 /* --------------------------------------------------------------------------
@@ -601,6 +722,29 @@ html[data-tema="eleitoral"] .ga-status-dot--online {
 html[data-tema="eleitoral"] .ga-status-dot--offline {
     background-color: #f87171;
     opacity: 0.85;
+}
+
+/* Badges de Perfil na Tabela no Modo Eleitoral */
+html[data-tema="eleitoral"] .ga-perfil-tag--admin {
+    color: #e9d5ff;
+    border-color: rgba(192, 132, 252, 0.35);
+    background: linear-gradient(110deg, rgba(124, 58, 237, 0.28) 0%, rgba(88, 28, 135, 0.22) 100%);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+html[data-tema="eleitoral"] .ga-perfil-tag--admin .ga-perfil-tag__icone {
+    background: linear-gradient(145deg, #c084fc, #7c3aed);
+}
+
+html[data-tema="eleitoral"] .ga-perfil-tag--comum {
+    color: #e2e8f0;
+    border-color: rgba(255, 255, 255, 0.14);
+    background: linear-gradient(110deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+html[data-tema="eleitoral"] .ga-perfil-tag--comum .ga-perfil-tag__icone {
+    background: linear-gradient(145deg, #64748b, #475569);
 }
 
 

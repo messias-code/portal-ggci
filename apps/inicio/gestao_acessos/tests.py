@@ -225,6 +225,10 @@ class GestaoAcessosBadgesEFiltroTests(TestCase):
         self.assertContains(response, 'data-login="admin.gestor"')
         self.assertContains(response, 'data-email="admin.gestor@ovg.org.br"')
 
+        # Badges de perfil na tabela (design pill com ícone e detalhe diagonal)
+        self.assertContains(response, 'ga-perfil-tag ga-perfil-tag--admin')
+        self.assertContains(response, 'ga-perfil-tag ga-perfil-tag--comum')
+
     def test_signal_logout_limpa_session_key(self):
         """Garante que ao deslogar, a chave de sessão do usuário é limpa no banco."""
         self.admin.session_key = 'chave_sessao_temporaria_123'
