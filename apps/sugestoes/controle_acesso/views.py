@@ -21,7 +21,7 @@ from django.shortcuts import redirect, render
 from django.utils.timezone import localtime
 from django.views.decorators.csrf import csrf_exempt
 
-from portal_ggci.processos import popen_com_limite
+from portal_ggci.processos import abortar_execucao, execucao_viva, popen_com_limite
 
 from .models import ProcessamentoControleAcesso
 from .services import anexos, consulta, pdf
@@ -178,11 +178,8 @@ def iniciar_atualizacao(request):
         return JsonResponse({'status': 'erro', 'msg': 'Acesso negado.'}, status=403)
 
     ativos = ProcessamentoControleAcesso.objects.filter(status__in=STATUS_ATIVOS)
-    try:
-        rodando = bool(subprocess.check_output(
-            ['pgrep', '-f', 'manage.py executar_controle_acesso']).strip())
-    except subprocess.CalledProcessError:
-        rodando = False
+    # Só conta processo DESTE projeto: o `pgrep -f` de antes também via o da produção.
+    rodando = execucao_viva('executar_controle_acesso')
 
     if ativos.exists():
         if rodando:
@@ -225,17 +222,9 @@ def parar_atualizacao(request, processo_id):
     """
     if request.method != 'POST':
         return JsonResponse({'status': 'erro', 'msg': 'Método não permitido.'}, status=400)
-    try:
-        processo = ProcessamentoControleAcesso.objects.get(id=processo_id)
-    except ProcessamentoControleAcesso.DoesNotExist:
+    # Mata a árvore inteira (antes o pkill pegava só o Python, e o Chromium da leitura
+    # bruta podia ficar órfão) e só depois grava FALHA — ver `abortar_execucao`.
+    if not abortar_execucao(ProcessamentoControleAcesso, 'executar_controle_acesso', processo_id,
+                            "\n\n🚨 [SISTEMA] Processo abortado manualmente pelo usuário!"):
         return JsonResponse({'status': 'erro', 'msg': f'Processo {processo_id} não encontrado.'})
-
-    processo.status = 'FALHA'
-    processo.progresso = 100
-    processo.log += "\n\n🚨 [SISTEMA] Processo abortado manualmente pelo usuário!"
-    processo.save()
-
-    # O `$` é o que faz o alvo ser ESTE processo: sem âncora, parar o 18 mataria o 181. O
-    # `--bruta` opcional fica entre o comando e o id, e o espaço antes do id mantém a âncora.
-    os.system(f"pkill -f 'executar_controle_acesso (--bruta )?{int(processo_id)}$'")
     return JsonResponse({'status': 'ok'})

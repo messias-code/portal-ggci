@@ -1,0 +1,956 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ titulo }} · Portal GGCI</title>
+    <meta name="description" content="Custos da API WhatsApp · Histórico de consumo, Impacto Contratual e Simulação de preços">
+    
+    <!-- Motor de temas imediato -->
+    <script src="{% static 'js/tema.js' %}"></script>
+
+    <!-- Tailwind e temas base do Portal GGCI -->
+    <link rel="stylesheet" href="{% static 'css/output.css' %}">
+    <link rel="stylesheet" href="{% static 'css/tema.css' %}">
+    <link rel="stylesheet" href="{% static 'css/tema-menu.css' %}">
+    <link rel="stylesheet" href="{% static 'css/tema-ferramenta.css' %}">
+    <link rel="stylesheet" href="{% static 'css/tema-conteudo.css' %}">
+    
+    <!-- Fontes e Ícones -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    
+    <!-- ApexCharts -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+
+    <!-- Estilos específicos do Polichat Financeiro -->
+    <link rel="stylesheet" href="{% static 'dash_polichat_financeiro/css/polichat_financeiro.css' %}?v=6">
+</head>
+
+<body class="grid-bg bg-[#f8f6fb] text-gray-800 fixed inset-0 p-3 lg:p-5 flex transition-colors duration-500 overflow-hidden">
+
+    <!-- Halos de fundo institucionais clássicos do GGCI -->
+    <div class="menu-blob menu-blob--1 absolute top-[-20%] left-[-15%] w-[70vw] h-[70vh] bg-pink-500/70 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="menu-blob menu-blob--2 absolute top-[-20%] right-[-15%] w-[70vw] h-[70vh] bg-yellow-400/75 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="menu-blob menu-blob--3 absolute bottom-[-20%] left-[-15%] w-[70vw] h-[70vh] bg-purple-700/60 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="menu-blob menu-blob--4 absolute bottom-[-20%] right-[-15%] w-[70vw] h-[70vh] bg-green-600/65 rounded-full blur-[140px] pointer-events-none z-0"></div>
+
+    <!-- Shell Container -->
+    <div class="menu-shell w-full h-full bg-white/75 backdrop-blur-2xl border-[1.5px] border-white/80 rounded-[2rem] shadow-2xl flex overflow-hidden relative z-10" style="min-width: 0;">
+
+        <!-- ═══ ÁREA PRINCIPAL ═══ -->
+        <main id="main-content" class="area-trabalho flex-1 flex flex-col h-full overflow-hidden relative transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]" style="min-width: 0;">
+
+            <!-- ═══ HEADER EXECUTIVO PADRÃO GGCI ═══ -->
+            <header class="relative h-24 lg:h-28 pl-[112px] pr-6 lg:pr-8 flex justify-between items-center border-b border-purple-100/50 shrink-0 gap-4 z-20" style="z-index: 999;">
+                <div class="absolute inset-0 bg-white/70 backdrop-blur-md z-0"></div>
+                
+                <div class="flex items-center gap-5 min-w-0 flex-1 relative z-10">
+                    <img src="{% static 'img/logos/ovg.png' %}" alt="OVG Logo" class="logo-tema logo-tema--claro h-12 lg:h-[4.2rem] drop-shadow-md shrink-0">
+                    <img src="{% static 'img/logos/ovg-eleitoral.png' %}" alt="OVG Logo" class="logo-tema logo-tema--eleitoral h-12 lg:h-[4.2rem] drop-shadow-md shrink-0">
+                    <div class="h-10 lg:h-12 w-px bg-purple-200/50 shrink-0"></div>
+                    
+                    <div class="flex items-center gap-3.5 min-w-0">
+                        <div class="tela-header-icone w-12 lg:w-14 h-12 lg:h-14 rounded-2xl bg-gradient-to-br from-[#8c76b8] to-[#675091] text-white flex items-center justify-center shadow-lg shadow-purple-900/20 shrink-0">
+                            <i class="fa-solid fa-comments-dollar text-xl lg:text-2xl drop-shadow-sm"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2.5">
+                                <h2 class="text-xl lg:text-3xl font-extrabold text-gray-800 tracking-tight truncate">Polichat <span class="text-[#7660a1]">— Financeiro</span></h2>
+                                <span class="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">API WhatsApp</span>
+                            </div>
+                            <p class="text-xs lg:text-sm text-gray-500 font-medium truncate mt-0.5">Custos da API WhatsApp · Impacto Contratual & Simulação de Preços</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Controles do Header -->
+                <div class="flex items-center gap-3 shrink-0 relative z-10">
+                    <!-- Abas Centrais de Navegação -->
+                    <nav class="hidden xl:inline-flex h-10 p-1 rounded-2xl shadow-sm border border-purple-100/80 bg-white/90 backdrop-blur-md" role="tablist">
+                        <button type="button" class="fin-aba fin-aba--ativa px-3.5 h-full rounded-xl text-xs font-bold transition-all" data-fin-aba="executivo" role="tab" aria-selected="true">
+                            <i class="fa-solid fa-chart-pie mr-1.5 text-xs"></i> Estudo Real Meta
+                        </button>
+                        <button type="button" class="fin-aba px-3.5 h-full rounded-xl text-xs font-bold transition-all" data-fin-aba="simulador" role="tab" aria-selected="false">
+                            <i class="fa-solid fa-calculator mr-1.5 text-xs"></i> Simulador da API
+                        </button>
+                        <button type="button" class="fin-aba px-3.5 h-full rounded-xl text-xs font-bold transition-all" data-fin-aba="mensal" role="tab" aria-selected="false">
+                            <i class="fa-solid fa-calendar-days mr-1.5 text-xs"></i> Evolução Mensal
+                        </button>
+                        <button type="button" class="fin-aba px-3.5 h-full rounded-xl text-xs font-bold transition-all" data-fin-aba="atendimentos" role="tab" aria-selected="false">
+                            <i class="fa-solid fa-list-check mr-1.5 text-xs"></i> Atendimentos
+                        </button>
+                        <button type="button" class="fin-aba px-3.5 h-full rounded-xl text-xs font-bold transition-all" data-fin-aba="contrato" role="tab" aria-selected="false">
+                            <i class="fa-solid fa-file-contract mr-1.5 text-xs"></i> Contrato & Regras
+                        </button>
+                    </nav>
+
+                    <!-- Botão Baixar Planilha Oficial -->
+                    <a href="{% url 'download_planilha_comparativa' %}" class="h-10 px-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold rounded-xl text-xs inline-flex items-center shadow-md shadow-emerald-500/20 hover:scale-[1.02] transition-all" title="Baixar planilha oficial comparativo_meta_jan_set_2026.xlsx">
+                        <i class="fa-solid fa-file-excel mr-2 text-sm"></i>
+                        <span class="hidden sm:inline">Baixar Planilha</span>
+                    </a>
+
+                    <!-- Alternador de Tema -->
+                    <button type="button" class="tela-voltar tema-toggle shrink-0 w-10 h-10 flex items-center justify-center bg-white/80 hover:bg-purple-50 text-purple-700 rounded-xl transition-all shadow-sm border border-purple-100" data-tema-toggle aria-label="Alternar tema" aria-pressed="false">
+                        <svg class="tema-toggle__icone tema-toggle__icone--lua w-4 h-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <svg class="tema-toggle__icone tema-toggle__icone--sol w-4 h-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.8"/>
+                            <path d="M12 2.4V4.4M12 19.6V21.6M21.6 12H19.6M4.4 12H2.4M18.79 5.21L17.38 6.62M6.62 17.38L5.21 18.79M18.79 18.79L17.38 17.38M6.62 6.62L5.21 5.21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+
+                    <!-- Botão Voltar -->
+                    <a href="{% url 'dashboards' %}" class="tela-voltar h-10 px-4 bg-white/80 hover:bg-purple-50 text-purple-700 font-bold rounded-xl transition-all shadow-sm border border-purple-100 inline-flex items-center justify-center text-xs">
+                        <i class="fa-solid fa-arrow-left mr-2 text-xs"></i>
+                        <span>Voltar</span>
+                    </a>
+                </div>
+            </header>
+
+            <!-- ═══ CONTEÚDO PRINCIPAL (COM FUNDO REBAIXADO E TEXTURA DO DOCUMENTOS IA) ═══ -->
+            <div id="fin-scroll-container" class="fin-tela flex-1 flex flex-col min-h-0 p-3 lg:p-4 overflow-hidden relative">
+
+                <!-- ══════════════════════════════════════════════════════════
+                     ABA 1: VISÃO EXECUTIVA (ESTUDO REAL META & IMPACTO CONTRATUAL)
+                     ══════════════════════════════════════════════════════════ -->
+                <div data-fin-conteudo="executivo" class="flex-1 flex flex-col min-h-0 overflow-hidden space-y-3">
+
+                    <!-- Placar de 3 KPIs Estratégicos na mesma linha: Custo, Fatura e Excesso (Sem cortes) -->
+                    <div class="shrink-0 grid grid-cols-3 gap-2.5 lg:gap-3">
+                        <!-- KPI 1: Custo Meta Real -->
+                        <div class="fin-kpi-card border-rose-100 dark:border-rose-900/40 py-2 px-3 flex items-center justify-between">
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center justify-between gap-1 mb-0.5">
+                                    <h3 class="text-[10px] xl:text-[11px] font-bold text-rose-500 uppercase tracking-wider whitespace-nowrap">Custo Meta · Nova Regra</h3>
+                                    <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-rose-50 text-rose-600 dark:bg-rose-950/40 shrink-0">+{{ kpis.meta_aumento_pct }}%</span>
+                                </div>
+                                <div class="flex items-baseline flex-wrap gap-x-2 gap-y-0.5">
+                                    <span class="text-base xl:text-lg fin-kpi-valor text-rose-600 dark:text-rose-400 font-extrabold leading-tight whitespace-nowrap">
+                                        R$ {{ kpis.meta_depois_total|floatformat:2 }}
+                                    </span>
+                                    <span class="text-[10px] text-gray-400 font-medium whitespace-nowrap hidden md:inline">(+R$ {{ kpis.meta_aumento_rs|floatformat:2 }})</span>
+                                </div>
+                            </div>
+                            <div class="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center text-xs dark:bg-rose-900/40 dark:text-rose-300 shrink-0 ml-2">
+                                <i class="fa-brands fa-whatsapp text-xs"></i>
+                            </div>
+                        </div>
+
+                        <!-- KPI 2: Fatura Polichat Renovação -->
+                        <div class="fin-kpi-card border-purple-100 dark:border-purple-900/40 py-2 px-3 flex items-center justify-between">
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center justify-between gap-1 mb-0.5">
+                                    <h3 class="text-[10px] xl:text-[11px] font-bold text-[#7660a1] uppercase tracking-wider whitespace-nowrap">Fatura Renovação (03/2027)</h3>
+                                    <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-purple-50 text-[#7660a1] dark:bg-purple-950/40 shrink-0">+{{ kpis.polichat_aumento_pct }}%</span>
+                                </div>
+                                <div class="flex items-baseline flex-wrap gap-x-2 gap-y-0.5">
+                                    <span class="text-base xl:text-lg fin-kpi-valor text-[#7660a1] dark:text-[#a58fd1] font-extrabold leading-tight whitespace-nowrap">
+                                        R$ {{ kpis.polichat_media_renovacao|floatformat:2 }}<span class="text-[10px] font-normal text-gray-500">/mês</span>
+                                    </span>
+                                    <span class="text-[10px] text-gray-400 font-medium whitespace-nowrap hidden md:inline">(+R$ {{ kpis.polichat_aumento_mensal|floatformat:2 }}/mês)</span>
+                                </div>
+                            </div>
+                            <div class="w-7 h-7 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center text-xs dark:bg-purple-900/40 dark:text-purple-300 shrink-0 ml-2">
+                                <i class="fa-solid fa-file-invoice-dollar text-xs"></i>
+                            </div>
+                        </div>
+
+                        <!-- KPI 3: Exposição do Teto Orçamentário -->
+                        <div class="fin-kpi-card border-amber-100 dark:border-amber-900/40 py-2 px-3 flex items-center justify-between">
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center justify-between gap-1 mb-0.5">
+                                    <h3 class="text-[10px] xl:text-[11px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider whitespace-nowrap">Excesso do Teto Aditivo</h3>
+                                    <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-50 text-amber-600 dark:bg-amber-950/40 shrink-0">TA 181/25</span>
+                                </div>
+                                <div class="flex items-baseline flex-wrap gap-x-2 gap-y-0.5">
+                                    <span class="text-base xl:text-lg fin-kpi-valor text-amber-600 dark:text-amber-400 font-extrabold leading-tight whitespace-nowrap">
+                                        +R$ {{ kpis.excesso_teto_mensal|floatformat:2 }}<span class="text-[10px] font-normal text-gray-500">/mês</span>
+                                    </span>
+                                    <span class="text-[10px] text-gray-400 font-medium whitespace-nowrap hidden md:inline">(Teto: R$ {{ kpis.teto_mensal|floatformat:2 }})</span>
+                                </div>
+                            </div>
+                            <div class="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center text-xs dark:bg-amber-900/40 dark:text-amber-300 shrink-0 ml-2">
+                                <i class="fa-solid fa-triangle-exclamation text-xs"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Grade Principal: 2 Painéis Mestres Harmoniosos com Espaçamento Perfeito -->
+                    <div class="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-3.5">
+                        
+                        <!-- Painel Mestre 1 (Esquerda - 7 colunas): Gráfico de Tendência & Tabela Resumo -->
+                        <div class="lg:col-span-7 fin-card-mestre p-3.5 lg:p-4 flex flex-col min-h-0">
+                            <div class="flex items-center justify-between pb-2 mb-1.5 border-b border-gray-100 dark:border-gray-800/80 shrink-0">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-[#8c76b8] to-[#675091] text-white flex items-center justify-center shadow-sm text-xs">
+                                        <i class="fa-solid fa-chart-column"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-xs xl:text-sm font-extrabold text-gray-800 dark:text-gray-100 tracking-tight">Evolução Mensal do Custo Meta (API WhatsApp)</h3>
+                                        <p class="text-[10px] xl:text-[11px] text-gray-500 font-medium">Comparativo histórico das regras tarifárias da Meta aplicadas na OVG</p>
+                                    </div>
+                                </div>
+                                <span class="px-2 py-0.5 rounded-md text-[9px] font-bold font-mono bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-100 dark:border-purple-800/40">
+                                    Jan a Set/2026
+                                </span>
+                            </div>
+
+                            <!-- Gráfico ApexCharts com altura ajustada e mais curto -->
+                            <div class="w-full shrink-0" style="height: 140px;">
+                                <div id="grafico-comparativo-meses" class="w-full h-full"></div>
+                            </div>
+
+                            <!-- Mini-tabela Executiva com Regra Antiga vs Nova (Texto completo sem cortes) -->
+                            <div class="flex-1 min-h-0 flex flex-col mt-1.5 pt-1.5 border-t border-gray-100 dark:border-gray-800/80 overflow-hidden">
+                                <div class="flex items-center justify-between mb-1 shrink-0">
+                                    <span class="text-[10px] font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider">O que muda por tipo de mensagem</span>
+                                    <span class="text-[9px] font-semibold text-gray-400 font-mono">{{ kpis.total_mensagens|floatformat:0 }} msgs auditadas</span>
+                                </div>
+                                <div class="flex-1 min-h-0 overflow-y-auto fin-scrollbar">
+                                    <table class="w-full fin-tabela text-left">
+                                        <thead class="sticky top-0 z-10">
+                                            <tr>
+                                                <th>Tipo</th>
+                                                <th>Descrição</th>
+                                                <th class="text-right">Volume</th>
+                                                <th class="text-right">Custo Antes</th>
+                                                <th class="text-right">Custo Depois</th>
+                                                <th class="text-right">Aumento</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for cat in categorias %}
+                                            <tr class="hover:bg-purple-50/20">
+                                                <td class="font-bold text-gray-800 dark:text-gray-200">
+                                                    <span class="px-1.5 py-0.5 rounded text-[9px] font-bold whitespace-nowrap 
+                                                        {% if cat.tipo == 'Serviço' %}bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300
+                                                        {% elif cat.tipo == 'Template' %}bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300
+                                                        {% else %}bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300{% endif %}">
+                                                        {{ cat.tipo }}
+                                                    </span>
+                                                </td>
+                                                <td class="text-gray-600 dark:text-gray-300 leading-snug">{{ cat.descricao }}</td>
+                                                <td class="text-right fin-num font-semibold whitespace-nowrap">{{ cat.mensagens }}</td>
+                                                <td class="text-right fin-num text-gray-400 whitespace-nowrap">R$ {{ cat.custo_antes|floatformat:2 }}</td>
+                                                <td class="text-right fin-num font-bold text-rose-600 dark:text-rose-400 whitespace-nowrap">R$ {{ cat.custo_depois|floatformat:2 }}</td>
+                                                <td class="text-right fin-num font-bold text-rose-600 dark:text-rose-400 whitespace-nowrap">+R$ {{ cat.aumento_rs|floatformat:2 }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Painel Mestre 2 (Direita - 5 colunas): Donut de Volume & Parecer Técnico Renovação -->
+                        <div class="lg:col-span-5 fin-card-mestre p-3.5 lg:p-4 flex flex-col min-h-0 justify-between">
+                            <div class="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-gray-800/80 shrink-0">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 text-white flex items-center justify-center shadow-sm text-xs">
+                                        <i class="fa-solid fa-chart-pie"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-xs xl:text-sm font-extrabold text-gray-800 dark:text-gray-100 tracking-tight">Composição & Diagnóstico</h3>
+                                        <p class="text-[10px] xl:text-[11px] text-gray-500 font-medium">Distribuição de volume e impacto no teto contratual</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Bloco de Composição: Gráfico Donut chegado para a lateral esquerda e Detalhamento à direita (Sem cortes) -->
+                            <div class="flex items-center justify-between gap-3 py-1 shrink-0">
+                                <!-- Gráfico Donut chegado para o lado (sem ocupar a horizontal inteira) -->
+                                <div class="w-[115px] h-[115px] shrink-0 flex items-center justify-center">
+                                    <div id="grafico-distribuicao-tipos" class="w-full h-full"></div>
+                                </div>
+
+                                <!-- Detalhamento de Composição ao lado do gráfico -->
+                                <div class="flex-1 min-w-0 flex flex-col justify-center gap-1.5">
+                                    {% for cat in categorias %}
+                                    <div class="flex items-center justify-between p-1 px-2 rounded-lg bg-gray-50/80 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800/60 text-xs">
+                                        <div class="flex items-center gap-1.5 min-w-0">
+                                            <span class="w-2 h-2 rounded-full shrink-0 
+                                                {% if cat.tipo == 'Serviço' %}bg-[#7660a1]
+                                                {% elif cat.tipo == 'Template' %}bg-[#f59e0b]
+                                                {% else %}bg-[#3b82f6]{% endif %}"></span>
+                                            <span class="font-bold text-gray-700 dark:text-gray-200 whitespace-nowrap text-[11px]">{{ cat.tipo }}</span>
+                                        </div>
+                                        <div class="flex items-center gap-1.5 font-mono text-[11px] shrink-0 ml-1">
+                                            <span class="text-gray-400 font-semibold whitespace-nowrap">{{ cat.mensagens }}</span>
+                                            <span class="font-extrabold text-[#7660a1] dark:text-purple-300 whitespace-nowrap">
+                                                {% if cat.tipo == 'Serviço' %}72,3%
+                                                {% elif cat.tipo == 'Template' %}0,4%
+                                                {% else %}27,2%{% endif %}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <!-- Box Executivo: Parecer Técnico da Renovação -->
+                            <div class="p-2.5 rounded-xl bg-purple-50/60 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/40 space-y-1.5 mt-auto">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-[10px] xl:text-[11px] font-extrabold uppercase tracking-wider text-[#7660a1] dark:text-[#a58fd1] flex items-center gap-1.5 whitespace-nowrap">
+                                        <i class="fa-solid fa-shield-halved"></i> Parecer da Renovação (03/2027)
+                                    </span>
+                                    <button type="button" class="fin-aba text-[10px] font-bold text-[#7660a1] hover:underline whitespace-nowrap" data-fin-aba="simulador">
+                                        Simular <i class="fa-solid fa-arrow-right ml-0.5"></i>
+                                    </button>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-2 text-xs">
+                                    <div class="p-1.5 rounded-lg bg-white dark:bg-[#1a1528] border border-purple-100/50 dark:border-purple-900/30">
+                                        <span class="text-gray-400 block text-[9px] uppercase font-bold whitespace-nowrap">Teto TA 181/25</span>
+                                        <span class="font-mono font-bold text-gray-800 dark:text-gray-200 text-[10.5px] whitespace-nowrap">R$ {{ kpis.teto_mensal|floatformat:2 }}/mês</span>
+                                    </div>
+                                    <div class="p-1.5 rounded-lg bg-white dark:bg-[#1a1528] border border-rose-100/50 dark:border-rose-900/30">
+                                        <span class="text-rose-500 block text-[9px] uppercase font-bold whitespace-nowrap">Excesso Projetado</span>
+                                        <span class="font-mono font-bold text-rose-600 dark:text-rose-400 text-[10.5px] whitespace-nowrap">+R$ {{ kpis.excesso_teto_mensal|floatformat:2 }}/mês</span>
+                                    </div>
+                                </div>
+
+                                <div class="p-2 rounded-lg bg-white/80 dark:bg-[#1a1528]/80 text-[10px] xl:text-[10.5px] text-gray-600 dark:text-gray-300 leading-snug">
+                                    <p>
+                                        Como <strong>72,3% do volume OVG é de atendimento direto</strong>, o encerramento da isenção da Meta eleva a fatura estimada para <strong>R$ 15.146,98/mês</strong>, ultrapassando o teto orçamentário em <strong>R$ 8.034,50/ano</strong>.
+                                    </p>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-2 text-[10px] pt-0.5">
+                                    <div class="flex items-center justify-between px-2 py-1 rounded-md bg-white dark:bg-[#1a1528]">
+                                        <span class="text-purple-700 dark:text-purple-300 font-bold text-[9px] whitespace-nowrap">ProBem (80%)</span>
+                                        <span class="font-mono font-bold text-gray-800 dark:text-gray-200 whitespace-nowrap">R$ 12.117,58</span>
+                                    </div>
+                                    <div class="flex items-center justify-between px-2 py-1 rounded-md bg-white dark:bg-[#1a1528]">
+                                        <span class="text-teal-700 dark:text-teal-300 font-bold text-[9px] whitespace-nowrap">GBS (20%)</span>
+                                        <span class="font-mono font-bold text-gray-800 dark:text-gray-200 whitespace-nowrap">R$ 3.029,40</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <!-- ══════════════════════════════════════════════════════════
+                     ABA 2: SIMULADOR FINANCEIRO DE PROJEÇÕES
+                     ══════════════════════════════════════════════════════════ -->
+                <div data-fin-conteudo="simulador" class="flex-1 flex flex-col min-h-0 overflow-hidden space-y-3.5 hidden">
+
+                    <!-- Barra Superior do Simulador: Cenários Rápidos (Mais curta e com margem) -->
+                    <div class="shrink-0 fin-card-mestre p-3 px-4 flex flex-wrap items-center justify-between gap-3">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-lg bg-[#7660a1] text-white flex items-center justify-center text-xs shadow-sm shrink-0">
+                                <i class="fa-solid fa-calculator"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-xs xl:text-sm font-extrabold text-gray-800 dark:text-gray-100 tracking-tight leading-snug">Simulador da API WhatsApp & Projeções de Fatura</h3>
+                                <p class="text-[10px] xl:text-[11px] text-gray-500 font-medium">Calcule o impacto financeiro em tempo real variando o volume de atendimento e disparos</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center flex-wrap gap-2">
+                            <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-50/80 dark:bg-purple-950/40 border border-purple-100 dark:border-purple-800/40 shrink-0">
+                                <i class="fa-solid fa-comments text-xs text-[#7660a1]"></i>
+                                <span class="text-[9px] text-gray-500 font-bold uppercase">Volume:</span>
+                                <span id="sim-kpi-volume" class="font-mono font-black text-xs text-[#7660a1] dark:text-purple-300">75.610</span>
+                                <span class="text-[9px] text-gray-400">msgs</span>
+                            </div>
+                            <span class="text-[9.5px] font-bold text-gray-400 uppercase tracking-wider hidden 2xl:inline">Cenários:</span>
+                            <button type="button" class="btn-preset px-2.5 py-1 rounded-lg border border-purple-200 dark:border-purple-800/60 bg-purple-50/80 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs font-bold shrink-0 whitespace-nowrap" data-preset="media">
+                                Média Histórica OVG
+                            </button>
+                            <button type="button" class="btn-preset px-2.5 py-1 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 text-xs font-semibold shrink-0 whitespace-nowrap" data-preset="pico">
+                                Pico (+25%)
+                            </button>
+                            <button type="button" class="btn-preset px-2.5 py-1 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 text-xs font-semibold shrink-0 whitespace-nowrap" data-preset="otimizado">
+                                Otimização (-30%)
+                            </button>
+                            <button type="button" class="btn-preset px-2.5 py-1 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 text-xs font-semibold shrink-0 whitespace-nowrap" data-preset="minimo">
+                                Mínimo
+                            </button>
+                            <button type="button" id="btn-abrir-filtros-simulador" class="px-2.5 py-1 rounded-lg border border-purple-200 dark:border-purple-800/60 bg-white dark:bg-[#1a1528] text-purple-700 dark:text-purple-300 text-xs font-bold hover:bg-purple-50 transition-all flex items-center gap-1.5 shadow-sm shrink-0 whitespace-nowrap">
+                                <i class="fa-solid fa-sliders text-xs"></i>
+                                <span>Filtros</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Placar Dinâmico de 3 KPIs Simulados na mesma linha: Custo, Fatura e Excesso (Sem cortes) -->
+                    <div class="shrink-0 grid grid-cols-3 gap-2.5 lg:gap-3">
+                        <!-- Card 1: Custo Meta Estimado -->
+                        <div class="fin-kpi-card border-rose-100 dark:border-rose-900/40 py-2.5 px-4 flex items-center justify-between">
+                            <div class="min-w-0 flex-1">
+                                <span class="text-[10px] xl:text-[11px] font-bold text-rose-500 uppercase tracking-wider block mb-0.5 whitespace-nowrap">Custo Meta Estimado</span>
+                                <div id="sim-kpi-meta" class="text-base xl:text-lg fin-kpi-valor text-rose-500 font-extrabold leading-tight whitespace-nowrap">
+                                    R$ 2.611
+                                </div>
+                                <p class="text-[9.5px] text-gray-400 whitespace-nowrap">Tarifa Meta pós-01/10/26</p>
+                            </div>
+                            <div class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center text-xs dark:bg-rose-900/40 dark:text-rose-300 shrink-0 ml-2.5">
+                                <i class="fa-brands fa-whatsapp text-sm"></i>
+                            </div>
+                        </div>
+
+                        <!-- Card 2: Fatura Polichat Renovação -->
+                        <div class="fin-kpi-card border-purple-100 dark:border-purple-900/40 py-2.5 px-4 flex items-center justify-between">
+                            <div class="min-w-0 flex-1">
+                                <span class="text-[10px] xl:text-[11px] font-bold text-[#7660a1] uppercase tracking-wider block mb-0.5 whitespace-nowrap">Fatura Renovação</span>
+                                <div id="sim-kpi-fatura" class="text-base xl:text-lg fin-kpi-valor text-[#7660a1] dark:text-[#a58fd1] font-extrabold leading-tight whitespace-nowrap">
+                                    R$ 15.147
+                                </div>
+                                <p class="text-[9.5px] text-gray-400 whitespace-nowrap">Fixo R$ 1.819 + Variável</p>
+                            </div>
+                            <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center text-xs dark:bg-purple-900/40 dark:text-purple-300 shrink-0 ml-2.5">
+                                <i class="fa-solid fa-file-invoice-dollar text-sm"></i>
+                            </div>
+                        </div>
+
+                        <!-- Card 3: Situação vs Teto -->
+                        <div class="fin-kpi-card border-rose-100 dark:border-rose-900/40 py-2.5 px-4 flex items-center justify-between" id="sim-card-status">
+                            <div class="min-w-0 flex-1">
+                                <span class="text-[10px] xl:text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-0.5 whitespace-nowrap">Situação vs Teto</span>
+                                <div id="sim-kpi-status" class="text-base xl:text-lg fin-kpi-valor text-rose-600 font-extrabold leading-tight whitespace-nowrap">
+                                    +R$ 670/mês
+                                </div>
+                                <p id="sim-kpi-status-sub" class="text-[9.5px] font-bold text-rose-600 whitespace-nowrap">Excesso Acima do Teto</p>
+                            </div>
+                            <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center text-xs dark:bg-amber-900/40 dark:text-amber-300 shrink-0 ml-2.5">
+                                <i class="fa-solid fa-triangle-exclamation text-sm"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Termômetro do Teto Orçamentário (Mais curto) -->
+                    <div class="shrink-0 fin-card-mestre px-4 py-2.5 space-y-1.5">
+                        <div class="flex items-center justify-between text-xs font-bold">
+                            <span class="text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                                <i class="fa-solid fa-gauge-high text-[#7660a1] text-xs"></i> Termômetro de Exposição Orçamentária
+                            </span>
+                            <span id="sim-termometro-pct" class="text-[#7660a1] font-mono text-xs">104.6% do teto</span>
+                        </div>
+                        <div class="w-full h-2.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden relative border border-gray-200 dark:border-gray-700">
+                            <div id="sim-termometro-barra" class="h-full bg-gradient-to-r from-emerald-500 via-amber-500 to-rose-500 transition-all duration-300" style="width: 104.6%;"></div>
+                        </div>
+                        <div class="flex justify-between text-[10.5px] text-gray-500 dark:text-gray-400 font-mono pt-0.5">
+                            <span>R$ 0</span>
+                            <span class="font-bold text-purple-700 dark:text-purple-300">Teto Contratual: R$ 14.477,44</span>
+                            <span id="sim-termometro-max">R$ 20.000</span>
+                        </div>
+                    </div>
+
+                    <!-- Grade do Simulador: Sliders à Esquerda e Tabela à Direita (Com espaçamento ideal) -->
+                    <div class="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-3.5">
+                        
+                        <!-- Coluna Sliders e Rateio (5 colunas) -->
+                        <div class="lg:col-span-5 flex flex-col min-h-0 gap-3">
+                            <div class="fin-card-mestre p-3.5 lg:p-4 space-y-3">
+                                <div>
+                                    <div class="flex items-center justify-between mb-1">
+                                        <label class="text-xs font-bold text-gray-700 dark:text-gray-200 flex items-center gap-1.5">
+                                            <i class="fa-solid fa-headset text-[#7660a1]"></i> Msgs de Serviço (Atendimento)
+                                        </label>
+                                        <span id="sim-val-servico" class="font-mono text-xs font-bold text-[#7660a1]">54.698</span>
+                                    </div>
+                                    <input type="range" id="sim-slider-servico" min="10000" max="120000" step="1000" value="54698" class="w-full accent-[#7660a1] cursor-pointer">
+                                    <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-1 leading-tight">Atendimento ao beneficiário (R$ 0,0350 após 1.000 grátis)</p>
+                                </div>
+
+                                <div>
+                                    <div class="flex items-center justify-between mb-1">
+                                        <label class="text-xs font-bold text-gray-700 dark:text-gray-200 flex items-center gap-1.5">
+                                            <i class="fa-solid fa-bullhorn text-[#7660a1]"></i> Disparos em Massa (Campanhas)
+                                        </label>
+                                        <span id="sim-val-disparo" class="font-mono text-xs font-bold text-[#7660a1]">20.584</span>
+                                    </div>
+                                    <input type="range" id="sim-slider-disparo" min="0" max="60000" step="500" value="20584" class="w-full accent-[#7660a1] cursor-pointer">
+                                    <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-1 leading-tight">Campanhas ativas e avisos da Administração</p>
+                                </div>
+
+                                <div>
+                                    <div class="flex items-center justify-between mb-1">
+                                        <label class="text-xs font-bold text-gray-700 dark:text-gray-200 flex items-center gap-1.5">
+                                            <i class="fa-solid fa-file-lines text-[#7660a1]"></i> Templates Ativos
+                                        </label>
+                                        <span id="sim-val-template" class="font-mono text-xs font-bold text-[#7660a1]">328</span>
+                                    </div>
+                                    <input type="range" id="sim-slider-template" min="0" max="5000" step="50" value="328" class="w-full accent-[#7660a1] cursor-pointer">
+                                    <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-1 leading-tight">Inícios ativos de conversa automatizada</p>
+                                </div>
+                            </div>
+
+                            <!-- Rateio Orçamentário da Simulação -->
+                            <div class="grid grid-cols-2 gap-3 mt-auto">
+                                <div class="fin-card-mestre p-3 lg:p-3.5 flex flex-col justify-between">
+                                    <div class="flex items-center justify-between gap-1 mb-1.5">
+                                        <span class="text-[10px] xl:text-[11px] font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wider">Cota ProBem</span>
+                                        <span class="px-1.5 py-0.5 rounded-md bg-purple-100 text-purple-700 font-bold text-[10px] dark:bg-purple-900/40 dark:text-purple-300 shrink-0">80%</span>
+                                    </div>
+                                    <div id="sim-rateio-probem" class="text-sm xl:text-base font-extrabold text-gray-800 dark:text-gray-100 font-mono tracking-tight">
+                                        R$ 12.117,58
+                                    </div>
+                                </div>
+
+                                <div class="fin-card-mestre p-3 lg:p-3.5 flex flex-col justify-between">
+                                    <div class="flex items-center justify-between gap-1 mb-1.5">
+                                        <span class="text-[10px] xl:text-[11px] font-bold text-teal-700 dark:text-teal-300 uppercase tracking-wider">Cota GBS</span>
+                                        <span class="px-1.5 py-0.5 rounded-md bg-teal-100 text-teal-700 font-bold text-[10px] dark:bg-teal-900/40 dark:text-teal-300 shrink-0">20%</span>
+                                    </div>
+                                    <div id="sim-rateio-gbs" class="text-sm xl:text-base font-extrabold text-gray-800 dark:text-gray-100 font-mono tracking-tight">
+                                        R$ 3.029,40
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Coluna Tabela de Detalhamento das Métricas (7 colunas) -->
+                        <div class="lg:col-span-7 fin-card-mestre flex flex-col min-h-0 overflow-hidden">
+                            <div class="px-4 py-2.5 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between shrink-0">
+                                <h3 class="text-xs font-bold text-gray-800 dark:text-gray-100 uppercase tracking-wider">Detalhamento dos Custos Simulados por Métrica</h3>
+                                <span class="text-[10px] text-gray-400 font-mono">Consumo mensal estimado</span>
+                            </div>
+                            <div class="flex-1 min-h-0 overflow-auto fin-scrollbar">
+                                <table class="w-full esboco-tabela text-left">
+                                    <thead class="sticky top-0 z-10">
+                                        <tr>
+                                            <th>Métrica / Canal</th>
+                                            <th class="text-right">Volume</th>
+                                            <th class="text-right">Regra Antiga</th>
+                                            <th class="text-right">Regra Nova Meta</th>
+                                            <th class="text-right">Diferença R$</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="esboco-tabela-corpo">
+                                        {% for item in simulador.metricas %}
+                                        <tr class="hover:bg-purple-50/20 transition-colors">
+                                            <td class="font-medium text-gray-800 dark:text-gray-200">{{ item.nome }}</td>
+                                            <td class="text-right fin-num font-mono text-gray-500">{{ item.creditos|floatformat:0 }}</td>
+                                            <td class="text-right fin-num font-mono text-gray-400">R$ {{ item.preco_antigo|floatformat:2 }}</td>
+                                            <td class="text-right fin-num font-mono font-bold text-purple-700 dark:text-purple-300">R$ {{ item.preco_novo|floatformat:2 }}</td>
+                                            <td class="text-right fin-num font-mono font-bold text-rose-600 dark:text-rose-400">+R$ {{ item.diferenca|floatformat:2 }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                                <table class="w-full esboco-tabela text-left">
+                                    <thead class="sticky top-0 z-10">
+                                        <tr>
+                                            <th>Métrica / Canal</th>
+                                            <th class="text-right">Volume</th>
+                                            <th class="text-right">Regra Antiga</th>
+                                            <th class="text-right">Regra Nova Meta</th>
+                                            <th class="text-right">Diferença R$</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="esboco-tabela-corpo">
+                                        {% for item in simulador.metricas %}
+                                        <tr class="hover:bg-purple-50/20 transition-colors">
+                                            <td class="font-medium text-gray-800 dark:text-gray-200">{{ item.nome }}</td>
+                                            <td class="text-right fin-num font-mono text-gray-500">{{ item.creditos|floatformat:0 }}</td>
+                                            <td class="text-right fin-num font-mono text-gray-400">R$ {{ item.preco_antigo|floatformat:2 }}</td>
+                                            <td class="text-right fin-num font-mono font-bold text-purple-700 dark:text-purple-300">R$ {{ item.preco_novo|floatformat:2 }}</td>
+                                            <td class="text-right fin-num font-mono font-bold text-rose-600 dark:text-rose-400">+R$ {{ item.diferenca|floatformat:2 }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <!-- ══════════════════════════════════════════════════════════
+                     ABA 3: EVOLUÇÃO MENSAL & RENOVAÇÃO
+                     ══════════════════════════════════════════════════════════ -->
+                <div data-fin-conteudo="mensal" class="flex-1 flex flex-col min-h-0 overflow-hidden space-y-3.5 hidden">
+
+                    <div class="shrink-0 flex items-center justify-between">
+                        <div>
+                            <h3 class="text-xs xl:text-sm font-extrabold text-gray-900 dark:text-white tracking-tight">Painel Detalhado Mês a Mês da Fatura e Renovação</h3>
+                            <p class="text-[10px] xl:text-[11px] text-gray-500">Histórico de volumetria, repasse Meta e evolução das faturas na renovação contratual</p>
+                        </div>
+                        <div class="text-[11px] bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 px-3 py-1 rounded-lg font-bold border border-purple-100 dark:border-purple-800/40 font-mono">
+                            Teto Contratual: R$ {{ contrato.teto_mensal|floatformat:2 }}/mês
+                        </div>
+                    </div>
+
+                    <div class="fin-card-mestre flex-1 flex flex-col min-h-0 overflow-hidden">
+                        <div class="flex-1 min-h-0 overflow-auto fin-scrollbar">
+                            <table class="w-full fin-tabela text-left text-xs">
+                                <thead class="sticky top-0 z-10">
+                                    <tr>
+                                        <th>Mês</th>
+                                        <th class="text-right">Recebidas</th>
+                                        <th class="text-right">Serviço</th>
+                                        <th class="text-right">Template</th>
+                                        <th class="text-right">Disparo</th>
+                                        <th class="text-right">Total OVG</th>
+                                        <th class="text-right">Meta Antes</th>
+                                        <th class="text-right">Meta Depois</th>
+                                        <th class="text-right">Fatura Paga</th>
+                                        <th class="text-right">Fatura Renovação</th>
+                                        <th class="text-right">Variação R$</th>
+                                        <th class="text-right">Variação %</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for m in mensal %}
+                                    <tr class="hover:bg-purple-50/20">
+                                        <td class="font-bold text-gray-800 dark:text-gray-200">{{ m.mes_nome }}</td>
+                                        <td class="text-right fin-num text-gray-500">{{ m.msgs_recebidas }}</td>
+                                        <td class="text-right fin-num">{{ m.msgs_servico }}</td>
+                                        <td class="text-right fin-num">{{ m.msgs_template }}</td>
+                                        <td class="text-right fin-num">{{ m.msgs_disparo }}</td>
+                                        <td class="text-right fin-num font-semibold">{{ m.msgs_total_ovg }}</td>
+                                        <td class="text-right fin-num text-gray-400">R$ {{ m.meta_antes|floatformat:2 }}</td>
+                                        <td class="text-right fin-num font-bold text-rose-600 dark:text-rose-400">R$ {{ m.meta_depois|floatformat:2 }}</td>
+                                        <td class="text-right fin-num">
+                                            {% if m.fatura_total %}R$ {{ m.fatura_total|floatformat:2 }}{% else %}—{% endif %}
+                                        </td>
+                                        <td class="text-right fin-num font-bold text-purple-700 dark:text-purple-300">
+                                            {% if m.fatura_renovacao %}R$ {{ m.fatura_renovacao|floatformat:2 }}{% else %}—{% endif %}
+                                        </td>
+                                        <td class="text-right fin-num font-semibold text-rose-600 dark:text-rose-400">
+                                            {% if m.variacao_rs %}+R$ {{ m.variacao_rs|floatformat:2 }}{% else %}—{% endif %}
+                                        </td>
+                                        <td class="text-right fin-num font-semibold text-rose-600 dark:text-rose-400">
+                                            {% if m.variacao_pct %}+{{ m.variacao_pct|floatformat:1 }}%{% else %}—{% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- ══════════════════════════════════════════════════════════
+                     ABA 4: AUDITORIA DE ATENDIMENTOS
+                     ══════════════════════════════════════════════════════════ -->
+                <div data-fin-conteudo="atendimentos" class="flex-1 flex flex-col min-h-0 overflow-hidden space-y-3.5 hidden">
+
+                    <div class="shrink-0 flex items-center justify-between">
+                        <div>
+                            <h3 class="text-xs xl:text-sm font-extrabold text-gray-900 dark:text-white tracking-tight">Auditoria Detalhada de Atendimentos</h3>
+                            <p class="text-[10px] xl:text-[11px] text-gray-500">Histórico apurado de 284 mil atendimentos com tarifação antes e depois</p>
+                        </div>
+                        <button type="button" id="btn-abrir-filtros-atendimentos" class="px-3 py-1.5 rounded-lg border border-purple-200 dark:border-purple-800/60 bg-white/90 dark:bg-[#1a1528] text-purple-700 dark:text-purple-300 text-xs font-bold hover:bg-purple-50 transition-all flex items-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-filter text-xs"></i>
+                            <span>Filtros Laterais</span>
+                        </button>
+                    </div>
+
+                    <div class="fin-card-mestre flex-1 flex flex-col min-h-0 overflow-hidden">
+                        <div class="flex-1 min-h-0 overflow-auto fin-scrollbar">
+                            <table class="w-full fin-tabela text-left text-xs">
+                                <thead class="sticky top-0 z-10">
+                                    <tr>
+                                        <th>Data / Hora</th>
+                                        <th>Telefone</th>
+                                        <th>Atendente / Operador</th>
+                                        <th>Categoria</th>
+                                        <th class="text-center">Janela 24h</th>
+                                        <th class="text-center">Msgs OVG</th>
+                                        <th class="text-right">Meta Antes</th>
+                                        <th class="text-right">Meta Depois</th>
+                                        <th class="text-right">Diferença</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabela-atendimentos-corpo">
+                                    <tr>
+                                        <td colspan="9" class="text-center py-10 text-gray-400">
+                                            <i class="fa-solid fa-circle-notch fa-spin text-2xl text-purple-600 mb-2"></i>
+                                            <p class="text-xs font-semibold">Carregando atendimentos...</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="px-5 py-2 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between text-xs text-gray-500 shrink-0 bg-gray-50/50 dark:bg-[#1a1528]/50">
+                            <span id="paginacao-info">Aguardando carregamento...</span>
+                            <div class="flex items-center gap-2">
+                                <button type="button" id="btn-pag-anterior" class="px-2.5 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed text-xs">
+                                    <i class="fa-solid fa-chevron-left mr-1 text-[10px]"></i> Anterior
+                                </button>
+                                <button type="button" id="btn-pag-proxima" class="px-2.5 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed text-xs">
+                                    Próxima <i class="fa-solid fa-chevron-right ml-1 text-[10px]"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- ══════════════════════════════════════════════════════════
+                     ABA 5: CONTRATO & REGRAS META
+                     ══════════════════════════════════════════════════════════ -->
+                <div data-fin-conteudo="contrato" class="flex-1 flex flex-col min-h-0 overflow-hidden space-y-3.5 hidden">
+
+                    <div class="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-3.5 overflow-hidden">
+                        
+                        <!-- Bloco Contrato Polichat (Mais curto e com margem) -->
+                        <div class="fin-card-mestre p-4 flex flex-col min-h-0 overflow-y-auto fin-scrollbar space-y-3">
+                            <div class="flex items-center gap-2.5 pb-2.5 border-b border-gray-100 dark:border-gray-800 shrink-0">
+                                <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center text-sm dark:bg-purple-900/40 dark:text-purple-300">
+                                    <i class="fa-solid fa-file-contract"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-xs xl:text-sm font-bold text-gray-800 dark:text-gray-100">Contrato Polichat em Vigor</h3>
+                                    <p class="text-[10px] xl:text-[11px] text-gray-500">{{ contrato.contrato }} · {{ contrato.aditivo }} · SEI {{ contrato.processo_sei }}</p>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <div class="p-2 rounded-lg bg-gray-50 dark:bg-gray-800/40">
+                                    <span class="text-gray-400 block text-[9px] uppercase font-bold">Fornecedor</span>
+                                    <span class="font-semibold text-gray-800 dark:text-gray-200 text-xs">{{ contrato.fornecedor }}</span>
+                                </div>
+                                <div class="p-2 rounded-lg bg-gray-50 dark:bg-gray-800/40">
+                                    <span class="text-gray-400 block text-[9px] uppercase font-bold">Vigência</span>
+                                    <span class="font-semibold text-gray-800 dark:text-gray-200 text-xs">{{ contrato.vigencia }}</span>
+                                </div>
+                                <div class="p-2 rounded-lg bg-gray-50 dark:bg-gray-800/40">
+                                    <span class="text-gray-400 block text-[9px] uppercase font-bold">Rateio Orçamentário</span>
+                                    <span class="font-semibold text-gray-800 dark:text-gray-200 text-xs">{{ contrato.rateio }}</span>
+                                </div>
+                                <div class="p-2 rounded-lg bg-gray-50 dark:bg-gray-800/40">
+                                    <span class="text-gray-400 block text-[9px] uppercase font-bold">Teto Mensal Atual</span>
+                                    <span class="font-mono font-bold text-purple-700 dark:text-purple-300 text-xs">R$ {{ contrato.teto_mensal|floatformat:2 }}</span>
+                                </div>
+                            </div>
+
+                            <div class="space-y-1.5 pt-0.5">
+                                <h4 class="text-[10px] font-bold uppercase tracking-wider text-gray-400">Composição da Parte Fixa (R$ {{ contrato.fixo_mensal|floatformat:2 }}/mês)</h4>
+                                <div class="space-y-1 text-xs">
+                                    {% for item in contrato.itens_fixos %}
+                                    <div class="flex items-center justify-between p-1.5 rounded-md bg-gray-50 dark:bg-gray-800/40">
+                                        <span class="text-gray-600 dark:text-gray-300 text-xs">{{ item.quantidade }}x {{ item.item }}</span>
+                                        <span class="font-mono font-semibold text-xs">R$ {{ item.total|floatformat:2 }}</span>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <div class="p-2.5 rounded-lg bg-purple-50 text-purple-900 dark:bg-purple-950/40 dark:text-purple-200 text-xs mt-auto">
+                                <span class="font-bold">Pacotes de Mensagens:</span> R$ {{ contrato.pacote_1000_msgs|floatformat:2 }} a cada 1.000 mensagens adicionais enviadas ou recebidas.
+                            </div>
+                        </div>
+
+                        <!-- Bloco Tarifas Meta (Mais curto e com margem) -->
+                        <div class="fin-card-mestre p-4 flex flex-col min-h-0 overflow-y-auto fin-scrollbar space-y-3">
+                            <div class="flex items-center gap-2.5 pb-2.5 border-b border-gray-100 dark:border-gray-800 shrink-0">
+                                <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center text-sm dark:bg-blue-900/40 dark:text-blue-300">
+                                    <i class="fa-brands fa-whatsapp"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-xs xl:text-sm font-bold text-gray-800 dark:text-gray-100">Tarifas Oficiais da Meta (Brasil BRL)</h3>
+                                    <p class="text-[10px] xl:text-[11px] text-gray-500">Tabela oficial vigente desde 01/10/2026 (sem arredondamentos)</p>
+                                </div>
+                            </div>
+
+                            <div class="space-y-1.5">
+                                {% for t in tarifas_meta %}
+                                <div class="p-2 rounded-lg border border-gray-100 dark:border-gray-800 flex items-center justify-between text-xs">
+                                    <div>
+                                        <span class="font-bold text-gray-800 dark:text-gray-200 text-xs">{{ t.categoria }}</span>
+                                        <p class="text-[10px] text-gray-500">{{ t.obs }}</p>
+                                    </div>
+                                    <span class="font-mono font-bold text-xs text-purple-700 dark:text-purple-300">R$ {{ t.valor|floatformat:4 }}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="p-2.5 rounded-lg bg-gray-50 dark:bg-gray-800/40 text-xs text-gray-600 dark:text-gray-300 space-y-1 mt-auto">
+                                <h5 class="font-bold text-gray-800 dark:text-gray-100 flex items-center gap-1.5 text-xs">
+                                    <i class="fa-solid fa-circle-info text-purple-600"></i> Regra da Janela de 24 Horas
+                                </h5>
+                                <p class="text-[10px] leading-relaxed">
+                                    A janela abre quando o beneficiário envia mensagem para a OVG. Na nova regra, disparos e templates custam R$ 0,0350 mesmo dentro da janela, e mensagens de serviço passam a ser tarifadas após o limite gratuito mensal de 1.000 msgs.
+                                </p>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div> <!-- Fim de #fin-scroll-container -->
+        </main> <!-- Fim de #main-content -->
+
+        <!-- ═══ PAINEL DE FILTROS LATERAL (SIDEBAR) ═══ -->
+        <aside id="filter-sidebar" class="area-trabalho menu-sidebar absolute top-0 left-0 h-full bg-white backdrop-blur-3xl border-r border-gray-200 shadow-[10px_0_30px_rgba(0,0,0,0.05)] transform -translate-x-full transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] flex flex-col" style="width: 335px; z-index: 1000;">
+
+            <!-- Botão Toggle da Barra Lateral -->
+            <button type="button" id="toggle-sidebar-btn" class="absolute top-8 sidebar-btn h-11 bg-white backdrop-blur-xl border border-gray-200 border-l-0 shadow-[4px_0_15px_rgba(118,96,161,0.2)] rounded-r-xl flex items-center justify-center text-purple-700 hover:bg-purple-50 transition-all duration-300 group" style="z-index: 1001;">
+                <div class="icon-wrapper sidebar-icon-wrapper flex items-center justify-center w-4 h-4">
+                    <i class="fa-solid fa-chevron-right text-xs transition-transform duration-500 group-hover:scale-125" id="toggle-sidebar-icon"></i>
+                </div>
+                <span class="text-[11px] font-bold uppercase tracking-wider leading-none">Filtros</span>
+            </button>
+
+            <!-- Cabeçalho da Barra de Filtros -->
+            <div class="h-24 lg:h-28 px-6 border-b border-purple-100/50 flex items-center justify-between shrink-0">
+                <h3 class="text-xl font-extrabold text-gray-800 dark:text-gray-100 tracking-tight flex items-center gap-3">
+                    <div class="tela-header-icone w-10 h-10 rounded-xl bg-gradient-to-br from-[#8c76b8] to-[#675091] text-white flex items-center justify-center shadow-inner">
+                        <i class="fa-solid fa-filter"></i>
+                    </div>
+                    Filtros
+                </h3>
+                <button type="button" id="btn-clear-filters" class="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/30 px-3 py-2 rounded-xl transition-all">
+                    Restaurar Padrão
+                </button>
+            </div>
+
+            <!-- Corpo com Rolagem dos Filtros -->
+            <div class="flex-1 p-5 overflow-y-auto custom-scrollbar-light space-y-5">
+
+                <!-- Seletor de Contexto do Filtro -->
+                <div class="inline-flex w-full p-1 rounded-xl bg-purple-50/80 dark:bg-purple-950/40 border border-purple-100 dark:border-purple-900/40">
+                    <button type="button" id="sidebar-tab-simulador" class="flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all fin-sidebar-aba">
+                        <i class="fa-solid fa-calculator mr-1"></i> Simulador
+                    </button>
+                    <button type="button" id="sidebar-tab-atendimentos" class="flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all fin-sidebar-aba fin-sidebar-aba--ativa">
+                        <i class="fa-solid fa-list-check mr-1"></i> Atendimentos
+                    </button>
+                </div>
+
+                <!-- SEÇÃO: FILTROS DO SIMULADOR -->
+                <div id="sidebar-filtros-simulador" class="space-y-4 hidden">
+                    <div>
+                        <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                            <i class="fa-solid fa-sliders text-[#7660a1]"></i> Parâmetros de Simulação
+                        </h4>
+                    </div>
+
+                    <!-- Período -->
+                    <div class="esboco-filtro bg-white dark:bg-[#1a1528] border border-gray-200 dark:border-purple-900/40 rounded-xl p-3 shadow-sm transition-all focus-within:ring-2 focus-within:ring-purple-400">
+                        <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1 flex items-center gap-1.5">
+                            <i class="fa-regular fa-calendar text-[#7660a1]"></i> Período
+                        </label>
+                        <select id="esboco-select-periodo" class="w-full bg-transparent font-bold text-xs text-gray-800 dark:text-gray-100 focus:outline-none cursor-pointer">
+                            <option value="ano" selected>Ano inteiro</option>
+                            <option value="1sem">1º Semestre</option>
+                            <option value="2sem">2º Semestre</option>
+                            <option value="jan">Janeiro</option>
+                            <option value="fev">Fevereiro</option>
+                            <option value="mar">Março</option>
+                            <option value="abr">Abril</option>
+                            <option value="mai">Maio</option>
+                            <option value="jun">Junho</option>
+                        </select>
+                    </div>
+
+                    <!-- Métrica -->
+                    <div class="esboco-filtro bg-white dark:bg-[#1a1528] border border-gray-200 dark:border-purple-900/40 rounded-xl p-3 shadow-sm transition-all focus-within:ring-2 focus-within:ring-purple-400">
+                        <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1 flex items-center gap-1.5">
+                            <i class="fa-solid fa-chart-simple text-[#7660a1]"></i> Métrica
+                        </label>
+                        <select id="esboco-select-metrica" class="w-full bg-transparent font-bold text-xs text-gray-800 dark:text-gray-100 focus:outline-none cursor-pointer">
+                            <option value="todas" selected>Todas as métricas</option>
+                            <option value="msg_ativa">Mensagens de Serviço</option>
+                            <option value="disparo">Campanhas de Disparo</option>
+                            <option value="template">Templates de Notificação</option>
+                            <option value="msg_receptiva">Mensagens Receptivas</option>
+                        </select>
+                    </div>
+
+                    <!-- Cenário -->
+                    <div class="esboco-filtro bg-white dark:bg-[#1a1528] border border-gray-200 dark:border-purple-900/40 rounded-xl p-3 shadow-sm transition-all focus-within:ring-2 focus-within:ring-purple-400">
+                        <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1 flex items-center gap-1.5">
+                            <i class="fa-solid fa-scale-balanced text-[#7660a1]"></i> Cenário
+                        </label>
+                        <select id="esboco-select-cenario" class="w-full bg-transparent font-bold text-xs text-gray-800 dark:text-gray-100 focus:outline-none cursor-pointer">
+                            <option value="novo" selected>Novo preço (Meta)</option>
+                            <option value="antigo">Preço antigo</option>
+                            <option value="comparativo">Comparativo</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- SEÇÃO: FILTROS DE ATENDIMENTOS -->
+                <div id="sidebar-filtros-atendimentos" class="space-y-4">
+                    <div>
+                        <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                            <i class="fa-solid fa-filter text-[#7660a1]"></i> Filtros de Auditoria
+                        </h4>
+                    </div>
+
+                    <!-- Busca Rápida -->
+                    <div class="bg-white dark:bg-[#1a1528] border border-gray-200 dark:border-purple-900/40 rounded-xl p-3 shadow-sm transition-all focus-within:ring-2 focus-within:ring-purple-400">
+                        <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1 flex items-center gap-1.5">
+                            <i class="fa-solid fa-magnifying-glass text-[#7660a1]"></i> Busca por Telefone / Atendente
+                        </label>
+                        <input type="text" id="filtro-busca" placeholder="Telefone ou atendente..." 
+                            class="w-full bg-transparent font-bold text-xs text-gray-800 dark:text-gray-100 focus:outline-none">
+                    </div>
+
+                    <!-- Categoria -->
+                    <div class="bg-white dark:bg-[#1a1528] border border-gray-200 dark:border-purple-900/40 rounded-xl p-3 shadow-sm transition-all focus-within:ring-2 focus-within:ring-purple-400">
+                        <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1 flex items-center gap-1.5">
+                            <i class="fa-solid fa-tags text-[#7660a1]"></i> Categoria
+                        </label>
+                        <select id="filtro-categoria" class="w-full bg-transparent font-bold text-xs text-gray-800 dark:text-gray-100 focus:outline-none cursor-pointer">
+                            <option value="">Todas as Categorias</option>
+                            <option value="Serviço">Serviço</option>
+                            <option value="Template">Template</option>
+                            <option value="Disparo">Disparo</option>
+                        </select>
+                    </div>
+
+                    <!-- Janela 24h -->
+                    <div class="bg-white dark:bg-[#1a1528] border border-gray-200 dark:border-purple-900/40 rounded-xl p-3 shadow-sm transition-all focus-within:ring-2 focus-within:ring-purple-400">
+                        <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1 flex items-center gap-1.5">
+                            <i class="fa-solid fa-clock-rotate-left text-[#7660a1]"></i> Janela 24h
+                        </label>
+                        <select id="filtro-janela" class="w-full bg-transparent font-bold text-xs text-gray-800 dark:text-gray-100 focus:outline-none cursor-pointer">
+                            <option value="">Janela 24h: Todas</option>
+                            <option value="Dentro">Dentro da Janela</option>
+                            <option value="Fora">Fora da Janela</option>
+                        </select>
+                    </div>
+
+                    <!-- Mês -->
+                    <div class="bg-white dark:bg-[#1a1528] border border-gray-200 dark:border-purple-900/40 rounded-xl p-3 shadow-sm transition-all focus-within:ring-2 focus-within:ring-purple-400">
+                        <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1 flex items-center gap-1.5">
+                            <i class="fa-solid fa-calendar-days text-[#7660a1]"></i> Mês de Referência
+                        </label>
+                        <select id="filtro-mes" class="w-full bg-transparent font-bold text-xs text-gray-800 dark:text-gray-100 focus:outline-none cursor-pointer">
+                            <option value="">Todos os Meses</option>
+                            <option value="1">01 - Janeiro</option>
+                            <option value="2">02 - Fevereiro</option>
+                            <option value="3">03 - Março</option>
+                            <option value="4">04 - Abril</option>
+                            <option value="5">05 - Maio</option>
+                            <option value="6">06 - Junho</option>
+                            <option value="7">07 - Julho</option>
+                            <option value="8">08 - Agosto</option>
+                            <option value="9">09 - Setembro</option>
+                        </select>
+                    </div>
+                </div>
+
+            </div>
+        </aside>
+    </div>
+
+    <!-- Dados serializados para o simulador e gráficos -->
+    <script>
+        window.POLI_FIN_SIMULADOR = {{ simulador_json|safe }};
+        window.POLI_FIN_DADOS_MESES = {{ mensal_json|safe }};
+        window.POLI_FIN_CATEGORIAS = {{ categorias_json|safe }};
+    </script>
+    <script src="{% static 'dash_polichat_financeiro/js/polichat_financeiro.js' %}?v=6"></script>
+</body>
+</html>

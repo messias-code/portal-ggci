@@ -12,6 +12,7 @@ from django.urls import path, include
 from django.views.generic import TemplateView
 
 from apps.inicio.gestao_acessos import views as gestao_acessos_views
+from portal_ggci import execucoes
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -19,12 +20,16 @@ urlpatterns = [
     # Login e Logout
     path('', TemplateView.as_view(template_name='gestao_acessos/login/index.html'), name='home'),
     path('api/verificar-login/', gestao_acessos_views.verificar_login, name='verificar_login'),
+    # Retrato de uma execução do Análise IA / Documentos IA, no mesmo formato para os dois
+    # (o aviso "já existe uma atualização em andamento" — ver portal_ggci/execucoes.py).
+    path('api/execucoes/<str:motor>/<int:processo_id>/', execucoes.status_motor, name='status_motor'),
     path('logout/', gestao_acessos_views.fazer_logout, name='logout'),
     
     # Início (Hub e Gestão)
     path('inicio/', include('apps.inicio.menu_inicio.urls')),
     path('inicio/gestao-acessos/', gestao_acessos_views.gestao_acessos, name='gestao_acessos'),
     path('api/salvar-usuario/', gestao_acessos_views.api_salvar_usuario, name='api_salvar_usuario'),
+    path('api/metricas-acessos/', gestao_acessos_views.api_metricas_acessos, name='api_metricas_acessos'),
     path('inicio/alterar-senha/', include('apps.inicio.alteracao_senha.urls')),
     
     # Ferramentas
@@ -42,6 +47,7 @@ urlpatterns = [
     # Dashboards
     path('dashboards/', include('apps.dashboards.menu_dashboards.urls')),
     path('dashboards/polichat/', include('apps.dashboards.dash_polichat.urls')),
+    path('dashboards/polichat-financeiro/', include('apps.dashboards.dash_polichat_financeiro.urls')),
     path('dashboards/documentos-ia/', include('apps.dashboards.dash_documentos_ia.urls')),
 
     # Sugestões

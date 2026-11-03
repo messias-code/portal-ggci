@@ -101,17 +101,6 @@ html[data-tema="eleitoral"] .area-trabalho #count-selected-ies {
     color: var(--tema-primaria-suave) !important;
 }
 
-/* "Limpar Tudo" traz cor, borda E fundo branco no mesmo atributo `style`. */
-html[data-tema="eleitoral"] .area-trabalho .docia-btn-limpar {
-    background-color: rgba(255, 255, 255, 0.06) !important;
-    border-color: var(--tema-primaria-borda) !important;
-    color: var(--tema-primaria-suave) !important;
-}
-
-html[data-tema="eleitoral"] .area-trabalho .docia-btn-limpar:hover {
-    background-color: rgba(111, 211, 191, 0.16) !important;
-}
-
 /* Sobrescritas para o tema eleitoral das novas classes (semântica) */
 html[data-tema="eleitoral"] .docia-icone-bg {
     background-color: rgba(62, 158, 140, 0.1) !important;
@@ -309,25 +298,10 @@ html[data-tema="eleitoral"] .docia-chip--aviso {
 }
 
 /* --- Caixa do botão "Atualizar" -------------------------------------------
-   Ela é irmã do "Voltar" e do alternador de tema no cabeçalho, mas era a única
-   sem gancho de tema: o `bg-white/80` do markup ficava branco no escuro, e o
-   resultado era um retângulo claro no meio de um cabeçalho escuro. Segue o
-   mesmo vocabulário que `tema-menu.css` dá ao `.tela-voltar`. */
-html[data-tema="eleitoral"] .docia-caixa-atualizar {
-    background-color: rgba(255, 255, 255, 0.06) !important;
-    border-color: var(--tema-borda-forte) !important;
-}
-html[data-tema="eleitoral"] .docia-caixa-atualizar #btn-atualizar,
-html[data-tema="eleitoral"] .docia-caixa-atualizar #btn-config-atualizacao,
-html[data-tema="eleitoral"] .docia-caixa-atualizar #btn-abrir-console {
-    color: var(--tema-primaria-suave) !important;
-}
-html[data-tema="eleitoral"] .docia-caixa-atualizar #btn-atualizar:hover,
-html[data-tema="eleitoral"] .docia-caixa-atualizar #btn-config-atualizacao:hover,
-html[data-tema="eleitoral"] .docia-caixa-atualizar #btn-abrir-console:hover {
-    background-color: rgba(111, 211, 191, 0.16) !important;
-}
-/* O separador vertical e o "| Nunca" ao lado do rótulo. */
+   A caixa e os três botões seguem o botão de tema por `.botao-tema-grupo`
+   (`static/css/tema.css`, seção 5). Aqui ficam só as peças de dentro que o
+   markup e o JS ainda pintam de rosa/cinza: o separador vertical e o
+   "| Nunca" ao lado do rótulo. */
 html[data-tema="eleitoral"] .docia-caixa-atualizar .bg-pink-100 {
     background-color: var(--tema-borda) !important;
 }
@@ -468,26 +442,50 @@ html[data-tema="eleitoral"] .docia-filtro-contador {
 }
 
 
-/*  O CAMPO DE DATA segue o selo do contador: no claro o roxo `#6B007B` está
-    fixo na folha base, e sobre o fundo escuro ele fica quase preto. O token da
-    primária é a mesma intenção medida para este tema.  */
+/*  O CAMPO DE DATA é a calha do "Ordenar por" (ver o bloco dele, mais abaixo)
+    e troca as mesmas peças: branco a 7% no lugar do lilás, a peça do ícone em
+    `--tema-superficie-3`, e — com data escolhida — o azul de estrutura das
+    pastilhas escolhidas no lugar do roxo.  */
+html[data-tema="eleitoral"] .docia-campo-data {
+    background-color: rgba(255, 255, 255, 0.07);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10),
+                0 1px 2px rgba(0, 0, 0, 0.30);
+}
+
+html[data-tema="eleitoral"] .docia-campo-data:hover {
+    background-color: rgba(255, 255, 255, 0.10);
+}
+
+html[data-tema="eleitoral"] .docia-campo-data:focus-within,
+html[data-tema="eleitoral"] .docia-campo-data:has(.docia-campo-data__entrada.active) {
+    box-shadow: inset 0 0 0 1px var(--tema-primaria-borda),
+                0 0 0 3px rgba(111, 211, 191, 0.10);
+}
+
 html[data-tema="eleitoral"] .docia-campo-data__icone {
-    color: var(--tema-primaria);
+    background-color: var(--tema-superficie-3);
+    color: var(--tema-primaria-suave);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35),
+                inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
-html[data-tema="eleitoral"] .docia-campo-data:hover,
-html[data-tema="eleitoral"] .docia-campo-data:focus-within {
-    border-color: var(--tema-primaria);
+html[data-tema="eleitoral"] .docia-campo-data:has(.docia-campo-data__entrada:not(.flatpickr-input):not(:placeholder-shown))
+    .docia-campo-data__icone {
+    background-color: var(--tema-solido-info);
+    color: #FFFFFF;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.35),
+                0 4px 10px -3px rgba(0, 0, 0, 0.50),
+                inset 0 1px 0 rgba(255, 255, 255, 0.16);
 }
 
-html[data-tema="eleitoral"] .docia-campo-data:focus-within {
-    box-shadow: 0 0 0 3px var(--tema-primaria-lavada);
+html[data-tema="eleitoral"] .docia-campo-data__seta {
+    color: var(--tema-primaria-suave);
 }
 
 /*  `tema-conteudo.css` pinta todo `input[type="text"]` de `.area-trabalho` com
     fundo, borda e cor próprios — e aqui a moldura é a `<div>` de fora, não o
     campo. Sem esta regra o input desenha um retângulo `--tema-superficie-3`
-    DENTRO da caixa, com cantos retos por cima dos arredondados dela.
+    DENTRO da calha, com cantos retos por cima dos arredondados dela.
 
     O `[type=...]` está aqui só para somar especificidade: a regra de lá é
     `html[data-tema] .area-trabalho input[type="date"]`, e sem ele esta empata
@@ -500,19 +498,18 @@ html[data-tema="eleitoral"] .area-trabalho .docia-campo-data__entrada[type="text
     border: 0;
 }
 
-/*  A CAIXA SOBE UM DEGRAU no escuro. A barra de filtros inteira é
-    `--tema-superficie`, e um campo na mesma tinta do painel vira um retângulo
-    de borda solta. `--tema-superficie-3` é o fundo de campo de formulário
-    declarado em `tema.css`, e é o que a regra global já tentava dar ao input.  */
-html[data-tema="eleitoral"] .docia-campo-data {
-    background-color: var(--tema-superficie-3);
-}
-
 /*  O TEXTO DO CAMPO — a data escolhida, ou a frase de vazio no
     `::placeholder`. Sem isto ele herda o preto do tema claro e some no fundo
     escuro.  */
 html[data-tema="eleitoral"] .docia-campo-data__entrada {
     color: var(--tema-texto-forte);
+}
+
+/*  O `.area-trabalho` empata com a regra de placeholder de `tema-conteudo.css`,
+    que pinta toda frase de vazio no `--tema-texto-fraco` — fraco demais para o
+    rótulo de um controle, que aqui fala no tom dos rótulos das calhas.  */
+html[data-tema="eleitoral"] .area-trabalho .docia-campo-data__entrada::placeholder {
+    color: var(--tema-texto-medio);
 }
 
 

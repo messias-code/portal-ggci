@@ -29,7 +29,7 @@
     <!-- Console de atualização: utilitárias que o bundle purgou + os dois temas. -->
     <link rel="stylesheet" href="{% static 'css/console.css' %}?v=1">
     <!-- Aviso de motor ocupado: impede as duas atualizações de brigarem pelo SIBU. -->
-    <link rel="stylesheet" href="{% static 'css/motor-ocupado.css' %}?v=1">
+    <link rel="stylesheet" href="{% static 'css/motor-ocupado.css' %}?v=2">
 
     <!-- Tokens de cor dos temas e a troca de logo (compartilhado por todo o portal) -->
     <link rel="stylesheet" href="{% static 'css/tema.css' %}">
@@ -51,10 +51,10 @@
     -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
     
-    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia.css' %}?v=20261023d">
+    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia.css' %}?v=20261026e">
 
     <!-- Camada escura desta tela: o que os arquivos compartilhados não alcançam -->
-    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia-eleitoral.css' %}?v=20261022a">
+    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia-eleitoral.css' %}?v=20261026e">
 </head>
 
 <body class="docia-corpo grid-bg bg-[#f8f6fb] text-gray-800 fixed inset-0 p-4 lg:p-6 flex transition-colors duration-500 overflow-hidden">
@@ -115,19 +115,19 @@
                     <!-- `docia-caixa-atualizar` é o gancho do tema escuro: o `bg-white/80` daqui não
                          é alcançado por nenhuma das camadas compartilhadas, e no eleitoral
                          a caixa ficava branca no meio de um cabeçalho escuro. -->
-                    <div class="docia-caixa-atualizar flex items-center bg-white/80 rounded-2xl shadow-sm border border-pink-100 h-10 transition-all text-sm overflow-hidden flex-nowrap shrink-0 focus-within:ring-2 focus-within:ring-pink-200">
-                        <button type="button" id="btn-atualizar" class="h-full px-5 text-pink-600 font-bold flex items-center gap-2 hover:bg-pink-50 transition-colors shrink-0">
+                    <div class="docia-caixa-atualizar flex items-center rounded-2xl shadow-sm border h-10 transition-all text-sm overflow-hidden flex-nowrap shrink-0 focus-within:ring-2 focus-within:ring-pink-200 botao-tema-grupo">
+                        <button type="button" id="btn-atualizar" class="h-full px-5 font-bold flex items-center gap-2 transition-colors shrink-0">
                             <span>Atualizar</span> <span class="text-gray-400 font-medium whitespace-nowrap">| <span id="data-atualizacao">{{ data_atualizacao }}</span></span>
                         </button>
                         <div class="h-6 w-px bg-pink-100 shrink-0"></div>
-                        <button type="button" id="btn-config-atualizacao" class="h-full px-3 text-pink-500 hover:text-pink-700 hover:bg-pink-50 transition-colors shrink-0 flex items-center justify-center relative">
+                        <button type="button" id="btn-config-atualizacao" class="h-full px-3 transition-colors shrink-0 flex items-center justify-center relative">
                             <i class="fa-solid fa-sliders"></i>
                             <!-- Aceso quando há configuração aplicada: sem isto, um recorte
                                  esquecido faria a próxima atualização parecer completa. -->
                             <span id="selo-config" class="docia-selo-config hidden"></span>
                         </button>
                         <div class="h-6 w-px bg-pink-100 shrink-0"></div>
-                        <button type="button" id="btn-abrir-console" class="h-full px-3 text-pink-500 hover:text-pink-700 hover:bg-pink-50 transition-colors shrink-0 flex items-center justify-center">
+                        <button type="button" id="btn-abrir-console" class="h-full px-3 transition-colors shrink-0 flex items-center justify-center">
                             <i class="fa-solid fa-terminal"></i>
                         </button>
                     </div>
@@ -303,13 +303,13 @@
                                     é uma planilha comum. Ela leva os MESMOS filtros da tela.
                                 -->
                                 <button type="button" id="btn-exportar"
-                                        class="h-8 px-3 shrink-0 flex items-center justify-center gap-2 bg-white border border-gray-200 rounded-lg text-pink-600 hover:bg-pink-50 transition-colors shadow-sm"
+                                        class="h-8 px-3 shrink-0 flex items-center justify-center gap-2 border rounded-lg transition-colors shadow-sm botao-tema botao-tema--excel"
                                        >
                                     <i class="fa-solid fa-file-excel text-xs"></i>
                                     <span class="text-[10px] font-bold uppercase tracking-wider leading-none">Excel</span>
                                 </button>
                                 <button type="button" id="btn-expandir"
-                                        class="h-8 w-8 shrink-0 flex items-center justify-center bg-white border border-gray-200 rounded-lg text-pink-600 hover:bg-pink-50 transition-colors shadow-sm"
+                                        class="h-8 w-8 shrink-0 flex items-center justify-center border rounded-lg transition-colors shadow-sm botao-tema"
                                         aria-pressed="false">
                                     <i class="fa-solid fa-expand text-xs" id="icone-expandir"></i>
                                 </button>
@@ -426,13 +426,13 @@
                         Leva os MESMOS filtros da tela.
                     -->
                     <button type="button" id="btn-exportar-ies"
-                            class="h-8 px-3 shrink-0 flex items-center justify-center gap-2 bg-white border border-gray-200 rounded-lg text-pink-600 hover:bg-pink-50 transition-colors shadow-sm"
+                            class="h-8 px-3 shrink-0 flex items-center justify-center gap-2 border rounded-lg transition-colors shadow-sm botao-tema botao-tema--excel"
                            >
                         <i class="fa-solid fa-file-excel text-xs"></i>
                         <span class="text-[10px] font-bold uppercase tracking-wider leading-none">Excel</span>
                     </button>
                     <button type="button" id="btn-expandir-ies"
-                            class="h-8 w-8 shrink-0 flex items-center justify-center bg-white border border-gray-200 rounded-lg text-pink-600 hover:bg-pink-50 transition-colors shadow-sm"
+                            class="h-8 w-8 shrink-0 flex items-center justify-center border rounded-lg transition-colors shadow-sm botao-tema"
                             aria-pressed="false">
                         <i class="fa-solid fa-expand text-xs" id="icone-expandir-ies"></i>
                     </button>
@@ -905,7 +905,7 @@
                                         filtros da tela.
                                     -->
                                     <button type="button" id="ia-btn-exportar"
-                                            class="h-8 px-3 shrink-0 flex items-center justify-center gap-2 bg-white border border-gray-200 rounded-lg text-pink-600 hover:bg-pink-50 transition-colors shadow-sm">
+                                            class="h-8 px-3 shrink-0 flex items-center justify-center gap-2 border rounded-lg transition-colors shadow-sm botao-tema botao-tema--excel">
                                         <i class="fa-solid fa-file-excel text-xs"></i>
                                         <span class="text-[10px] font-bold uppercase tracking-wider leading-none">Excel</span>
                                     </button>
@@ -916,7 +916,7 @@
                                         a janela, porque a casca tem `backdrop-filter`.
                                     -->
                                     <button type="button" id="ia-btn-expandir"
-                                            class="h-8 w-8 shrink-0 flex items-center justify-center bg-white border border-gray-200 rounded-lg text-pink-600 hover:bg-pink-50 transition-colors shadow-sm"
+                                            class="h-8 w-8 shrink-0 flex items-center justify-center border rounded-lg transition-colors shadow-sm botao-tema"
                                             aria-pressed="false" aria-label="Expandir a tabela">
                                         <i class="fa-solid fa-expand text-xs" id="ia-icone-expandir"></i>
                                     </button>
@@ -1672,6 +1672,7 @@
                                 <input type="date" id="filtro-data-proc-ia" class="docia-campo-data__entrada"
                                        placeholder="Selecione uma data"
                                        aria-label="Filtrar pela data de processamento">
+                                <i class="fa-solid fa-chevron-down docia-campo-data__seta" aria-hidden="true"></i>
                             </div>
                         </section>
 
@@ -2106,7 +2107,7 @@
                             <div class="docia-marcador w-2 h-6 rounded-full" style="background-color: #6B007B;"></div>
                             <h4 class="text-sm font-extrabold text-gray-800 uppercase tracking-wide">Selecionadas (<span id="ia-inc-contagem" class="docia-icone-color">0</span>)</h4>
                         </div>
-                        <button type="button" id="ia-inc-limpar" class="docia-btn-limpar text-xs font-bold px-4 py-2 rounded-xl transition-colors border shadow-sm hover:bg-gray-50" style="color: #6B007B; border-color: rgba(107,0,123,0.2); background-color: white;">Limpar Tudo</button>
+                        <button type="button" id="ia-inc-limpar" class="docia-btn-limpar text-xs font-bold px-4 py-2 rounded-xl transition-colors border shadow-sm botao-tema">Limpar Tudo</button>
                     </div>
                     <div class="flex-1 overflow-y-auto p-6 space-y-2 custom-scrollbar-light" id="ia-inc-selecionadas" style="min-height: 0;">
                         <!-- Montado pelo JS -->
@@ -2115,7 +2116,7 @@
             </div>
 
             <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 bg-white shrink-0">
-                <button type="button" id="ia-inc-cancelar" class="px-6 py-2.5 text-sm font-bold text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl transition-colors shadow-sm">Cancelar</button>
+                <button type="button" id="ia-inc-cancelar" class="px-6 py-2.5 text-sm font-bold border rounded-xl transition-colors shadow-sm botao-tema">Cancelar</button>
                 <button type="button" id="ia-inc-aplicar" class="modal-confirmar px-8 py-2.5 text-sm font-bold rounded-xl transition-all shadow-md hover:opacity-90 flex items-center gap-2 docia-modal-gradiente text-white">
                     <i class="fa-solid fa-check"></i> Aplicar
                 </button>
@@ -2163,7 +2164,7 @@
                             <div class="docia-marcador w-2 h-6 rounded-full" style="background-color: #6B007B;"></div>
                             <h4 class="text-sm font-extrabold text-gray-800 uppercase tracking-wide">Selecionadas (<span id="count-selected-ies" class="docia-icone-color">0</span>)</h4>
                         </div>
-                        <button onclick="clearSelectedIES()" class="docia-btn-limpar text-xs font-bold px-4 py-2 rounded-xl transition-colors border shadow-sm hover:bg-gray-50" style="color: #6B007B; border-color: rgba(107,0,123,0.2); background-color: white;">Limpar Tudo</button>
+                        <button onclick="clearSelectedIES()" class="docia-btn-limpar text-xs font-bold px-4 py-2 rounded-xl transition-colors border shadow-sm botao-tema">Limpar Tudo</button>
                     </div>
                     <div class="flex-1 overflow-y-auto p-6 space-y-2 custom-scrollbar-light" id="list-selected-ies" style="min-height: 0;">
                         <div class="flex flex-col items-center justify-center h-full opacity-40" id="empty-selected-msg">
@@ -2175,7 +2176,7 @@
             </div>
             
             <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 bg-white shrink-0">
-                <button onclick="closeModalIES()" class="px-6 py-2.5 text-sm font-bold text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl transition-colors shadow-sm">Cancelar</button>
+                <button onclick="closeModalIES()" class="px-6 py-2.5 text-sm font-bold border rounded-xl transition-colors shadow-sm botao-tema">Cancelar</button>
                 <button onclick="applyIESFilter()" class="modal-confirmar px-8 py-2.5 text-sm font-bold rounded-xl transition-all shadow-md hover:opacity-90 flex items-center gap-2 docia-modal-gradiente text-white">
                     <i class="fa-solid fa-check"></i> Aplicar
                 </button>
@@ -2392,8 +2393,8 @@
                     <i class="fa-solid fa-circle-info"></i>
                     <span>Sem período marcado, a atualização vem completa.</span>
                 </span>
-                <button type="button" id="btn-config-limpar" class="px-6 py-2.5 text-sm font-bold text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl transition-colors shadow-sm">Limpar</button>
-                <button type="button" id="btn-config-cancelar" class="px-6 py-2.5 text-sm font-bold text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl transition-colors shadow-sm">Cancelar</button>
+                <button type="button" id="btn-config-limpar" class="px-6 py-2.5 text-sm font-bold border rounded-xl transition-colors shadow-sm botao-tema">Limpar</button>
+                <button type="button" id="btn-config-cancelar" class="px-6 py-2.5 text-sm font-bold border rounded-xl transition-colors shadow-sm botao-tema">Cancelar</button>
                 <button type="button" id="btn-config-aplicar" class="px-8 py-2.5 text-sm font-bold rounded-xl transition-all shadow-md hover:opacity-90 flex items-center gap-2 docia-modal-gradiente text-white">
                     <i class="fa-solid fa-check"></i> Aplicar
                 </button>
@@ -2463,9 +2464,9 @@
         ApexCharts é a biblioteca de gráficos do portal — a mesma que o Polichat
         usa. Esta tela era a única ainda em ECharts.
     -->
-    <script src="{% static 'js/motor-ocupado.js' %}?v=1"></script>
+    <script src="{% static 'js/motor-ocupado.js' %}?v=3"></script>
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-    <script src="{% static 'dash_documentos_ia/js/dash_documentos_ia.js' %}?v=20260924b"></script>
+    <script src="{% static 'dash_documentos_ia/js/dash_documentos_ia.js' %}?v=20261103c"></script>
     <!--
         A ABA ANÁLISE IA. Depois de `dash_documentos_ia.js` porque o filtro de
         instituições e o console de atualização vivem lá e são compartilhados; este
@@ -2480,6 +2481,6 @@
     -->
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/pt.js"></script>
-    <script src="{% static 'dash_documentos_ia/js/analise_ia.js' %}?v=20261023a"></script>
+    <script src="{% static 'dash_documentos_ia/js/analise_ia.js' %}?v=20261103b"></script>
 </body>
 </html>

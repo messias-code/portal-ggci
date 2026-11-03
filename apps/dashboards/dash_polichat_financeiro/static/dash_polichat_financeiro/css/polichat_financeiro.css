@@ -1,0 +1,371 @@
+/* ==========================================================================
+   POLICHAT FINANCEIRO — ESTILOS CUSTOMIZADOS E IDENTIDADE VISUAL GGCI
+   Harmonizado com o padrão de fundo, escala e contraste do dash_documentos_ia
+   ========================================================================== */
+
+:root {
+    --fin-roxo-primario: #7660a1;
+    --fin-roxo-claro: #8c76b8;
+    --fin-roxo-escuro: #523f78;
+    --fin-roxo-hover: #675091;
+
+    /*  CREME NO PAPEL, NORD NA TINTA (Padrão idêntico ao dash_documentos_ia)
+        O fundo afunda meio tom em creme suave (#F4F1EA) e os cartões flutuam
+        sobre ele em branco puro (#FFFFFF) com arestas nítidas e sombras suaves. */
+    --fin-superficie: #FFFFFF;
+    --fin-rebaixo: #F4F1EA;
+    --fin-nord-0: #2E3440;
+    --fin-nord-2: #434C5E;
+    --fin-nord-3: #5B667C;
+    --fin-fio: color-mix(in srgb, var(--fin-nord-0) 12%, transparent);
+    --fin-fio-suave: color-mix(in srgb, var(--fin-nord-0) 7%, transparent);
+
+    --fin-bg-card: var(--fin-superficie);
+    --fin-borda: var(--fin-fio);
+    --fin-borda-suave: var(--fin-fio-suave);
+    --fin-texto-titulo: #1e1b2e;
+    --fin-texto-corpo: #3f3d56;
+    --fin-texto-muted: #6b7280;
+    --fin-alerta-bg: #fef2f2;
+    --fin-alerta-borda: #fee2e2;
+    --fin-alerta-texto: #991b1b;
+    --fin-badge-bg: rgba(118, 96, 161, 0.08);
+    --fin-badge-texto: #675091;
+
+    /* Cores fiéis da API WhatsApp e Meta */
+    --sim-antigo: #94a3b8;
+    --sim-novo: #0d9488;
+    --sim-dif: #f43f5e;
+    --sim-track: #e9e5dc;
+}
+
+[data-tema="eleitoral"] {
+    --fin-roxo-primario: #9b84ca;
+    --fin-roxo-claro: #b29ee0;
+    --fin-roxo-escuro: #433166;
+    --fin-roxo-hover: #836cb1;
+
+    --fin-superficie: #1a1626;
+    --fin-rebaixo: #120e1c;
+    --fin-fio: rgba(255, 255, 255, 0.08);
+    --fin-fio-suave: rgba(255, 255, 255, 0.04);
+
+    --fin-bg-card: var(--fin-superficie);
+    --fin-borda: var(--fin-fio);
+    --fin-borda-suave: var(--fin-fio-suave);
+    --fin-texto-titulo: #f9fafb;
+    --fin-texto-corpo: #d1d5db;
+    --fin-texto-muted: #9ca3af;
+    --fin-alerta-bg: #3f1d1d;
+    --fin-alerta-borda: #7f1d1d;
+    --fin-alerta-texto: #fca5a5;
+    --fin-badge-bg: rgba(155, 132, 202, 0.18);
+    --fin-badge-texto: #d8c9f5;
+
+    /* Cores tema escuro */
+    --sim-antigo: #64748b;
+    --sim-novo: #14b8a6;
+    --sim-dif: #fb7185;
+    --sim-track: #231c34;
+}
+
+/* ==========================================================================
+   PLANO DE FUNDO & TEXTURA TÉCNICA (PADRÃO DASH_DOCUMENTOS_IA)
+   ========================================================================== */
+
+/* Malha do body */
+.grid-bg {
+    background-image:
+        linear-gradient(rgba(118, 96, 161, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(118, 96, 161, 0.05) 1px, transparent 1px);
+    background-size: 112px 76px;
+}
+
+/* Fundo da tela de trabalho rebaixado com trama técnica de pontos */
+.fin-tela {
+    background-color: var(--fin-rebaixo);
+    background-image: radial-gradient(rgba(118, 96, 161, 0.12) 1px, transparent 1px);
+    background-size: 16px 16px;
+    background-attachment: local;
+    border-radius: 0 0 1.75rem 1.75rem;
+}
+
+[data-tema="eleitoral"] .fin-tela {
+    background-color: var(--fin-rebaixo);
+    background-image: radial-gradient(rgba(178, 158, 224, 0.10) 1px, transparent 1px);
+}
+
+/* Base e Tipografia */
+.font-mono, .fin-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Containers e Painéis Mestres */
+.fin-card-mestre {
+    background-color: var(--fin-superficie);
+    border: 1px solid var(--fin-fio);
+    border-radius: 1rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.25s ease;
+}
+
+[data-tema="eleitoral"] .fin-card-mestre {
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+}
+
+.fin-card-mestre:hover {
+    border-color: rgba(118, 96, 161, 0.25);
+}
+
+/* Placar de KPIs Executivos */
+.fin-kpi-card {
+    position: relative;
+    border-radius: 0.875rem;
+    padding: 0.75rem 1rem;
+    background-color: var(--fin-superficie);
+    border: 1px solid var(--fin-fio);
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.03);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease, border-color 0.2s ease;
+}
+
+.fin-kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px -4px rgba(118, 96, 161, 0.15);
+    border-color: rgba(118, 96, 161, 0.3);
+}
+
+.fin-kpi-valor {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+}
+
+/* Abas de Navegação Superiores */
+.fin-aba {
+    color: var(--fin-texto-muted);
+    background: transparent;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fin-aba:hover {
+    color: var(--fin-roxo-primario);
+    background-color: rgba(118, 96, 161, 0.08);
+}
+
+.fin-aba--ativa {
+    color: #ffffff !important;
+    background-color: var(--fin-roxo-primario) !important;
+    box-shadow: 0 4px 14px rgba(118, 96, 161, 0.35);
+}
+
+/* Tabelas Executivas do Portal */
+.fin-tabela {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.fin-tabela th {
+    background-color: rgba(118, 96, 161, 0.05);
+    color: var(--fin-texto-muted);
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 800;
+    padding: 0.35rem 0.75rem;
+    border-bottom: 1px solid var(--fin-borda);
+    white-space: nowrap;
+}
+
+.fin-tabela td {
+    padding: 0.35rem 0.75rem;
+    border-bottom: 1px solid var(--fin-borda);
+    color: var(--fin-texto-corpo);
+    font-size: 0.75rem;
+}
+
+.fin-tabela tr:last-child td {
+    border-bottom: none;
+}
+
+.fin-tabela tr:hover td {
+    background-color: rgba(118, 96, 161, 0.035);
+}
+
+/* Tabela de Métricas do Simulador */
+.esboco-tabela {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.esboco-tabela th {
+    font-size: 0.6875rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.55rem 0.95rem;
+    color: var(--fin-texto-muted);
+    background-color: rgba(118, 96, 161, 0.05);
+    border-bottom: 1px solid var(--fin-borda);
+    white-space: nowrap;
+}
+
+.esboco-tabela td {
+    padding: 0.55rem 0.95rem;
+    font-size: 0.75rem;
+    border-bottom: 1px solid var(--fin-borda);
+    color: var(--fin-texto-corpo);
+    white-space: nowrap;
+}
+
+.esboco-tabela tr:last-child td {
+    border-bottom: none;
+}
+
+.esboco-tabela tr:hover td {
+    background-color: rgba(118, 96, 161, 0.035);
+}
+
+/* Scrollbars customizadas refinadas */
+.fin-scrollbar::-webkit-scrollbar,
+.custom-scrollbar-light::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+}
+
+.fin-scrollbar::-webkit-scrollbar-track,
+.custom-scrollbar-light::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.fin-scrollbar::-webkit-scrollbar-thumb,
+.custom-scrollbar-light::-webkit-scrollbar-thumb {
+    background-color: rgba(118, 96, 161, 0.25);
+    border-radius: 9999px;
+}
+
+.fin-scrollbar::-webkit-scrollbar-thumb:hover,
+.custom-scrollbar-light::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(118, 96, 161, 0.5);
+}
+
+.fin-scrollbar,
+.custom-scrollbar-light {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(118, 96, 161, 0.25) transparent;
+}
+
+/* ==========================================================================
+   BARRA LATERAL DE FILTROS (SIDEBAR) & BOTÃO TOGGLE
+   Padrão idêntico aos outros dashboards do Portal GGCI
+   ========================================================================== */
+
+.sidebar-btn {
+    right: -94px;
+    width: 94px;
+}
+
+.sidebar-btn:hover {
+    right: -100px;
+    width: 100px;
+}
+
+.sidebar-icon-wrapper {
+    margin-right: 10px;
+}
+
+#filter-sidebar {
+    will-change: transform;
+}
+
+#filter-sidebar.is-animating {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+#main-content.is-animating {
+    will-change: padding-left;
+}
+
+[data-tema="eleitoral"] #toggle-sidebar-btn {
+    background-color: var(--fin-bg-card) !important;
+    border-color: var(--fin-borda) !important;
+    color: var(--fin-roxo-claro) !important;
+    box-shadow: 4px 0 15px rgba(0, 0, 0, 0.35) !important;
+}
+
+[data-tema="eleitoral"] #toggle-sidebar-btn:hover {
+    background-color: var(--fin-borda) !important;
+    color: var(--fin-roxo-primario) !important;
+}
+
+[data-tema="eleitoral"] #filter-sidebar {
+    background-color: rgba(24, 20, 36, 0.98) !important;
+    border-color: var(--fin-borda) !important;
+}
+
+.fin-sidebar-aba {
+    color: var(--fin-texto-muted);
+    background: transparent;
+}
+
+.fin-sidebar-aba:hover {
+    color: var(--fin-roxo-primario);
+    background-color: rgba(118, 96, 161, 0.1);
+}
+
+.fin-sidebar-aba--ativa {
+    color: #ffffff !important;
+    background-color: var(--fin-roxo-primario) !important;
+    box-shadow: 0 2px 8px rgba(118, 96, 161, 0.3);
+}
+
+/* Sliders do Simulador */
+input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 9999px;
+    background: rgba(118, 96, 161, 0.15);
+    outline: none;
+    transition: background 0.2s;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--fin-roxo-primario);
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(118, 96, 161, 0.4);
+    border: 2.5px solid #ffffff;
+    transition: transform 0.15s ease, background 0.15s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    background: var(--fin-roxo-hover);
+}
+
+[data-tema="eleitoral"] input[type="range"] {
+    background: rgba(155, 132, 202, 0.2);
+}
+
+[data-tema="eleitoral"] input[type="range"]::-webkit-slider-thumb {
+    background: var(--fin-roxo-claro);
+    border-color: #181424;
+}
+
+.btn-preset {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-preset:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(118, 96, 161, 0.15);
+}

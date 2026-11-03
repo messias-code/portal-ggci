@@ -13,10 +13,15 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
 from .models import ProcessamentoAnaliseIA
-from portal_ggci.processos import popen_com_limite
+from portal_ggci.processos import abortar_execucao, execucao_viva, popen_com_limite
+
+# O front reconhece esta frase exata e a troca pelo selo "ABORTADO PELO USUÁRIO".
+AVISO_ABORTADO = "\n\n🚨 [SISTEMA] Processo de IA abortado manualmente pelo usuário!"
+STATUS_ATIVOS = ('PENDENTE', 'EXTRAINDO', 'CONSOLIDANDO', 'CRUZANDO')
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TRAVA ENTRE OS DOIS MOTORES
@@ -61,12 +66,13 @@ def _bloqueio_do_outro_motor(request, eu):
                              'msg': "O %s está atualizando agora." % outro['rotulo']},
                             status=409)
 
-    # "Abortar e iniciar": para o outro pela própria view dele.
-    from django.test import Client as _ClienteInterno
+    # "Abortar e iniciar": para o outro e só volta com ele morto. Antes isto passava por
+    # um `django.test.Client` com `force_login(request.user)` — o login falso disparava o
+    # signal que grava `Usuario.session_key`, e o `SingleSessionMiddleware` deslogava a
+    # pessoa de verdade no pedido seguinte. Era o "abortei e tive que logar de novo".
+    from portal_ggci.execucoes import abortar_motor
 
-    interno = _ClienteInterno()
-    interno.force_login(request.user)
-    interno.post(outro['url_parar'])
+    abortar_motor(outro['motor'], outro['processo_id'])
     return None
 
 
@@ -88,6 +94,20 @@ def iniciar_processamento_ia(request):
         bloqueio = _bloqueio_do_outro_motor(request, eu='analise_ia')
         if bloqueio is not None:
             return bloqueio
+
+        ativos = ProcessamentoAnaliseIA.objects.filter(status__in=STATUS_ATIVOS)
+        if ativos.exists():
+            if execucao_viva('executar_motor_ia'):
+                return JsonResponse({
+                    'status': 'ok',
+                    'processo_id': ativos.order_by('-data_inicio').first().id,
+                })
+            ativos.update(
+                status='FALHA',
+                progresso=100,
+                data_fim=timezone.now(),
+                log='🚨 [SISTEMA] Processo abortado (servidor reiniciado ou falha fatal).',
+            )
 
         # 1. Leitura e Configuração de Payload
         payload = {}
@@ -149,32 +169,21 @@ def parar_processamento_ia(request, processo_id):
     """
     O QUE FAZ: Aborta forçosamente um processamento em andamento.
     POR QUÊ EXISTE: Permite que o usuário cancele uma extração caso tenha errado parâmetros ou o processo trave.
-    COMO FUNCIONA: Marca status FALHA no BD e dispara um pkill no sistema para o script Python e Playwright.
+    COMO FUNCIONA: Mata a árvore do motor DESTE processo (Python, Playwright e os Chromium
+      dele — e nenhum outro) e só depois grava FALHA. Ver `abortar_execucao`.
     PARÂMETROS: request, processo_id (int)
-    RETORNO: JsonResponse confirmando a parada.
-    EFEITOS COLATERAIS: Interrompe instâncias no SO brutalmente.
+    RETORNO: JsonResponse confirmando a parada — quando ela chega, o motor já morreu.
     """
     if request.method == 'POST':
-        try:
-            # Atualização do registro
-            processo = ProcessamentoAnaliseIA.objects.get(id=processo_id)
-            processo.status = 'FALHA'
-            processo.progresso = 100
-            processo.log += "\n\n🚨 [SISTEMA] Processo de IA abortado manualmente pelo usuário!"
-            processo.save()
-            
-            # Executa a limpeza hard-kill no SO
-            try:
-                os.system(f"pkill -f 'executar_motor_ia {processo_id}'")
-                os.system("pkill -f chromium")
-                os.system("pkill -f playwright")
-            except Exception:
-                pass
-                
+        parou = abortar_execucao(ProcessamentoAnaliseIA, 'executar_motor_ia', processo_id, AVISO_ABORTADO)
+        for outro_id in (ProcessamentoAnaliseIA.objects
+                         .filter(status__in=STATUS_ATIVOS)
+                         .exclude(id=processo_id)
+                         .values_list('id', flat=True)):
+            abortar_execucao(ProcessamentoAnaliseIA, 'executar_motor_ia', outro_id, AVISO_ABORTADO)
+        if parou:
             return JsonResponse({'status': 'ok'})
-            
-        except ProcessamentoAnaliseIA.DoesNotExist:
-            return JsonResponse({'status': 'erro', 'mensagem': 'Nenhum processo em andamento para este ID.'})
+        return JsonResponse({'status': 'erro', 'mensagem': 'Nenhum processo em andamento para este ID.'})
 
     return JsonResponse({'status': 'erro', 'mensagem': 'Método inválido'}, status=400)
 
@@ -187,7 +196,16 @@ def checar_status_ia(request, processo_id):
     """
     try:
         processo = ProcessamentoAnaliseIA.objects.get(id=processo_id)
-        
+        if processo.status in STATUS_ATIVOS and not execucao_viva('executar_motor_ia', processo_id):
+            processo.status = 'FALHA'
+            processo.data_fim = timezone.now()
+            aviso = (
+                "\n\n🚨 [SISTEMA] Processo interrompido inesperadamente pelo sistema operacional "
+                "(falta de memória / OOM Killer ou encerramento externo)."
+            )
+            processo.log = (processo.log or "") + aviso
+            processo.save(update_fields=['status', 'data_fim', 'log'])
+
         return JsonResponse({
             'status_codigo': processo.status,
             'status_texto': processo.get_status_display(),

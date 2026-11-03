@@ -12,6 +12,9 @@ from django.contrib.auth import authenticate, login, logout
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError
+from django.contrib.sessions.models import Session
+from django.utils import timezone
+from django.conf import settings
 from .models import Usuario
 import re
 
@@ -71,6 +74,12 @@ def inicio(request):
 
 def fazer_logout(request):
     """Encerra a sessão do usuário com segurança e redireciona ao login."""
+    if request.user.is_authenticated:
+        try:
+            request.user.session_key = None
+            request.user.save(update_fields=['session_key'])
+        except Exception:
+            pass
     logout(request)
     return redirect('home')
 
@@ -78,6 +87,53 @@ def fazer_logout(request):
 # --------------------------------------------------------------------------
 # 3. GESTÃO DE ACESSOS (TELA ADMINISTRATIVA)
 # --------------------------------------------------------------------------
+def obter_usuarios_online_ids(request_user=None, janela_segundos=180):
+    """
+    Retorna com precisão o conjunto de IDs (inteiros) dos usuários autenticados simultaneamente em tempo real.
+    Considera sessões ativas do Django cuja última requisição ocorreu dentro da janela de atividade recente
+    (por padrão 180 segundos = 3 minutos), eliminando contagens de sessões abandonadas ou fechadas.
+    """
+    agora = timezone.now()
+    cookie_age = getattr(settings, 'SESSION_COOKIE_AGE', 1200)
+    usuarios_online_ids = set()
+
+    if request_user and getattr(request_user, 'is_authenticated', False):
+        try:
+            usuarios_online_ids.add(int(request_user.id))
+        except (ValueError, TypeError):
+            pass
+
+    try:
+        # Sessões ativas dentro da janela de tempo real
+        limite_expire = agora + timezone.timedelta(seconds=max(0, cookie_age - janela_segundos))
+        sessoes_validas = Session.objects.filter(expire_date__gte=limite_expire)
+        session_keys_validas = set()
+
+        for s in sessoes_validas:
+            session_keys_validas.add(s.session_key)
+            try:
+                data = s.get_decoded()
+                uid = data.get('_auth_user_id')
+                if uid:
+                    usuarios_online_ids.add(int(uid))
+            except Exception:
+                pass
+
+        if session_keys_validas:
+            for uid in Usuario.objects.filter(session_key__isnull=False, session_key__in=session_keys_validas).values_list('id', flat=True):
+                usuarios_online_ids.add(int(uid))
+
+    except Exception:
+        pass
+
+    return usuarios_online_ids
+
+
+def obter_usuarios_online_count(request_user=None, janela_segundos=180):
+    """Calcula com precisão o número de usuários online."""
+    return len(obter_usuarios_online_ids(request_user, janela_segundos=janela_segundos))
+
+
 @login_required(login_url='/')
 def gestao_acessos(request):
     """
@@ -94,11 +150,19 @@ def gestao_acessos(request):
     # Busca todos os usuários ordenados alfabeticamente
     usuarios_db = Usuario.objects.all().order_by('nome')
     
+    # Estatísticas para os Badges de Resumo
+    total_usuarios = usuarios_db.count()
+    total_administradores = sum(1 for u in usuarios_db if u.perfil == 'administrador')
+    total_comuns = sum(1 for u in usuarios_db if u.perfil == 'comum')
+    usuarios_online_ids = obter_usuarios_online_ids(request.user)
+    total_online = len(usuarios_online_ids)
+
     lista_usuarios = []
     for u in usuarios_db:
         # Define flags de proteção para usuários de sistema
         is_target_master = u.usuario == 'admin@ovg.org.br'
         is_target_admin = (u.perfil == 'administrador')
+        is_online = (u.id in usuarios_online_ids)
         
         # Gera o login limpo (sem @ovg.org.br) para exibição e validação
         username_only = u.usuario.split('@')[0] if '@' in u.usuario else u.usuario
@@ -107,10 +171,9 @@ def gestao_acessos(request):
         can_edit = True
         can_delete = is_master_admin
         
-        # Administradores comuns não editam outros Admins ou contas Master
-        if not is_master_admin:
-            if is_target_master or is_target_admin:
-                can_edit = False
+        # Apenas a conta Master é protegida contra edição por outros administradores
+        if not is_master_admin and is_target_master:
+            can_edit = False
         
         # Contas Master nunca podem ser excluídas (nem por elas mesmas)
         if is_target_master:
@@ -121,6 +184,7 @@ def gestao_acessos(request):
             'nome': u.nome,
             'usuario': u.usuario,
             'perfil': u.perfil,
+            'is_online': is_online,
             'p_ferramentas': 1 if u.p_ferramentas else 0,
             'p_formatador_listas': 1 if u.p_formatador_listas else 0,
             'p_formatador_dados': 1 if u.p_formatador_dados else 0,
@@ -131,6 +195,7 @@ def gestao_acessos(request):
             'p_dash_polichat': 1 if u.p_dash_polichat else 0,
             'p_gestao_polichat': 1 if u.p_gestao_polichat else 0,
             'p_dash_documentos_ia': 1 if u.p_dash_documentos_ia else 0,
+            'p_polichat_financeiro': 1 if getattr(u, 'p_polichat_financeiro', False) else 0,
             'username_only': username_only,
             'can_edit': can_edit,
             'can_delete': can_delete,
@@ -139,6 +204,10 @@ def gestao_acessos(request):
     contexto = {
         'is_master_admin': is_master_admin,
         'lista_usuarios': lista_usuarios,
+        'total_usuarios': total_usuarios,
+        'total_online': total_online,
+        'total_administradores': total_administradores,
+        'total_comuns': total_comuns,
     }
     
     return render(request, 'gestao_acessos/inicio/gestao_acessos/index.html', contexto)
@@ -157,8 +226,11 @@ def api_salvar_usuario(request):
     if request.method != 'POST':
         return JsonResponse({'sucesso': False, 'mensagem': 'Método não permitido.'})
 
-    acao = request.POST.get('acao', 'salvar')
     usuario_logado = request.user
+    if usuario_logado.perfil != 'administrador':
+        return JsonResponse({'sucesso': False, 'mensagem': 'Acesso negado: Privilégios insuficientes.'})
+
+    acao = request.POST.get('acao', 'salvar')
     is_master_admin = (usuario_logado.usuario == 'admin@ovg.org.br')
 
     try:
@@ -205,12 +277,10 @@ def api_salvar_usuario(request):
             p_dash_polichat = 1 if request.POST.get('p_dash_polichat') else 0
             p_gestao_polichat = 1 if request.POST.get('p_gestao_polichat') else 0
             p_dash_documentos_ia = 1 if request.POST.get('p_dash_documentos_ia') else 0
+            p_polichat_financeiro = 1 if request.POST.get('p_polichat_financeiro') else 0
 
             # MODO: NOVO USUÁRIO
             if not usuario_id:
-                if not is_master_admin and perfil == 'administrador':
-                    return JsonResponse({'sucesso': False, 'mensagem': 'Acesso negado: Apenas o Master Admin pode promover administradores.'})
-                
                 if not email:
                     return JsonResponse({'sucesso': False, 'mensagem': 'E-mail inválido. Verifique o nome preenchido.'})
 
@@ -228,7 +298,8 @@ def api_salvar_usuario(request):
                     p_controle_acesso=p_controle_acesso,
                     p_dash_polichat=p_dash_polichat,
                     p_gestao_polichat=p_gestao_polichat,
-                    p_dash_documentos_ia=p_dash_documentos_ia
+                    p_dash_documentos_ia=p_dash_documentos_ia,
+                    p_polichat_financeiro=p_polichat_financeiro
                 )
                 novo_usuario.set_password(senha_gerada)
                 novo_usuario.save()
@@ -239,9 +310,8 @@ def api_salvar_usuario(request):
             else:
                 alvo = Usuario.objects.get(id=usuario_id)
                 email_atual = alvo.usuario
-                perfil_atual = alvo.perfil
 
-                if not is_master_admin and (perfil_atual == 'administrador' or email_atual == 'admin@ovg.org.br'):
+                if not is_master_admin and email_atual == 'admin@ovg.org.br':
                     return JsonResponse({'sucesso': False, 'mensagem': 'Acesso restrito: Você não possui privilégios para esta alteração.'})
 
                 if email_atual == 'admin@ovg.org.br':
@@ -267,6 +337,7 @@ def api_salvar_usuario(request):
                 alvo.p_dash_polichat = p_dash_polichat
                 alvo.p_gestao_polichat = p_gestao_polichat
                 alvo.p_dash_documentos_ia = p_dash_documentos_ia
+                alvo.p_polichat_financeiro = p_polichat_financeiro
 
                 if alterar_nome:
                     alvo.nome = nome_completo
@@ -290,4 +361,34 @@ def api_salvar_usuario(request):
         return JsonResponse({'sucesso': False, 'mensagem': 'Falha na comunicação com o banco de dados.'})
 
     return JsonResponse({'sucesso': False, 'mensagem': 'Ação não reconhecida.'})
+
+
+@login_required(login_url='/')
+def api_metricas_acessos(request):
+    """
+    Retorna em tempo real os contadores das flags/badges de resumo e a lista
+    de IDs dos usuários que estão online no momento para atualização das bolinhas de status.
+    """
+    if request.user.perfil != 'administrador':
+        return JsonResponse({'sucesso': False, 'mensagem': 'Acesso negado: Privilégios insuficientes.'}, status=403)
+
+    usuarios_db = Usuario.objects.all()
+    total_usuarios = usuarios_db.count()
+    total_administradores = usuarios_db.filter(perfil='administrador').count()
+    total_comuns = usuarios_db.filter(perfil='comum').count()
+    usuarios_online_ids = obter_usuarios_online_ids(request.user)
+    total_online = len(usuarios_online_ids)
+
+    resposta = JsonResponse({
+        'sucesso': True,
+        'total_usuarios': total_usuarios,
+        'total_online': total_online,
+        'total_administradores': total_administradores,
+        'total_comuns': total_comuns,
+        'online_ids': sorted(list(usuarios_online_ids)),
+    })
+    resposta['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+    resposta['Pragma'] = 'no-cache'
+    resposta['Expires'] = '0'
+    return resposta
 

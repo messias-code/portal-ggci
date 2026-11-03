@@ -33,7 +33,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <link rel="stylesheet" href="{% static 'controle_acesso/css/controle_acesso.css' %}">
+    <link rel="stylesheet" href="{% static 'controle_acesso/css/controle_acesso.css' %}?v=20261103a">
     <script type="module" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@8.0.4/dist/turbo.es.2017-esm.js"></script>
 </head>
 
@@ -301,11 +301,12 @@
                                             <th class="ca-num">Complemento</th>
                                             <th class="ca-num">Ressarcimento</th>
                                             <th class="ca-num">Total</th>
+                                            <th>Tipo Pgto</th>
                                             <th>Bolsa</th>
                                         </tr>
                                     </thead>
                                     <tbody id="tabelaPagamentos">
-                                        <tr class="ca-vazio"><td colspan="9">Nenhuma consulta realizada.</td></tr>
+                                        <tr class="ca-vazio"><td colspan="10">Nenhuma consulta realizada.</td></tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -466,6 +467,6 @@
 
     <script>window.CSRF_TOKEN = "{{ csrf_token }}";</script>
     <!-- Busca, reconhecimento de Inscrição/CPF, preenchimento da ficha e o botão Atualizar -->
-    <script src="{% static 'controle_acesso/js/controle_acesso.js' %}"></script>
+    <script src="{% static 'controle_acesso/js/controle_acesso.js' %}?v=20261103a"></script>
 </body>
 </html>

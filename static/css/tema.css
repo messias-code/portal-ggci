@@ -63,6 +63,15 @@
     --tema-grade: rgba(147, 51, 234, 0.07);
     --tema-brilho: rgba(124, 58, 237, 0.25);
     --tema-brilho-hover: rgba(124, 58, 237, 0.35);
+
+    /* Identidade Oficial OVG — Tom de Roxo Institucional (Letra "V" da Logo) */
+    --ovg-roxo-base: #816bae;
+    --ovg-roxo-claro: #8c76b8;
+    --ovg-roxo-medio: #7660a1;
+    --ovg-roxo-escuro: #64528c;
+    --ovg-roxo-profundo: #523f78;
+    --ovg-roxo-lavado: #f5f3fa;
+    --ovg-roxo-borda: #d8cfea;
 }
 
 
@@ -266,7 +275,7 @@ html[data-tema="eleitoral"] .logo-tema--eleitoral {
    classes utilitárias novas simplesmente não existem nele.
 
    A MEDIDA É A DO DOCUMENTOS IA, validada lá e adotada como padrão: o
-   quadrado de cantos de 8px na altura dos botões `h-10` vizinhos (Voltar,
+   quadrado de cantos de 12px (o `rounded-xl` do Voltar) na altura dos botões `h-10` vizinhos (Voltar,
    Atualizar). Em `rem`, e não em px, para acompanhar a fonte-base de cada
    tela — 36px onde ela é 90%, 40px onde é 100% —, que é o que os vizinhos
    fazem. Era um círculo de 42px fixos, 3px mais alto que a fileira em volta.
@@ -280,10 +289,12 @@ html[data-tema="eleitoral"] .logo-tema--eleitoral {
     width: 2.5rem;
     height: 2.5rem;
     padding: 0;
-    border-radius: 8px;
+    /*  O mesmo `rounded-xl` + `shadow-sm` do Voltar: o interruptor é mais um
+        botão da fileira, não uma peça com desenho próprio.  */
+    border-radius: 0.75rem;
     border: 1px solid var(--tema-borda-forte);
     background-color: var(--tema-superficie-2);
-    color: var(--tema-texto-medio);
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     cursor: pointer;
     overflow: hidden;
     -webkit-tap-highlight-color: transparent;
@@ -301,11 +312,15 @@ html[data-tema="eleitoral"] .logo-tema--eleitoral {
    tom da borda, parado até alguém passar o mouse. Num cabeçalho onde tudo o
    mais tem cor da marca, ele era a peça que parecia não ter sido desenhada.
 
-   TRÊS CAMADAS, e cada uma responde a um momento diferente:
+   DUAS CAMADAS, e cada uma responde a um momento diferente:
 
      o fundo em degradê   estado de repouso — é o que dá cor sem pedir atenção
      o halo no `::before` hover — cresce de dentro para fora, a partir do ícone
-     o anel no `::after`  clique — um pulso que sai da borda e some
+
+   SEM ANEL NO CLIQUE. Havia um terceiro, o `::after`, que desenhava uma borda
+   de 2px encolhendo para dentro durante o `:active` — e foi tirado a pedido: o
+   clique marcava as margens do botão. Quem responde ao clique agora é só o
+   ícone que gira na troca de tema.
 
    O DEGRADÊ MUDA COM O TEMA, e não é decoração: no claro ele puxa para o lilás
    e o rosa da marca; no eleitoral, para o teal. O botão passa a pertencer ao
@@ -320,14 +335,11 @@ html[data-tema="eleitoral"] .logo-tema--eleitoral {
    deslocamento maior desalinha a fileira inteira aos olhos.
    -------------------------------------------------------------------------- */
 
-/*  O degradê vive no `background-image` para não brigar com o
-    `background-color` que os dois temas já definem — quem não tiver suporte
-    (ou tiver o gradiente recusado) continua com a cor sólida de antes.  */
+/*  SEM VIDRO (03/11/2026, a pedido): o degradê translúcido em repouso e o halo
+    radial que acendia no hover liam como vidro/blur, e foram tirados daqui, do
+    Voltar e do Atualizar (seção 5). O botão é chapado: fundo sólido, borda e
+    tinta; o hover troca só fundo, borda e sombra.  */
 .tema-toggle {
-    background-image: linear-gradient(140deg,
-                                      rgba(236, 72, 153, 0.14) 0%,
-                                      rgba(168, 85, 247, 0.10) 55%,
-                                      transparent 100%);
     transition:
         background-color .3s ease,
         border-color .3s ease,
@@ -336,90 +348,67 @@ html[data-tema="eleitoral"] .logo-tema--eleitoral {
         transform .2s ease;
 }
 
-/*  O halo. `inset: -30%` para ele poder crescer além do botão e ainda assim
-    ficar recortado pelo `overflow: hidden` do círculo — é isso que faz a luz
-    lamber a borda por dentro em vez de vazar como uma bolha quadrada.  */
-.tema-toggle::before {
-    content: '';
-    position: absolute;
-    inset: -30%;
-    border-radius: 50%;
-    background: radial-gradient(circle at 50% 50%,
-                                var(--tema-primaria) 0%,
-                                transparent 62%);
-    opacity: 0;
-    transform: scale(.35);
-    transition: opacity .35s ease, transform .45s cubic-bezier(.34, 1.3, .64, 1);
-    pointer-events: none;
-}
-
-.tema-toggle:hover::before {
-    opacity: .22;
-    transform: scale(1);
-}
-
-/*  O anel do clique. Ele nasce na borda e se apaga para fora; `:active` dura o
-    tempo do botão pressionado, que é curto o bastante para o pulso não virar
-    animação em laço. O raio é o do botão, para o anel seguir a borda.  */
-.tema-toggle::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    border: 2px solid var(--tema-primaria);
-    opacity: 0;
-    transform: scale(1);
-    transition: opacity .4s ease, transform .4s ease;
-    pointer-events: none;
-}
-
-.tema-toggle:active::after {
-    opacity: .55;
-    transform: scale(.82);
-    transition-duration: 0s;
-}
-
+/*  HOVER SUTIL (03/11/2026, a pedido): a borda NÃO escurece e não há brilho em
+    volta — a borda forte no hover lia como contorno em negrito. Só o fundo
+    ganha um tom leve e o botão sobe 1px.  */
 .tema-toggle:hover {
-    color: var(--tema-primaria);
-    border-color: var(--tema-primaria);
     transform: translateY(-1px);
-    box-shadow: 0 1px 2px rgba(17, 24, 39, 0.06),
-                0 6px 16px -6px var(--tema-primaria-borda);
 }
 
-/*  O ícone acompanha: um giro curto no hover, na mesma direção em que ele sai
-    quando o tema troca. Escala de 1,1 e não mais — em 17px, crescer demais
-    borra o traço de 1,6px do desenho.  */
-.tema-toggle:hover .tema-toggle__icone {
-    transform: rotate(-14deg) scale(1.1);
-}
-
-.tema-toggle:active {
-    transform: translateY(0) scale(.94);
-}
+/*  Sem giro do ícone no hover nem encolhimento no clique: o Voltar não tem
+    nenhum dos dois, e o interruptor segue o mesmo movimento dele (só o 1px
+    acima). O giro fica para a troca de tema, que é a resposta do clique.  */
 
 .tema-toggle:focus-visible {
     outline: 2px solid var(--tema-primaria);
     outline-offset: 3px;
 }
 
+/*  NO CLARO O BOTÃO É ROSA, o mesmo `pink-600` (#DB2777) dos botões vizinhos da
+    seção 5 — Voltar, Atualizar, Filtros. O roxo de `--tema-primaria` deixava o
+    interruptor como a única peça lilás da fileira. Fundo, ícone, borda, halo,
+    sombra e foco trocam juntos; o desenho e o movimento ficam os mesmos.
+
+    `:not([data-tema="eleitoral"])` para não tocar no escuro: lá as regras acima
+    e abaixo usam `--tema-primaria`, que é o teal do tema, e continuam valendo.  */
+/*  O FUNDO E A TINTA SÃO OS DO VOLTAR: branco 80% em repouso e, no hover, o
+    `-50` da cor do texto. A tinta padrão (rosa) entra no `@layer base` para
+    que a utilitária do markup (`text-purple-700`…) ganhe quando a tela pintar
+    o Voltar de outra cor — o Polichat Financeiro é roxo, e o interruptor ao
+    lado dele saía rosa. Tem que ser layer, e não especificidade: o
+    `output.css` é Tailwind v4, com as utilitárias em `@layer utilities`, e
+    qualquer regra fora de layer ganha delas. Borda, halo, sombra e foco
+    seguem `currentColor`, como os botões da seção 5.  */
+@layer base {
+    .tema-toggle {
+        color: #DB2777;
+    }
+}
+
+html:not([data-tema="eleitoral"]) .tema-toggle {
+    background-color: #FFFFFF;
+    border-color: color-mix(in srgb, currentColor 20%, transparent);
+}
+
+html:not([data-tema="eleitoral"]) .tema-toggle:hover {
+    background-color: color-mix(in srgb, currentColor 6%, white);
+}
+
+html:not([data-tema="eleitoral"]) .tema-toggle:focus-visible {
+    outline-color: currentColor;
+}
+
 /* No escuro o botão ganha um halo teal sutil, para não sumir no fundo. */
 html[data-tema="eleitoral"] .tema-toggle {
     background-color: rgba(102, 203, 182, 0.12);
-    /*  A rampa rosa/roxa do claro é a paleta que o eleitoral abandona. Aqui ela
-        percorre o eixo do tema — teal para índigo —, e o botão continua sendo o
-        mesmo objeto com a cor do lugar onde está.  */
-    background-image: linear-gradient(140deg,
-                                      rgba(111, 211, 191, 0.22) 0%,
-                                      rgba(107, 113, 178, 0.16) 55%,
-                                      transparent 100%);
     border-color: var(--tema-primaria-borda);
-    color: var(--tema-primaria-suave);
+    color: #B4EEE0;
 }
 
+/*  A mesma tinta do Voltar no eleitoral (seção 5).  */
 html[data-tema="eleitoral"] .tema-toggle:hover {
     background-color: rgba(102, 203, 182, 0.20);
-    color: #B4EEE0;
+    color: var(--tema-texto-forte);
 }
 
 /*  Os dois ícones ocupam exatamente a mesma célula, sobrepostos. A medida
@@ -464,16 +453,260 @@ html[data-tema="eleitoral"] .tema-toggle__icone--sol {
         transition: opacity .01ms;
     }
 
-    .tema-toggle:hover,
-    .tema-toggle:active,
-    .tema-toggle:hover .tema-toggle__icone {
+    .tema-toggle:hover {
+        transform: none;
+    }
+}
+
+
+/* ==========================================================================
+   5. BOTÕES NO PADRÃO DO INTERRUPTOR
+   --------------------------------------------------------------------------
+   Vestem o mesmo vocabulário do botão de tema — degradê, o halo que cresce do
+   centro no hover —, mas NA COR DE CADA BOTÃO: rosa no claro,
+   que é a cor que eles sempre tiveram, e teal → índigo no eleitoral. Três
+   ganchos:
+
+     `.tela-voltar`        "Voltar" do cabeçalho de toda tela
+     `.card-modulo__btn`   "Acessar …" dos cards dos menus
+     `.botao-tema`         qualquer outro botão que adote o padrão (os do
+                           Documentos IA: Filtros, Excel, Expandir, Cancelar…)
+
+   e `.botao-tema-grupo` para a caixa que junta vários botões numa peça só (o
+   "Atualizar | config | console"): a CAIXA leva o degradê e a borda, e cada
+   botão de dentro leva só o halo e a cor — um degradê por botão
+   deixaria emendas visíveis dentro da mesma peça.
+
+   QUEM DECIDE O FUNDO: no Voltar e no Acessar continua sendo o `bg-white*` do
+   markup — o degradê entra por cima, no `background-image`. Já `.botao-tema` e
+   `.botao-tema-grupo` trazem o fundo daqui, o mesmo branco 80% do Voltar, e o
+   markup deles NÃO deve repetir utilitárias de cor (`bg-white`, `border-gray-200`,
+   `text-pink-600`, `hover:bg-pink-50`…): dentro da `.area-trabalho` o eleitoral
+   as remapeia em `tema-conteudo.css` com especificidade 0-3-1, maior que a
+   daqui, e o botão sairia com metade da paleta de cada tema.
+
+   O ACESSAR NÃO TEM HALO: o brilho que cresce do centro foi tirado dos botões
+   dos cards a pedido — ali ele competia com o halo do próprio card, logo atrás.
+   Ele fica com o degradê, a borda e a sombra do hover.
+
+   A COR DO EFEITO É `currentColor` NO CLARO, via `--botao-destaque`: o halo e a
+   borda do hover saem da tinta do próprio texto. No Voltar e no Acessar
+   essa tinta é a utilitária do markup (`text-pink-600`, `text-pink-700`, e o
+   `text-purple-700` do card roxo), que esta seção não sobrescreve no claro — cada
+   um fica com a cor que já tinha. `.botao-tema` não tem utilitária de cor (ver o
+   parágrafo acima) e leva o rosa daqui. O eleitoral troca a variável pela
+   primária do tema.
+
+   `isolation` + `z-index: -1` no halo: aqui o conteúdo é TEXTO em fluxo, e não
+   ícones absolutos como no interruptor. Sem isso o halo, que é posicionado,
+   pintaria por cima do rótulo e o lavaria de lilás.
+
+   `:not(.tema-toggle)`: no Documentos IA, Controle de Acesso e Histórico o
+   próprio interruptor também carrega `.tela-voltar`, e já tem tudo pela seção 4.
+   ========================================================================== */
+
+/*  `:not(.absolute)`: o "Filtros" do Documentos IA é pendurado para fora da
+    barra lateral por `absolute`, e um `relative` aqui o devolveria ao fluxo da
+    barra fechada — fora da tela. Posicionado ele já ancora o halo.  */
+.tela-voltar:not(.tema-toggle),
+.botao-tema:not(.absolute),
+.botao-tema-grupo > button {
+    position: relative;
+}
+
+.tela-voltar:not(.tema-toggle),
+.botao-tema,
+.botao-tema-grupo > button {
+    overflow: hidden;
+    isolation: isolate;
+}
+
+.tela-voltar:not(.tema-toggle),
+.card-modulo__btn,
+.botao-tema,
+.botao-tema-grupo {
+    --botao-destaque: currentColor;
+    --botao-brilho: color-mix(in srgb, currentColor 30%, transparent);
+    border-color: color-mix(in srgb, currentColor 20%, transparent);
+}
+
+/*  O degradê ficou só no Acessar e nos `.botao-tema`. Voltar e Atualizar são
+    chapados — ver "SEM VIDRO" na seção 4.  */
+.card-modulo__btn,
+.botao-tema {
+    background-image: linear-gradient(140deg,
+                                      rgba(236, 72, 153, 0.14) 0%,
+                                      rgba(244, 114, 182, 0.08) 55%,
+                                      transparent 100%);
+}
+
+/*  O rosa `pink-600` que estes botões traziam no markup antes de virarem
+    `.botao-tema`: 4,9:1 sobre o branco 80%.  */
+.botao-tema,
+.botao-tema-grupo {
+    background-color: rgba(255, 255, 255, 0.8);
+    color: #DB2777;
+}
+
+/*  Voltar e Atualizar: branco SÓLIDO no claro, e não o `bg-white/80` do markup
+    (translúcido sobre a grade do fundo, era metade do efeito de vidro). Regra
+    fora de layer, então ganha da utilitária — por isso o hover também é daqui,
+    o mesmo `-50` da tinta que o `hover:bg-pink-50` do markup dava.  */
+html:not([data-tema="eleitoral"]) .tela-voltar:not(.tema-toggle),
+html:not([data-tema="eleitoral"]) .botao-tema-grupo {
+    background-color: #FFFFFF;
+}
+
+html:not([data-tema="eleitoral"]) .tela-voltar:not(.tema-toggle):hover {
+    background-color: color-mix(in srgb, currentColor 6%, white);
+}
+
+.botao-tema::before {
+    content: '';
+    position: absolute;
+    inset: -30%;
+    z-index: -1;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 50%,
+                                var(--botao-destaque) 0%,
+                                transparent 62%);
+    opacity: 0;
+    transform: scale(.35);
+    transition: opacity .35s ease, transform .45s cubic-bezier(.34, 1.3, .64, 1);
+    pointer-events: none;
+}
+
+.botao-tema:hover::before {
+    opacity: .22;
+    transform: scale(1);
+}
+
+/*  Voltar e Atualizar ficam de fora: hover sutil, sem borda forte nem brilho
+    (ver "HOVER SUTIL" na seção 4).  */
+.card-modulo__btn:hover,
+.botao-tema:hover {
+    border-color: var(--botao-destaque);
+    box-shadow: 0 1px 2px rgba(17, 24, 39, 0.06),
+                0 6px 16px -6px var(--botao-brilho);
+}
+
+/*  O mesmo 1px do interruptor, que é vizinho do Voltar na fileira. O Acessar
+    fica de fora: ele já cresce pelo `hover:scale` do markup.  */
+.tela-voltar:not(.tema-toggle):hover {
+    transform: translateY(-1px);
+}
+
+/*  Os mesmos valores do interruptor no eleitoral, com o texto um degrau mais
+    claro que o ícone dele (#B4EEE0 em repouso, `--tema-texto-forte` no hover):
+    o teal de traço passa nos 3:1 de ícone, mas não nos 4,5:1 de rótulo.  */
+html[data-tema="eleitoral"] .tela-voltar:not(.tema-toggle),
+html[data-tema="eleitoral"] .card-modulo__btn,
+html[data-tema="eleitoral"] .botao-tema,
+html[data-tema="eleitoral"] .botao-tema-grupo {
+    --botao-destaque: var(--tema-primaria);
+    --botao-brilho: var(--tema-primaria-borda);
+    background-color: rgba(102, 203, 182, 0.12);
+    border-color: var(--tema-primaria-borda);
+    color: #B4EEE0;
+}
+
+html[data-tema="eleitoral"] .card-modulo__btn,
+html[data-tema="eleitoral"] .botao-tema {
+    background-image: linear-gradient(140deg,
+                                      rgba(111, 211, 191, 0.22) 0%,
+                                      rgba(107, 113, 178, 0.16) 55%,
+                                      transparent 100%);
+}
+
+html[data-tema="eleitoral"] .tela-voltar:not(.tema-toggle):hover,
+html[data-tema="eleitoral"] .card-modulo__btn:hover,
+html[data-tema="eleitoral"] .botao-tema:hover,
+html[data-tema="eleitoral"] .botao-tema-grupo:hover {
+    background-color: rgba(102, 203, 182, 0.20);
+}
+
+html[data-tema="eleitoral"] .card-modulo__btn:hover,
+html[data-tema="eleitoral"] .botao-tema:hover {
+    border-color: var(--tema-primaria);
+}
+
+html[data-tema="eleitoral"] .tela-voltar:not(.tema-toggle):hover,
+html[data-tema="eleitoral"] .card-modulo__btn:hover,
+html[data-tema="eleitoral"] .botao-tema:hover,
+html[data-tema="eleitoral"] .botao-tema-grupo > button:hover {
+    color: var(--tema-texto-forte);
+}
+
+/*  No card o fundo de trás é o degradê saturado do módulo, e o teal translúcido
+    direto sobre ele cai para 2,6:1. O Acessar ganha por baixo a ardósia do
+    fundo do portal — é sobre ela que o interruptor fica, e é com ela que a
+    mesma receita dá 5,7:1. Continua opaco, como o branco que substitui.  */
+html[data-tema="eleitoral"] .card-modulo__btn {
+    background-color: var(--tema-fundo);
+    background-image: linear-gradient(140deg,
+                                      rgba(111, 211, 191, 0.22) 0%,
+                                      rgba(107, 113, 178, 0.16) 55%,
+                                      transparent 100%),
+                      linear-gradient(rgba(102, 203, 182, 0.12),
+                                      rgba(102, 203, 182, 0.12));
+}
+
+html[data-tema="eleitoral"] .card-modulo__btn:hover {
+    background-color: var(--tema-fundo);
+    background-image: linear-gradient(140deg,
+                                      rgba(111, 211, 191, 0.22) 0%,
+                                      rgba(107, 113, 178, 0.16) 55%,
+                                      transparent 100%),
+                      linear-gradient(rgba(102, 203, 182, 0.20),
+                                      rgba(102, 203, 182, 0.20));
+}
+
+/*  `.botao-tema--excel`: o botão que exporta para planilha vai no VERDE DO
+    EXCEL, para ser reconhecido pela cor antes de o rótulo ser lido. Muda só a
+    tinta e o tingido do degradê; o vidro, o halo e a borda acesa do hover vêm
+    da seção acima, que já seguem `currentColor`.
+
+    No claro, `#1D6F42` é o verde clássico da marca Excel, e não o `#107C41` do
+    ícone novo: o rótulo "EXCEL" tem 10px, e o `#107C41` caía para 4,4:1 no canto
+    tingido do degradê — abaixo do mínimo de texto pequeno. O clássico dá 5,1:1.
+
+    No eleitoral o verde da marca some no fundo escuro. Entra a mesma família
+    clareada até passar nos 4,5:1 sobre as superfícies do tema: `#A7EBC4` em
+    repouso e `#D3F5E1` no hover, com o tingido mais leve que o do teal —
+    tingido forte acende o fundo e come o contraste do rótulo.  */
+.botao-tema--excel {
+    color: #1D6F42;
+    background-image: linear-gradient(140deg,
+                                      rgba(29, 111, 66, 0.12) 0%,
+                                      rgba(33, 163, 102, 0.06) 55%,
+                                      transparent 100%);
+}
+
+html[data-tema="eleitoral"] .botao-tema--excel {
+    --botao-destaque: var(--tema-status-sucesso);
+    --botao-brilho: rgba(98, 209, 145, 0.30);
+    background-color: rgba(98, 209, 145, 0.08);
+    background-image: linear-gradient(140deg,
+                                      rgba(98, 209, 145, 0.12) 0%,
+                                      rgba(29, 111, 66, 0.10) 55%,
+                                      transparent 100%);
+    border-color: rgba(98, 209, 145, 0.30);
+    color: #A7EBC4;
+}
+
+html[data-tema="eleitoral"] .botao-tema--excel:hover {
+    background-color: rgba(98, 209, 145, 0.14);
+    border-color: var(--tema-status-sucesso);
+    color: #D3F5E1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .tela-voltar:not(.tema-toggle):hover {
         transform: none;
     }
 
-    /*  O halo e o anel são movimento puro: sem eles o botão continua mudando de
-        cor no hover, que é a informação. */
-    .tema-toggle::before,
-    .tema-toggle::after {
+    .botao-tema::before {
         display: none;
     }
 }
@@ -501,4 +734,139 @@ html[data-tema-trocando] *,
 html[data-tema-trocando] *::before,
 html[data-tema-trocando] *::after {
     transition: none !important;
+}
+
+
+/* ==========================================================================
+   ABAS DO CABEÇALHO (interruptor segmentado)
+   ==========================================================================
+   O desenho é o das abas do Documentos IA ("Envios & Pendências / Análise IA"),
+   adotado como padrão do portal: uma calha de lilás 5%, as opções flutuando
+   dentro dela com cantos próprios, e a escolhida virando uma pastilha roxa
+   sólida que se LEVANTA da calha (a sombra é o efeito da troca). Os valores são
+   os mesmos de `.docia-abas`/`.docia-aba` em `dash_documentos_ia.css` — lá a
+   regra continua sendo do app; aqui ela vale para qualquer outra tela.
+
+   Uso: `<div class="abas-seg" role="tablist">` com
+   `<button class="aba-seg [aba-seg--ativa]" role="tab" aria-selected>` dentro.
+   Escrito à mão, sem utilitárias: o `output.css` é purgado e valor arbitrário
+   novo não existiria nele.
+   ========================================================================== */
+.abas-seg {
+    display: inline-flex;
+    align-items: stretch;
+    height: 2.5rem;
+    padding: 5px;
+    gap: 5px;
+    border-radius: 0.875rem;
+    background-color: rgba(107, 0, 123, 0.05);
+    box-shadow: inset 0 0 0 1px rgba(107, 0, 123, 0.09),
+                0 1px 2px rgba(17, 24, 39, 0.04);
+}
+
+.aba-seg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 1rem;
+    border: 0;
+    border-radius: 0.625rem;
+    background-color: transparent;
+    color: #6B5B72;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.aba-seg:hover {
+    background-color: rgba(107, 0, 123, 0.07);
+    color: #6B007B;
+}
+
+.aba-seg--ativa,
+.aba-seg--ativa:hover {
+    background-color: #6B007B;
+    color: #FFFFFF;
+    box-shadow: 0 1px 1px rgba(17, 24, 39, 0.10),
+                0 4px 10px -3px rgba(107, 0, 123, 0.45),
+                inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.aba-seg--ativa:hover {
+    background-color: #5A0068;
+}
+
+.aba-seg:focus-visible {
+    outline: 2px solid #6B007B;
+    outline-offset: 2px;
+}
+
+html[data-tema="eleitoral"] .abas-seg {
+    background-color: rgba(255, 255, 255, 0.07);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10),
+                0 1px 2px rgba(0, 0, 0, 0.30);
+}
+
+html[data-tema="eleitoral"] .aba-seg {
+    color: var(--tema-texto-medio);
+}
+
+html[data-tema="eleitoral"] .aba-seg:hover {
+    background-color: rgba(255, 255, 255, 0.10);
+    color: var(--tema-primaria-suave);
+}
+
+html[data-tema="eleitoral"] .aba-seg--ativa,
+html[data-tema="eleitoral"] .aba-seg--ativa:hover {
+    background-color: var(--tema-solido-info);
+    color: #FFFFFF;
+}
+
+/*  NA BARRA DE FILTROS a calha ocupa a largura toda e as opções dividem o espaço
+    por igual — é o "Modo de visualização"/"Semestre" do Documentos IA (5px de
+    calha + 2.5rem de pastilha, rótulo de 10px em caixa alta).  */
+.abas-seg--filtro {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    width: 100%;
+    height: calc(2.5rem + 10px);
+}
+
+.abas-seg--filtro .aba-seg {
+    padding: 0 0.25rem;
+    font-size: 10px;
+    text-transform: uppercase;
+}
+
+
+/* ==========================================================================
+   SEÇÕES DA BARRA DE FILTROS
+   ==========================================================================
+   Título em caixa alta ancorado num fio, e o controle logo abaixo — o par lê
+   como um bloco só. Mesmos valores de `.docia-filtro-*` no Documentos IA.
+   ========================================================================== */
+.filtro-secao > * + * {
+    margin-top: 0.625rem;
+}
+
+.filtro-cabecalho {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding-bottom: 0.375rem;
+    border-bottom: 1px solid var(--tema-borda);
+}
+
+.filtro-titulo {
+    margin: 0;
+    font-size: 0.6875rem;
+    font-weight: 800;
+    line-height: 1;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--tema-texto-medio);
 }

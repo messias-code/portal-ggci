@@ -132,17 +132,7 @@ html[data-tema="eleitoral"] .tela-header-icone {
     color: var(--tema-primaria-suave);
 }
 
-html[data-tema="eleitoral"] .tela-voltar {
-    background-color: rgba(255, 255, 255, 0.06);
-    border-color: var(--tema-borda-forte);
-    color: var(--tema-texto-medio);
-}
-
-html[data-tema="eleitoral"] .tela-voltar:hover {
-    background-color: rgba(111, 211, 191, 0.16);
-    border-color: var(--tema-primaria-borda);
-    color: var(--tema-primaria-suave);
-}
+/* O "Voltar" segue o botão de tema: ver `static/css/tema.css`, seção 5. */
 
 html[data-tema="eleitoral"] .menu-header-titulo {
     color: var(--tema-texto-forte);
@@ -155,6 +145,44 @@ html[data-tema="eleitoral"] .menu-header-sub {
 /* Trecho em destaque dentro do subtítulo (por exemplo, o nome do usuário). */
 html[data-tema="eleitoral"] .menu-header-destaque {
     color: var(--tema-primaria-suave);
+}
+
+/* ==========================================================================
+   NAVEGAÇÃO LATERAL E CABEÇALHO (MODO CLARO — IDENTIDADE OFICIAL OVG)
+   Aplica a matiz roxa institucional da logo da OVG (#816BAE)
+   ========================================================================== */
+html:not([data-tema="eleitoral"]) .menu-nav-titulo,
+html[data-tema="claro"] .menu-nav-titulo {
+    color: var(--ovg-roxo-escuro, #64528c) !important;
+}
+
+html:not([data-tema="eleitoral"]) .menu-header-destaque,
+html[data-tema="claro"] .menu-header-destaque {
+    color: var(--ovg-roxo-escuro, #64528c) !important;
+}
+
+html:not([data-tema="eleitoral"]) .nav-active,
+html[data-tema="claro"] .nav-active {
+    background: linear-gradient(to right, var(--ovg-roxo-medio, #7660a1), var(--ovg-roxo-claro, #8c76b8)) !important;
+    box-shadow: 0 10px 20px rgba(121, 101, 164, 0.28) !important;
+    color: #ffffff !important;
+}
+
+html:not([data-tema="eleitoral"]) .nav-active::after,
+html[data-tema="claro"] .nav-active::after {
+    box-shadow:
+        0 15px 30px rgba(121, 101, 164, 0.40),
+        0 0 15px rgba(140, 118, 184, 0.30) !important;
+}
+
+html:not([data-tema="eleitoral"]) .nav-inactive:hover,
+html[data-tema="claro"] .nav-inactive:hover {
+    color: var(--ovg-roxo-base, #816bae) !important;
+}
+
+html:not([data-tema="eleitoral"]) .nav-inactive:hover::before,
+html[data-tema="claro"] .nav-inactive:hover::before {
+    box-shadow: 0 4px 15px rgba(121, 101, 164, 0.12) !important;
 }
 
 
@@ -275,20 +303,7 @@ html[data-tema="eleitoral"] .card-modulo__desc {
     color: rgba(242, 245, 249, 0.88);
 }
 
-/* O botão continua branco — é o contraste máximo contra o card colorido, e o
-   que o mantém como chamada de ação óbvia. Só o texto acompanha a matiz do
-   card em que está. */
-html[data-tema="eleitoral"] .card-modulo--a .card-modulo__btn {
-    color: #2B4068;
-}
-
-html[data-tema="eleitoral"] .card-modulo--b .card-modulo__btn {
-    color: #254E58;
-}
-
-html[data-tema="eleitoral"] .card-modulo--c .card-modulo__btn {
-    color: #21544C;
-}
+/* O botão "Acessar …" segue o botão de tema: ver `static/css/tema.css`, seção 5. */
 
 /* Selo de acesso negado. Aparece em duas formas nos templates: com fundo
    `bg-gray-200` sólido ou `bg-white/70` translúcido. Ambas viram o mesmo

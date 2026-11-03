@@ -16,25 +16,60 @@ from apps.automacoes.analise_ia.services import extrator, consolidador, ggci
 
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 
+FAIXA_ETL = (3, 35)
+FAIXA_EXTRACAO = (35, 78)
+
+
+def _teto_da_etapa(progresso):
+    """Até onde a barra pode subir sozinha, sem um marco novo no log."""
+    degraus = (FAIXA_ETL[0], FAIXA_ETL[1], FAIXA_EXTRACAO[1], 82, 92, 99)
+    for degrau in degraus:
+        if progresso < degrau:
+            return degrau - 1
+    return 99
+
+
+def _andamento_do_marcador(texto, marcador, faixa):
+    """Último `[<marcador>] n/total` do texto, projetado na faixa; None sem marcador."""
+    import re
+
+    ultimo = None
+    for feitos, total in re.findall(r"\[" + marcador + r"\]\s*(\d+)/(\d+)", texto):
+        ultimo = (int(feitos), int(total))
+    if not ultimo or ultimo[1] <= 0:
+        return None
+
+    inicio, fim = faixa
+    return int(inicio + (fim - inicio) * min(ultimo[0] / ultimo[1], 1.0))
+
+
+def _progresso_da_extracao(texto):
+    return _andamento_do_marcador(texto, "EXTRACAO_PROGRESSO", FAIXA_EXTRACAO)
+
+
+def _progresso_do_etl(texto):
+    return _andamento_do_marcador(texto, "ETL_PROGRESSO", FAIXA_ETL)
+
+
 PROGRESS_MAP_ABSOLUTE = [
-    ("Extração concluída",                              15),
-    ("Consolidando e limpando",                         20),
-    ("Consolidação concluída",                          25),
-    ("Analisando regras de negócio",                    28),
-    ("IDENTIFICAR   | AUSENTES",                        30),
-    ("CONECTANDO    | BD SIBU",                         35),
-    ("AUDITORIA     | DOCS",                            40),
-    ("AUDITORIA     | RIAF",                            45),
-    ("RELATORIO     | GERAL",                           50),
-    ("GERANDO       | RELATORIO",                       52),
-    ("GERANDO       | RESUMO",                          55),
-    ("GERANDO       | DOCS  ] Contrato",                58),
-    ("GERANDO       | RIAF",                            60),
-    ("GERANDO       | DOCS  ] Benefício",               62),
-    ("GERANDO       | DOCS  ] Financiamento",           64),
-    ("GERANDO       | DOCS  ] Histórico",               66),
-    ("GERANDO       | PAGTO",                           68),
-    ("SALVANDO      | ARQUIV",                          70),
+    ("Extração concluída",                              78),
+    ("Consolidando e limpando",                         79),
+    ("Consolidação concluída",                          81),
+    ("Analisando regras de negócio",                    82),
+    ("IDENTIFICAR   | AUSENTES",                        84),
+    ("CONECTANDO    | BD SIBU",                         86),
+    ("AUDITORIA     | DOCS",                            88),
+    ("AUDITORIA     | RIAF",                            91),
+    ("RELATORIO     | GERAL",                           92),
+    ("GERANDO       | RELATORIO",                       93),
+    ("GERANDO       | RESUMO",                          93),
+    ("GERANDO       | DOCS  ] Contrato",                94),
+    ("GERANDO       | RIAF",                            95),
+    ("GERANDO       | DOCS  ] Benefício",               95),
+    ("GERANDO       | DOCS  ] Financiamento",           96),
+    ("GERANDO       | DOCS  ] Histórico",               96),
+    ("GERANDO       | PAGTO",                           97),
+    ("SALVANDO      | ARQUIV",                          98),
     ("Regras aplicadas:",                               99),
 ]
 
@@ -114,10 +149,10 @@ class LogCapture:
                 agora = time.time()
                 if agora - self.last_save > 0.8:
                     self.proc.refresh_from_db(fields=['progresso'])
-                    novo_progresso = self.proc.progresso
-                    limite_inc = 98 if novo_progresso < 99 else 0
-                    if limite_inc and novo_progresso < limite_inc:
-                        self.proc.progresso = min(novo_progresso + 4, limite_inc)
+                    atual = self.proc.progresso
+                    teto = _teto_da_etapa(atual)
+                    if atual < teto:
+                        self.proc.progresso = min(atual + 1, teto)
                         self.proc.save(update_fields=['progresso'])
                         self.last_save = agora
             return
@@ -150,14 +185,16 @@ class LogCapture:
                     if trigger in msg_str:
                         novo_progresso = max(novo_progresso, target)
                         break 
+
+                medido = _progresso_da_extracao(msg_str)
+                if medido is not None:
+                    novo_progresso = max(novo_progresso, medido)
+                medido = _progresso_do_etl(msg_str)
+                if medido is not None:
+                    novo_progresso = max(novo_progresso, medido)
                 
                 # Tetos dinâmicos para evitar que logs incrementais estourem a barra antes da hora
-                limite_inc = 98
-                if novo_progresso < 15: limite_inc = 14
-                elif novo_progresso < 25: limite_inc = 24
-                elif novo_progresso < 50: limite_inc = 49
-                elif novo_progresso < 70: limite_inc = 69
-                elif novo_progresso < 99: limite_inc = 98
+                limite_inc = _teto_da_etapa(novo_progresso)
                 
                 for trigger in PROGRESS_MAP_INCREMENT:
                     if trigger in msg_str:
@@ -316,16 +353,20 @@ class Command(BaseCommand):
             #     return 
 
             # === [ ETAPA 2: MERGE EXCEL/PANDAS ] ===
+            proc.refresh_from_db(fields=['progresso'])
             proc.status = 'CONSOLIDANDO'
-            proc.save(update_fields=['status'])
+            proc.progresso = max(proc.progresso, 78)
+            proc.save(update_fields=['status', 'progresso'])
             registrar_log("🔄 Consolidando e limpando as planilhas base...")
             
             consolidador.consolidar(processo_id=processo_id)
             # registrar_log("Planilhas consolidadas e limpas.")
 
             # === [ ETAPA 3: REGRAS CONTÁBEIS (GGCI) ] ===
+            proc.refresh_from_db(fields=['progresso'])
             proc.status = 'CRUZANDO'
-            proc.save(update_fields=['status'])
+            proc.progresso = max(proc.progresso, 82)
+            proc.save(update_fields=['status', 'progresso'])
             registrar_log("🗄️ Analisando regras de negócio...")
             
             sems_riaf = config.get('sems_riaf', [])
@@ -388,18 +429,26 @@ class Command(BaseCommand):
                     except:
                         pass
             
+            registrar_log(f"🎉 Processamento concluído em {minutos}m e {segundos}s!")
+            proc.refresh_from_db(fields=['log'])
             proc.status = 'CONCLUIDO'
             proc.progresso = 100
             proc.data_fim = timezone.now()
             proc.arquivo_resultado = arquivo_saida_final
+            if log_capture.buffer:
+                proc.log += log_capture.buffer
+                log_capture.buffer = ""
             proc.save()
-            registrar_log(f"🎉 Processamento concluído em {minutos}m e {segundos}s!")
 
         except Exception as e:
-            proc.status = 'FALHA'
-            proc.data_fim = timezone.now()
             erro_detalhado = traceback.format_exc()
             registrar_log(f"\n❌ FALHA CRÍTICA:\n{erro_detalhado}")
+            proc.refresh_from_db(fields=['log'])
+            proc.status = 'FALHA'
+            proc.data_fim = timezone.now()
+            if log_capture.buffer:
+                proc.log += log_capture.buffer
+                log_capture.buffer = ""
             proc.save()
         finally:
             # Garante liberação do Stdout

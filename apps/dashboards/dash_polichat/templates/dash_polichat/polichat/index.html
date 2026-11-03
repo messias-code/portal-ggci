@@ -36,10 +36,10 @@
     <link rel="stylesheet" href="{% static 'css/tema-menu.css' %}">
     <link rel="stylesheet" href="{% static 'css/tema-ferramenta.css' %}">
     <link rel="stylesheet" href="{% static 'css/tema-conteudo.css' %}">
-    <link rel="stylesheet" href="{% static 'dash_polichat/css/polichat.css' %}?v=24">
+    <link rel="stylesheet" href="{% static 'dash_polichat/css/polichat.css' %}?v=27">
     <!-- Camada escura da tela. Precisa vir DEPOIS do polichat.css: boa parte dos
          ajustes vence por ordem de cascata, sem recorrer a !important. -->
-    <link rel="stylesheet" href="{% static 'dash_polichat/css/polichat-eleitoral.css' %}?v=9">
+    <link rel="stylesheet" href="{% static 'dash_polichat/css/polichat-eleitoral.css' %}?v=12">
 </head>
 <body class="grid-bg bg-[#f8f6fb] text-gray-800 fixed inset-0 p-4 lg:p-6 flex transition-colors duration-500 overflow-hidden">
 <!-- MODAL DO CONSOLE DE ATUALIZAÇÃO -->
@@ -132,13 +132,23 @@
                 <div class="flex items-center gap-3 shrink-0 relative z-10">
                     <!-- Abas de Navegação -->
                     <div class="shrink-0">
-                        <div class="inline-flex h-10 rounded-xl shadow-sm border border-gray-200 overflow-hidden bg-white/90 backdrop-blur-md hide-scrollbar">
-                            <button type="button" id="tab-mesa" class="px-4 h-full flex items-center justify-center text-[12px] font-black text-white transition-colors border-r border-[#8A009B] whitespace-nowrap shrink-0" style="background-color: #6B007B;">Mesa de Trabalho</button>
-                            <button type="button" id="tab-gestor" class="px-4 h-full flex items-center justify-center text-[12px] font-bold text-gray-600 bg-white hover:text-[#6B007B] hover:bg-pink-50 transition-colors whitespace-nowrap shrink-0">Painel do Gestor</button>
+                        <!-- Mesmo desenho das abas do Documentos IA: `.abas-seg` em static/css/tema.css. -->
+                        <div class="abas-seg" role="tablist">
+                            <button type="button" id="tab-mesa" class="aba-seg aba-seg--ativa" role="tab" aria-selected="true">Mesa de Trabalho</button>
+                            <button type="button" id="tab-gestor" class="aba-seg" role="tab" aria-selected="false">Painel do Gestor</button>
                         </div>
                     </div>
 
-                    <button type="button" class="tema-toggle" data-tema-toggle aria-label="Ativar modo eleitoral" aria-pressed="false">
+                    <div class="flex items-center rounded-xl shadow-sm border h-10 transition-all text-sm overflow-hidden flex-nowrap shrink-0 focus-within:ring-2 focus-within:ring-pink-200 botao-tema-grupo">
+                        <button type="button" id="btn-sync-manual" class="h-full px-5 font-bold flex items-center gap-2 transition-colors shrink-0 relative z-10">
+                            <span>Sincronizar</span>
+                        </button>
+                        <div class="h-6 w-px bg-pink-100 shrink-0 relative z-10"></div>
+                        <button type="button" id="poli-btn-abrir-console" class="h-full px-3 transition-colors shrink-0 flex items-center justify-center relative z-10" title="Ver logs">
+                            <i class="fa-solid fa-terminal"></i>
+                        </button>
+                    </div>
+                    <button type="button" class="tela-voltar tema-toggle shrink-0 w-10 h-10 flex items-center justify-center bg-white/80 hover:bg-pink-50 text-pink-600 rounded-xl transition-all shadow-sm border border-pink-100" data-tema-toggle aria-label="Ativar modo eleitoral" aria-pressed="false">
                         <svg class="tema-toggle__icone tema-toggle__icone--lua" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                         <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"
                             stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
@@ -148,15 +158,6 @@
                             <path d="M12 2.4V4.4M12 19.6V21.6M21.6 12H19.6M4.4 12H2.4M18.79 5.21L17.38 6.62M6.62 17.38L5.21 18.79M18.79 18.79L17.38 17.38M6.62 6.62L5.21 5.21" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
                         </svg>
                     </button>
-                    <div class="flex items-center bg-white/80 rounded-xl shadow-sm border border-pink-100 h-10 transition-all text-sm overflow-hidden flex-nowrap shrink-0 focus-within:ring-2 focus-within:ring-pink-200">
-                        <button type="button" id="btn-sync-manual" class="h-full px-5 text-pink-600 font-bold flex items-center gap-2 hover:bg-pink-50 transition-colors shrink-0 relative z-10">
-                            <span>Sincronizar</span>
-                        </button>
-                        <div class="h-6 w-px bg-pink-100 shrink-0 relative z-10"></div>
-                        <button type="button" id="poli-btn-abrir-console" class="h-full px-3 text-pink-500 hover:text-pink-700 hover:bg-pink-50 transition-colors shrink-0 flex items-center justify-center relative z-10" title="Ver logs">
-                            <i class="fa-solid fa-terminal"></i>
-                        </button>
-                    </div>
                     <a href="{% url 'dashboards' %}" class="tela-voltar h-10 px-5 bg-white/80 hover:bg-pink-50 text-pink-600 font-bold rounded-xl transition-all shadow-sm border border-pink-100 inline-flex items-center justify-center text-sm">
                         <i class="fa-solid fa-arrow-left mr-2 mt-[1px]"></i>
                         <span class="leading-none">Voltar</span>
@@ -596,8 +597,11 @@
             
             <div class="flex-1 p-6 lg:p-8 overflow-y-auto custom-scrollbar-light">
                 <div class="space-y-6 flex flex-col">
-                    <div>
-                        <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">AGENTES</h4>
+                    <!-- Seções no padrão do Documentos IA: `.filtro-*` e `.abas-seg--filtro` em static/css/tema.css. -->
+                    <section class="filtro-secao">
+                        <div class="filtro-cabecalho">
+                            <h4 class="filtro-titulo">Agentes</h4>
+                        </div>
                         <div class="relative">
                             <select id="filtro-agente" style="display:none">
                                 <option value="">— Selecione seu nome —</option>
@@ -624,17 +628,17 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </section>
 
-                    <div class="mt-6">
-                        <div class="flex items-center justify-between mb-3">
-                            <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider">PERÍODO</h4>
+                    <section class="filtro-secao">
+                        <div class="filtro-cabecalho">
+                            <h4 class="filtro-titulo">Período</h4>
                         </div>
-                        
-                        <div class="flex gap-2 mb-4">
-                            <button type="button" class="qd-btn flex-1 py-2 bg-pink-50 border border-pink-100 text-pink-600 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm qd-active" data-qd="hoje">Hoje</button>
-                            <button type="button" class="qd-btn flex-1 py-2 bg-pink-50 border border-pink-100 text-pink-600 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm" data-qd="mes">Mês</button>
-                            <button type="button" class="qd-btn flex-1 py-2 bg-pink-50 border border-pink-100 text-pink-600 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all shadow-sm" data-qd="ano">Ano</button>
+
+                        <div class="abas-seg abas-seg--filtro" role="group" aria-label="Período rápido">
+                            <button type="button" class="qd-btn aba-seg aba-seg--ativa qd-active" data-qd="hoje">Hoje</button>
+                            <button type="button" class="qd-btn aba-seg" data-qd="mes">Mês</button>
+                            <button type="button" class="qd-btn aba-seg" data-qd="ano">Ano</button>
                         </div>
 
                         <div class="space-y-4">
@@ -648,7 +652,7 @@
                                 <input type="text" id="filtro-fim" class="hidden">
                             </div>
                         </div>
-                    </div>
+                    </section>
                 </div>
             </div>
         </aside>
@@ -658,6 +662,6 @@
     // polichat.js é um arquivo estático puro e não passa pelo template engine.
     window.POLICHAT_WORKER_URL = "{% static 'dash_polichat/js/polichat-worker.js' %}?v=2";
 </script>
-<script src="{% static 'dash_polichat/js/polichat.js' %}?v=76"></script>
+<script src="{% static 'dash_polichat/js/polichat.js' %}?v=79"></script>
 </body>
 </html>

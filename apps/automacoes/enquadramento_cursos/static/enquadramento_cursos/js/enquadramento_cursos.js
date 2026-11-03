@@ -146,9 +146,18 @@ function initEnquadramentoCursos() {
         const currentId = window.__processo_id;
         if (currentId) {
             fetch(`/automacoes/enquadramento-cursos/api/parar-processamento/${currentId}/`, { method: 'POST' })
-                .then(res => res.json())
-                .then(() => { btnStop.innerHTML = '<i class="fa-solid fa-ban"></i><span>Abortado</span>'; })
-                .catch(err => console.error(err));
+                // Só é "Abortado" se o servidor disser que parou — ver o mesmo trecho em analise_ia.js.
+                .then(res => res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`)))
+                .then(data => {
+                    if (data.status !== 'ok') throw new Error(data.mensagem || 'resposta inesperada');
+                    btnStop.innerHTML = '<i class="fa-solid fa-ban"></i><span>Abortado</span>';
+                    consultarStatus();
+                })
+                .catch(err => {
+                    console.error(err);
+                    btnStop.disabled = false;
+                    btnStop.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i><span>Parar (falhou)</span>';
+                });
         }
     });
 
@@ -169,8 +178,15 @@ function initEnquadramentoCursos() {
         if (spinEl) spinEl.remove();
     }
 
+    // Aponta para a consulta do processo acompanhado agora (o Parar a chama na hora).
+    let consultarStatus = () => {};
+
     function iniciarMonitoramento(processo_id) {
-        pollInterval = setInterval(() => {
+        // Uma consulta por vez: com o servidor lento, os pedidos se empilhavam.
+        let emVoo = false;
+        consultarStatus = () => {
+            if (emVoo) return;
+            emVoo = true;
             fetch(`/automacoes/enquadramento-cursos/api/status-processamento/${processo_id}/`)
                 .then(res => {
                     if (!res.ok) {
@@ -358,20 +374,6 @@ function initEnquadramentoCursos() {
                                         }, 4000);
                                     }, 1500);
                                 };
-
-                                    // Mantém a sua animação visual original intacta
-                                    setTimeout(() => {
-                                        btnDownload.innerHTML = '<i class="fa-solid fa-check-double"></i><span>Enviado!</span>';
-                                        btnDownload.classList.replace('from-green-500', 'from-teal-500');
-                                        btnDownload.classList.replace('to-green-700', 'to-teal-700');
-
-                                        setTimeout(() => {
-                                            btnDownload.innerHTML = textoOriginal;
-                                            btnDownload.classList.replace('from-teal-500', 'from-green-500');
-                                            btnDownload.classList.replace('to-teal-700', 'to-green-700');
-                                        }, 4000);
-                                    }, 1500);
-                                };
                             }
                         } else {
                             progressBar.classList.replace('from-pink-400', 'from-red-500');
@@ -386,8 +388,10 @@ function initEnquadramentoCursos() {
                         btnStop.disabled = true;
                     }
                 })
-                .catch(err => console.error("Monitoramento error:", err));
-        }, 1500);
+                .catch(err => console.error("Monitoramento error:", err))
+                .finally(() => { emVoo = false; });
+        };
+        pollInterval = setInterval(consultarStatus, 1500);
     }
 }
 

@@ -30,42 +30,24 @@ function initAnaliseIA() {
 
     let pollInterval = null;
     let autoScroll = true;
+    let iniciando = false;
 
     // === ESTADO DO PROGRESSO INTELIGENTE ===
     let targetProgress = 0;       // Progresso real vindo do backend
     let displayedProgress = 0;    // Progresso visual mostrado ao usuário
-    let idleTicks = 0;            // Ticks sem atualização do backend
     let lastTargetUpdate = 0;     // Timestamp do último update real
     let smoothInterval = null;
-    
-    
+    let seqConsulta = 0;
 
-    consoleLogs.addEventListener('scroll', () => {
-        if (consoleLogs.scrollHeight - consoleLogs.scrollTop - consoleLogs.clientHeight < 10) {
-            autoScroll = true;
-        } else {
-            autoScroll = false;
-        }
-    });
+    function pintarProgresso(pct) {
+        const valor = Math.max(0, Math.min(100, Math.floor(pct || 0)));
+        displayedProgress = valor;
+        progressBar.style.width = `${valor}%`;
+        progressText.innerText = `${valor}%`;
+    }
 
-    /**
-     * O QUE FAZ: Evento de clique para disparar o robô de extração.
-     * POR QUÊ EXISTE: Engatilhar via API o `iniciar_processamento_ia`.
-     * COMO FUNCIONA: Coleta as opções marcadas e faz um POST pro backend; Inicia as animações falsas (Fake Smoothing).
-     */
-    btnStart.addEventListener('click', () => {
-        // Validação preventiva no frontend
-        const getCheckedDocs = () => Array.from(document.querySelectorAll(`input[name="tipos_documentos"]:checked`)).length;
-        
-        if (getCheckedDocs() === 0) {
-            if (typeof mostrarModalErro === 'function') {
-                mostrarModalErro();
-            } else {
-                alert("⚠️ É obrigatório selecionar ao menos uma opção na Base de Extração (Documentos) para iniciar o processamento.");
-            }
-            return;
-        }
-
+    function prepararUIInicio() {
+        iniciando = true;
         btnStart.disabled = true;
         btnStart.classList.add('opacity-50', 'cursor-not-allowed');
         btnStart.classList.remove('cursor-pointer');
@@ -75,49 +57,14 @@ function initAnaliseIA() {
         btnDownload.innerHTML = '<i class="fa-solid fa-download"></i><span>Baixar</span>';
         btnDownload.className = 'text-gray-500 bg-gradient-to-r from-gray-100 via-gray-200 to-gray-300 focus:ring-4 focus:outline-none focus:ring-gray-200 shadow-sm font-bold rounded-xl text-[13px] px-6 py-3.5 tracking-widest uppercase flex items-center justify-center gap-2 w-80 transition-all cursor-not-allowed';
 
+        if (smoothInterval) { clearInterval(smoothInterval); smoothInterval = null; }
         targetProgress = 0;
         displayedProgress = 0;
-        idleTicks = 0;
         lastTargetUpdate = Date.now();
         progressBar.style.transition = 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
         progressBar.classList.replace('from-red-500', 'from-pink-400');
         progressBar.classList.replace('to-red-600', 'to-purple-500');
-        progressBar.style.width = '0%';
-        progressText.innerText = '0%';
-
-        // === ALGORITMO DE SUAVIZAÇÃO ADAPTATIVA v2 ===
-        if (smoothInterval) clearInterval(smoothInterval);
-        smoothInterval = setInterval(() => {
-            if (displayedProgress < targetProgress) {
-                // --- MODO ALCANÇAR: o backend avançou, correr para acompanhar ---
-                const gap = targetProgress - displayedProgress;
-                // Velocidade proporcional ao gap: quanto maior a distância, mais rápido
-                const speed = Math.max(0.1, gap * 0.08);
-                displayedProgress = Math.min(targetProgress, displayedProgress + speed);
-                idleTicks = 0;
-            } else if (displayedProgress < 99 && targetProgress > 0) {
-                // --- MODO FAKE SMOOTHING: backend parou, manter sensação de movimento ---
-                idleTicks++;
-
-                if (idleTicks > 15) {  // ~750ms sem update real
-                    // Teto dinâmico: nunca ultrapassar target + 8%
-                    const maxFake = Math.min(99, targetProgress + 8);
-
-                    if (displayedProgress < maxFake) {
-                        // Curva logarítmica: começa rápido, freia perto do teto
-                        const distanceToMax = maxFake - displayedProgress;
-                        const fakeSpeed = Math.max(0.02, distanceToMax * 0.012);
-                        displayedProgress += fakeSpeed;
-                    }
-                }
-            }
-
-            const floorProgress = Math.floor(displayedProgress);
-            progressBar.style.width = `${floorProgress}%`;
-            progressText.innerText = `${floorProgress}%`;
-        }, 50);
-
-        
+        pintarProgresso(0);
 
         consoleLogs.innerHTML = `
             <div class="flex gap-2 mb-1 text-[14px]">
@@ -131,6 +78,35 @@ function initAnaliseIA() {
             </div>
             <span class=\"console-spinner\"></span>
         `;
+    }
+
+    consoleLogs.addEventListener('scroll', () => {
+        if (consoleLogs.scrollHeight - consoleLogs.scrollTop - consoleLogs.clientHeight < 10) {
+            autoScroll = true;
+        } else {
+            autoScroll = false;
+        }
+    });
+
+    /**
+     * O QUE FAZ: Evento de clique para disparar o robô de extração.
+     * POR QUÊ EXISTE: Engatilhar via API o `iniciar_processamento_ia`.
+     * COMO FUNCIONA: Coleta as opções marcadas e faz um POST pro backend.
+     */
+    btnStart.addEventListener('click', () => {
+        if (pollInterval || iniciando) return;
+
+        // Validação preventiva no frontend
+        const getCheckedDocs = () => Array.from(document.querySelectorAll(`input[name="tipos_documentos"]:checked`)).length;
+        
+        if (getCheckedDocs() === 0) {
+            if (typeof mostrarModalErro === 'function') {
+                mostrarModalErro();
+            } else {
+                alert("⚠️ É obrigatório selecionar ao menos uma opção na Base de Extração (Documentos) para iniciar o processamento.");
+            }
+            return;
+        }
 
         let payloadConfig = {};
         try {
@@ -205,12 +181,17 @@ function initAnaliseIA() {
 
         /*  `forcar` só chega aqui vindo do botão "Abortar e iniciar" do aviso de motor
             ocupado. Ele NÃO pula a trava do servidor: manda a view parar o Documentos IA
-            antes de começar este.  */
-        const pedirInicio = (forcar) => fetch('/automacoes/analise-ia/api/iniciar-processamento/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(Object.assign({}, payloadConfig, forcar ? { forcar: true } : {}))
-        })
+            antes de começar este.
+            `prepararUIInicio()` roda SEMPRE aqui dentro para que tanto o clique direto
+            quanto o "Iniciar agora" (após aguardar no modal) e o "Abortar e iniciar"
+            coloquem a tela exatamente no mesmo estado de execução iniciada.  */
+        const pedirInicio = (forcar) => {
+            prepararUIInicio();
+            return fetch('/automacoes/analise-ia/api/iniciar-processamento/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(Object.assign({}, payloadConfig, forcar ? { forcar: true } : {}))
+            })
             /*  409 É O DOCUMENTOS IA RODANDO, e não um erro. Os dois dirigem o mesmo
                 ScriptCase com o mesmo usuário: começar agora derrubaria a sessão dele no
                 meio da extração. O aviso mostra a barra DELE e devolve a escolha — esperar
@@ -228,8 +209,10 @@ function initAnaliseIA() {
             })
             .then(data => {
                 if (data === null) return;   // o aviso assumiu o comando
+                iniciando = false;
                 if (data.status === 'ok') {
                     window.__processo_id = data.processo_id;
+                    btnStop.innerHTML = '<i class="fa-solid fa-stop"></i><span>Parar</span>';
                     btnStop.classList.remove('opacity-90', 'cursor-not-allowed');
                     btnStop.classList.add('cursor-pointer');
                     btnStop.disabled = false;
@@ -243,21 +226,41 @@ function initAnaliseIA() {
                 adicionarLog(`<div class="text-red-500">Erro de conexão: ${err}</div>`);
                 resetarBotoesFalha();
             });
+        };
 
         // O clique começa SEM forçar. Forçar só vem do botão "Abortar e iniciar".
         pedirInicio(false);
     });
 
     btnStop.addEventListener('click', () => {
-        if (!pollInterval) return;
+        const currentId = window.__processo_id;
+        if (!currentId && !pollInterval) return;
         btnStop.disabled = true;
         btnStop.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Parando...</span>';
-        const currentId = window.__processo_id;
+        // Pausa o polling e invalida qualquer resposta em voo anterior à parada
+        if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+        seqConsulta++;
         if (currentId) {
             fetch(`/automacoes/analise-ia/api/parar-processamento/${currentId}/`, { method: 'POST' })
-                .then(res => res.json())
-                .then(() => { btnStop.innerHTML = '<i class="fa-solid fa-ban"></i><span>Abortado</span>'; })
-                .catch(err => console.error(err));
+                /*  Só é "Abortado" se o servidor disser que parou. Antes qualquer resposta,
+                    até um 500, virava "Abortado" — a tela confirmava uma parada que não
+                    aconteceu e o motor seguia rodando.  */
+                .then(res => res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`)))
+                .then(data => {
+                    if (data.status !== 'ok') throw new Error(data.mensagem || 'resposta inesperada');
+                    btnStop.innerHTML = '<i class="fa-solid fa-ban"></i><span>Abortado</span>';
+                    // O servidor só responde com o motor morto e a FALHA gravada: consultar
+                    // agora fecha a tela sem esperar o próximo ciclo do polling.
+                    consultarStatus(true);
+                })
+                .catch(err => {
+                    console.error(err);
+                    btnStop.disabled = false;
+                    btnStop.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i><span>Parar (falhou)</span>';
+                    if (window.__processo_id === currentId && !pollInterval) {
+                        pollInterval = setInterval(() => consultarStatus(false), 1500);
+                    }
+                });
         }
     });
 
@@ -287,10 +290,16 @@ function initAnaliseIA() {
     }
 
     function resetarBotoesFalha() {
+        iniciando = false;
         btnStart.disabled = false;
         btnStart.classList.remove('opacity-50', 'cursor-not-allowed');
+        btnStart.classList.add('cursor-pointer');
+        btnStop.innerHTML = '<i class="fa-solid fa-stop"></i><span>Parar</span>';
+        btnStop.classList.add('opacity-90', 'cursor-not-allowed');
+        btnStop.classList.remove('cursor-pointer');
+        btnStop.disabled = true;
         
-        if (smoothInterval) clearInterval(smoothInterval);
+        if (smoothInterval) { clearInterval(smoothInterval); smoothInterval = null; }
         const spinEl = document.querySelector('.console-spinner');
         if (spinEl) spinEl.remove();
     }
@@ -300,14 +309,32 @@ function initAnaliseIA() {
      * POR QUÊ EXISTE: Como os dados demoram de 2 a 10 min pra extrair, o usuário deve receber feedback (Tail logs).
      * COMO FUNCIONA: Inicia um `setInterval` injetando estilos dinâmicos (Tailwind) com RegExp pra limpar os TextNodes do Python.
      */
+    // Aponta para a consulta do processo acompanhado agora (o Parar a chama na hora).
+    let consultarStatus = () => {};
+
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && pollInterval) consultarStatus(false);
+    });
+
     function iniciarMonitoramento(processo_id) {
-        pollInterval = setInterval(() => {
+        if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+        if (smoothInterval) { clearInterval(smoothInterval); smoothInterval = null; }
+
+        /*  UMA CONSULTA POR VEZ. Com o servidor lento (o status devolve o log inteiro),
+            um ciclo de 1,5 s disparava o próximo antes de o anterior voltar, e os pedidos
+            se empilhavam — mais carga justamente quando o servidor já estava devagar.  */
+        let emVoo = false;
+        consultarStatus = (forcar = false) => {
+            if (emVoo && !forcar) return;
+            emVoo = true;
+            const minhaSeq = ++seqConsulta;
             fetch(`/automacoes/analise-ia/api/status-processamento/${processo_id}/`)
                 .then(res => {
                     if (!res.ok) {
+                        if (minhaSeq !== seqConsulta) return;
                         // Se der 404 ou qualquer erro de rede, para o monitoramento para não inundar o log
-                        clearInterval(pollInterval);
-                        pollInterval = null;
+                        if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+                        window.__processo_id = null;
                         if (res.status === 404) {
                             adicionarLog(`<div class="text-red-500">Erro 404: Processo ${processo_id} não encontrado no banco. Polling encerrado.</div>`);
                         }
@@ -317,7 +344,7 @@ function initAnaliseIA() {
                     return res.json();
                 })
                 .then(data => {
-                    if (!data) return;
+                    if (!data || minhaSeq !== seqConsulta) return;
                     let promptHtml = `
                     <div class="flex items-center gap-1.5 font-mono text-[14px] mb-1">
                         <span class="text-pink-600 font-bold">ovg@probem-ai:</span>
@@ -328,6 +355,8 @@ function initAnaliseIA() {
                 `;
 
                     let rawLog = data.log || "";
+                    rawLog = rawLog.replace(/^.*\[(?:EXTRACAO|ETL)_PROGRESSO\].*$\n?/gm, '');
+                    rawLog = rawLog.replace(/\[\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}\]\s*/g, '');
 
                     const mkBadge = (bg, bdr, lc, pc, icon, label, msg) =>
                         `<div class="my-2"><span class="${bg} border ${bdr} px-2.5 py-1 rounded shadow-sm inline-flex items-center break-words"><span class="${lc} font-bold text-[11px] uppercase mr-2">${icon} ${label}</span><span class="${pc} mx-2">|</span><span class="text-purple-800 text-[13px]">${msg}</span></span></div>`;
@@ -398,6 +427,7 @@ function initAnaliseIA() {
                     rawLog = rawLog.replace(/🎉 Regras aplicadas: (.*)\./g, B.emerald('✔', 'OK', '$1.'));
                     rawLog = rawLog.replace(/🎉 SUPER-EXTRAÇÃO CONCLUÍDA E SALVA/g, B.emerald('✔', 'CONCLUÍDO', 'Relatório Geral gerado com sucesso!'));
                     rawLog = rawLog.replace(/🚨 \[SISTEMA\] Processo de IA abortado manualmente pelo usuário!/g, B.red('!', 'ABORTADO PELO USUÁRIO', 'Processo interrompido manualmente.'));
+                    rawLog = rawLog.replace(/🚨 \[SISTEMA\] (Processo abortado.*)/g, B.red('■', 'ABORTADO', '$1'));
 
                     const termCmd = (cmd) => `<div class="flex items-center gap-1 mt-4 mb-1.5 font-mono text-[14px] break-words"><span class="text-pink-600 font-bold">ovg@probem-ai:</span><span class="text-purple-600"> ~</span><span class="text-purple-400"> $</span><span class="text-purple-900 font-bold"> ${cmd}</span></div>`;
                     rawLog = rawLog.replace(/🚀 Iniciando processamento massivo\.\.\./g, termCmd('extracao_ia --run'));
@@ -412,43 +442,30 @@ function initAnaliseIA() {
                         .replace(/🚨/g, '');
 
                     let htmlLog = rawLog.replace(/\n{3,}/g, '\n\n').replace(/\n/g, '<div class="h-px"></div>');
+                    const rodando = data.status_codigo !== 'CONCLUIDO' && data.status_codigo !== 'FALHA';
 
-                    consoleLogs.innerHTML = promptHtml + `<div class="mt-3 font-mono text-[14px] tracking-tight leading-snug text-gray-700">${htmlLog}</div>` + `<span class=\"console-spinner\"></span>`;
+                    consoleLogs.innerHTML = promptHtml + `<div class="mt-3 font-mono text-[14px] tracking-tight leading-snug text-gray-700">${htmlLog}</div>` + (rodando ? `<span class=\"console-spinner\"></span>` : '');
 
                     if (autoScroll) consoleLogs.scrollTop = consoleLogs.scrollHeight;
 
-                    // === ATUALIZAÇÃO DO PROGRESSO REAL ===
+                    // === ATUALIZAÇÃO DO PROGRESSO REAL (SINCRONIZADO COM O SERVIDOR) ===
                     const newTarget = data.progresso || 0;
                     if (newTarget > targetProgress) {
                         targetProgress = newTarget;
-                        idleTicks = 0;  // Reset do idle ao receber progresso real
                         lastTargetUpdate = Date.now();
                     }
+                    pintarProgresso(targetProgress);
 
-                    if (data.status_codigo === 'CONCLUIDO' || data.status_codigo === 'FALHA') {
-                        clearInterval(pollInterval);
-                        pollInterval = null;
+                    if (!rodando) {
+                        if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+                        if (smoothInterval) { clearInterval(smoothInterval); smoothInterval = null; }
+                        window.__processo_id = null;
 
-                        // Finalização suave: acelera o smoothInterval para terminar rápido
                         targetProgress = 100;
-                        if (smoothInterval) clearInterval(smoothInterval);
-                        smoothInterval = setInterval(() => {
-                            if (displayedProgress < 100) {
-                                displayedProgress += 1.5;
-                                const floorProgress = Math.min(100, Math.floor(displayedProgress));
-                                progressBar.style.width = `${floorProgress}%`;
-                                progressText.innerText = `${floorProgress}%`;
-                            } else {
-                                // Garantir 100% visual
-                                progressBar.style.width = '100%';
-                                progressText.innerText = '100%';
-                                clearInterval(smoothInterval);
-                                smoothInterval = null;
-                                
-                                const cursor = consoleLogs.querySelector('.console-spinner');
-                                if (cursor) cursor.remove();
-                            }
-                        }, 20);
+                        pintarProgresso(100);
+
+                        const cursor = consoleLogs.querySelector('.console-spinner');
+                        if (cursor) cursor.remove();
 
                         if (data.status_codigo === 'CONCLUIDO') {
 
@@ -491,7 +508,7 @@ function initAnaliseIA() {
                             progressBar.classList.replace('to-purple-500', 'to-red-600');
                         }
 
-                        // Liberar botões sem matar a animação de finalização
+                        // Liberar botões
                         btnStart.disabled = false;
                         btnStart.classList.remove('opacity-50', 'cursor-not-allowed');
                         btnStart.classList.add('cursor-pointer');
@@ -501,8 +518,11 @@ function initAnaliseIA() {
                         btnStop.disabled = true;
                     }
                 })
-                .catch(err => console.error("Monitoramento error:", err));
-        }, 1500);
+                .catch(err => console.error("Monitoramento error:", err))
+                .finally(() => { if (minhaSeq === seqConsulta) emVoo = false; });
+        };
+        consultarStatus(false);
+        pollInterval = setInterval(() => consultarStatus(false), 1500);
     }
 
     // Selecionar todos os documentos e semestres por padrão, como solicitado pelo usuário.

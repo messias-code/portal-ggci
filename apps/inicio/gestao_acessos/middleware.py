@@ -29,6 +29,13 @@ class SingleSessionMiddleware:
                 messages.warning(request, 'Sua sessão expirou porque um novo login foi detectado em outro local.')
                 # Redireciona para login (ou home)
                 return redirect('home')
+            elif not request.user.session_key and request.session.session_key:
+                # Sincroniza o session_key no banco se ainda estiver nulo
+                try:
+                    request.user.session_key = request.session.session_key
+                    request.user.save(update_fields=['session_key'])
+                except Exception:
+                    pass
 
         response = self.get_response(request)
 

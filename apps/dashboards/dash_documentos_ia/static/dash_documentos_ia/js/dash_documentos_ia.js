@@ -1971,31 +1971,47 @@ document.addEventListener('turbo:load', () => {
             };
 
             const atualizarContadores = () => {
-                const porSecao = [
-                    ['contador-semestres', marcados(checkboxesSemestre).length],
-                    ['contador-situacao', marcados(checkboxesVinculo).length
-                                        + marcados(checkboxesPerfil).length],
-                    ['contador-mudancas', marcados(checkboxesMudouIES).length
-                                        + marcados(checkboxesMudouBolsa).length],
-                    ['contador-modalidade', marcados(checkboxesModalidadeAluno).length
-                                        + marcados(checkboxesModalidadeIES).length],
+                const porSecao = {
+                    'contador-semestres': marcados(checkboxesSemestre).length,
+                    'contador-situacao': marcados(checkboxesVinculo).length
+                                        + marcados(checkboxesPerfil).length,
+                    'contador-mudancas': marcados(checkboxesMudouIES).length
+                                        + marcados(checkboxesMudouBolsa).length,
+                    'contador-modalidade': marcados(checkboxesModalidadeAluno).length
+                                        + marcados(checkboxesModalidadeIES).length,
                     // Mesmo guarda de `parametrosDeFiltro`: o filtro de IES vive no
                     // escopo do modal, que pode não ter sido inicializado ainda.
-                    ['contador-ies', typeof activeIESFilters !== 'undefined'
-                                        ? activeIESFilters.length : 0],
-                    /*  Conta nos DOIS modos: no IES ele recorta a linha da tabela, em
-                        beneficiários ele acende as fatias daquele documento. Ficou fora
-                        do total enquanto era invisível em beneficiários — hoje ele age
-                        nos dois lugares, e um filtro que age sem aparecer no contador é
-                        exatamente o que o contador existe para evitar.  */
-                    ['contador-documentos', marcados(checkboxesDocumento).length],
-                ];
-                let total = 0;
-                porSecao.forEach(([id, quantidade]) => {
-                    total += quantidade;
-                    pintarContador(id, quantidade);
-                });
-                pintarContador('contador-filtros', total);
+                    'contador-ies': typeof activeIESFilters !== 'undefined'
+                                        ? activeIESFilters.length : 0,
+                    'contador-documentos': marcados(checkboxesDocumento).length,
+                };
+                Object.keys(porSecao).forEach((id) => pintarContador(id, porSecao[id]));
+
+                /*  O TOTAL DO CABEÇALHO NÃO CONTA OS FILTROS BASE. Semestre (e, no IES,
+                    Documento) estão SEMPRE marcados — o modo obriga um de cada —, e um
+                    número que nunca chega a zero não avisa nada: "1" passava a querer
+                    dizer "nada ligado". Os selos de cada seção continuam acesos; só o
+                    total pula o que é a base da pergunta.
+
+                    IES: só "Ordenar por" (1 quando sai da ordem padrão) e Instituição.
+                    Beneficiários: de "Situação do aluno" para baixo.
+
+                    `window.__ordemIES` e `modoSelecionado` são lidos na hora da chamada,
+                    e não na definição: os dois nascem mais abaixo neste escopo.  */
+                const emIES = modoSelecionado() === 'ies';
+                const ordem = window.__ordemIES;
+                const ordemMudou = !!ordem && (ordem.chave !== 'ies' || ordem.desc);
+                const total = emIES
+                    ? (ordemMudou ? 1 : 0) + porSecao['contador-ies']
+                    : porSecao['contador-situacao'] + porSecao['contador-mudancas']
+                      + porSecao['contador-modalidade'] + porSecao['contador-ies'];
+
+                /*  O SELO DO CABEÇALHO É UM SÓ para as duas abas, e a Análise IA também
+                    escreve nele. Escrever com a outra aba no ar mostraria o total daqui
+                    lá — a volta de aba repinta (ver o ouvinte de `docia:aba`).  */
+                if (!window.dociaAbaAtiva || window.dociaAbaAtiva() === 'envios') {
+                    pintarContador('contador-filtros', total);
+                }
             };
 
             /*  UMA CONSULTA POR MODO, e não as duas sempre.
@@ -2852,6 +2868,7 @@ document.addEventListener('turbo:load', () => {
                         aplicarOrdemUI();
                         abrirMenuOrdem(false);
                         pintarVistaIES();
+                        atualizarContadores();
                     });
                 });
             }
@@ -2861,6 +2878,7 @@ document.addEventListener('turbo:load', () => {
                     if (e.target.checked) {
                         window.__ordemIES.desc = e.target.value === 'desc';
                         pintarVistaIES();
+                        atualizarContadores();
                     }
                 });
             });
@@ -3259,6 +3277,8 @@ document.addEventListener('turbo:load', () => {
 
             document.addEventListener('docia:aba', (evento) => {
                 if (!evento.detail || evento.detail.aba !== 'envios') return;
+                // O selo do cabeçalho é dividido com a Análise IA: devolve o total daqui.
+                atualizarContadores();
                 requestAnimationFrame(() => {
                     if (temaPendente) repintarPorTema();
                     forcarResize();
@@ -3561,10 +3581,18 @@ document.addEventListener('turbo:load', () => {
             };
 
             let pollConsole = null;      // timer do long-polling
-            let animProgresso = null;    // timer da interpolação da barra
+            let animProgresso = null;    // timer de sincronia da barra
             let progressoAlvo = 0;       // último valor vindo do backend
             let progressoExibido = 0;    // valor que a barra mostra agora
             let rolagemPresa = true;     // o usuário está acompanhando o fim?
+            let seqConsulta = 0;         // invalida respostas em voo de ciclos antigos
+            // A consulta do processo acompanhado agora (o Parar a chama na hora). Fica aqui
+            // em cima porque a retomada logo abaixo já chama `acompanhar`.
+            let consultarAgora = () => {};
+
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden && pollConsole) consultarAgora(false);
+            });
 
             const procLembrado = sessionStorage.getItem('__processo_id_docia');
             if (procLembrado) {
@@ -3752,6 +3780,8 @@ document.addEventListener('turbo:load', () => {
                     if (!confirm('Parar a atualização em andamento? A tela continua com os dados da última atualização concluída.')) return;
                     btnPararConsole.disabled = true;
                     btnPararConsole.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Parando...</span>';
+                    if (pollConsole) { clearInterval(pollConsole); pollConsole = null; }
+                    seqConsulta += 1;
                     fetch(`/dashboards/documentos-ia/api/parar/${id}/`, {
                         method: 'POST',
                         headers: { 'X-CSRFToken': window.CSRF_TOKEN },
@@ -3759,9 +3789,15 @@ document.addEventListener('turbo:load', () => {
                     .then((r) => r.json())
                     .then((data) => {
                         if (data.status !== 'ok') throw new Error(data.msg || 'resposta inesperada do servidor');
+                        // O servidor só responde com o motor morto e a FALHA gravada:
+                        // consultar agora fecha a tela sem esperar o próximo ciclo.
+                        consultarAgora(true);
                     })
                     .catch((erro) => {
                         mostrarParar(true);
+                        if (window.__processo_id_docia === id && !pollConsole) {
+                            pollConsole = setInterval(() => consultarAgora(false), 2000);
+                        }
                         if (consoleLogs) {
                             consoleLogs.innerHTML += `<div class="mt-3 text-red-600 font-bold">✖ Não foi possível parar: ${escapar(String(erro.message || erro))}</div>`;
                         }
@@ -3788,40 +3824,23 @@ document.addEventListener('turbo:load', () => {
             }
 
             /**
-             * O QUE FAZ: Move a barra em direção ao progresso real, em vez de saltar.
-             * POR QUÊ EXISTE: o backend reporta em degraus largos (2% → 15% → 25%…),
-             * e a barra pulando dá a impressão de travamento entre um degrau e outro.
-             *
-             * A BARRA NUNCA PASSA DO QUE O SERVIDOR DISSE. Havia aqui um "movimento
-             * perpétuo" de 0,03 a cada 40ms — 0,75% por segundo, andando mesmo com o
-             * servidor parado. Sem os Parquets do dia, o SQL leva minutos com o servidor
-             * reportando 2%, e a barra chegava sozinha a 99% em pouco mais de dois minutos
-             * e ficava lá até o fim. O servidor agora reporta o andamento de cada etapa
-             * (tabelas do SQL, arquivos do ScriptCase), então a animação só suaviza o
-             * caminho até o valor real.
+             * O QUE FAZ: Sincroniza a barra e o botão com o progresso real do servidor.
+             * POR QUÊ EXISTE: tanto esta tela quanto o modal `MotorOcupado` (aberto no
+             * Análise IA) precisam exibir exatamente o mesmo percentual do banco. A
+             * interpolação antiga (`<= 0.15` a cada 40ms) sofria throttling do navegador
+             * para 1Hz em abas em segundo plano, acumulando atrasos de dezenas de pontos
+             * percentuais em relação ao modal do outro módulo.
              */
+            function pintarProgresso(pctBruto) {
+                const pct = Math.max(0, Math.min(100, Math.floor(Number(pctBruto) || 0)));
+                progressoExibido = pct;
+                if (consoleBarra) consoleBarra.style.width = `${pct}%`;
+                if (consoleTexto) consoleTexto.innerText = `${pct}%`;
+                pintarBotao(pct);
+            }
+
             function animarProgresso() {
-                if (animProgresso) return;
-                animProgresso = setInterval(() => {
-                    if (progressoExibido < 100) {
-                        if (progressoAlvo === 100) {
-                            // Se terminou, preenche o restante rapidamente
-                            progressoExibido = Math.min(progressoExibido + 2.0, 100);
-                        } else if (progressoAlvo > progressoExibido) {
-                            // Acelera suavemente para alcançar o servidor, sem "saltos" visuais
-                            const velAlcance = (progressoAlvo - progressoExibido) / 60;
-                            const incremento = Math.max(0.03, Math.min(velAlcance, 0.15));
-                            progressoExibido = Math.min(progressoExibido + incremento, progressoAlvo, 99);
-                        }
-                    } else if (progressoExibido >= 100) {
-                        clearInterval(animProgresso);
-                        animProgresso = null;
-                    }
-                    const pct = Math.floor(progressoExibido);
-                    if (consoleBarra) consoleBarra.style.width = `${pct}%`;
-                    if (consoleTexto) consoleTexto.innerText = `${pct}%`;
-                    pintarBotao(pct);
-                }, 40);
+                pintarProgresso(progressoAlvo);
             }
 
             function pintarBotao(pct) {
@@ -3872,6 +3891,22 @@ document.addEventListener('turbo:load', () => {
                 btnAbrirConsole.addEventListener('click', abrirConsole);
             }
 
+            function prepararUIInicioDocIA() {
+                window.__iniciandoDocIA = true;
+                if (btnAtualizar) btnAtualizar.disabled = true;
+                progressoAlvo = 0;
+                if (consoleBarra) consoleBarra.classList.remove('docia-barra--falha');
+                pintarProgresso(0);
+                if (consoleStatus) consoleStatus.innerText = 'Iniciando';
+                if (consoleLogs) {
+                    consoleLogs.innerHTML = CABECALHO_CONSOLE
+                        + '<div class="text-pink-500 italic mb-2">'
+                        + '<i class="fa-solid fa-angle-right"></i> Processo iniciado. Aguardando o servidor...'
+                        + '</div>'
+                        + '<span class="console-spinner"></span>';
+                }
+            }
+
             if (btnAtualizar && !btnAtualizar.dataset.ligadoDocia) {
                 btnAtualizar.dataset.ligadoDocia = '1';
                 btnAtualizar.addEventListener('click', () => {
@@ -3881,81 +3916,72 @@ document.addEventListener('turbo:load', () => {
                        do fetch, onde `__processo_id_docia` ainda é nulo. Protege também do
                        duplo-clique humano, que abriria as mesmas duas execuções. */
                     if (window.__iniciandoDocIA) { return; }
-                    window.__iniciandoDocIA = true;
-
-                    btnAtualizar.disabled = true;
-                    progressoAlvo = 0;
-                    if (consoleBarra) consoleBarra.classList.remove('docia-barra--falha');
-                    progressoExibido = 0;
-                    pintarBotao(0);
-                    if (consoleStatus) consoleStatus.innerText = 'Iniciando';
-                    if (consoleLogs) {
-                        consoleLogs.innerHTML = CABECALHO_CONSOLE
-                            + '<div class="text-pink-500 italic mb-2">'
-                            + '<i class="fa-solid fa-angle-right"></i> Processo iniciado. Aguardando o servidor...'
-                            + '</div>'
-                            + '<span class="console-spinner"></span>';
-                    }
 
                     /*  `forcar` só chega aqui vindo do botão "Abortar e iniciar" do
                         aviso de motor ocupado. Ele NÃO pula a trava do servidor: manda
-                        a view parar o outro motor antes de começar este.  */
-                    const pedirInicio = (forcar) => fetch(window.DASH_DOC_IA_INICIAR_URL, {
-                        method: 'POST',
-                        headers: { 'X-CSRFToken': window.CSRF_TOKEN, 'Content-Type': 'application/json' },
-                        // O escopo aplicado no modal viaja com o pedido. Sem configuração,
-                        // vai `{}` — e `{}` significa atualização completa no back-end,
-                        // que é como esta rotina sempre funcionou.
-                        body: JSON.stringify(Object.assign({}, window.__configDocIA || {},
-                                                           forcar ? { forcar: true } : {})),
-                    })
-                    /*  409 É O ANÁLISE IA RODANDO, e não um erro. Os dois dirigem o mesmo
-                        ScriptCase com o mesmo usuário: começar agora derrubaria a sessão
-                        dele no meio da extração. O aviso mostra a barra DELE e devolve a
-                        escolha — esperar ou abortar. Se o componente compartilhado não
-                        tiver carregado, o fluxo segue para o `catch` e a pessoa ao menos
-                        vê a mensagem, em vez de a tela travar em silêncio.  */
-                    .then((r) => {
-                        if (r.status === 409 && window.MotorOcupado) {
-                            return window.MotorOcupado.seOcupado(r, (comForca) => {
-                                window.__iniciandoDocIA = true;
-                                pedirInicio(comForca);
-                            }).then((tratado) => {
-                                if (tratado) {
-                                    window.__iniciandoDocIA = false;
-                                    restaurarBotaoAtualizar();
-                                    return null;
-                                }
-                                return r.json();
-                            });
-                        }
-                        return r.json();
-                    })
-                    .then((data) => {
-                        if (data === null) return;   // o aviso assumiu o comando
-                        if (data.status !== 'ok') throw new Error(data.msg || 'resposta inesperada do servidor');
-                        /* O back-end responde `ok` também quando ADOTA uma execução que já
-                           estava no ar — e nesse caso o escopo configurado aqui é jogado
-                           fora. Como o console passava a mostrar o log daquela outra
-                           execução, a tela parecia estar rodando o que foi pedido. Este
-                           aviso é a única diferença visível, e só aparece nesse caso. */
-                        if (data.configuracao_aplicada === false && consoleLogs) {
-                            consoleLogs.innerHTML += `<div class="mt-3 text-amber-600 font-bold">⚠ ${escapar(String(data.msg || ''))}</div>`;
-                        }
-                        window.__processo_id_docia = data.processo_id;
-                        sessionStorage.setItem('__processo_id_docia', data.processo_id);
-                        window.__iniciandoDocIA = false;
-                        animarProgresso();
-                        acompanhar(data.processo_id);
-                    })
-                    .catch((erro) => {
-                        window.__iniciandoDocIA = false;
-                        if (consoleLogs) {
-                            consoleLogs.innerHTML += `<div class="mt-3 text-red-600 font-bold">✖ Não foi possível iniciar: ${escapar(String(erro.message || erro))}</div>`;
-                        }
-                        if (consoleStatus) consoleStatus.innerText = 'Falha';
-                        restaurarBotaoAtualizar();
-                    });
+                        a view parar o outro motor antes de começar este.
+                        `prepararUIInicioDocIA()` roda dentro de `pedirInicio` para que
+                        tanto o clique direto quanto o "Iniciar agora" (após aguardar no
+                        modal) e o "Abortar e iniciar" coloquem a tela no estado de
+                        atualização em andamento.  */
+                    const pedirInicio = (forcar) => {
+                        prepararUIInicioDocIA();
+                        return fetch(window.DASH_DOC_IA_INICIAR_URL, {
+                            method: 'POST',
+                            headers: { 'X-CSRFToken': window.CSRF_TOKEN, 'Content-Type': 'application/json' },
+                            // O escopo aplicado no modal viaja com o pedido. Sem configuração,
+                            // vai `{}` — e `{}` significa atualização completa no back-end,
+                            // que é como esta rotina sempre funcionou.
+                            body: JSON.stringify(Object.assign({}, window.__configDocIA || {},
+                                                               forcar ? { forcar: true } : {})),
+                        })
+                        /*  409 É O ANÁLISE IA RODANDO, e não um erro. Os dois dirigem o mesmo
+                            ScriptCase com o mesmo usuário: começar agora derrubaria a sessão
+                            dele no meio da extração. O aviso mostra a barra DELE e devolve a
+                            escolha — esperar ou abortar. Se o componente compartilhado não
+                            tiver carregado, o fluxo segue para o `catch` e a pessoa ao menos
+                            vê a mensagem, em vez de a tela travar em silêncio.  */
+                        .then((r) => {
+                            if (r.status === 409 && window.MotorOcupado) {
+                                return window.MotorOcupado.seOcupado(r, (comForca) => {
+                                    pedirInicio(comForca);
+                                }).then((tratado) => {
+                                    if (tratado) {
+                                        window.__iniciandoDocIA = false;
+                                        restaurarBotaoAtualizar();
+                                        return null;
+                                    }
+                                    return r.json();
+                                });
+                            }
+                            return r.json();
+                        })
+                        .then((data) => {
+                            if (data === null) return;   // o aviso assumiu o comando
+                            if (data.status !== 'ok') throw new Error(data.msg || 'resposta inesperada do servidor');
+                            /* O back-end responde `ok` também quando ADOTA uma execução que já
+                               estava no ar — e nesse caso o escopo configurado aqui é jogado
+                               fora. Como o console passava a mostrar o log daquela outra
+                               execução, a tela parecia estar rodando o que foi pedido. Este
+                               aviso é a única diferença visível, e só aparece nesse caso. */
+                            if (data.configuracao_aplicada === false && consoleLogs) {
+                                consoleLogs.innerHTML += `<div class="mt-3 text-amber-600 font-bold">⚠ ${escapar(String(data.msg || ''))}</div>`;
+                            }
+                            window.__processo_id_docia = data.processo_id;
+                            sessionStorage.setItem('__processo_id_docia', data.processo_id);
+                            window.__iniciandoDocIA = false;
+                            animarProgresso();
+                            acompanhar(data.processo_id);
+                        })
+                        .catch((erro) => {
+                            window.__iniciandoDocIA = false;
+                            if (consoleLogs) {
+                                consoleLogs.innerHTML += `<div class="mt-3 text-red-600 font-bold">✖ Não foi possível iniciar: ${escapar(String(erro.message || erro))}</div>`;
+                            }
+                            if (consoleStatus) consoleStatus.innerText = 'Falha';
+                            restaurarBotaoAtualizar();
+                        });
+                    };
 
                     // O clique começa SEM forçar. Forçar só vem do botão "Abortar e
                     // iniciar" do aviso, e ele chama `pedirInicio(true)` de volta.
@@ -3969,9 +3995,15 @@ document.addEventListener('turbo:load', () => {
             const FALHAS_ATE_DESISTIR = 30;
 
             function acompanhar(processoId) {
+                encerrarAcompanhamento();
                 let falhasSeguidas = 0;
+                // Uma consulta por vez: com o servidor lento, os pedidos se empilhavam.
+                let emVoo = false;
                 mostrarParar(true);
-                pollConsole = setInterval(() => {
+                consultarAgora = (forcar = false) => {
+                    if (emVoo && !forcar) return;
+                    emVoo = true;
+                    const minhaSeq = ++seqConsulta;
                     fetch(`/dashboards/documentos-ia/api/status/${processoId}/`)
                         .then((r) => {
                             if (!r.ok) {
@@ -3983,9 +4015,11 @@ document.addEventListener('turbo:load', () => {
                             return r.json();
                         })
                         .then((data) => {
+                            if (!data || minhaSeq !== seqConsulta) return;
                             falhasSeguidas = 0;
                             if (consoleStatus) consoleStatus.innerText = ROTULO_STATUS[data.status] || data.status;
                             progressoAlvo = Math.max(progressoAlvo, data.progresso || 0);
+                            pintarProgresso(progressoAlvo);
 
                             if (consoleLogs) {
                                 const rodando = data.status !== 'CONCLUIDO' && data.status !== 'FALHA';
@@ -4001,9 +4035,7 @@ document.addEventListener('turbo:load', () => {
                                 sessionStorage.removeItem('__processo_id_docia');
                                 window.__processo_id_docia = null;
                                 progressoAlvo = 100;
-                                progressoExibido = 100;
-                                if (consoleBarra) consoleBarra.style.width = '100%';
-                                if (consoleTexto) consoleTexto.innerText = '100%';
+                                pintarProgresso(100);
                                 
                                 const agora = new Date();
                                 const dataFormatada = `${String(agora.getDate()).padStart(2, '0')}/${String(agora.getMonth() + 1).padStart(2, '0')}/${agora.getFullYear()} às ${String(agora.getHours()).padStart(2, '0')}:${String(agora.getMinutes()).padStart(2, '0')}`;
@@ -4016,12 +4048,10 @@ document.addEventListener('turbo:load', () => {
                                 // Parada e falha fecham a barra em 100% VERMELHA: ela
                                 // ficava congelada no meio, em rosa, como se ainda rodasse.
                                 progressoAlvo = 100;
-                                progressoExibido = 100;
+                                pintarProgresso(100);
                                 if (consoleBarra) {
-                                    consoleBarra.style.width = '100%';
                                     consoleBarra.classList.add('docia-barra--falha');
                                 }
-                                if (consoleTexto) consoleTexto.innerText = '100%';
                                 sessionStorage.removeItem('__processo_id_docia');
                                 window.__processo_id_docia = null;
                                 if (consoleStatus) consoleStatus.innerText = 'Falha';
@@ -4030,22 +4060,25 @@ document.addEventListener('turbo:load', () => {
                             }
                         })
                         .catch((erro) => {
-                            if (!pollConsole) return;  // já encerrado por outra resposta
+                            if (minhaSeq !== seqConsulta || !pollConsole) return;  // já encerrado por outra resposta
                             falhasSeguidas += 1;
                             if (falhasSeguidas < FALHAS_ATE_DESISTIR) {
                                 if (consoleStatus) consoleStatus.innerText = 'Reconectando…';
                                 return;
                             }
                             encerrarAcompanhamento();
-                                sessionStorage.removeItem('__processo_id_docia');
-                                window.__processo_id_docia = null;
+                            sessionStorage.removeItem('__processo_id_docia');
+                            window.__processo_id_docia = null;
                             if (consoleLogs) {
                                 consoleLogs.innerHTML += `<div class="mt-3 text-red-400">✖ Perdi contato com o servidor (${escapar(String(erro.message || erro))}). O processo pode continuar rodando — recarregue a página para conferir.</div>`;
                             }
                             if (consoleStatus) consoleStatus.innerText = 'Sem contato';
                             restaurarBotaoAtualizar();
-                        });
-                }, 2000);
+                        })
+                        .finally(() => { emVoo = false; });
+                };
+                consultarAgora(false);
+                pollConsole = setInterval(() => consultarAgora(false), 2000);
             }
 
             /*  AS TRÊS GUARDAS DE SAÍDA ignoram a navegação entre as abas do próprio
@@ -4072,6 +4105,9 @@ document.addEventListener('turbo:load', () => {
             window.addEventListener('pagehide', () => {
                 if (window.__processo_id_docia && saidaDeVerdade()) {
                     navigator.sendBeacon(`/dashboards/documentos-ia/api/parar/${window.__processo_id_docia}/`);
+                    // Abortou: a próxima abertura não deve se reconectar a um processo morto
+                    // (abria o console de Falha sozinho e travava o Atualizar).
+                    sessionStorage.removeItem('__processo_id_docia');
                 }
             });
 

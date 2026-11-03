@@ -447,8 +447,11 @@
         };
 
         const atualizarContadores = () => {
+            /*  O SEMESTRE PINTA O SELO DA SEÇÃO, MAS FICA FORA DO TOTAL: ele está
+                sempre marcado, e o total do cabeçalho conta só de "Data de
+                processamento" para baixo — que é onde começa o recorte opcional.  */
+            contador('contador-semestres-ia', marcados(caixasSemestre).length);
             let total = 0;
-            total += contador('contador-semestres-ia', marcados(caixasSemestre).length);
             total += contador('contador-situacao-ia',
                 marcados(nosFiltros('.filter-vinculo')).length
                 + marcados(nosFiltros('.filter-perfil')).length);
@@ -467,7 +470,12 @@
             CARDS_DE_MENSALIDADE.forEach(([parametro]) => { total += recorteMensalidade[parametro].size; });
             total += recorteHistorico.sit.size + recorteHistorico.alerta.size;
             total += contador('contador-ies-ia', iesDaAba().length);
-            contador('contador-filtros', total);
+            /*  O selo do cabeçalho é dividido com Envios & Pendências: com a outra
+                aba no ar, o total daqui ficaria pintado lá. A volta para esta aba
+                repinta (ver o ouvinte de `docia:aba`).  */
+            if (!window.dociaAbaAtiva || window.dociaAbaAtiva() === 'analise') {
+                contador('contador-filtros', total);
+            }
         };
 
         /* ==================================================================
@@ -3523,29 +3531,33 @@
         };
         caixasSemestre.forEach((caixa) => caixa.addEventListener('change', exclusividadeSemestre));
 
-        /*  O RIAF SÓ EXISTE A PARTIR DE 2026-1. A aba dele no Parquet não tem linha
-            nenhuma de 2025-1 nem de 2025-2, e oferecer esses dois no RIAF era oferecer
-            uma tela vazia. Com o RIAF escolhido eles somem da grade, e a grade passa a
-            ter as colunas que sobraram.
+        /*  DOCUMENTO QUE NÃO EXISTE EM TODO SEMESTRE. O RIAF só existe a partir de
+            2026-1 e o Histórico a partir de 2025-2: as abas deles no Parquet não têm
+            linha nenhuma antes disso, e oferecer esses semestres era oferecer uma
+            tela vazia. Com um deles escolhido os semestres de fora somem da grade, e
+            a grade passa a ter as colunas que sobraram.
 
-            O SEMESTRE MARCADO QUE SOME É TROCADO por 2026-1, o primeiro que o RIAF
-            tem: a tela abre no semestre mais antigo, e este é o mais antigo dele.
-            Devolve se trocou, para quem chama saber que o recorte mudou.  */
-        const SEMESTRES_SEM_RIAF = ['2025-1', '2025-2'];
+            O SEMESTRE MARCADO QUE SOME É TROCADO pelo primeiro que ficou visível — o
+            mais antigo que o documento tem, porque a tela abre no semestre mais
+            antigo. Devolve se trocou, para quem chama saber que o recorte mudou.  */
+        const SEMESTRES_SEM_DOCUMENTO = {
+            'RIAF': ['2025-1', '2025-2'],
+            'HISTÓRICO': ['2025-1'],
+        };
 
         const semestresDoDocumento = (documento) => {
-            const semRiaf = documento === 'RIAF';
+            const fora = SEMESTRES_SEM_DOCUMENTO[documento] || [];
             let visiveis = 0;
             let trocou = false;
             caixasSemestre.forEach((caixa) => {
-                const esconder = semRiaf && SEMESTRES_SEM_RIAF.includes(caixa.value);
+                const esconder = fora.includes(caixa.value);
                 const rotulo = caixa.closest('label');
                 if (rotulo) rotulo.classList.toggle('hidden', esconder);
                 if (!esconder) visiveis++;
                 if (esconder && caixa.checked) { caixa.checked = false; trocou = true; }
             });
             if (trocou) {
-                const primeiro = Array.from(caixasSemestre).find((c) => c.value === '2026-1');
+                const primeiro = Array.from(caixasSemestre).find((c) => !fora.includes(c.value));
                 if (primeiro) primeiro.checked = true;
             }
             const grade = caixasSemestre[0] && caixasSemestre[0].closest('.docia-grade-seg');
@@ -3778,6 +3790,18 @@
                         if (evento.target.closest('select, input')) return;
                         evento.preventDefault();
                     });
+
+                    /*  ROLAR FECHA O CALENDÁRIO. Ele mora no `<body>`, posicionado uma
+                        vez só na abertura: rolar a barra de filtros levava o campo
+                        embora e deixava o calendário parado no ar, por cima dos
+                        outros filtros. `scroll` não borbulha, por isso a CAPTURA no
+                        `document` — é ela que ouve a rolagem de qualquer caixa, a
+                        barra de filtros inclusive. Fechar é fechar-sem-confirmar: o
+                        `onClose` devolve o campo à data que está valendo.  */
+                    document.addEventListener('scroll', (evento) => {
+                        if (!fp.isOpen || fp.calendarContainer.contains(evento.target)) return;
+                        fp.close();
+                    }, true);
 
                     /*  ENTER É O OK DE QUEM ESTÁ DIGITANDO — e para ser o OK ele
                         precisa chegar antes do Enter DO WIDGET, que faz outra coisa:
@@ -4013,6 +4037,7 @@
            ================================================================== */
         document.addEventListener('docia:aba', (evento) => {
             if (!evento.detail || evento.detail.aba !== 'analise') return;
+            atualizarContadores();
             requestAnimationFrame(() => {
                 if (pendenteDeRecarga) recarregar();
                 else if (temaPendenteIA && ultimoResumo) {

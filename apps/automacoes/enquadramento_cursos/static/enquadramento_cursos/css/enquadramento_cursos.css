@@ -2,6 +2,38 @@
    CONFIGURAÇÕES ESPECÍFICAS - ANÁLISE IA
    ========================================================================== */
 html { font-size: 90%; }
+
+/* ==========================================================================
+   ROXO OVG NO LUGAR DO VIOLETA DO TAILWIND
+   ==========================================================================
+   A tela usa as utilitárias `purple-*` (Configurar Documentos, Iniciar, chaves,
+   ícones, console…), e o `purple` do Tailwind é um violeta azulado que não é o
+   da marca. O `output.css` é Tailwind v4: toda utilitária lê `--color-purple-N`,
+   então redefinir a escala aqui troca a tela inteira de uma vez — markup, JS do
+   console, gradientes e sombras — sem precisar de classe nova (o bundle é
+   purgado).
+
+   O ROXO OVG É O DO MENU: o título "Navegação Principal" é `--ovg-roxo-escuro`
+   (#64528c, tema.css) — é ele o roxo da marca, e é ele o 600 e o 700 daqui (os
+   tons que pintam botões, chaves e textos). O 500 é `--ovg-roxo-medio`, a ponta
+   clara dos degradês (o Iniciar vai do 500 ao 700); 800 = profundo, 50 = lavado,
+   200 = borda. Fora de layer: vence o `@layer theme` do bundle. O eleitoral não
+   é afetado — lá `tema-conteudo.css` repinta as utilitárias com as cores do tema.
+   ========================================================================== */
+:root {
+    --color-purple-50:  var(--ovg-roxo-lavado, #f5f3fa);
+    --color-purple-100: #ebe6f5;
+    --color-purple-200: var(--ovg-roxo-borda, #d8cfea);
+    --color-purple-300: #b9abd6;
+    --color-purple-400: var(--ovg-roxo-claro, #8c76b8);
+    --color-purple-500: var(--ovg-roxo-medio, #7660a1);
+    --color-purple-600: var(--ovg-roxo-escuro, #64528c);
+    --color-purple-700: var(--ovg-roxo-escuro, #64528c);
+    --color-purple-800: var(--ovg-roxo-profundo, #523f78);
+    --color-purple-900: #43325f;
+    --color-purple-950: #2e2242;
+}
+
 body { font-family: 'Poppins', sans-serif; }
 
 /* Animações das Bolhas de Fundo */
@@ -77,7 +109,7 @@ input[type="checkbox"]:focus {
 
 .nav-active {
     position: relative;
-    background: linear-gradient(to right, #9333ea, #a855f7); /* OVG purple-600 to purple-500 */
+    background: linear-gradient(to right, var(--color-purple-600), var(--color-purple-500)); /* roxo OVG */
     box-shadow: 0 10px 20px rgba(147, 51, 234, 0.25);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     isolation: isolate;
@@ -128,7 +160,7 @@ input[type="checkbox"]:focus {
 
 .nav-inactive:hover {
     transform: translateY(-1px);
-    color: #9333ea !important; /* text-purple-600 */
+    color: var(--color-purple-600) !important; /* roxo OVG */
 }
 
 .nav-inactive:hover::before {

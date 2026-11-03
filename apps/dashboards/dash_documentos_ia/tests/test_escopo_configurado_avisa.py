@@ -53,8 +53,8 @@ class ConfiguracaoDescartadaAvisaTests(TestCase):
             usuario_solicitante='Outro', status='EXTRAINDO', progresso=30, log='rodando',
         )
 
-        with patch('apps.dashboards.dash_documentos_ia.views.subprocess.check_output',
-                   return_value=b'12345\n'):
+        with patch('apps.dashboards.dash_documentos_ia.views.execucao_viva', return_value=True), \
+             patch('apps.dashboards.dash_documentos_ia.views.popen_com_limite'):
             resposta = self.client.post(
                 reverse('dash_documentos_ia_iniciar'),
                 data={'documentos': ['HISTORICO']},
@@ -71,8 +71,7 @@ class ConfiguracaoDescartadaAvisaTests(TestCase):
     def test_execucao_propria_nao_carrega_o_aviso(self):
         """Contraprova: quando o pedido de fato vira execução, nada de aviso."""
         with patch('apps.dashboards.dash_documentos_ia.views.popen_com_limite'), \
-             patch('apps.dashboards.dash_documentos_ia.views.subprocess.check_output',
-                   side_effect=__import__('subprocess').CalledProcessError(1, 'pgrep')):
+             patch('apps.dashboards.dash_documentos_ia.views.execucao_viva', return_value=False):
             resposta = self.client.post(
                 reverse('dash_documentos_ia_iniciar'),
                 data={'documentos': ['HISTORICO']},

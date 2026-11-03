@@ -281,34 +281,8 @@ body {
     gap: 4px;
 }
 
-.qd-btn {
-    background: rgba(236, 72, 153, 0.1);
-    border: none;
-    border-radius: 4px;
-    font-size: 9.5px;
-    font-family: 'DM Sans', sans-serif;
-    font-weight: 700;
-    color: var(--pink-dark);
-    padding: 3px 6px;
-    cursor: pointer;
-    transition: all .2s;
-    text-transform: uppercase;
-}
-
-.qd-btn:hover {
-    background: #6B007B !important;
-    color: #fff !important;
-    border-color: #6B007B !important;
-    box-shadow: 0 4px 12px rgba(107, 0, 123, 0.2) !important;
-}
-
-.qd-btn.qd-active {
-    background: #6B007B !important;
-    color: #fff !important;
-    border-color: #6B007B !important;
-    box-shadow: 0 4px 12px rgba(107, 0, 123, 0.3) !important;
-    transform: translateY(-1px);
-}
+/*  Hoje / Mês / Ano: a aparência é a calha `.abas-seg--filtro` de tema.css, a
+    mesma do Documentos IA. O `.qd-btn` ficou só como gancho do JS.  */
 
 /* ── Flatpickr OVG Pink Theme ────────────── */
 .flatpickr-calendar {
@@ -433,15 +407,20 @@ body {
     justify-content: space-between;
     gap: 8px;
     cursor: pointer;
-    padding: 2px 0;
+    /*  O mesmo respiro do cartão "Filtro de IES" do Documentos IA (`p-2`). Era
+        `2px 0`, e esta regra (fora de layer) vence a utilitária do markup: o
+        ícone e a seta encostavam na borda.  */
+    padding: 0.5rem;
     user-select: none;
 }
 
+/*  Texto e seta no desenho do "Filtro de IES" do Documentos IA: a fonte da tela,
+    `text-xs` em negrito, cinza 700; seta cinza 400 em `text-xs`.  */
 .cs-text {
-    font-family: 'DM Sans', sans-serif;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--c-text);
+    font-family: inherit;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #374151;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -452,8 +431,8 @@ body {
 }
 
 .cs-arrow {
-    font-size: 9px;
-    color: var(--pink-light);
+    font-size: 0.75rem;
+    color: #9CA3AF;
     flex-shrink: 0;
     transition: transform .25s;
 }

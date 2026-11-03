@@ -47,6 +47,7 @@ ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 # Diz ao Django para confiar nos formulários de login enviados por esse link
 CSRF_TRUSTED_ORIGINS = [
     'https://ggci.taila4708a.ts.net',
+    'https://ggci.taila4708a.ts.net:8443',
     'https://pcdelpo07.taila4708a.ts.net',
     'https://labs.tail6def44.ts.net',  
     'https://*.trycloudflare.com',
@@ -54,6 +55,8 @@ CSRF_TRUSTED_ORIGINS = [
     'http://100.105.241.124:8000',
     'http://localhost:8000',
     'http://127.0.0.1:8000',
+    'http://localhost:8080',
+    'http://127.0.0.1:8080',
 ]
 
 
@@ -82,6 +85,7 @@ INSTALLED_APPS = [
     'apps.dashboards.menu_dashboards',
     'apps.dashboards.dash_documentos_ia',
     'apps.dashboards.dash_polichat',
+    'apps.dashboards.dash_polichat_financeiro',
     'apps.sugestoes.menu_sugestoes',
     'apps.sugestoes.controle_acesso',
 

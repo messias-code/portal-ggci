@@ -17,6 +17,7 @@ SELECT
     l.obs_complemento,
     l.lan_valor_cancelamento,
     l.situacao_pagto,
+    l.tipo_pagto,
     l.tipo_bolsa,
     l.coleta_id
 FROM sibu.lancamento l;

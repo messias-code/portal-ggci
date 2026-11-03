@@ -31,7 +31,7 @@
 
     <!-- CSS Externo: Estilos específicos da tabela e animações de fundo desta página -->
     <!-- Arquivo localizado em: static/css/menu/inicio/gestao_acessos.css -->
-    <link rel="stylesheet" href="{% static 'gestao_acessos/css/gestao_acessos.css' %}">
+    <link rel="stylesheet" href="{% static 'gestao_acessos/css/gestao_acessos.css' %}?v=16">
     <script type="module" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@8.0.4/dist/turbo.es.2017-esm.js"></script>
 </head>
 
@@ -208,14 +208,69 @@
                 <div
                     class="ga-barra flex flex-col md:flex-row justify-between items-center gap-4 bg-white/40 backdrop-blur-md border border-white/50 p-4 rounded-2xl shadow-sm">
 
-                    <!-- Campo de Busca: Lógica de filtragem visual feita pelo static/js/menu/inicio/gestao_acessos.js -->
+                    <!-- Campo de Busca: Lógica de filtragem visual (redimensionamento original mantido) -->
                     <div class="relative w-full md:w-96">
                         <i class="ga-busca-icone fa-solid fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
                         <input type="text" id="inputBusca" placeholder="Buscar por nome, login ou email..."
                             class="ga-busca w-full pl-11 pr-4 py-3 bg-white/60 border border-purple-100 rounded-xl text-sm focus:ring-2 focus:ring-purple-400 outline-none transition-all placeholder-gray-500">
                     </div>
 
-                    <!-- Botão Novo Usuário: Aciona a função abrirModalNovo() definida no script.js -->
+                    <!-- Badges de Resumo e Filtro Interativo (Redesign de Alto Nível — Padrão OVG) -->
+                    <div class="ga-badges-container flex-1 flex flex-row items-center justify-between gap-2.5 w-full mx-0 md:mx-2">
+                        
+                        <!-- 1. Total de Usuários -->
+                        <div class="ga-badge ga-badge--total"
+                            title="Total de usuários cadastrados no sistema">
+                            <div class="ga-badge-icon" aria-hidden="true">
+                                <i class="fa-solid fa-users"></i>
+                            </div>
+                            <div class="ga-badge-info">
+                                <span class="ga-badge-label">Total:</span>
+                                <span class="ga-badge-valor" id="badgeTotalQtd">{{ total_usuarios }}</span>
+                            </div>
+                        </div>
+
+                        <!-- 2. Usuários Online (Filtro Interativo) -->
+                        <button type="button" id="badgeFiltroOnline" data-filtro="online"
+                            class="ga-badge ga-badge--filtro ga-badge--online"
+                            title="Filtrar por Usuários Online (Clique para alternar)">
+                            <div class="ga-badge-icon" aria-hidden="true">
+                                <i class="fa-solid fa-user-check"></i>
+                            </div>
+                            <div class="ga-badge-info">
+                                <span class="ga-badge-label">Online:</span>
+                                <span class="ga-badge-valor" id="badgeOnlineQtd">{{ total_online }}</span>
+                            </div>
+                        </button>
+
+                        <!-- 3. Administradores (Filtro Interativo) -->
+                        <button type="button" id="badgeFiltroAdmin" data-filtro="administrador" data-filtro-perfil="administrador"
+                            class="ga-badge ga-badge--filtro ga-badge--admin"
+                            title="Filtrar por Administradores (Clique para alternar)">
+                            <div class="ga-badge-icon" aria-hidden="true">
+                                <i class="fa-solid fa-user-shield"></i>
+                            </div>
+                            <div class="ga-badge-info">
+                                <span class="ga-badge-label">Admins:</span>
+                                <span class="ga-badge-valor" id="badgeAdminQtd">{{ total_administradores }}</span>
+                            </div>
+                        </button>
+
+                        <!-- 4. Comuns (Filtro Interativo) -->
+                        <button type="button" id="badgeFiltroComum" data-filtro="comum" data-filtro-perfil="comum"
+                            class="ga-badge ga-badge--filtro ga-badge--comum"
+                            title="Filtrar por Usuários Comuns (Clique para alternar)">
+                            <div class="ga-badge-icon" aria-hidden="true">
+                                <i class="fa-solid fa-user"></i>
+                            </div>
+                            <div class="ga-badge-info">
+                                <span class="ga-badge-label">Comuns:</span>
+                                <span class="ga-badge-valor" id="badgeComumQtd">{{ total_comuns }}</span>
+                            </div>
+                        </button>
+                    </div>
+
+                    <!-- Botão Novo Usuário: Aciona a função abrirModalNovo() (redimensionamento original mantido) -->
                     <button onclick="abrirModalNovo()"
                         class="ga-btn-novo w-full md:w-auto px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white font-bold rounded-xl shadow-lg shadow-pink-500/30 hover:scale-[1.03] transition-all flex items-center justify-center gap-2 relative z-10">
                         <i class="fa-solid fa-user-plus"></i> Novo Usuário
@@ -244,24 +299,55 @@
 
                                 {% if lista_usuarios %}
                                 {% for u in lista_usuarios %}
-                                <tr class="ga-linha group hover:bg-white/80 relative transition-colors duration-300 rounded-xl">
+                                <tr class="ga-linha group hover:bg-white/80 relative transition-colors duration-300 rounded-xl"
+                                    data-user-id="{{ u.id }}"
+                                    data-online="{% if u.is_online %}true{% else %}false{% endif %}"
+                                    data-perfil="{{ u.perfil }}"
+                                    data-nome="{{ u.nome|escape }}"
+                                    data-login="{{ u.username_only|escape }}"
+                                    data-email="{{ u.usuario|escape }}">
                                     <td class="px-6 py-4 font-bold relative">
                                         <div
                                             class="ga-marcador absolute left-0 top-1/2 -translate-y-1/2 w-1 h-0 bg-purple-500 group-hover:h-3/4 rounded-r-md transition-all duration-300">
                                         </div>
                                         {{ u.id }}
                                     </td>
-                                    <td class="px-6 py-4 font-semibold capitalize">{{ u.nome }}</td>
+                                    <td class="px-6 py-4 font-semibold capitalize">
+                                        <div class="flex items-center gap-2.5">
+                                            <span class="ga-status-dot {% if u.is_online %}ga-status-dot--online{% else %}ga-status-dot--offline{% endif %}"
+                                                title="{% if u.is_online %}Online agora{% else %}Offline{% endif %}"
+                                                aria-label="{% if u.is_online %}Online{% else %}Offline{% endif %}"></span>
+                                            <span>{{ u.nome }}</span>
+                                        </div>
+                                    </td>
                                     <td class="px-6 py-4">{{ u.username_only }}</td>
                                     <td class="px-6 py-4">{{ u.usuario }}</td>
 
-                                    <!-- Estilização Condicional do Badge de Perfil -->
+                                    <!-- Estilização do Badge de Perfil (Design Pill com Ícone Circular) -->
                                     <td class="px-6 py-4 text-center">
-                                        <span class="px-3 py-1 rounded-full text-xs font-bold border 
-                                                {% if u.perfil == 'administrador' %}bg-purple-100 text-purple-700
-                                                {% else %}bg-gray-100 text-gray-600{% endif %}">
-                                            {{ u.perfil|title }}
+                                        {% if u.perfil == 'administrador' %}
+                                        <span class="ga-perfil-tag ga-perfil-tag--admin" title="Perfil Administrador">
+                                            <span class="ga-perfil-tag__icone" aria-hidden="true">
+                                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                                    <path d="M3 7l5 4 4-7 4 7 5-4-2 13H5L3 7z"/>
+                                                    <circle cx="3" cy="6" r="2"/>
+                                                    <circle cx="12" cy="3" r="2"/>
+                                                    <circle cx="21" cy="6" r="2"/>
+                                                </svg>
+                                            </span>
+                                            <span class="ga-perfil-tag__texto">Administrador</span>
                                         </span>
+                                        {% else %}
+                                        <span class="ga-perfil-tag ga-perfil-tag--comum" title="Perfil Usuário Comum">
+                                            <span class="ga-perfil-tag__icone" aria-hidden="true">
+                                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                                    <circle cx="12" cy="7" r="4"/>
+                                                    <path d="M4 21v-2a8 8 0 0 1 16 0v2z"/>
+                                                </svg>
+                                            </span>
+                                            <span class="ga-perfil-tag__texto">Comum</span>
+                                        </span>
+                                        {% endif %}
                                     </td>
 
                                     <!-- Coluna de Botões de Ação (Editar / Excluir) -->
@@ -271,7 +357,7 @@
                                         {% if u.can_edit %}
                                         <!-- Ao clicar, injeta os dados do usuário direto no modal via JS -->
                                         <button
-                                            onclick="abrirModalEdicao({'id': {{ u.id }}, 'nome': '{{ u.nome|escapejs }}', 'usuario': '{{ u.usuario|escapejs }}', 'perfil': '{{ u.perfil }}', 'p_ferramentas': {{ u.p_ferramentas }}, 'p_formatador_listas': {{ u.p_formatador_listas }}, 'p_formatador_dados': {{ u.p_formatador_dados }}, 'p_analise_ia': {{ u.p_analise_ia }}, 'p_enquadramento_cursos': {{ u.p_enquadramento_cursos }}, 'p_sugestoes': {{ u.p_sugestoes }}, 'p_controle_acesso': {{ u.p_controle_acesso }}, 'p_dash_polichat': {{ u.p_dash_polichat }}, 'p_gestao_polichat': {{ u.p_gestao_polichat }}, 'p_dash_documentos_ia': {{ u.p_dash_documentos_ia }} })"
+                                            onclick="abrirModalEdicao({'id': {{ u.id }}, 'nome': '{{ u.nome|escapejs }}', 'usuario': '{{ u.usuario|escapejs }}', 'perfil': '{{ u.perfil }}', 'p_ferramentas': {{ u.p_ferramentas }}, 'p_formatador_listas': {{ u.p_formatador_listas }}, 'p_formatador_dados': {{ u.p_formatador_dados }}, 'p_analise_ia': {{ u.p_analise_ia }}, 'p_enquadramento_cursos': {{ u.p_enquadramento_cursos }}, 'p_sugestoes': {{ u.p_sugestoes }}, 'p_controle_acesso': {{ u.p_controle_acesso }}, 'p_dash_polichat': {{ u.p_dash_polichat }}, 'p_gestao_polichat': {{ u.p_gestao_polichat }}, 'p_dash_documentos_ia': {{ u.p_dash_documentos_ia }}, 'p_polichat_financeiro': {{ u.p_polichat_financeiro }} })"
                                             class="ga-acao ga-acao--editar w-9 h-9 rounded-xl bg-amber-100 text-amber-600 hover:bg-amber-500 hover:text-white transition-all flex items-center justify-center shadow-sm relative z-10"
                                             title="Editar Usuário">
                                             <i class="fa-solid fa-pen text-sm"></i>
@@ -343,7 +429,7 @@
 
     <!-- JS Externo: Contém a lógica de busca local, abertura/fechamento dos modais e submissão dos dados -->
     <!-- Arquivo localizado em: static/js/menu/inicio/gestao_acessos.js -->
-    <script src="{% static 'gestao_acessos/js/gestao_acessos.js' %}?v=3" defer></script>
+    <script src="{% static 'gestao_acessos/js/gestao_acessos.js' %}?v=10" defer></script>
 </body>
 
 </html>
