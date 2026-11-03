@@ -705,8 +705,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // ── Botões de Data Rápida ─────────────────────────────────────────
     document.querySelectorAll('.qd-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            document.querySelectorAll('.qd-btn').forEach(b => b.classList.remove('qd-active'));
-            btn.classList.add('qd-active');
+            document.querySelectorAll('.qd-btn').forEach(b => b.classList.remove('qd-active', 'aba-seg--ativa'));
+            btn.classList.add('qd-active', 'aba-seg--ativa');
 
             const periodo = calcularPeriodoQD(btn.dataset.qd);
             if (!periodo) return;
@@ -860,6 +860,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewMesa = document.getElementById('view-mesa');
     const viewGestor = document.getElementById('view-gestor');
 
+    // A aparência (calha + pastilha que se levanta) é do `.abas-seg` em tema.css;
+    // aqui só se troca quem é a ativa.
+    function marcarAba(ativa, inativa) {
+        ativa.classList.add('aba-seg--ativa');
+        ativa.setAttribute('aria-selected', 'true');
+        inativa.classList.remove('aba-seg--ativa');
+        inativa.setAttribute('aria-selected', 'false');
+    }
+
     if (tabMesa && tabGestor && viewMesa && viewGestor) {
         tabMesa.addEventListener('click', () => {
             if (currentTabMode === 'gestor') storedAgenteGestor = selectAgente.value;
@@ -874,15 +883,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             document.querySelectorAll('.qd-btn').forEach(b => {
                 b.classList.toggle('qd-active', b.dataset.qd === storedDatasMesa.qd);
+                b.classList.toggle('aba-seg--ativa', b.dataset.qd === storedDatasMesa.qd);
             });
 
             syncCustomSelectDisplay();
-            tabMesa.classList.add('text-white');
-            tabMesa.style.backgroundColor = '#6B007B';
-            tabMesa.classList.remove('text-gray-600', 'bg-white', 'hover:text-[#6B007B]', 'hover:bg-pink-50');
-            tabGestor.classList.add('text-gray-600', 'bg-white', 'hover:text-[#6B007B]', 'hover:bg-pink-50');
-            tabGestor.classList.remove('text-white');
-            tabGestor.style.backgroundColor = '';
+            marcarAba(tabMesa, tabGestor);
             runFilter();
         });
 
@@ -900,15 +905,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             document.querySelectorAll('.qd-btn').forEach(b => {
                 b.classList.toggle('qd-active', b.dataset.qd === storedDatasGestor.qd);
+                b.classList.toggle('aba-seg--ativa', b.dataset.qd === storedDatasGestor.qd);
             });
 
             syncCustomSelectDisplay();
-            tabGestor.classList.add('text-white');
-            tabGestor.style.backgroundColor = '#6B007B';
-            tabGestor.classList.remove('text-gray-600', 'bg-white', 'hover:text-[#6B007B]', 'hover:bg-pink-50');
-            tabMesa.classList.add('text-gray-600', 'bg-white', 'hover:text-[#6B007B]', 'hover:bg-pink-50');
-            tabMesa.classList.remove('text-white');
-            tabMesa.style.backgroundColor = '';
+            marcarAba(tabGestor, tabMesa);
             runFilter();
             // Painel acabou de ficar visível: reaplica o foco do gráfico de tráfego
             setTimeout(() => aplicarFocoTrafego(true), 50);
@@ -1075,14 +1076,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
+    // Mesmo formato do "Atualizar" do Documentos IA e do Controle de Acesso:
+    // `dd/mm/aa HH:MM:SS`, e "Nunca" sem base — é o padrão do portal.
     function formatLastSync() {
-        if (!globalLastSyncTs) return '';
-        const d = new Date(globalLastSyncTs * 1000);
-        const day = d.getDate().toString().padStart(2, '0');
-        const mo = (d.getMonth() + 1).toString().padStart(2, '0');
-        const h = d.getHours().toString().padStart(2, '0');
-        const m = d.getMinutes().toString().padStart(2, '0');
-        return ` <span class="text-gray-400 font-medium whitespace-nowrap ml-2">| ${day}/${mo} às ${h}:${m}</span>`;
+        const dois = (n) => String(n).padStart(2, '0');
+        let quando = 'Nunca';
+        if (globalLastSyncTs) {
+            const d = new Date(globalLastSyncTs * 1000);
+            quando = `${dois(d.getDate())}/${dois(d.getMonth() + 1)}/${String(d.getFullYear()).slice(2)} `
+                + `${dois(d.getHours())}:${dois(d.getMinutes())}:${dois(d.getSeconds())}`;
+        }
+        return ` <span class="text-gray-400 font-medium whitespace-nowrap">| ${quando}</span>`;
     }
 
     function setBtnSync(l) {

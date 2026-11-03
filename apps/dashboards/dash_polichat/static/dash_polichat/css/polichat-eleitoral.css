@@ -186,36 +186,10 @@ html[data-tema="eleitoral"] #toggle-sidebar-btn:hover {
 }
 
 /* --- Abas Mesa de Trabalho / Painel do Gestor -----------------------------
-   A aba ativa é pintada pelo `polichat.js` com
-   `elemento.style.backgroundColor = '#6B007B'` — o roxo institucional, escrito
-   direto no atributo `style` a cada troca de aba. Estilo inline só perde para
-   `!important`, e como o JS reescreve o valor a cada clique, não adianta
-   ancorar por classe: as regras precisam pegar os dois IDs em qualquer estado.
-
-   A distinção entre ativa e inativa deixa de ser "roxo x branco" e passa a ser
-   ELEVAÇÃO — a ativa é a superfície mais clara, a inativa é translúcida. É a
-   mesma lógica que separa card de fundo no resto do tema. */
-html[data-tema="eleitoral"] #tab-mesa,
-html[data-tema="eleitoral"] #tab-gestor {
-    background-color: rgba(255, 255, 255, 0.05) !important;
-    color: var(--tema-texto-medio) !important;
-    border-color: var(--tema-borda) !important;
-}
-
-html[data-tema="eleitoral"] #tab-mesa:hover,
-html[data-tema="eleitoral"] #tab-gestor:hover {
-    background-color: rgba(111, 211, 191, 0.14) !important;
-    color: var(--tema-primaria-suave) !important;
-}
-
-/* A aba ativa é a única SEM `bg-white` na lista de classes — o JS remove essa
-   utilitária de quem está ativo e a devolve a quem sai. Isso dá um seletor
-   estável para o estado, sem precisar observar o atributo `style`. */
-html[data-tema="eleitoral"] #tab-mesa:not(.bg-white),
-html[data-tema="eleitoral"] #tab-gestor:not(.bg-white) {
-    background-color: var(--tema-solido-marca) !important;
-    color: #FFFFFF !important;
-}
+   Vivem em `.abas-seg`/`.aba-seg` (static/css/tema.css), com a variante do
+   eleitoral lá mesmo. As regras por ID com `!important` que existiam aqui só
+   serviam para vencer o roxo que o JS escrevia no atributo `style`; o JS agora
+   troca uma classe.  */
 
 /* Fundos de ícone dos KPIs que o tema-conteudo.css não lista. */
 html[data-tema="eleitoral"] .bg-emerald-100 {
@@ -284,26 +258,7 @@ html[data-tema="eleitoral"] .cs-display > div > div:first-child i {
 
 /* Atalhos de período (Hoje / Mês / Ano). O estado ativo é pintado com o roxo
    institucional e `!important` no polichat.css — daí o par de `!important`. */
-html[data-tema="eleitoral"] .qd-btn {
-    background-color: rgba(255, 255, 255, .06) !important;
-    border-color: var(--tema-borda) !important;
-    color: var(--tema-texto-medio) !important;
-    box-shadow: none !important;
-}
-
-html[data-tema="eleitoral"] .qd-btn:hover {
-    background-color: rgba(111, 211, 191, .18) !important;
-    border-color: var(--tema-primaria-borda) !important;
-    color: var(--tema-primaria-suave) !important;
-    box-shadow: none !important;
-}
-
-html[data-tema="eleitoral"] .qd-btn.qd-active {
-    background-color: var(--tema-primaria-forte) !important;
-    border-color: var(--tema-primaria) !important;
-    color: #FFFFFF !important;
-    box-shadow: none !important;
-}
+/*  `.qd-btn` (Hoje/Mês/Ano): variante eleitoral vem de `.abas-seg` em tema.css.  */
 
 
 /* ==========================================================================

@@ -274,6 +274,59 @@ def extrair_relatorio_metabase(primeira_vez_dia=False, extracao_completa=False):
 # ==========================================
 # 4. TRATAMENTO DE DADOS (JORNADA DO CLIENTE & FORCE CLOSE)
 # ==========================================
+
+def marcar_transferencias(df, fmt_nome):
+    """
+    O QUE FAZ: preenche `Transferido Para` / `Tempo Final (Após Transf)` e troca
+      `Fechado por` por 'Transferido' nos chats que foram repassados a um colega.
+
+    DUAS FONTES, nesta ordem:
+      1. NATIVA — a coluna `Redirecionado para` do relatório do Polichat. É a
+         resposta pronta, e desde 20/10/2026 é a ÚNICA que funciona: nessa data o
+         Polichat passou a gravar em `Fechado por` o atendente que transferiu
+         (antes vinha vazio). A dedução abaixo exige `Fechado por` vazio, então
+         parou de achar transferências — de ~60/dia para ~5/dia — e o painel
+         passou a contar o repasse como conclusão de quem transferiu.
+      2. DEDUZIDA — o critério antigo, mantido para o histórico: chat fechado pelo
+         Chatbot (vazio) e, em até 120 s, outro chat do mesmo telefone.
+
+    Espera `df` já ordenado por telefone e criação, com `_next_dt_ch`,
+    `_next_atendente`, `_next_tempo_total` e `_dt_fim`. `Atendente` e `Fechado por`
+    já passaram por `fmt_nome` (vazio vira 'Chatbot').
+    """
+    import polars as pl
+
+    deduzida = (
+        (pl.col('Fechado por') == 'Chatbot') &
+        (pl.col('_next_dt_ch').is_not_null()) &
+        (pl.col('_dt_fim').is_not_null()) &
+        (((pl.col('_next_dt_ch') - pl.col('_dt_fim')).dt.total_seconds().abs()) <= 120)
+    )
+
+    if 'Redirecionado para' in df.columns:
+        bruto = pl.col('Redirecionado para').cast(pl.Utf8).str.strip_chars()
+        df = df.with_columns(
+            pl.when(bruto.is_null() | bruto.is_in(['', 'nan', 'None', 'null']))
+              .then(pl.lit(''))
+              .otherwise(bruto.map_elements(fmt_nome, return_dtype=pl.Utf8))
+              .alias('_redir')
+        )
+    else:
+        df = df.with_columns(pl.lit('').alias('_redir'))
+
+    nativa = pl.col('_redir') != ''
+    para = pl.when(nativa).then(pl.col('_redir')).otherwise(pl.col('_next_atendente'))
+    # O tempo com o colega é o do chat seguinte — só quando o seguinte é dele.
+    tempo = pl.when(~nativa | (pl.col('_next_atendente') == pl.col('_redir'))) \
+              .then(pl.col('_next_tempo_total')).otherwise(pl.lit(''))
+    houve = nativa | deduzida
+
+    return df.with_columns([
+        pl.when(houve).then(para).otherwise(pl.lit('')).alias('Transferido Para'),
+        pl.when(houve).then(tempo).otherwise(pl.lit('')).alias('Tempo Final (Após Transf)'),
+        pl.when(houve).then(pl.lit('Transferido')).otherwise(pl.col('Fechado por')).alias('Fechado por'),
+    ]).drop('_redir')
+
 def analisar_e_limpar_dados(primeira_vez_dia=False):
     print("\n" + "="*55)
     print("📊 FASE 2: PROCESSAMENTO (POLARS) E EXCEL")
@@ -394,18 +447,7 @@ def analisar_e_limpar_dados(primeira_vez_dia=False):
             pl.col('Tempo Total (Início ao Fim)').shift(-1).over('Telefone do contato').alias('_next_tempo_total')
         ])
 
-        condicao_transferencia = (
-            (pl.col('Fechado por') == 'Chatbot') & 
-            (pl.col('_next_dt_ch').is_not_null()) &
-            (pl.col('_dt_fim').is_not_null()) &
-            (((pl.col('_next_dt_ch') - pl.col('_dt_fim')).dt.total_seconds().abs()) <= 120) 
-        )
-
-        df = df.with_columns([
-            pl.when(condicao_transferencia).then(pl.col('_next_atendente')).otherwise(pl.lit("")).alias('Transferido Para'),
-            pl.when(condicao_transferencia).then(pl.col('_next_tempo_total')).otherwise(pl.lit("")).alias('Tempo Final (Após Transf)'),
-            pl.when(condicao_transferencia).then(pl.lit('Transferido')).otherwise(pl.col('Fechado por')).alias('Fechado por')
-        ])
+        df = marcar_transferencias(df, fmt_nome)
 
         cond_fechado_por_colega = (
             (pl.col('Atendente') != 'Chatbot') &
