@@ -1053,11 +1053,12 @@ function sync_production() {
     print_ovg_logo
     print_phase "🔄 ATUALIZAR PRODUÇÃO COM CÓDIGO DO DEV"
     
-local PROD_DIR="/home/labs/portal-ggci-prod"
+    local PROD_DIR="/home/labs/portal-ggci-prod"
     local MAIN_DIR="/home/labs/portal-ggci"
+    local DEV_DIR="/home/labs/portal-ggci-dev"
     local CURRENT_DIR=$(pwd)
 
-    log_msg "info" "Isso derrubará o servidor temporariamente para uma atualização limpa."
+    log_msg "info" "Iniciando processo de deploy para Produção..."
     check_sudo
     
     # Passphrase da CHAVE SSH — coisa distinta da senha do servidor. Até 01/09/2026
@@ -1067,47 +1068,58 @@ local PROD_DIR="/home/labs/portal-ggci-prod"
     local pass=$(grep -E '^SSH_KEY_PASSPHRASE=' .env | cut -d '=' -f2- | tr -d "'\"")
     [ -z "$pass" ] && pass=$(grep -E '^PWD_SERVER=' .env | cut -d '=' -f2- | tr -d "'\"")
     if [ -n "$pass" ]; then
-        echo -e "#!/bin/bash
-echo \"$pass\"" > /tmp/askpass_portal.sh
+        echo -e "#!/bin/bash\necho \"$pass\"" > /tmp/askpass_portal.sh
         chmod +x /tmp/askpass_portal.sh
         export SSH_ASKPASS=/tmp/askpass_portal.sh
         export DISPLAY=:0
         export SSH_ASKPASS_REQUIRE=force
     fi
-    
-    # Janela longa de propósito: derruba a pilha, faz merge, rsync e religa o
-    # tmux. Note que NÃO chamamos watchdog_retomar no fim desta função — quem
-    # devolve a vigilância é a opção 3, disparada no tmux lá embaixo, depois de
-    # a produção estar realmente de pé. Retomar aqui abriria uma janela entre o
-    # send-keys e a subida do Gunicorn. Se o tmux falhar, o lock expira sozinho
-    # e o watchdog assume o conserto.
-    watchdog_pausar 20
 
-    log_msg "info" "Desligando servidor de Produção e Túneis atuais..."
-    sudo pkill -f 'gunicorn.*8001' || true
-    sudo pkill -f 'tailscale funnel.*8000' || true
-    sudo fuser -k 8000/tcp 2>/dev/null || true
-    sudo fuser -k 8001/tcp 2>/dev/null || true
-    rm -f /tmp/gunicorn.pid /tmp/cf_tunnel.log /tmp/cf_accel.json 2>/dev/null
-    tmux kill-session -t prod 2>/dev/null || true
-    sleep 1
+    # Alerta se houver trabalho pendente não salvo no ambiente DEV
+    if [ -d "$DEV_DIR" ]; then
+        local dev_dirty=$(cd "$DEV_DIR" && git status --porcelain 2>/dev/null)
+        if [ -n "$dev_dirty" ]; then
+            log_msg "warn" "Atenção: O ambiente DEV possui alterações de código não comitadas!"
+            log_msg "warn" "Essas alterações NÃO subirão para produção até que sejam comitadas e enviadas."
+        fi
+        local dev_unpushed=$(cd "$DEV_DIR" && git log origin/dev..HEAD --oneline 2>/dev/null)
+        if [ -n "$dev_unpushed" ]; then
+            log_msg "warn" "Atenção: O ambiente DEV possui commits locais ainda não enviados com 'git push'!"
+            log_msg "warn" "Apenas o código sincronizado no GitHub (origin/dev) será aplicado em produção."
+        fi
+    fi
 
     log_msg "info" "Extraindo lista de usuários mais recente da Produção..."
-    cd "$PROD_DIR"
+    if ! cd "$PROD_DIR"; then
+        log_msg "err" "Não foi possível acessar a pasta de Produção ($PROD_DIR)."
+        rm -f /tmp/askpass_portal.sh
+        wait_key
+        return 1
+    fi
     run_with_stream "python3 manage.py dumpdata gestao_acessos.Usuario --indent 4 | python3 -c 'import sys, json; d=json.load(sys.stdin); [item.get(\"fields\", {}).pop(\"last_login\", None) for item in d]; print(json.dumps(d, indent=4))' > .tmp_backup.json && mv .tmp_backup.json gestao_acessos_iniciais.json || { rm -f .tmp_backup.json; false; }" "Gerando snapshot de segurança do banco PROD"
 
     # Espelha o snapshot de usuários de PROD para DEV por CÓPIA, sem passar pelo Git.
     # Antes daqui saía um commit + push automático — era ele que publicava nome,
     # login, hash de senha e session_key de pessoas reais num repositório público.
     log_msg "info" "Sincronizando usuários de Produção para o ambiente DEV..."
-    local DEV_DIR="/home/labs/portal-ggci-dev"
     if [ -d "$DEV_DIR" ] && [ -s "$PROD_DIR/gestao_acessos_iniciais.json" ]; then
         cp -f "$PROD_DIR/gestao_acessos_iniciais.json" "$DEV_DIR/"
         log_msg "ok" "Snapshot de usuários espelhado em DEV (local, não versionado)."
     fi
 
     log_msg "info" "Navegando para a pasta do Repositório Principal (MAIN)..."
-    cd "$MAIN_DIR" || { log_msg "err" "Não foi possível encontrar a pasta raiz do projeto."; watchdog_retomar; return; }
+    if ! cd "$MAIN_DIR"; then
+        log_msg "err" "Não foi possível encontrar a pasta raiz do projeto ($MAIN_DIR)."
+        rm -f /tmp/askpass_portal.sh
+        wait_key
+        return 1
+    fi
+
+    # Proteção: se houver alterações não comitadas em MAIN, guarda em stash para não travar o pull
+    if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+        log_msg "warn" "Alterações locais não comitadas detectadas em MAIN. Guardando em stash..."
+        git stash --include-untracked > /dev/null 2>&1
+    fi
 
     log_msg "info" "Garantindo que a raiz está na branch MAIN..."
     git checkout main > /dev/null 2>&1
@@ -1116,10 +1128,8 @@ echo \"$pass\"" > /tmp/askpass_portal.sh
     if ! setsid git pull origin dev --no-edit; then
         log_msg "err" "Falha ao mesclar o código do DEV. Pode haver conflitos."
         rm -f /tmp/askpass_portal.sh
-        # A produção antiga continua no ar (nada foi sobrescrito ainda), então
-        # devolvemos a vigilância em vez de esperar o lock expirar.
-        watchdog_retomar
-        return
+        wait_key
+        return 1
     fi
     
     log_msg "info" "Sincronizando a branch MAIN com o Github..."
@@ -1137,6 +1147,19 @@ echo \"$pass\"" > /tmp/askpass_portal.sh
     # agora, e os arquivos de migração recém-gerados seguem no rsync abaixo —
     # sem isso eles nunca existiriam do lado de lá, por serem ignorados no git.
     sync_migrations
+
+    # A partir daqui derrubamos a produção para trocar os arquivos e subir de imediato.
+    # Derrubar somente agora garante ZERO downtime se o git pull/merge anterior falhar!
+    watchdog_pausar 20
+
+    log_msg "info" "Desligando servidor de Produção e Túneis atuais para atualização..."
+    sudo pkill -f 'gunicorn.*8001' || true
+    sudo pkill -f 'tailscale funnel.*8000' || true
+    sudo fuser -k 8000/tcp 2>/dev/null || true
+    sudo fuser -k 8001/tcp 2>/dev/null || true
+    rm -f /tmp/gunicorn.pid /tmp/cf_tunnel.log /tmp/cf_accel.json 2>/dev/null
+    tmux kill-session -t prod 2>/dev/null || true
+    sleep 1
 
     log_msg "info" "Atualizando a pasta de PRODUÇÃO com os novos arquivos..."
     rsync -a --exclude 'venv' --exclude '.git' --exclude '.env' "$MAIN_DIR/" "$PROD_DIR/"
@@ -1161,14 +1184,9 @@ echo \"$pass\"" > /tmp/askpass_portal.sh
     sed -i "s|^DEBUG=True|DEBUG=False|" "$PROD_DIR/.env"
     sed -i "s|^DB_NAME='portal_ggci_dev'|DB_NAME='portal_ggci'|" "$PROD_DIR/.env"
 
-    # O dump já foi feito no início da função.
     # Copiar o JSON mais recente para o PROD (já está lá, mas o rsync pode ter sobrescrito)
     cp -f "$DEV_DIR/gestao_acessos_iniciais.json" "$PROD_DIR/" 2>/dev/null || true
 
-    cd "$CURRENT_DIR"
-    
-    log_msg "ok" "Produção atualizada com sucesso!"
-    
     # `dados/processamento/` FICA. É ali que mora o relatório da última execução
     # concluída, e é ele que a tela lê. Apagado no sync, o banco seguia apontando
     # para uma `proc_N` que não existia mais e o Documentos IA abria zerado até a
@@ -1184,6 +1202,8 @@ echo \"$pass\"" > /tmp/askpass_portal.sh
     sleep 3
     tmux send-keys -t prod "3" C-m
     
+    cd "$CURRENT_DIR"
+    log_msg "ok" "Produção atualizada com sucesso!"
     log_msg "ok" "Servidor de Produção foi completamente reiniciado e está voltando online em background!"
     wait_key
 }
