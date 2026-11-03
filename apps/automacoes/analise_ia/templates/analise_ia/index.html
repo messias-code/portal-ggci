@@ -30,7 +30,7 @@
     <!-- Console de processamento: utilitárias que o bundle purgou + os dois temas. -->
     <link rel="stylesheet" href="{% static 'css/console.css' %}?v=1">
     <!-- Aviso de motor ocupado: impede as duas atualizações de brigarem pelo SIBU. -->
-    <link rel="stylesheet" href="{% static 'css/motor-ocupado.css' %}?v=1">
+    <link rel="stylesheet" href="{% static 'css/motor-ocupado.css' %}?v=2">
 
     <!-- Tokens de cor dos temas e o botão sol/lua (compartilhado por todo o portal) -->
     <link rel="stylesheet" href="{% static 'css/tema.css' %}">
@@ -49,7 +49,7 @@
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <link rel="stylesheet" href="{% static 'analise_ia/css/analise_ia.css' %}">
+    <link rel="stylesheet" href="{% static 'analise_ia/css/analise_ia.css' %}?v=20261103c">
     <script type="module" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@8.0.4/dist/turbo.es.2017-esm.js"></script>
 </head>
 
@@ -225,7 +225,7 @@
                                     <!-- `btn-config-acao` não pinta nada no modo claro: é só o gancho
                                          estável de que o modo escuro precisa para sobrepor o roxo
                                          institucional escrito no atributo `style` abaixo. -->
-                                    <button type="button" onclick="openModalDocumentos()" class="btn-config-acao w-full flex items-center justify-center gap-2 px-4 py-2 text-white rounded-xl transition-all shadow-md font-bold text-[12px] uppercase tracking-wider group hover:opacity-90 cursor-pointer" style="background-color: #7e22ce;">
+                                    <button type="button" onclick="openModalDocumentos()" class="btn-config-acao w-full flex items-center justify-center gap-2 px-4 py-2 text-white rounded-xl transition-all shadow-md font-bold text-[12px] uppercase tracking-wider group hover:opacity-90 cursor-pointer" style="background-color: #64528c;">
                                         <i class="fa-solid fa-sliders group-hover:rotate-90 transition-transform duration-300"></i> Configurar Documentos
                                     </button>
                                 </div>
@@ -1568,8 +1568,8 @@ function openModalConfigContratos() {
         }
     </script>
     <!-- Scripts: Separação de Responsabilidades (UI, Eventos, Automação) -->
-    <script src="{% static 'js/motor-ocupado.js' %}?v=1"></script>
-    <script src="{% static 'analise_ia/js/analise_ia.js' %}?v=24"></script>
+    <script src="{% static 'js/motor-ocupado.js' %}?v=3"></script>
+    <script src="{% static 'analise_ia/js/analise_ia.js' %}?v=26"></script>
     <div id="toast-container" class="fixed top-5 right-5 z-[70] flex flex-col items-end"></div>
 
     <!-- Modal de Validação -->

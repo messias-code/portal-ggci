@@ -985,11 +985,15 @@ def executar(docs_selecionados=None, periodos_por_doc=None, processo_id=None, in
         #     futures.append(global_executor.submit(extrair_ano_pagamento, str(ano_pag), pasta_pagamentos))
             
         # Bloqueia a execução principal até todas as tarefas concluírem
+        total_tarefas = len(futures)
+        concluidas = 0
         for f in concurrent.futures.as_completed(futures):
             try:
                 f.result()
             except Exception as e:
                 print(f"⚠️ Erro não tratado em uma das threads: {e}")
+            concluidas += 1
+            print(f"[EXTRACAO_PROGRESSO] {concluidas}/{total_tarefas}")
 
     tempo_duracao = time.time() - tempo_inicial
     
