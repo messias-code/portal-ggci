@@ -573,7 +573,13 @@ function setup_full() {
     # de dentro do DEV_DIR justamente para que o Django leia o .env de lá.
     local DEV_DIR="/home/labs/portal-ggci-dev"
     if [ -d "$DEV_DIR/venv" ]; then
+        # A semente real (gestao_acessos_iniciais.json) não é versionada, então
+        # numa instalação nova ela chega por cópia manual — e a pessoa a coloca no
+        # ORQUESTRADOR, que é de onde a opção 1 roda, não dentro do DEV_DIR. Sem
+        # copiar de lá, o DEV caía no template e nascia com um único usuário
+        # 'admin' enquanto a produção tinha os 22. Procuramos nos dois lugares.
         local semente="gestao_acessos_iniciais.json"
+        [ -s "$DEV_DIR/$semente" ] || cp -f "$semente" "$DEV_DIR/" 2>/dev/null || true
         [ -s "$DEV_DIR/$semente" ] || semente="gestao_acessos_iniciais.example.json"
         # SUBSHELL `( ... )`: `run_with_stream` executa por `eval`, no shell atual.
         # Sem os parênteses este `cd` (e o `activate` junto) VAZAM para o resto da
@@ -858,7 +864,7 @@ import subprocess, re, json, sys
 def main():
     with open("/tmp/cf_tunnel.log", "w") as logfile:
         proc = subprocess.Popen(
-            ['cloudflared', 'tunnel', '--url', 'http://127.0.0.1:8000'],
+            ['cloudflared', 'tunnel', '--protocol', 'http2', '--url', 'http://127.0.0.1:8000'],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
         )
         url = None
@@ -947,12 +953,17 @@ function run_dev_server() {
     sudo pkill -f 'manage.py runserver.*8080' || true
     sudo pkill -f "${PWD}/manage.py loop_polichat" || true
     sudo pkill -f 'cloudflared.*8080' || true
+    sudo tailscale funnel --https=8443 off >/dev/null 2>&1 || true
     rm -f /tmp/cf_tunnel_dev.log /tmp/cf_accel_dev.json 2>/dev/null
     sleep 1
+
+    log_msg "info" "Ativando Tailscale Funnel para DEV (porta 8443)..."
+    sudo tailscale funnel --https=8443 --bg --yes 8080 >/dev/null 2>&1 || true
     
     local local_ip=$(hostname -I | awk '{print $1}')
     echo -e "   ${C_CYAN}➤ Acesso Local Dev:${C_RESET} ${C_WHIT}http://${local_ip}:8080${C_RESET}"
-    echo -e "   ${C_PURP}➤ Acesso Público Dev:${C_RESET} ${C_WHIT}(Aguarde o link do Cloudflare...)${C_RESET}"
+    echo -e "   ${C_GREE}➤ Acesso Público Dev (Tailscale):${C_RESET} ${C_WHIT}https://ggci.taila4708a.ts.net:8443${C_RESET}"
+    echo -e "   ${C_PURP}➤ Acesso Público Dev (Cloudflare):${C_RESET} ${C_WHIT}(Aguarde o link do Cloudflare...)${C_RESET}"
     echo -e "   ${C_YELL}Pressione CTRL+C para derrubar apenas o DEV.${C_RESET}"
     echo ""
     
@@ -962,7 +973,7 @@ import subprocess, re, json, sys
 def main():
     with open("/tmp/cf_tunnel_dev.log", "w") as logfile:
         proc = subprocess.Popen(
-            ['cloudflared', 'tunnel', '--url', 'http://127.0.0.1:8080'],
+            ['cloudflared', 'tunnel', '--protocol', 'http2', '--url', 'http://127.0.0.1:8080'],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
         )
         url = None
@@ -1024,7 +1035,7 @@ EOF
     local loop_pid=$!
     
     # Trap exclusivo do DEV
-    trap 'echo -e "\n   ${C_YELL}[!] Desligando Ambiente DEV e Robôs...${C_RESET}"; sudo kill $dj_pid 2>/dev/null; sudo kill -TERM $cf_pid 2>/dev/null; sudo kill $loop_pid 2>/dev/null; sudo fuser -k 8080/tcp 2>/dev/null; sudo pkill -f "cloudflared.*8080" 2>/dev/null; rm -f /tmp/cf_tunnel_dev.log /tmp/cf_accel_dev.json 2>/dev/null; sleep 1' SIGINT
+    trap 'echo -e "\n   ${C_YELL}[!] Desligando Ambiente DEV e Robôs...${C_RESET}"; sudo tailscale funnel --https=8443 off 2>/dev/null; sudo kill $dj_pid 2>/dev/null; sudo kill -TERM $cf_pid 2>/dev/null; sudo kill $loop_pid 2>/dev/null; sudo fuser -k 8080/tcp 2>/dev/null; sudo pkill -f "cloudflared.*8080" 2>/dev/null; rm -f /tmp/cf_tunnel_dev.log /tmp/cf_accel_dev.json 2>/dev/null; sleep 1' SIGINT
     
     wait $dj_pid 2>/dev/null
     wait $cf_pid 2>/dev/null
@@ -1344,7 +1355,7 @@ function teardown_full() {
             sudo rm -rf /var/lib/ggci-watchdog /var/log/ggci-watchdog.log
         " "Removendo watchdog de auto-recuperação"
 
-        run_with_stream "sudo pkill -f 'gunicorn.*8001' || true; sudo pkill -f 'manage.py runserver.*8080' || true; sudo pkill -f 'manage.py loop_polichat' || true; sudo pkill -f 'cloudflared.*8000' || true; sudo pkill -f 'cloudflared.*8080' || true; sudo pkill -f 'tailscale funnel.*8000' || true; tmux kill-session -t prod 2>/dev/null || true; tmux kill-session -t dev 2>/dev/null || true" "Desligando todos os processos, túneis e sessões (Tmux)"
+        run_with_stream "sudo pkill -f 'gunicorn.*8001' || true; sudo pkill -f 'manage.py runserver.*8080' || true; sudo pkill -f 'manage.py loop_polichat' || true; sudo pkill -f 'cloudflared.*8000' || true; sudo pkill -f 'cloudflared.*8080' || true; sudo tailscale funnel --https=443 off >/dev/null 2>&1 || true; sudo tailscale funnel --https=8443 off >/dev/null 2>&1 || true; tmux kill-session -t prod 2>/dev/null || true; tmux kill-session -t dev 2>/dev/null || true" "Desligando todos os processos, túneis e sessões (Tmux)"
         run_with_stream "crontab -r 2>/dev/null || true" "Removendo agendamentos do Cron"
         run_with_stream "sudo systemctl stop mysql nginx smbd || true" "Parando Serviços (MySQL, Nginx, Samba)"
         run_with_stream "sudo DEBIAN_FRONTEND=noninteractive apt-get purge -yqq mysql-server mysql-client mysql-common nginx nginx-common samba samba-common smbclient; sudo apt-get autoremove -yqq; sudo rm -rf /etc/mysql /var/lib/mysql /var/log/mysql /etc/nginx /etc/samba" "Vaporizando Serviços e Dependências"

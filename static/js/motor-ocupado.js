@@ -14,14 +14,15 @@
    O QUE ESTE ARQUIVO É, E O QUE NÃO É
      Ele é a CONVERSA. A trava é do servidor: a rota de iniciar responde 409
      quando o outro motor está rodando (ver `_bloqueio_do_outro_motor` nas duas
-     views). Sem essa recusa, duas abas abertas colidiriam do mesmo jeito e a
-     segunda não veria aviso nenhum. Este modal existe para que a recusa vire uma
-     escolha em vez de um erro.
+     views). Este modal existe para que a recusa vire uma escolha em vez de um erro.
 
-   A BARRA É ESPELHADA, e vem da rota de status do OUTRO app — a URL chega pronta
-   na resposta 409, então nenhuma das duas telas precisa saber montar as rotas da
-   outra. Sem esse número, "aguardar" seria uma aposta às cegas: a escolha entre
-   esperar e abortar depende justamente de quanto falta.
+   O QUE ELE MOSTRA vem de UMA rota só, `api/execucoes/<motor>/<id>/`
+   (`portal_ggci/execucoes.py`), com o mesmo formato para os dois motores. Antes
+   ele lia a rota de status de cada app, que respondem com chaves diferentes: ao
+   esperar o Análise IA o aviso nunca via o fim, e a etapa virava "—" depois da
+   primeira consulta. A escolha entre esperar e abortar depende de saber quanto
+   falta e o que o outro está fazendo — por isso etapa, tempo rodando, quem
+   iniciou e a atividade de agora.
    ========================================================================== */
 
 (function () {
@@ -29,17 +30,24 @@
 
     var INTERVALO_MS = 2000;
 
-    /*  Os status que significam "acabou". Vale para os dois motores: as etapas
-        intermediárias são diferentes entre eles (o Análise IA consolida e cruza,
-        o Documentos IA trata), mas o fim é o mesmo nos dois.  */
-    var TERMINAIS = ['CONCLUIDO', 'FALHA', 'ABORTADO', 'CANCELADO'];
-
-    var estado = { timer: null, info: null, reiniciar: null };
+    var estado = { timer: null, relogio: null, info: null, reiniciar: null,
+                   emVoo: false, decorridoBase: 0, recebidoEm: 0 };
 
     function escapar(texto) {
         return String(texto == null ? '' : texto)
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    /*  "12 min 05 s", "1 h 03 min". Segundos só abaixo da hora: acima disso eles
+        só fazem o texto tremer sem dizer nada de útil para decidir.  */
+    function duracao(segundos) {
+        var s = Math.max(0, Math.floor(segundos));
+        var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
+        var dois = function (n) { return String(n).padStart(2, '0'); };
+        if (h) return h + ' h ' + dois(m) + ' min';
+        if (m) return m + ' min ' + dois(r) + ' s';
+        return r + ' s';
     }
 
     /*  O modal é criado UMA vez e reaproveitado. Recriar a cada 409 duplicaria os
@@ -57,10 +65,11 @@
         no.innerHTML =
             '<div class="mocupado__caixa">'
           +   '<div class="mocupado__topo">'
-          +     '<div class="mocupado__icone"><i class="fa-solid fa-hourglass-half"></i></div>'
-          +     '<div>'
-          +       '<h3 class="mocupado__titulo" id="mocupado-titulo">Já existe uma atualização em andamento</h3>'
-          +       '<p class="mocupado__linha" id="mocupado-descricao"></p>'
+          +     '<div class="mocupado__icone"><i class="fa-solid fa-rotate"></i></div>'
+          +     '<div class="mocupado__cabeca">'
+          +       '<h3 class="mocupado__titulo" id="mocupado-titulo">'
+          +         '<span id="mocupado-rotulo">Outro módulo</span> <span id="mocupado-titulo-resto">está atualizando agora</span>'
+          +       '</h3>'
           +       '<p class="mocupado__linha" id="mocupado-motivo">'
           +         'Os dois módulos usam o mesmo acesso ao SIBU. Rodando juntos, um derruba a '
           +         'sessão do outro e o relatório sai incompleto.'
@@ -74,15 +83,25 @@
           +         '<span class="mocupado__pct" id="mocupado-pct">0%</span>'
           +       '</div>'
           +       '<div class="mocupado__trilho"><div class="mocupado__barra" id="mocupado-barra"></div></div>'
+          +       '<p class="mocupado__agora" id="mocupado-agora" hidden>'
+          +         '<span class="mocupado__agora-rotulo">Agora</span>'
+          +         '<span class="mocupado__agora-texto" id="mocupado-agora-texto"></span>'
+          +       '</p>'
           +     '</div>'
+          +     '<dl class="mocupado__fatos">'
+          +       '<div class="mocupado__fato"><dt>Iniciada em</dt><dd id="mocupado-desde">—</dd></div>'
+          +       '<div class="mocupado__fato"><dt id="mocupado-decorrido-rotulo">Rodando há</dt><dd id="mocupado-decorrido">—</dd></div>'
+          +       '<div class="mocupado__fato" id="mocupado-fato-usuario" hidden><dt>Iniciada por</dt><dd id="mocupado-usuario">—</dd></div>'
+          +     '</dl>'
           +     '<div class="mocupado__liberado" id="mocupado-liberado">'
-          +       '<i class="fa-solid fa-circle-check"></i> Terminou. Pode iniciar a sua atualização agora.'
+          +       '<i class="fa-solid fa-circle-check"></i> <span id="mocupado-liberado-texto">Terminou. Pode iniciar a sua atualização agora.</span>'
           +     '</div>'
           +   '</div>'
           +   '<div class="mocupado__rodape">'
           +     '<button type="button" class="mocupado__btn mocupado__btn--perigo" id="mocupado-abortar">'
           +       '<i class="fa-solid fa-circle-stop"></i> <span id="mocupado-abortar-texto">Abortar e iniciar</span>'
           +     '</button>'
+          +     '<span class="mocupado__espaco"></span>'
           +     '<button type="button" class="mocupado__btn mocupado__btn--neutro" id="mocupado-fechar">Fechar</button>'
           +     '<button type="button" class="mocupado__btn mocupado__btn--principal" id="mocupado-aguardar">'
           +       '<i class="fa-solid fa-hourglass-half"></i> <span id="mocupado-aguardar-texto">Aguardar</span>'
@@ -105,44 +124,79 @@
         return no;
     }
 
-    function pintar(dados) {
-        var no = caixa();
-        var pct = Math.max(0, Math.min(100, Number(dados.progresso) || 0));
-        no.querySelector('#mocupado-barra').style.width = pct + '%';
-        no.querySelector('#mocupado-pct').textContent = pct + '%';
-        no.querySelector('#mocupado-etapa').textContent = dados.situacao || '—';
+    function texto(seletor, valor) {
+        caixa().querySelector(seletor).textContent = valor;
     }
 
-    function liberar() {
+    function pintarDecorrido() {
+        if (!estado.info) return;
+        var passou = estado.info.terminado ? 0 : (Date.now() - estado.recebidoEm) / 1000;
+        texto('#mocupado-decorrido', duracao(estado.decorridoBase + passou));
+    }
+
+    /*  Pinta o retrato inteiro. O número é o do servidor, sem animação própria: é o
+        mesmo que a tela do outro módulo mostra (as duas barras nunca passam do valor
+        real), e é isso que faz os dois baterem.  */
+    function pintar(dados) {
         var no = caixa();
+        estado.info = dados || {};
+        estado.decorridoBase = Number(estado.info.decorrido_seg) || 0;
+        estado.recebidoEm = Date.now();
+
+        var pct = Math.max(0, Math.min(100, Number(estado.info.progresso) || 0));
+        no.querySelector('#mocupado-barra').style.width = pct + '%';
+        texto('#mocupado-pct', pct + '%');
+        texto('#mocupado-etapa', estado.info.etapa || estado.info.situacao || '—');
+        texto('#mocupado-rotulo', estado.info.rotulo || 'Outro módulo');
+        texto('#mocupado-desde', estado.info.desde || '—');
+
+        var usuario = no.querySelector('#mocupado-fato-usuario');
+        usuario.hidden = !estado.info.usuario;
+        texto('#mocupado-usuario', estado.info.usuario || '—');
+
+        var agora = no.querySelector('#mocupado-agora');
+        agora.hidden = !estado.info.atividade || estado.info.terminado;
+        texto('#mocupado-agora-texto', estado.info.atividade || '');
+        no.querySelector('#mocupado-agora-texto').title = estado.info.atividade || '';
+
+        pintarDecorrido();
+        if (estado.info.terminado) liberar(estado.info.concluido);
+    }
+
+    function liberar(concluido) {
+        var no = caixa();
+        if (no.classList.contains('is-liberado')) return;
         no.classList.add('is-liberado');
         parar();
+        texto('#mocupado-titulo-resto', concluido ? 'terminou a atualização' : 'parou a atualização');
+        texto('#mocupado-decorrido-rotulo', 'Durou');
+        texto('#mocupado-liberado-texto', concluido
+            ? 'Terminou. Pode iniciar a sua atualização agora.'
+            : 'Foi interrompida. Pode iniciar a sua atualização agora.');
         no.querySelector('#mocupado-abortar').disabled = true;
-        no.querySelector('#mocupado-aguardar-texto').textContent = 'Iniciar agora';
+        texto('#mocupado-aguardar-texto', 'Iniciar agora');
         no.querySelector('#mocupado-aguardar').querySelector('i').className = 'fa-solid fa-play';
     }
 
     function parar() {
         if (estado.timer) { clearInterval(estado.timer); estado.timer = null; }
+        if (estado.relogio) { clearInterval(estado.relogio); estado.relogio = null; }
     }
 
-    /*  A CADA CICLO, a rota de status do outro motor. Ela é a mesma que a tela dele
-        usa para o próprio acompanhamento — não há endpoint novo, e por isso o número
-        aqui é exatamente o que aparece lá.  */
+    /*  A CADA CICLO, o retrato do outro motor. Uma consulta por vez: com o servidor
+        lento, um ciclo não dispara o próximo antes de o anterior voltar.  */
     function acompanhar() {
-        if (!estado.info || !estado.info.url_status) return;
+        if (!estado.info || !estado.info.url_status || estado.emVoo) return;
+        estado.emVoo = true;
         fetch(estado.info.url_status, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(function (r) { return r.ok ? r.json() : null; })
-            .then(function (dados) {
-                if (!dados) return;
-                pintar(dados);
-                if (TERMINAIS.indexOf(String(dados.status || '').toUpperCase()) >= 0) liberar();
-            })
+            .then(function (dados) { if (dados) pintar(dados); })
             .catch(function () {
-                /*  Silêncio de propósito: o banco pode oscilar (foi o que motivou tudo
-                    isto), e um erro por ciclo encheria o console sem dizer nada novo. A
-                    barra simplesmente para de andar, que já é o sinal.  */
-            });
+                /*  Silêncio de propósito: o banco pode oscilar, e um erro por ciclo
+                    encheria o console sem dizer nada novo. A barra para de andar,
+                    que já é o sinal.  */
+            })
+            .then(function () { estado.emVoo = false; });
     }
 
     function fechar() {
@@ -168,7 +222,7 @@
         var botao = no.querySelector('#mocupado-abortar');
         if (botao.disabled) return;
         botao.disabled = true;
-        no.querySelector('#mocupado-abortar-texto').textContent = 'Abortando...';
+        texto('#mocupado-abortar-texto', 'Abortando...');
         parar();
         fechar();
         /*  `forcar` NÃO pula a trava do servidor: ele manda a view parar o outro motor
@@ -184,24 +238,24 @@
      * @param {function} reiniciar  recebe `forcar` (bool) e refaz o pedido de iniciar.
      */
     function tratar(info, reiniciar) {
-        estado.info = info || {};
         estado.reiniciar = reiniciar;
 
         var no = caixa();
         no.classList.remove('is-liberado');
         no.querySelector('#mocupado-abortar').disabled = false;
-        no.querySelector('#mocupado-abortar-texto').textContent = 'Abortar e iniciar';
-        no.querySelector('#mocupado-aguardar-texto').textContent = 'Aguardar';
+        texto('#mocupado-abortar-texto', 'Abortar e iniciar');
+        texto('#mocupado-aguardar-texto', 'Aguardar');
+        texto('#mocupado-titulo-resto', 'está atualizando agora');
+        texto('#mocupado-decorrido-rotulo', 'Rodando há');
         no.querySelector('#mocupado-aguardar').querySelector('i').className = 'fa-solid fa-hourglass-half';
-        no.querySelector('#mocupado-descricao').innerHTML =
-            'O <strong>' + escapar(estado.info.rotulo || 'outro módulo') + '</strong> está atualizando'
-            + (estado.info.desde ? ' desde <strong>' + escapar(estado.info.desde) + '</strong>' : '') + '.';
-
-        pintar(estado.info);
-        no.classList.add('is-aberto');
 
         parar();
+        no.classList.add('is-aberto');
+        pintar(info || {});
+        if (no.classList.contains('is-liberado')) return;
+
         estado.timer = setInterval(acompanhar, INTERVALO_MS);
+        estado.relogio = setInterval(pintarDecorrido, 1000);
         acompanhar();
     }
 
@@ -216,6 +270,10 @@
             return true;
         }).catch(function () { return false; });
     }
+
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden && estado.timer) acompanhar();
+    });
 
     window.MotorOcupado = { tratar: tratar, seOcupado: seOcupado, fechar: fechar };
 })();
