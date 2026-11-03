@@ -47,6 +47,7 @@ def relatorio_mais_recente():
         return BASELINE
 
     achados = glob.glob(os.path.join(PASTA_PROC, "proc_*", "relatorio_geral.xlsx"))
+    achados = [c for c in achados if os.path.exists(c) and os.path.getsize(c) > 0]
     if not achados:
         return None
 
