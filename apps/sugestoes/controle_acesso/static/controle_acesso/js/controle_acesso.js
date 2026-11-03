@@ -886,10 +886,17 @@
     // Um 502 isolado não derruba o acompanhamento: só desiste após ~1 minuto sem resposta.
     const FALHAS_ATE_DESISTIR = 30;
 
+    // A consulta do processo acompanhado agora (o Parar a chama na hora).
+    let consultarAgora = () => {};
+
     function acompanhar(processoId) {
         let falhasSeguidas = 0;
+        // Uma consulta por vez: com o servidor lento, os pedidos se empilhavam.
+        let emVoo = false;
         mostrarParar(true);
-        pollConsole = setInterval(() => {
+        consultarAgora = () => {
+            if (emVoo) return;
+            emVoo = true;
             fetch(urlDe(URL_STATUS, processoId))
                 .then((r) => {
                     if (!r.ok) throw new Error(`status ${r.status}`);
@@ -956,8 +963,10 @@
                     }
                     if (consoleStatus) consoleStatus.innerText = 'Sem contato';
                     restaurarBotaoAtualizar();
-                });
-        }, 2000);
+                })
+                .finally(() => { emVoo = false; });
+        };
+        pollConsole = setInterval(consultarAgora, 2000);
     }
 
     // Registro idempotente: a marca vai no ELEMENTO, que o Turbo recria a cada visita.
@@ -990,7 +999,11 @@
             btnPararConsole.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Parando...</span>';
             fetch(urlDe(URL_PARAR, id), { method: 'POST', headers: { 'X-CSRFToken': window.CSRF_TOKEN } })
                 .then((r) => r.json())
-                .then((data) => { if (data.status !== 'ok') throw new Error(data.msg || 'resposta inesperada do servidor'); })
+                .then((data) => {
+                    if (data.status !== 'ok') throw new Error(data.msg || 'resposta inesperada do servidor');
+                    // O servidor só responde com o motor morto e a FALHA gravada.
+                    consultarAgora();
+                })
                 .catch((erro) => {
                     mostrarParar(true);
                     if (consoleLogs) consoleLogs.innerHTML += `<div class="mt-3 text-red-600 font-bold">✖ Não foi possível parar: ${escapar(erro.message || erro)}</div>`;
@@ -1081,6 +1094,9 @@
         window.addEventListener('pagehide', () => {
             if (window.__processoControleAcesso) {
                 navigator.sendBeacon(urlDe(URL_PARAR, window.__processoControleAcesso));
+                // Abortou: a próxima abertura não deve se reconectar a um processo morto
+                // (abria o console de Falha sozinho e travava o Atualizar).
+                sessionStorage.removeItem(CHAVE_SESSAO);
             }
         });
         document.addEventListener('turbo:before-visit', (e) => {
