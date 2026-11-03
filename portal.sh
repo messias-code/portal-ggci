@@ -1141,6 +1141,11 @@ function sync_production() {
     
     rm -f /tmp/askpass_portal.sh
 
+    # Garante que novas bibliotecas do requirements.txt sejam instaladas no MAIN
+    if [ -f "requirements.txt" ] && [ -f "venv/bin/pip" ]; then
+        run_with_stream "venv/bin/pip install -q -r requirements.txt" "Sincronizando bibliotecas do Python (MAIN)"
+    fi
+
     # Migrações rodam aqui, no MAIN, e não por acaso: este é o único momento em
     # que o código novo já chegou (git pull acima) e o rsync ainda não partiu.
     # Como o MAIN compartilha o banco com a PRODUÇÃO, a estrutura é atualizada
@@ -1163,6 +1168,11 @@ function sync_production() {
 
     log_msg "info" "Atualizando a pasta de PRODUÇÃO com os novos arquivos..."
     rsync -a --exclude 'venv' --exclude '.git' --exclude '.env' "$MAIN_DIR/" "$PROD_DIR/"
+
+    # Garante que o ambiente de Produção tenha as bibliotecas atualizadas (ex: psutil)
+    if [ -f "$PROD_DIR/requirements.txt" ] && [ -f "$PROD_DIR/venv/bin/pip" ]; then
+        run_with_stream "$PROD_DIR/venv/bin/pip install -q -r $PROD_DIR/requirements.txt" "Sincronizando bibliotecas do Python em Produção (PROD)"
+    fi
 
     # O watchdog roda de /usr/local/bin, fora do alcance do rsync. Sem
     # reinstalar aqui, uma correção feita em scripts/ chegaria em produção como
