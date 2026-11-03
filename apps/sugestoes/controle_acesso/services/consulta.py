@@ -149,6 +149,7 @@ def montar_ficha(uni_codigo):
             'complemento': complemento,
             'ressarcimento': ressarcimento,
             'total': round(bolsa - ressarcimento + complemento, 2),
+            'tipo_pgto': _titulo(l['tipo_pagto']) if l.get('tipo_pagto') else '—',
             'bolsa': 'Cancelado' if l['situacao_pagto'] == 'C' else _titulo(l['tipo_bolsa']),
         })
 

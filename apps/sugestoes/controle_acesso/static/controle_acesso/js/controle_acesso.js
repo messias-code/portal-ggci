@@ -124,6 +124,7 @@
                 { campo: 'complemento', fmt: valor, num: true },
                 { campo: 'ressarcimento', fmt: valor, num: true },
                 { campo: 'total', fmt: valor, num: true, forte: true },
+                { campo: 'tipo_pgto' },
                 { campo: 'bolsa' },
             ],
         },
