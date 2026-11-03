@@ -26,7 +26,10 @@ USO:
 
     --rascunho  12 fps e metade da resolução, para conferir ritmo rápido.
     --quadros   só salva PNGs desses instantes (em s) em <pasta>/quadros/, sem vídeo.
-    --conferir  transcreve cada frase com o Whisper e para se algo foi mal pronunciado.
+    --conferir  transcreve cada frase com o Whisper e para se algo foi mal pronunciado, ou se um número
+                saiu trocado, uma palavra arrastada ou o fim cortado (ouvir.checar).
+    --refazer N com --conferir no voicestudio: gera de novo, até N vezes, a frase com número trocado,
+                palavra arrastada ou fim cortado, e fica com a tomada de menos falhas.
     --so-voz    só a narração: grava narracao.wav e tempos.json NA PASTA e para, sem
                 animacao.html. É a ponte para compor a imagem no HyperFrames.
 
@@ -40,7 +43,9 @@ FORMATO DO roteiro.json:
      "pausa_frase": 0.18,        # silêncio entre frases da mesma cena
      "pausa_virgula": 0.7, "pausa_ponto_virgula": 1.0,   # opcional: silêncio exato na vírgula e no ";" (edge)
      "pausa_virgula": {"curta": 0.28, "media": 0.4, "longa": 0.55},  # ou por tipo de vírgula (ver respirar)
-     "ritmo": {"min": 5.6, "max": 1.12},  # opcional: frase abaixo de 5,6 sílabas/s é acelerada (até 1,12×, sem mudar o tom)
+     "ritmo": {"min": 5.6, "max": 1.12},  # opcional: frase abaixo de 5,6 sílabas/s é acelerada (até 1,12×, sem mudar o tom);
+                                          # no voicestudio ela é gerada de novo com a duração certa (sem atempo)
+     "cauda": 0.3,   # opcional: silêncio garantido depois de cada frase, antes da pausa (o fim da voz nunca encosta na próxima)
      "folga_inicio": 0.4, "folga_fim": 1.2,
      "largura": 1280, "altura": 720, "escala": 1.5,   # 1280x720 x1.5 = 1080p
      "cenas": [{"id": "abre", "texto": "Frase um. Frase dois.",
@@ -84,6 +89,14 @@ def cache_de(pasta):
     return c
 
 
+def voz_voicestudio(pasta, rot):
+    """O dublador do projeto e a voz do vídeo: a de VoiceStudio/, ou "voz": "voz/voz.json" (relativo à pasta)."""
+    sys.path.insert(0, str(AQUI.parents[2] / 'VoiceStudio'))
+    import dublar
+    vs = dublar.carregar_voz(pasta / rot['voz']) if str(rot.get('voz', '')).endswith('.json') else dublar.VOZ
+    return dublar, vs
+
+
 def narrar(pasta, rot):
     """Gera (ou reaproveita) um WAV por frase. Devolve, por cena, [(texto, fala, wav)]."""
     motor, voz, vel = rot.get('motor', 'kokoro'), rot.get('voz', 'pm_alex'), rot.get('velocidade', 1.0)
@@ -91,10 +104,7 @@ def narrar(pasta, rot):
     troca = rot.get('pronuncia', {})
     if motor == 'voicestudio':
         #  O dublador do projeto: voz e pronúncias vêm de VoiceStudio/; o roteiro só acrescenta.
-        sys.path.insert(0, str(AQUI.parents[2] / 'VoiceStudio'))
-        import dublar
-        #  "voz": "voz/voz.json" (relativo à pasta do vídeo) troca a voz padrão só neste vídeo.
-        vs = dublar.carregar_voz(pasta / rot['voz']) if str(rot.get('voz', '')).endswith('.json') else dublar.VOZ
+        dublar, vs = voz_voicestudio(pasta, rot)
         voz, troca = dublar.assinatura(vs), {**dublar.PRONUNCIAS, **troca}
     devagar = {falado(k, troca): v for k, v in rot.get('devagar', {}).items()}
     plano, faltam = [], []
@@ -139,7 +149,7 @@ def narrar(pasta, rot):
                 Path(mp3).unlink()
         elif motor == 'voicestudio':
             for j in faltam:
-                dublar.falar(j['texto'], j['saida'], vel, ja_pronunciado=True, voz=vs)
+                falar_no_ritmo(dublar, vs, j['texto'], Path(j['saida']), rot)
         else:
             modelo = AQUI / 'voz' / f'{voz}.onnx'
             if not modelo.exists():
@@ -154,6 +164,23 @@ def narrar(pasta, rot):
                 if not wav.with_suffix('.palavras.json').exists():
                     alinhar_palavras(wav, f)
     return plano
+
+
+def falar_no_ritmo(dublar, vs, f, wav, rot):
+    """Uma frase pelo VoiceStudio. Se saiu mais lenta que ritmo['min'], o modelo gera de novo com a duração que dá
+    esse ritmo. Acelerar depois (atempo) deixava chiado e trecho rápido/lento nos valores (Polichat v7, 29/10/2026)."""
+    vel = rot.get('velocidade', 1.0)
+    dublar.falar(f, wav, vel, ja_pronunciado=True, voz=vs)
+    ritmo = rot.get('ritmo')
+    if not ritmo:
+        return
+    with wave.open(str(wav)) as w:
+        params, dados = w.getparams(), w.readframes(w.getnframes())
+    taxa, voz = ritmo_da_frase(dados, params, f)
+    if taxa and taxa < ritmo['min']:
+        alvo = ritmo['min'] * 1.06   # o modelo entrega um pouco abaixo do pedido
+        total = len(dados) / (params.sampwidth * params.nchannels) / params.framerate
+        dublar.falar(f, wav, vel, ja_pronunciado=True, voz=vs, duracao=max(total - voz + silabas(f) / alvo, total / ritmo.get('max', 1.12)))
 
 
 def edge(j, voz, vel, mp3):
@@ -343,22 +370,25 @@ def silabas(t):
     return len(re.findall(r'[aeiouáéíóúâêôãõàü]+', t.lower()))
 
 
-def ritmar(dados, params, pal, fala, ritmo):
-    """Acelera (atempo, sem mudar o tom) a frase que saiu mais lenta que ritmo['min'] sílabas por segundo. A mesma voz
-    varia ~±10% de uma frase para outra, e o usuário ouviu a narração "perder velocidade" (Polichat v4, 28/10/2026).
-    O ritmo é medido só no trecho com voz, sem as folgas das pontas. Devolve (frames, palavras)."""
+def ritmo_da_frase(dados, params, fala):
+    """Sílabas por segundo só no trecho com voz, sem as folgas das pontas. Devolve (taxa, duração da voz)."""
     import numpy as np
-    larg = params.sampwidth * params.nchannels
     x = np.frombuffer(dados, '<i2').astype(np.float32)
     n = int(params.framerate * 0.01)
     q = len(x) // (n * params.nchannels)
     rms = np.sqrt((x[:q * n * params.nchannels].reshape(q, -1) ** 2).mean(axis=1))
     voz = np.where(rms > (np.percentile(rms, 90) or 1) * 0.06)[0]
     dur = (voz[-1] - voz[0] + 1) * 0.01 if len(voz) > 1 else 0
-    if not dur:
-        return dados, pal
-    taxa = silabas(fala) / dur
-    if taxa >= ritmo['min']:
+    return (silabas(fala) / dur if dur else 0), dur
+
+
+def ritmar(dados, params, pal, fala, ritmo):
+    """Acelera (atempo, sem mudar o tom) a frase que saiu mais lenta que ritmo['min'] sílabas por segundo. A mesma voz
+    varia ~±10% de uma frase para outra, e o usuário ouviu a narração "perder velocidade" (Polichat v4, 28/10/2026).
+    Não vale para o voicestudio, que gera a frase de novo na duração certa (falar_no_ritmo). Devolve (frames, palavras)."""
+    larg = params.sampwidth * params.nchannels
+    taxa, _ = ritmo_da_frase(dados, params, fala)
+    if not taxa or taxa >= ritmo['min']:
         return dados, pal
     f = min(ritmo.get('max', 1.12), ritmo['min'] / taxa)
     fmt = ['-f', 's16le', '-ar', str(params.framerate), '-ac', str(params.nchannels)]
@@ -380,7 +410,7 @@ def montar_audio(plano, rot, destino):
             t += c['silencio']
         for i, (tx, fl, wav) in enumerate(itens):
             dados, params, pal = respirar(wav, fl, rot)
-            if rot.get('ritmo'):
+            if rot.get('ritmo') and rot.get('motor') != 'voicestudio':
                 dados, pal = ritmar(dados, params, pal, fl, rot['ritmo'])
             d = len(dados) / (params.sampwidth * params.nchannels) / params.framerate
             fs.append({'t0': round(t, 3), 't1': round(t + d, 3), 'texto': tx})
@@ -389,7 +419,8 @@ def montar_audio(plano, rot, destino):
             trechos.append((t, dados))
             #  "pausas": [0.3, 1.1, ...] = silêncio depois de cada frase da cena (fecho de raciocínio respira mais).
             ps = c.get('pausas') or []
-            t += d + ((ps[i] if i < len(ps) and ps[i] is not None else pf) if i + 1 < len(itens) else 0)
+            #  "cauda": silêncio de segurança depois de toda frase (inclusive a última da cena), somado à pausa.
+            t += d + rot.get('cauda', 0) + ((ps[i] if i < len(ps) and ps[i] is not None else pf) if i + 1 < len(itens) else 0)
         cenas.append({'id': c['id'], 't0': round(t0, 3), 'dur': round(t - t0, 3), 'frases': fs})
         t += c.get('pausa', pausa)
     total = t - pausa + rot.get('folga_fim', 1.2)
@@ -404,17 +435,41 @@ def montar_audio(plano, rot, destino):
     return cenas, total
 
 
-def conferir(plano):
-    from ouvir import ouvir
+def conferir(plano, pasta, rot, refazer=0):
+    from ouvir import checar, ouvir
+    nova_tomada = None
+    if refazer and rot.get('motor') == 'voicestudio':
+        dublar, vs = voz_voicestudio(pasta, rot)
+        def nova_tomada(f, wav):
+            falar_no_ritmo(dublar, vs, f, wav, rot)
     ruins = 0
     for c, itens in plano:
         for tx, fl, wav in itens:
+            falhas = checar(wav, fl, tx)
+            #  A voz do VoiceStudio erra ao acaso (a GPU não repete a tomada): a mesma frase, gerada de novo,
+            #  costuma sair certa. Fica a tomada com menos falhas.
+            trocou = False
+            for k in range(refazer if nova_tomada else 0):
+                if not falhas:
+                    break
+                print(f"     {c['id']}: {'; '.join(falhas)} → tomada {k + 2}", flush=True)
+                antes = wav.read_bytes()
+                nova_tomada(fl, wav)
+                novas = checar(wav, fl, tx)
+                if len(novas) < len(falhas):
+                    falhas, trocou = novas, True
+                else:
+                    wav.write_bytes(antes)
+            if trocou:
+                alinhar_palavras(wav, fl)
             ouvido, nota, erros, _ = ouvir(wav, fl)
-            ok = not erros
+            ok = not erros and not falhas
             ruins += not ok
             print(f"  {'ok' if ok else '!!'} {c['id']:10s} {nota:.2f}  {ouvido}")
             for e, o in erros:
                 print(f'       esperado "{e}" → ouvido "{o}"')
+            for f in falhas:
+                print(f'       {f}')
     if ruins:
         sys.exit(f'{ruins} frase(s) com pronúncia suspeita. Ajuste "fala" no roteiro ou troque a voz.')
 
@@ -491,6 +546,7 @@ def main():
     ap.add_argument('--rascunho', action='store_true')
     ap.add_argument('--quadros')
     ap.add_argument('--conferir', action='store_true')
+    ap.add_argument('--refazer', type=int, default=0)
     ap.add_argument('--so-voz', action='store_true')
     args = ap.parse_args()
     pasta = Path(args.pasta).resolve()
@@ -498,7 +554,7 @@ def main():
 
     plano = narrar(pasta, rot)
     if args.conferir:
-        conferir(plano)
+        conferir(plano, pasta, rot, args.refazer)
     cenas, total = montar_audio(plano, rot, cache_de(pasta) / 'narracao.wav')
     for c in cenas:
         print(f"  {c['id']:12s} {c['t0']:6.2f}s  +{c['dur']:.2f}s")

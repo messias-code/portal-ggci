@@ -107,7 +107,16 @@ A VOZ sai sempre daqui (dublador VoiceStudio, pronúncias, `--conferir`). A IMAG
 - **`"motor": "elevenlabs"`** lê a chave de `~/.config/elevenlabs/chave`. No plano gratuito
   só as vozes padrão funcionam: voz da biblioteca (ex.: Davi) e Voice Design dão 402.
 - **`--conferir`** transcreve cada frase com o Whisper e para se algo saiu errado.
-  Ignora o que é só formatação (número em dígitos, "porque"/"por que").
+  Ignora o que é só formatação ("porque"/"por que"). O número em dígitos não é mais desculpa:
+  o `ouvir.checar` compara o valor ouvido com o da fala, e também acusa palavra arrastada,
+  trecho acelerado, gagueira e fim cortado (Polichat v7, 29/10/2026).
+- **`--refazer N`** (com `--conferir`, motor voicestudio): a frase que o `checar` reprova é
+  gerada de novo até N vezes, e fica a tomada com menos falhas. A voz erra número ao acaso, e a
+  mesma frase costuma sair certa na tomada seguinte. Use `--refazer 4` em toda narração.
+  Se o MESMO erro volta em todas as tomadas, desconfie do Whisper: transcreva só o trecho do número
+  (no v7, "cinco mil e noventa e dois" saía 5.093 na frase longa e 5.092 recortado).
+- **`"ritmo"` no voicestudio não usa atempo** (v8, 29/10/2026): a frase lenta é gerada de novo com
+  `duration` (`falar_no_ritmo`). O atempo deixava chiado e trecho rápido/lento nos valores.
 
 ## Como escrever a animação
 

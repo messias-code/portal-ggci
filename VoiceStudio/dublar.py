@@ -83,11 +83,14 @@ def perfil(voz=VOZ):
     return json.loads(_api('/profiles', corpo, f'multipart/form-data; boundary={limite}'))['id']
 
 
-def falar(texto, saida, velocidade=1.0, ja_pronunciado=False, voz=VOZ):
-    """Grava `texto` em `saida` (WAV mono 24 kHz) com a voz padrão (ou a `voz` de carregar_voz)."""
+def falar(texto, saida, velocidade=1.0, ja_pronunciado=False, voz=VOZ, duracao=None):
+    """Grava `texto` em `saida` (WAV mono 24 kHz) com a voz padrão (ou a `voz` de carregar_voz).
+    `duracao` (s) pede ao modelo o tempo total da frase: ele fala no ritmo, sem acelerar o áudio depois."""
     corpo = {'model': 'omnivoice', 'voice': perfil(voz), 'language': voz['idioma'], 'seed': voz['seed'],
              'num_step': voz['num_step'], 'speed': velocidade, 'response_format': 'wav',
              'input': texto if ja_pronunciado else pronunciar(texto)}
+    if duracao:
+        corpo['duration'] = round(duracao, 2)
     audio = _api('/v1/audio/speech', json.dumps(corpo).encode())
     if audio[:4] != b'RIFF':
         sys.exit(f'VoiceStudio não devolveu áudio: {audio[:400].decode(errors="replace")}')

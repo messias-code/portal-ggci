@@ -50,7 +50,7 @@ python3 VoiceStudio/variacoes.py gerar OVG "..." "OVG" "ô-vê-gê" ... --voz <v
 | Palavra | Como sai | Aprovada em |
 |---|---|---|
 | GGCI | escrita como sigla (`GGCI`) | 27/10/2026 |
-| ProBem | `Pró Bem` (a troca é automática) | 27/10/2026 |
+| ProBem | `ProBem` (a legenda fica "ProBem"; a voz troca sozinha) | 27/10/2026 |
 | OVG | `ô-vê-gê` (a troca é automática) | 27/10/2026 (voz03) e 28/10/2026 (voz10) |
 | Polichat | `Póli cháti` (a troca é automática) | 27/10/2026 |
 | WhatsApp | `uats ápi` (a troca é automática) | 27/10/2026 |
@@ -60,6 +60,19 @@ python3 VoiceStudio/variacoes.py gerar OVG "..." "OVG" "ô-vê-gê" ... --voz <v
 
 A tabela completa e atualizada fica no `SKILL.md`.
 
+## Como a fala é escrita (aprovado no Polichat v6)
+
+- Português falado de reunião: frase curta, "a gente", "pra", "ou seja". Uma ideia por frase.
+- A frase não termina num número nem numa palavra curta e solta: a voz arrasta ou corta o fim.
+- **Palavra comum nunca ganha grafia inventada.** Se a voz trocar o acento ("fechadós"), é só gerar a
+  frase de novo. Avise o Claude: o reconhecedor de fala não percebe acento trocado.
+- **Números sempre por extenso** (`por_extenso.py`): centavos abaixo de R$ 100, só reais acima, vírgula
+  depois do "mil" ("setenta e seis mil, seiscentos e dezesseis").
+- **Nunca acelerar o áudio depois de gerado** (chiado nos valores no v7): a frase lenta é gerada de novo na duração
+  certa, e a voz de narração usa 32 passos (`"num_step": 32`).
+- A voz às vezes erra um número ao acaso. Toda narração é conferida palavra por palavra (número certo,
+  sem arrastar, acelerar, gaguejar ou cortar o fim), e a frase que falha é gerada de novo sozinha.
+
 ## O que fica onde
 
 | Arquivo | O que é | Pode mexer? |
@@ -68,6 +81,7 @@ A tabela completa e atualizada fica no `SKILL.md`.
 | `voz.json`, `voz_padrao.wav` | a voz03 (parâmetros e amostra) | só para trocar de voz |
 | `dublar.py` | fala um texto com a voz padrão | — |
 | `variacoes.py` | gera as variações e aplica a escolhida | — |
+| `por_extenso.py` | escreve os números da fala do jeito que a voz lê bem | sim, quando uma regra nova for aprovada de ouvido |
 | `iniciar.sh` | liga e desliga o VoiceStudio | — |
 
 Os áudios de teste e as variações **não** ficam aqui: vão para a pasta do assunto em que
