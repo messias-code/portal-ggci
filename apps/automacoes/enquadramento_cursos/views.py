@@ -16,7 +16,10 @@ from django.shortcuts import redirect, render
 from django.views.decorators.csrf import csrf_exempt
 
 from .models import ProcessamentoEnquadramentoCursos
-from portal_ggci.processos import popen_com_limite
+from portal_ggci.processos import abortar_execucao, popen_com_limite
+
+# O front reconhece esta frase exata e a troca pelo selo "ABORTADO PELO USUÁRIO".
+AVISO_ABORTADO = "\n\n🚨 [SISTEMA] Processo de IA abortado manualmente pelo usuário!"
 
 
 @csrf_exempt
@@ -94,32 +97,16 @@ def parar_processamento_ia(request, processo_id):
     """
     O QUE FAZ: Aborta forçosamente um processamento em andamento.
     POR QUÊ EXISTE: Permite que o usuário cancele uma extração caso tenha errado parâmetros ou o processo trave.
-    COMO FUNCIONA: Marca status FALHA no BD e dispara um pkill no sistema para o script Python e Playwright.
+    COMO FUNCIONA: Mata a árvore do motor DESTE processo (Python, Playwright e os Chromium
+      dele — e nenhum outro) e só depois grava FALHA. Ver `abortar_execucao`.
     PARÂMETROS: request, processo_id (int)
-    RETORNO: JsonResponse confirmando a parada.
-    EFEITOS COLATERAIS: Interrompe instâncias no SO brutalmente.
+    RETORNO: JsonResponse confirmando a parada — quando ela chega, o motor já morreu.
     """
     if request.method == 'POST':
-        try:
-            # Atualização do registro
-            processo = ProcessamentoEnquadramentoCursos.objects.get(id=processo_id)
-            processo.status = 'FALHA'
-            processo.progresso = 100
-            processo.log += "\n\n🚨 [SISTEMA] Processo de IA abortado manualmente pelo usuário!"
-            processo.save()
-            
-            # Executa a limpeza hard-kill no SO
-            try:
-                os.system(f"pkill -f 'executar_motor_enquadramento {processo_id}'")
-                os.system("pkill -f chromium")
-                os.system("pkill -f playwright")
-            except Exception:
-                pass
-                
+        if abortar_execucao(ProcessamentoEnquadramentoCursos, 'executar_motor_enquadramento',
+                            processo_id, AVISO_ABORTADO):
             return JsonResponse({'status': 'ok'})
-            
-        except ProcessamentoEnquadramentoCursos.DoesNotExist:
-            return JsonResponse({'status': 'erro', 'mensagem': 'Nenhum processo em andamento para este ID.'})
+        return JsonResponse({'status': 'erro', 'mensagem': 'Nenhum processo em andamento para este ID.'})
 
     return JsonResponse({'status': 'erro', 'mensagem': 'Método inválido'}, status=400)
 
