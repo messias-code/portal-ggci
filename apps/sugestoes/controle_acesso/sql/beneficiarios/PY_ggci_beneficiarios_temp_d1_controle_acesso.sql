@@ -18,6 +18,7 @@ SELECT
     u.uni_cpf,
     u.uni_dtnasc,
     u.uni_sexo,
+    u.ins_codigo,
     i.ins_nome,
     c.cur_nome,
     u.uni_dtingr,

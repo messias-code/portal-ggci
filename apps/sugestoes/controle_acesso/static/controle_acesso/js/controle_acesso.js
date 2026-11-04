@@ -83,6 +83,28 @@
         p?.ano && p?.mes ? `${p.ano}-${MESES_1_SEM.has(p.mes) ? 1 : 2}` : null
     );
 
+    // Quantos pagamentos entraram na soma do semestre. Semestre tem 6 meses: com os 6 o
+    // selo fica verde; com menos (o semestre em curso, ou um que não pagou todos os meses),
+    // neutro e com o "de 6", para mostrar que a soma ainda não fecha o semestre.
+    const MESES_SEMESTRE = 6;
+    const seloQtdPagamentos = (n) => {
+        if (!n) return '';
+        const completo = n >= MESES_SEMESTRE;
+        const rotulo = completo ? `${n} pagamentos` : `${n} de ${MESES_SEMESTRE} pagamentos`;
+        const dica = `${n} ${n === 1 ? 'pagamento somado' : 'pagamentos somados'} neste semestre`;
+        return `<span class="ca-selo ca-selo--${completo ? 'ok' : 'neutro'} ca-selo--qtd" title="${dica}">${rotulo}</span>`;
+    };
+
+    // Flag de pagamentos retroativos: cor amarela (ca-selo--alerta) do design system.
+    const seloRetroativo = (n, contexto = 'semestre') => {
+        if (!n || n <= 0) return '';
+        const rotulo = `${n} ${n === 1 ? 'retroativo' : 'retroativos'}`;
+        const dica = contexto === 'total'
+            ? `${n} ${n === 1 ? 'pagamento retroativo' : 'pagamentos retroativos'} no total acumulado`
+            : `${n} ${n === 1 ? 'pagamento retroativo' : 'pagamentos retroativos'} neste semestre`;
+        return `<span class="ca-selo ca-selo--alerta ca-selo--qtd" title="${escapar(dica)}">${rotulo}</span>`;
+    };
+
     const TABELAS = {
         tabelaSituacoes: {
             chave: 'situacoes',
@@ -126,6 +148,23 @@
                 { campo: 'total', fmt: valor, num: true, forte: true },
                 { campo: 'tipo_pgto' },
                 { campo: 'bolsa' },
+                { campo: 'faculdade' },
+            ],
+        },
+        // Somas por semestre, calculadas no servidor só com os pagamentos da faculdade da ficha.
+        tabelaSomaPagamentos: {
+            chave: 'soma_pagamentos',
+            semestre: (linha) => linha.semestre,
+            colunas: [
+                {
+                    campo: 'semestre',
+                    celula: (linha) => `<span class="ca-soma-sem">${escapar(linha.semestre)}</span>`
+                        + seloQtdPagamentos(linha.pagamentos)
+                        + seloRetroativo(linha.retroativos, 'semestre'),
+                },
+                { campo: 'total', fmt: valor, num: true, forte: true },
+                { campo: 'ressarcimento', fmt: valor, num: true },
+                { campo: 'complemento', fmt: valor, num: true },
             ],
         },
     };
@@ -192,7 +231,8 @@
                 : '<tr>';
             return abre + colunas.map((c, i) => {
                 const bruto = linha[c.campo];
-                let conteudo = c.html ? c.html(bruto) : escapar((c.fmt || texto)(bruto));
+                let conteudo = c.celula ? c.celula(linha)
+                    : c.html ? c.html(bruto) : escapar((c.fmt || texto)(bruto));
                 if (marca && i === 0) conteudo = seloVinculo(marca, id) + conteudo;
                 const classe = [c.num && 'ca-num', c.forte && 'ca-forte'].filter(Boolean).join(' ');
                 return `<td${classe ? ` class="${classe}"` : ''}>${conteudo}</td>`;
@@ -260,8 +300,29 @@
         marcasTotais = criarMapaMarcas(dados?.coletas);
         preencherFiltroSemestres(dados);
         aplicarFiltroSemestre('');
+        preencherSomaTotal(dados);
         preencherDocumentos(dados?.documentos);
         preencherHistorico(dados?.historico_bolsas);
+    };
+
+    // ACUMULADO DA SOMA — rodapé da Soma dos Valores Pagos, do 1º pagamento até hoje. Fica
+    // fixo com o filtro de semestre: é o total da vida da inscrição, não do recorte.
+    const preencherSomaTotal = (dados) => {
+        const rodape = document.getElementById('rodapeSomaPagamentos');
+        const linha = (rotulo, detalhe, t) => {
+            const periodo = t.inicio === t.fim ? t.inicio : `${t.inicio} a ${t.fim}`;
+            const qtd = `${t.pagamentos} ${t.pagamentos === 1 ? 'pagamento' : 'pagamentos'}`;
+            const badgeRetro = seloRetroativo(t.retroativos, 'total');
+            return '<tr>'
+                + `<td><span class="ca-soma-total__rotulo">${escapar(rotulo)}${badgeRetro}</span>`
+                + `<span class="ca-soma-total__detalhe">${escapar([detalhe, periodo, qtd].filter(Boolean).join(' · '))}</span></td>`
+                + ['total', 'ressarcimento', 'complemento']
+                    .map((c) => `<td class="ca-num ca-forte">${escapar(valor(t[c]))}</td>`).join('')
+                + '</tr>';
+        };
+        const total = dados?.soma_total;
+        rodape.hidden = !total;
+        rodape.innerHTML = total ? linha('Total pago desde o Ingresso', '', total) : '';
     };
 
     // HISTÓRICO DE BOLSAS — uma linha por inscrição do CPF (mais nova primeiro). A

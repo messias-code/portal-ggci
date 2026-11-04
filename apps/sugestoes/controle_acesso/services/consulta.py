@@ -8,6 +8,7 @@ reais (o banco guarda centavos) e rótulos já traduzidos. Os Parquets são lido
 `scan_parquet` + filtro pela inscrição, então só as linhas da pessoa chegam à memória.
 """
 
+import functools
 import os
 
 import polars as pl
@@ -121,6 +122,53 @@ def resumir_inscricoes(codigos):
     } for b in sorted(_linhas('beneficiarios', filtro), key=lambda b: -b['uni_codigo'])]
 
 
+@functools.lru_cache(maxsize=1)
+def _mapa_todas_instituicoes():
+    """
+    Mapa de ins_codigo -> ins_nome para resolver a faculdade de lançamentos antigos.
+    Carregado a partir do parquet de beneficiários (únicos ins_codigo/ins_nome) com
+    fallback para IES conhecidas do banco SIBU.
+    """
+    mapa = {
+        78: 'FACULDADE CENTRO OESTE DE ANAPOLIS',
+        162: 'UNIVERITAS - ANAPOLIS',
+    }
+    caminho = caminho_parquet('beneficiarios')
+    if os.path.exists(caminho):
+        try:
+            df = (pl.scan_parquet(caminho)
+                  .filter(pl.col('ins_codigo').is_not_null() & pl.col('ins_nome').is_not_null())
+                  .select(['ins_codigo', 'ins_nome'])
+                  .unique()
+                  .collect())
+            for row in df.iter_rows():
+                mapa[row[0]] = row[1]
+        except Exception:
+            pass
+    return mapa
+
+
+def _nome_faculdade_pagamento(l, b, mapa_ies):
+    """Nome da faculdade do lançamento, com fallback na faculdade da ficha ou no mapa."""
+    if l.get('ins_nome'):
+        return l['ins_nome']
+    cod = l.get('ins_codigo')
+    if cod and cod == b.get('ins_codigo') and b.get('ins_nome'):
+        return b['ins_nome']
+    if cod and cod in mapa_ies:
+        return mapa_ies[cod]
+    return b.get('ins_nome') or '—'
+
+
+def _acumulado(somas):
+    """Soma dos semestres de `somas` ({semestre: [total, ressarc., compl., qtd, retro]}) e o período coberto."""
+    if not somas:
+        return None
+    t, r, c, n, ret = (sum(v[i] for v in somas.values()) for i in range(5))
+    return {'inicio': min(somas), 'fim': max(somas), 'pagamentos': n, 'retroativos': ret,
+            'total': round(t, 2), 'ressarcimento': round(r, 2), 'complemento': round(c, 2)}
+
+
 def montar_ficha(uni_codigo):
     """A ficha completa da inscrição, no formato da tela."""
     filtro = pl.col('uni_codigo') == uni_codigo
@@ -133,12 +181,26 @@ def montar_ficha(uni_codigo):
     lans = sorted(_linhas('pagamentos', filtro), key=lambda l: (l['lan_anomes'], _ordem(l['lan_dtlanc'])))
     docs = sorted(_documentos_enviados(filtro), key=lambda d: (_ordem(d['data_create']), d['id'] or 0))
 
+    # SOMA DOS VALORES PAGOS — por semestre, todos os pagamentos feitos na inscrição,
+    # independente da faculdade (se trocou de IES, junta todos os lançamentos).
+    mapa_ies = _mapa_todas_instituicoes()
+    somas = {}
     pagamentos = []
     for l in lans:
         complemento = _reais(l['lan_valor_complemento'])
         if l['obs_complemento'] and 'DIFERENCA' in l['obs_complemento'].upper():
             complemento = -complemento
         bolsa, ressarcimento = _reais(l['lan_valbolsa']), _reais(l['lan_valor_cancelamento'])
+        total = round(bolsa - ressarcimento + complemento, 2)
+        retroativo = 1 if (l.get('tipo_pagto') or '').strip().upper() == 'RETROATIVO' else 0
+
+        s = somas.setdefault(_semestre(l['lan_anomes']), [0, 0, 0, 0, 0])
+        s[0] += total
+        s[1] += ressarcimento
+        s[2] += complemento
+        s[3] += 1  # quantos pagamentos entraram na soma do semestre
+        s[4] += retroativo  # quantos pagamentos retroativos
+
         pagamentos.append({
             'coleta_id': l['coleta_id'],
             'mes': MESES[l['lan_anomes'] % 100 - 1],
@@ -148,12 +210,14 @@ def montar_ficha(uni_codigo):
             'valor_bolsa': bolsa,
             'complemento': complemento,
             'ressarcimento': ressarcimento,
-            'total': round(bolsa - ressarcimento + complemento, 2),
+            'total': total,
             'tipo_pgto': _titulo(l['tipo_pagto']) if l.get('tipo_pagto') else '—',
             'bolsa': 'Cancelado' if l['situacao_pagto'] == 'C' else _titulo(l['tipo_bolsa']),
+            'faculdade': _nome_faculdade_pagamento(l, b, mapa_ies),
         })
 
     documentos, documentos_semestres = _documentos(lans, cols, docs, anexos.anexados(uni_codigo))
+    acumulado_total = _acumulado(somas)
 
     return {
         'beneficiario': {
@@ -195,6 +259,18 @@ def montar_ficha(uni_codigo):
             'data_criacao': _iso(c['data_create']),
         } for c in cols],
         'pagamentos': pagamentos,
+        'soma_pagamentos': [{
+            'semestre': sem,
+            'total': round(t, 2),
+            'ressarcimento': round(r, 2),
+            'complemento': round(c, 2),
+            'pagamentos': n,
+            'retroativos': ret,
+        } for sem, (t, r, c, n, ret) in sorted(somas.items())],
+        'pagamentos_outra_ies': 0,
+        # Acumulado desde o 1º pagamento: total de todos os pagamentos da inscrição.
+        'soma_total': acumulado_total,
+        'soma_total_inscricao': acumulado_total,
         'documentos': documentos,
         'documentos_semestres': documentos_semestres,
     }

@@ -256,6 +256,7 @@ html {
         "situ   situ"
         "coleta coleta"
         "pag    pag"
+        "soma   soma"
         "docs   docs";
     gap: 1rem;
 }
@@ -273,11 +274,13 @@ html {
         "situ   situ"
         "coleta coleta"
         "pag    pag"
+        "soma   soma"
         "docs   docs";
 }
 .ca-area-situ   { grid-area: situ; }
 .ca-area-coleta { grid-area: coleta; }
 .ca-area-pag    { grid-area: pag; }
+.ca-area-soma   { grid-area: soma; }
 
 /* Tabelas largas (Coleta e Pagamentos): títulos longos quebram linha, para
    que a largura das colunas seja ditada pelos valores, não pelo título.
@@ -308,11 +311,11 @@ html {
 @media (max-width: 1100px) {
     .ca-colunas {
         grid-template-columns: minmax(0, 1fr);
-        grid-template-areas: "benef" "acad" "hist" "situ" "coleta" "pag" "docs";
+        grid-template-areas: "benef" "acad" "hist" "situ" "coleta" "pag" "soma" "docs";
     }
 
     .ca-colunas:has(.ca-area-hist[hidden]) {
-        grid-template-areas: "benef" "acad" "situ" "coleta" "pag" "docs";
+        grid-template-areas: "benef" "acad" "situ" "coleta" "pag" "soma" "docs";
     }
 }
 
@@ -432,7 +435,7 @@ html {
     color: #db2777;
 }
 
-/* Filtro de semestres nos cards de Situações, Coleta de Dados e Pagamentos. */
+/* Filtro de semestres nos cards de Situações, Coleta de Dados, Pagamentos e Soma. */
 .ca-filtro-semestres {
     display: inline-flex;
     align-items: center;
@@ -592,6 +595,45 @@ html {
 .ca-selo--alerta { color: #b45309; background-color: #fffbeb; border-color: #fde68a; }
 .ca-selo--erro   { color: #b91c1c; background-color: #fef2f2; border-color: #fecaca; }
 .ca-selo--neutro { color: var(--tema-texto-medio); background-color: var(--tema-superficie-3); border-color: var(--tema-borda); }
+
+/* Acumulado da Soma dos Valores Pagos: rodapé no tom do cabeçalho, com o período e a
+   quantidade de pagamentos embaixo do rótulo. */
+.ca-soma-total[hidden] {
+    display: none;
+}
+
+.ca-soma-total td {
+    background-color: var(--tema-superficie-3);
+    border-top: 1px solid var(--tema-borda);
+    border-bottom: 0;
+    vertical-align: middle;
+}
+
+.ca-soma-total__rotulo {
+    display: block;
+    font-weight: 700;
+}
+
+.ca-soma-total__detalhe {
+    display: block;
+    margin-top: 0.125rem;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: var(--tema-texto-fraco);
+}
+
+/* Quantidade de pagamentos ao lado do semestre, na Soma dos Valores Pagos. O semestre
+   tem largura mínima para os selos ficarem alinhados em coluna: o Poppins não tem dígitos
+   de largura fixa ("2026-1" é mais estreito que "2026-2"). */
+.ca-soma-sem {
+    display: inline-block;
+    min-width: 3.25rem;
+}
+
+.ca-selo--qtd {
+    margin-left: 0.5rem;
+    font-variant-numeric: tabular-nums;
+}
 
 .ca-vazio td {
     padding: 1rem 0.875rem;
@@ -1268,7 +1310,8 @@ html[data-tema="eleitoral"] .ca-secao__titulo i {
 }
 
 html[data-tema="eleitoral"] .ca-info input,
-html[data-tema="eleitoral"] .ca-tabela th {
+html[data-tema="eleitoral"] .ca-tabela th,
+html[data-tema="eleitoral"] .ca-soma-total td {
     background-color: rgba(255, 255, 255, 0.05);
 }
 
