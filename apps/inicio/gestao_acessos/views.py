@@ -195,7 +195,6 @@ def gestao_acessos(request):
             'p_dash_polichat': 1 if u.p_dash_polichat else 0,
             'p_gestao_polichat': 1 if u.p_gestao_polichat else 0,
             'p_dash_documentos_ia': 1 if u.p_dash_documentos_ia else 0,
-            'p_polichat_financeiro': 1 if getattr(u, 'p_polichat_financeiro', False) else 0,
             'username_only': username_only,
             'can_edit': can_edit,
             'can_delete': can_delete,
@@ -277,7 +276,6 @@ def api_salvar_usuario(request):
             p_dash_polichat = 1 if request.POST.get('p_dash_polichat') else 0
             p_gestao_polichat = 1 if request.POST.get('p_gestao_polichat') else 0
             p_dash_documentos_ia = 1 if request.POST.get('p_dash_documentos_ia') else 0
-            p_polichat_financeiro = 1 if request.POST.get('p_polichat_financeiro') else 0
 
             # MODO: NOVO USUÁRIO
             if not usuario_id:
@@ -298,8 +296,7 @@ def api_salvar_usuario(request):
                     p_controle_acesso=p_controle_acesso,
                     p_dash_polichat=p_dash_polichat,
                     p_gestao_polichat=p_gestao_polichat,
-                    p_dash_documentos_ia=p_dash_documentos_ia,
-                    p_polichat_financeiro=p_polichat_financeiro
+                    p_dash_documentos_ia=p_dash_documentos_ia
                 )
                 novo_usuario.set_password(senha_gerada)
                 novo_usuario.save()
@@ -337,7 +334,6 @@ def api_salvar_usuario(request):
                 alvo.p_dash_polichat = p_dash_polichat
                 alvo.p_gestao_polichat = p_gestao_polichat
                 alvo.p_dash_documentos_ia = p_dash_documentos_ia
-                alvo.p_polichat_financeiro = p_polichat_financeiro
 
                 if alterar_nome:
                     alvo.nome = nome_completo

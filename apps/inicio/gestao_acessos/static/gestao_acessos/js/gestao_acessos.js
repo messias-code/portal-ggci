@@ -482,7 +482,7 @@ function abrirModalNovo() {
         'p_ferramentas', 'p_formatador_listas', 'p_formatador_dados', 
         'toggle_menu_automacoes', 'p_analise_ia', 'p_enquadramento_cursos',
         'p_sugestoes', 'p_controle_acesso',
-        'p_dash_polichat', 'p_gestao_polichat', 'p_dash_documentos_ia', 'p_polichat_financeiro'
+        'p_dash_polichat', 'p_gestao_polichat', 'p_dash_documentos_ia'
     ];
     campos.forEach(campo => {
         const el = document.getElementById(campo);
@@ -531,7 +531,7 @@ function abrirModalEdicao(user) {
     const camposBooleanos = [
         'p_ferramentas', 'p_formatador_listas', 'p_formatador_dados', 
         'p_analise_ia', 'p_enquadramento_cursos', 'p_sugestoes', 'p_controle_acesso',
-        'p_dash_polichat', 'p_gestao_polichat', 'p_dash_documentos_ia', 'p_polichat_financeiro'
+        'p_dash_polichat', 'p_gestao_polichat', 'p_dash_documentos_ia'
     ];
     
     let isMasterUser = (user.usuario === 'admin@ovg.org.br');
