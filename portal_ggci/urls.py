@@ -47,7 +47,6 @@ urlpatterns = [
     # Dashboards
     path('dashboards/', include('apps.dashboards.menu_dashboards.urls')),
     path('dashboards/polichat/', include('apps.dashboards.dash_polichat.urls')),
-    path('dashboards/polichat-financeiro/', include('apps.dashboards.dash_polichat_financeiro.urls')),
     path('dashboards/documentos-ia/', include('apps.dashboards.dash_documentos_ia.urls')),
 
     # Sugestões

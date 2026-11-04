@@ -12,7 +12,6 @@ class TestMenuDashboards(TestCase):
             nome="Analista GGCI",
             p_dash_polichat=True,
             p_dash_documentos_ia=True,
-            p_polichat_financeiro=True,
         )
 
     def setUp(self):
@@ -23,16 +22,21 @@ class TestMenuDashboards(TestCase):
         self.assertEqual(resposta.status_code, 302)
         self.assertIn('/?next=', resposta.url)
 
-    def test_renderizacao_hub_dashboards_contem_card_polichat_financeiro(self):
+    def test_renderizacao_hub_dashboards_contem_apenas_cards_ativos(self):
         self.client.force_login(self.user)
         resposta = self.client.get(reverse('dashboards'))
         self.assertEqual(resposta.status_code, 200)
 
         conteudo = resposta.content.decode('utf-8')
 
-        # Verifica presença dos cards
-        self.assertIn("Polichat - Financeiro", conteudo)
-        self.assertIn("card-modulo--c", conteudo)
-        self.assertIn("fa-comments-dollar", conteudo)
-        self.assertIn(reverse('polichat_financeiro'), conteudo)
-        self.assertIn("Análise comparativa do custo de mensagens, impacto das mudanças da Meta pós-contrato e projeções financeiras para 2025.", conteudo)
+        # Verifica presença dos cards ativos
+        self.assertIn("Polichat", conteudo)
+        self.assertIn("Documentos IA", conteudo)
+        self.assertIn(reverse('gestao_polichat'), conteudo)
+        self.assertIn(reverse('dash_documentos_ia'), conteudo)
+
+        # Garante ausência dos cards descontinuados
+        self.assertNotIn("Polichat - Financeiro", conteudo)
+        self.assertNotIn("Polichat - Financeiro - Daan", conteudo)
+        self.assertNotIn("card-modulo--c", conteudo)
+        self.assertNotIn("fa-comments-dollar", conteudo)
