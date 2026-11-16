@@ -51,10 +51,10 @@
     -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
     
-    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia.css' %}?v=20261026e">
+    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia.css' %}?v=20261109a">
 
     <!-- Camada escura desta tela: o que os arquivos compartilhados não alcançam -->
-    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia-eleitoral.css' %}?v=20261026e">
+    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia-eleitoral.css' %}?v=20261109a">
 </head>
 
 <body class="docia-corpo grid-bg bg-[#f8f6fb] text-gray-800 fixed inset-0 p-4 lg:p-6 flex transition-colors duration-500 overflow-hidden">
@@ -1630,13 +1630,20 @@
                             </div>
                         </section>
                         <!--
-                            DATA DE PROCESSAMENTO — UM DIA, e só o dia.
+                            DATA DE PROCESSAMENTO — UM PERÍODO, de dia a dia.
 
                             A coluna `data_processamento` guarda data E hora
                             ("09/02/2026 17:54:06"), mas a pergunta que se faz aqui é
-                            sempre de dia inteiro: "o que a IA leu na segunda?". Hora
-                            exigiria saber o minuto de uma execução que roda em lote —
-                            não existe pergunta assim nesta tela.
+                            sempre de dia inteiro: "o que a IA leu na segunda?", ou
+                            "de segunda a sexta?". Hora exigiria saber o minuto de uma
+                            execução que roda em lote — não existe pergunta assim nesta
+                            tela.
+
+                            É UM PERÍODO, com as duas pontas inclusivas: o calendário
+                            (flatpickr em `mode: 'range'`) acende o início no primeiro
+                            clique e o fim no segundo, e o campo mostra as duas datas
+                            ("09/02/2026 até 15/02/2026"). Um dia só é o mesmo dia nas
+                            duas pontas — dois cliques nele, ou um clique e OK.
 
                             UM CAMPO, e não uma grade de caixinhas como as seções
                             vizinhas: são centenas de dias distintos no arquivo, e
@@ -1645,15 +1652,16 @@
 
                             O `<input type="date">` CONTINUA AQUI, mas quem se vê na
                             tela é o campo gêmeo que o flatpickr põe ao lado (`altInput`):
-                            este guarda a data em ISO, que é o formato que a view compara,
-                            e o gêmeo mostra dd/mm/aaaa e abre o calendário. O popup do
+                            o período aplicado vive no JS em ISO (`data_proc_inicio` e
+                            `data_proc_fim`, que é o que a view compara), e o gêmeo
+                            mostra dd/mm/aaaa e abre o calendário. O popup do
                             nativo é desenhado pelo NAVEGADOR e não aceita CSS nenhum —
                             nem borda, nem corpo de letra, nem rodapé com botão —, e era
                             por isso que a seleção não se parecia com o resto da tela.
 
                             NASCE VAZIO, e vazio é "todos os dias". O `placeholder`
                             daqui é o que o campo diz em repouso; em foco ele vira o
-                            molde `dd/mm/aaaa`, trocado pelo JS — o `type="date"` não
+                            molde `dd/mm/aaaa até dd/mm/aaaa`, trocado pelo JS — o `type="date"` não
                             aceitava `placeholder` nenhum, era o navegador que desenhava
                             o molde, e não havia como dizer outra coisa no lugar.
 
@@ -1670,8 +1678,8 @@
                             <div class="docia-campo-data" id="campo-data-proc-ia">
                                 <i class="fa-regular fa-calendar docia-campo-data__icone" aria-hidden="true"></i>
                                 <input type="date" id="filtro-data-proc-ia" class="docia-campo-data__entrada"
-                                       placeholder="Selecione uma data"
-                                       aria-label="Filtrar pela data de processamento">
+                                       placeholder="Selecione o período"
+                                       aria-label="Filtrar por período da data de processamento">
                                 <i class="fa-solid fa-chevron-down docia-campo-data__seta" aria-hidden="true"></i>
                             </div>
                         </section>
@@ -2481,6 +2489,6 @@
     -->
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/pt.js"></script>
-    <script src="{% static 'dash_documentos_ia/js/analise_ia.js' %}?v=20261103b"></script>
+    <script src="{% static 'dash_documentos_ia/js/analise_ia.js' %}?v=20261116a"></script>
 </body>
 </html>

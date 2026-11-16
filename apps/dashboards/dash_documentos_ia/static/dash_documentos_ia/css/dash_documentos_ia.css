@@ -4924,6 +4924,41 @@ html:not([data-tema="eleitoral"]) #ia-tabela-rolagem thead th {
     color: #FFFFFF;
 }
 
+/*  O PERÍODO (`mode: 'range'`). De fábrica o widget pinta as pontas de azul e o
+    miolo de cinza com uma sombra lateral de 5px, e emenda as pontas numa pílula
+    só. Aqui as PONTAS são o dia escolhido de sempre (roxo sólido, canto do resto
+    da grade) e o MIOLO é a faixa lavada contínua — sem canto, porque os dias já
+    se encostam (`margin: 0`). O hoje dentro da faixa mantém o aro.
+    A última regra tira a sombra azul de 10px que o widget põe no fim colado ao
+    início; o seletor dele pesa cinco classes, daí a repetição.  */
+.docia-calendario .flatpickr-day.startRange,
+.docia-calendario .flatpickr-day.endRange,
+.docia-calendario .flatpickr-day.startRange:hover,
+.docia-calendario .flatpickr-day.endRange:hover {
+    background-color: #6B007B;
+    border-color: transparent;
+    border-radius: 0.5rem;
+    color: #FFFFFF;
+}
+
+.docia-calendario .flatpickr-day.inRange,
+.docia-calendario .flatpickr-day.inRange:hover {
+    background-color: rgba(107, 0, 123, 0.10);
+    border-color: transparent;
+    border-radius: 0;
+    color: var(--tema-texto-forte);
+}
+
+.docia-calendario .flatpickr-day.inRange:not(.today) {
+    box-shadow: none;
+}
+
+.docia-calendario .flatpickr-day.selected.startRange + .endRange:not(:nth-child(7n+1)),
+.docia-calendario .flatpickr-day.startRange.startRange + .endRange:not(:nth-child(7n+1)),
+.docia-calendario .flatpickr-day.endRange.startRange + .endRange:not(:nth-child(7n+1)) {
+    box-shadow: none;
+}
+
 .docia-calendario .flatpickr-day.flatpickr-disabled,
 .docia-calendario .flatpickr-day.flatpickr-disabled:hover {
     color: var(--tema-texto-fraco);

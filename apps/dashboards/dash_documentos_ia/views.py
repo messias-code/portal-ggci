@@ -618,7 +618,8 @@ def _aplicar_filtros(df, request):
     O QUE FAZ: aplica os filtros da barra lateral e da legenda.
     COMO FUNCIONA: recortes independentes, todos opcionais — `semestres`
         (checkboxes), `ies` (modal, separado por `||` porque nome de faculdade tem
-        vírgula), `status` (legenda das roscas), `data_proc` (um dia, em ISO) e os
+        vírgula), `status` (legenda das roscas), `data_proc_inicio`/`data_proc_fim` (período
+        inclusivo, em ISO) e os
         quatro de PESSOA
         (`FILTROS_DE_PESSOA`). Ausência de parâmetro significa "tudo", que é o
         estado inicial da tela.
@@ -676,22 +677,35 @@ def _aplicar_filtros(df, request):
         elif alvo == {'N'}:
             df = df[~(mask_benef | mask_finan)]
 
-    #  DATA DE PROCESSAMENTO — UM DIA, sem hora.
+    #  DATA DE PROCESSAMENTO — UM PERÍODO, sem hora, com as duas pontas INCLUSIVAS.
     #
     #  A coluna guarda data E hora como TEXTO ("09/02/2026 17:54:06"), e o que nunca
-    #  passou pela IA como "-". A tela manda o dia em ISO (`data_proc=2026-02-09`),
-    #  que é o valor cru de um `<input type="date">` e a única grafia que não troca de
-    #  significado entre locales; a comparação acontece na grafia do ARQUIVO, cortando
-    #  os dez primeiros caracteres — converter 66 mil textos em data a cada clique
-    #  custaria mais do que a tela inteira desenha.
+    #  passou pela IA como "-". A tela manda as pontas em ISO (`data_proc_inicio=
+    #  2026-02-09&data_proc_fim=2026-02-15`), a única grafia que não troca de
+    #  significado entre locales. Um dia só é início = fim.
     #
-    #  O "-" SAI QUANDO UM DIA É ESCOLHIDO, e é o esperado: a pergunta aqui é "o que
-    #  rodou neste dia", e quem não rodou não tem dia nenhum.
-    data_proc = (request.GET.get('data_proc') or '').strip()
-    if data_proc and 'data_processamento' in df.columns:
-        partes = data_proc.split('-')
-        dia = '/'.join(reversed(partes)) if len(partes) == 3 else data_proc
-        df = df[df['data_processamento'].astype('string').str.slice(0, 10) == dia]
+    #  A COMPARAÇÃO É DE TEXTO, e não de data: o dd/mm/aaaa do arquivo é remontado
+    #  em aaaa-mm-dd por fatiamento, e nessa ordem a comparação de texto É a de
+    #  calendário. Converter 66 mil textos em data a cada clique custaria mais do que
+    #  a tela inteira desenha. Cortar o dia antes de comparar é o que torna o fim
+    #  inclusivo: "15/02/2026 23:59:59" vira "2026-02-15", que é <= "2026-02-15".
+    #
+    #  O "-" SAI QUANDO HÁ PERÍODO, e é o esperado: a pergunta aqui é "o que rodou
+    #  nestes dias", e quem não rodou não tem dia nenhum. A máscara do formato é o
+    #  que o tira — fatiado, o "-" viraria "--" e escaparia da comparação por acaso.
+    #
+    #  Uma ponta só também vale (de/até em aberto), embora a tela sempre mande as duas.
+    inicio = (request.GET.get('data_proc_inicio') or '').strip()
+    fim = (request.GET.get('data_proc_fim') or '').strip()
+    if (inicio or fim) and 'data_processamento' in df.columns:
+        texto = df['data_processamento'].astype('string')
+        iso = texto.str.slice(6, 10) + '-' + texto.str.slice(3, 5) + '-' + texto.str.slice(0, 2)
+        dentro = texto.str.match(r'\d{2}/\d{2}/\d{4}')
+        if inicio:
+            dentro &= iso >= inicio
+        if fim:
+            dentro &= iso <= fim
+        df = df[dentro.fillna(False).astype(bool)]
 
     return df
 

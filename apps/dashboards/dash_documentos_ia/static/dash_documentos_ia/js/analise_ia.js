@@ -189,17 +189,23 @@
             filtros — a consulta, o contador, a etiqueta e os dois "limpar" — precisa
             citá-lo NOMINALMENTE. Era assim que `possui_beneficio` tinha sumido.
 
-            O VALOR VIAJA EM ISO (`2026-02-09`), que é o que a view compara;
+            É UM PERÍODO: início e fim, os dois inclusivos. Um dia só é o mesmo dia
+            nas duas pontas.
+
+            OS VALORES VIAJAM EM ISO (`2026-02-09`), que é o que a view compara;
             dd/mm/aaaa aparece na etiqueta e no campo, para quem lê.  */
         const campoDataProc = raizFiltros.querySelector('#filtro-data-proc-ia');
 
-        const dataProcEscolhida = () => ((campoDataProc && campoDataProc.value) || '').trim();
+        /*  O PERÍODO QUE A TABELA ESTÁ USANDO, em ISO: `[]` (todos os dias) ou
+            `[inicio, fim]`. Não é o que o calendário mostra: ele só aplica no "OK"
+            (ver o bloco do flatpickr), e entre os cliques nos dias e o OK os dois
+            divergem. É este que o `onClose` devolve ao campo quando alguém fecha o
+            calendário sem confirmar, e é este que vai ao servidor — o `<input>`
+            original não serve de fonte: em modo período ele guarda as duas datas
+            num texto só.  */
+        let dataProcAplicada = [];
 
-        /*  A DATA QUE A TABELA ESTÁ USANDO, em ISO, que não é a mesma coisa que a
-            do campo: o calendário só aplica no "OK" (ver o bloco do flatpickr), e
-            entre o clique no dia e o OK as duas divergem. É esta que o `onClose`
-            devolve ao campo quando alguém fecha o calendário sem confirmar.  */
-        let dataProcAplicada = '';
+        const dataProcEscolhida = () => dataProcAplicada;
 
         /*  `2026-02-09` -> `09/02/2026`. Só para leitura humana na etiqueta.  */
         const dataProcLegivel = (iso) => String(iso).split('-').reverse().join('/');
@@ -211,7 +217,7 @@
         const caixaDataProc = raizFiltros.querySelector('#campo-data-proc-ia');
         const sincronizarDataProc = () => {
             if (caixaDataProc) {
-                caixaDataProc.classList.toggle('docia-campo-data--vazio', !dataProcEscolhida());
+                caixaDataProc.classList.toggle('docia-campo-data--vazio', !dataProcEscolhida().length);
             }
         };
 
@@ -223,7 +229,7 @@
                     campoDataProc.value = '';
                 }
             }
-            dataProcAplicada = '';
+            dataProcAplicada = [];
             sincronizarDataProc();
         };
 
@@ -393,8 +399,11 @@
 
             /*  Vazio é TODOS OS DIAS, e por isso o parâmetro não vai: ausência
                 significa "tudo" do lado do servidor.  */
-            const dia = dataProcEscolhida();
-            if (dia) busca.append('data_proc', dia);
+            const periodo = dataProcEscolhida();
+            if (periodo.length) {
+                busca.append('data_proc_inicio', periodo[0]);
+                busca.append('data_proc_fim', periodo[1]);
+            }
 
             const campoBusca = document.getElementById('ia-tabela-busca');
             const termo = (campoBusca && campoBusca.value || '').trim();
@@ -465,7 +474,7 @@
                 marcados(nosFiltros('.filter-possui-beneficio')).length
                 + marcados(nosFiltros('.filter-possui-financiamento')).length
                 + marcados(nosFiltros('.filter-possui-qualquer')).length);
-            total += contador('contador-data-proc-ia', dataProcEscolhida() ? 1 : 0);
+            total += contador('contador-data-proc-ia', dataProcEscolhida().length ? 1 : 0);
             total += contador('contador-inconsistencias', inconsistenciasEscolhidas.size);
             CARDS_DE_MENSALIDADE.forEach(([parametro]) => { total += recorteMensalidade[parametro].size; });
             total += recorteHistorico.sit.size + recorteHistorico.alerta.size;
@@ -3174,10 +3183,19 @@
 
             /*  A ETIQUETA MOSTRA dd/mm/aaaa, nunca o ISO: o valor que viaja é
                 `2026-02-09`, e uma faixa que anuncia o recorte numa grafia diferente
-                da do campo logo acima lê como dois filtros, e não um.  */
-            const diaEscolhido = dataProcEscolhida();
-            if (diaEscolhido) {
-                etiquetas.push(chip('Processado em', dataProcLegivel(diaEscolhido), 'data_proc:*'));
+                da do campo logo acima lê como dois filtros, e não um. Período de um
+                dia só diz o dia; os outros dizem as duas pontas, como o campo.
+                O "até" vai entre espaços EN (U+2002): no peso 800 e no espaçamento
+                negativo da etiqueta, o espaço comum some e as datas colam nele.  */
+            const [inicioEscolhido, fimEscolhido] = dataProcEscolhida();
+            if (inicioEscolhido) {
+                if (inicioEscolhido === fimEscolhido) {
+                    etiquetas.push(chip('Processado em', dataProcLegivel(inicioEscolhido), 'data_proc:*'));
+                } else {
+                    etiquetas.push(chip('Processado de',
+                        dataProcLegivel(inicioEscolhido) + ' até ' + dataProcLegivel(fimEscolhido),
+                        'data_proc:*'));
+                }
             }
 
             const iesEscolhidas = iesDaAba();
@@ -3655,16 +3673,29 @@
             que está valendo na tela, senão o campo mostraria uma data que a
             tabela atrás dele não usou.  */
         if (campoDataProc) {
+            /*  O QUE SEPARA AS DUAS PONTAS no campo — o mesmo texto que o widget usa
+                para escrevê-las (`rangeSeparator`), senão o que ele escreve e o que a
+                máscara e a leitura do digitado esperam seriam duas grafias.  */
+            const SEPARADOR_PERIODO = ' até ';
+            const MOLDE_PERIODO = 'dd/mm/aaaa até dd/mm/aaaa';
+            const FRASE_VAZIO = 'Selecione o período';
+
             /*  `0706` -> `07/06/`. A BARRA ENTRA SOZINHA e já fica à frente do
                 próximo número, para quem digita seguir sem procurar a tecla: dois
                 dígitos e a barra aparece, mais dois e aparece a segunda. Só número
-                entra — letra e a própria barra digitada caem no `replace`, e o
-                oitavo dígito é o último que cabe numa data.  */
-            const comBarras = (texto) => {
-                const digitos = String(texto).replace(/\D/g, '').slice(0, 8);
+                entra — letra e a própria barra digitada caem no `replace`.
+
+                O PERÍODO SEGUE A MESMA REGRA: completado o oitavo dígito, o " até "
+                entra sozinho e os oito seguintes são o fim. O 16º é o último.  */
+            const umaData = (digitos) => {
                 if (digitos.length >= 4) return digitos.slice(0, 2) + '/' + digitos.slice(2, 4) + '/' + digitos.slice(4);
                 if (digitos.length >= 2) return digitos.slice(0, 2) + '/' + digitos.slice(2);
                 return digitos;
+            };
+            const comBarras = (texto) => {
+                const digitos = String(texto).replace(/\D/g, '').slice(0, 16);
+                if (digitos.length < 8) return umaData(digitos);
+                return umaData(digitos.slice(0, 8)) + SEPARADOR_PERIODO + umaData(digitos.slice(8));
             };
 
             /*  `07/06/2002` -> `2002-06-07`, e `null` para o que não é dia de
@@ -3680,6 +3711,21 @@
                 return ano + '-' + mes + '-' + dia;
             };
 
+            /*  `07/06/2002 até 10/06/2002` -> `['2002-06-07', '2002-06-10']`; uma
+                data só vale como o período de um dia. `null` se qualquer ponta não
+                for dia de calendário. Digitado de trás para a frente, as pontas se
+                trocam: a pergunta é a mesma, e recusar seria só atrito.  */
+            const periodoDigitado = (texto) => {
+                const pontas = String(texto).split(SEPARADOR_PERIODO.trim())
+                    .map((parte) => parte.trim())
+                    .filter(Boolean);
+                if (!pontas.length || pontas.length > 2) return null;
+                const isos = pontas.map(isoDigitado);
+                if (isos.some((iso) => !iso)) return null;
+                if (isos.length === 1) isos.push(isos[0]);
+                return isos.sort();
+            };
+
             /*  O ÚNICO CAMINHO QUE VAI AO SERVIDOR, venha o dia do calendário ou do
                 teclado. Ler o texto do campo em vez do estado do widget é o que faz
                 os dois caminhos valerem igual: digitar e clicar direto no OK não
@@ -3687,27 +3733,37 @@
 
                 DATA IMPOSSÍVEL NÃO APLICA e não fecha: o campo volta ao que está
                 valendo na tela e o calendário continua aberto, que é onde a pessoa
-                está olhando quando erra o dia.  */
+                está olhando quando erra o dia.
+
+                UM CLIQUE SÓ NO CALENDÁRIO E OK é o período de um dia: o campo
+                mostra só aquela data, e `periodoDigitado` a repete no fim.  */
             const aplicarDataProc = (fp) => {
                 const digitado = (fp.altInput.value || '').trim();
                 if (digitado) {
-                    const iso = isoDigitado(digitado);
-                    if (!iso) {
+                    const periodo = periodoDigitado(digitado);
+                    if (!periodo) {
                         fp.setDate(dataProcAplicada, false);
                         return;
                     }
-                    fp.setDate(iso, false);
+                    fp.setDate(periodo, false);
+                    dataProcAplicada = periodo;
                 } else {
                     fp.clear(false);
+                    dataProcAplicada = [];
                 }
-                dataProcAplicada = campoDataProc.value || '';
                 sincronizarDataProc();
                 fp.close();
                 recarregar();
             };
 
             flatpickr(campoDataProc, {
-                locale: 'pt',
+                /*  O pt do CDN, com o separador das pontas fixado aqui.  */
+                locale: Object.assign({}, (flatpickr.l10ns && flatpickr.l10ns.pt) || {},
+                    { rangeSeparator: SEPARADOR_PERIODO }),
+                /*  PERÍODO: o primeiro clique é o início, o segundo o fim, e o
+                    widget pinta os dias entre eles. Clicar duas vezes no mesmo dia
+                    (ou uma vez só e OK) é o período de um dia.  */
+                mode: 'range',
                 dateFormat: 'Y-m-d',
                 altInput: true,
                 altFormat: 'd/m/Y',
@@ -3739,9 +3795,12 @@
                         /*  APAGAR TEM QUE APAGAR. Sem esta saída, o backspace que come o
                             dígito logo depois de uma barra vê a máscara devolvê-la na
                             mesma tecla, e o campo trava com o cursor preso na barra.  */
-                        if (evento.inputType && evento.inputType.indexOf('delete') === 0
-                            && texto.charAt(texto.length - 1) === '/') {
-                            texto = texto.slice(0, -1);
+                        if (evento.inputType && evento.inputType.indexOf('delete') === 0) {
+                            if (texto.endsWith(SEPARADOR_PERIODO)) {
+                                texto = texto.slice(0, -SEPARADOR_PERIODO.length);
+                            } else if (texto.charAt(texto.length - 1) === '/') {
+                                texto = texto.slice(0, -1);
+                            }
                         }
                         alvo.value = texto;
                     });
@@ -3764,7 +3823,7 @@
                         de pé engolindo tudo que se digitava.  */
                     const selecionarTudo = () => setTimeout(() => alvo.select(), 0);
                     alvo.addEventListener('focus', () => {
-                        alvo.placeholder = 'dd/mm/aaaa';
+                        alvo.placeholder = MOLDE_PERIODO;
                         selecionarTudo();
                     });
                     alvo.addEventListener('click', selecionarTudo);
@@ -3774,7 +3833,7 @@
                         do preenchimento, como se a escolha tivesse sido descartada.  */
                     alvo.addEventListener('blur', () => {
                         if (fp.isOpen) return;
-                        alvo.placeholder = 'Selecione uma data';
+                        alvo.placeholder = FRASE_VAZIO;
                     });
 
                     /*  CLICAR NO CALENDÁRIO NÃO PODE TIRAR O CURSOR DO CAMPO. As setas de
@@ -3790,6 +3849,24 @@
                         if (evento.target.closest('select, input')) return;
                         evento.preventDefault();
                     });
+
+                    /*  ESCOLHER O MÊS NA LISTA ACENDE O MÊS INTEIRO: do dia 1 ao último,
+                        como se a pessoa tivesse clicado nas duas pontas. Continua sendo
+                        só o calendário aceso — quem vai ao servidor é o OK, como nos
+                        cliques nos dias. As setas de mês ficam de fora: elas são o
+                        caminho de quem está procurando um dia, e preencher cada mês
+                        atravessado trocaria a escolha por baixo da pessoa.
+
+                        O ouvinte do flatpickr nesta lista foi registrado antes deste,
+                        por isso aqui `currentMonth`/`currentYear` já são o mês novo.
+                        O dia 0 do mês seguinte é o último deste — 28, 29, 30 ou 31.  */
+                    if (fp.monthsDropdownContainer) {
+                        fp.monthsDropdownContainer.addEventListener('change', () => {
+                            const ano = fp.currentYear;
+                            const mes = fp.currentMonth;
+                            fp.setDate([new Date(ano, mes, 1), new Date(ano, mes + 1, 0)], false);
+                        });
+                    }
 
                     /*  ROLAR FECHA O CALENDÁRIO. Ele mora no `<body>`, posicionado uma
                         vez só na abertura: rolar a barra de filtros levava o campo
@@ -3843,14 +3920,16 @@
                     }
                 },
                 onClose: (datas, texto, fp) => {
-                    if (texto !== dataProcAplicada) fp.setDate(dataProcAplicada, false);
+                    /*  No período, o calendário pode fechar com só o início aceso: a
+                        volta ao aplicado é sempre, e não só quando o texto difere.  */
+                    fp.setDate(dataProcAplicada, false);
                     /*  O `blur` de quem clica fora corre ANTES deste fechamento, e sai sem
                         fazer nada porque o calendário ainda estava aberto. O molde volta a
                         ser o texto de repouso aqui — salvo quando o foco ficou no campo,
                         que é o caso do OK e do Enter: ali a pessoa continua no campo, e
                         trocar o molde por baixo dela seria a mesma piscada.  */
                     if (document.activeElement !== fp.altInput) {
-                        fp.altInput.placeholder = 'Selecione uma data';
+                        fp.altInput.placeholder = FRASE_VAZIO;
                     }
                 },
             });

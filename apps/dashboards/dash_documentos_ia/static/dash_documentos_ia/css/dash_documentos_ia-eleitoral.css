@@ -547,9 +547,20 @@ html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.today {
     A forte é o tom medido para levar branco em cima (ver `tema.css`).  */
 html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.selected,
 html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.selected:hover,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.startRange,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.startRange:hover,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.endRange,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.endRange:hover,
 html[data-tema="eleitoral"] .docia-calendario__ok {
     background-color: var(--tema-primaria-forte);
     color: #FFFFFF;
+}
+
+/*  O MIOLO DO PERÍODO é a mesma lavada do hover, que no escuro é o tom que se
+    lê sobre o grafite (o lilás do claro some nele).  */
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.inRange,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.inRange:hover {
+    background-color: var(--tema-primaria-lavada);
 }
 
 html[data-tema="eleitoral"] .docia-calendario__ok:hover {
