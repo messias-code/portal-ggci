@@ -1,0 +1,23 @@
+/* ==========================================================================
+   BOTÕES DO MOTOR — Iniciar / Parar / Baixar
+   ==========================================================================
+   Componente compartilhado, como o `console.css`: Renovação de Cadastramento e
+   Análise IA usam o mesmo estado visual dos botões da barra do motor.
+
+   - Iniciar ocupado: apagado, cursor de espera; o JS troca o ícone por um
+     spinner (`fa-circle-notch fa-spin`).
+   - Parar: só aceso com o motor rodando (`disabled` fora disso).
+   - Baixar pronto: verde. Classe própria porque utilitária nova não existe no
+     bundle purgado do Tailwind.
+   Os seletores usam o id para vencer as utilitárias fixas do markup.
+   ========================================================================== */
+#btn-start.motor-iniciar--ocupado { opacity: 0.6; cursor: wait; }
+#btn-stop:disabled { opacity: 0.45; cursor: not-allowed; }
+#btn-stop:not(:disabled) { opacity: 1; cursor: pointer; }
+#btn-download.motor-baixar--pronto {
+    background-image: linear-gradient(to right, #22c55e, #16a34a, #15803d);
+    color: #ffffff;
+    cursor: pointer;
+    box-shadow: 0 6px 16px rgba(22, 163, 74, 0.25);
+}
+#btn-download.motor-baixar--pronto:hover { background-image: linear-gradient(to bottom right, #22c55e, #16a34a, #15803d); }
