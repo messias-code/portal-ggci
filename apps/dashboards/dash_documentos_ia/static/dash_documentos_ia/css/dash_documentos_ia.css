@@ -1060,6 +1060,7 @@ body { font-family: 'Poppins', sans-serif; }
 }
 
 .docia-campo-data:focus-within,
+.docia-campo-data.docia-campo-data--aberto,
 .docia-campo-data:has(.docia-campo-data__entrada.active) {
     box-shadow: inset 0 0 0 1px rgba(107, 0, 123, 0.28),
                 0 0 0 3px rgba(107, 0, 123, 0.08);
@@ -1106,6 +1107,7 @@ body { font-family: 'Poppins', sans-serif; }
     pointer-events: none;
 }
 
+.docia-campo-data.docia-campo-data--aberto .docia-campo-data__seta,
 .docia-campo-data:has(.docia-campo-data__entrada.active) .docia-campo-data__seta {
     transform: rotate(180deg);
 }
@@ -2455,9 +2457,56 @@ html[data-tela-cheia="1"] .docia-legenda__pct { width: 44px; }
 #btn-abrir-console,
 #btn-clear-filters,
 .tela-voltar,
+.botao-tema,
 .docia-btn-copiar-coluna {
     transition: background-color 0.18s ease, color 0.18s ease,
-                box-shadow 0.18s ease, translate 0.12s ease;
+                border-color 0.18s ease, box-shadow 0.18s ease,
+                transform 0.2s ease, translate 0.12s ease;
+}
+
+.tela-voltar:not(.tema-toggle),
+.botao-tema {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background-image: none !important;
+}
+
+.tela-voltar:not(.tema-toggle)::before,
+.tela-voltar:not(.tema-toggle)::after,
+.botao-tema::before,
+.botao-tema::after {
+    display: none !important;
+    content: none !important;
+}
+
+html:not([data-tema="eleitoral"]) .tela-voltar:not(.tema-toggle):not(.docia-botao-ativo):not(.botao-tema--excel),
+html:not([data-tema="eleitoral"]) .botao-tema:not(.docia-botao-ativo):not(.botao-tema--excel) {
+    background-color: #FFFFFF;
+    border-color: color-mix(in srgb, currentColor 20%, transparent);
+    color: #DB2777;
+}
+
+html:not([data-tema="eleitoral"]) .tela-voltar:not(.tema-toggle):not(.docia-botao-ativo):not(.botao-tema--excel):hover,
+html:not([data-tema="eleitoral"]) .botao-tema:not(.docia-botao-ativo):not(.botao-tema--excel):hover {
+    background-color: color-mix(in srgb, currentColor 6%, white);
+    border-color: color-mix(in srgb, currentColor 20%, transparent);
+    color: #DB2777;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    transform: translateY(-1px);
+}
+
+html:not([data-tema="eleitoral"]) .botao-tema--excel:not(.docia-botao-ativo) {
+    background-color: #FFFFFF;
+    border-color: color-mix(in srgb, currentColor 20%, transparent);
+    color: #1D6F42;
+}
+
+html:not([data-tema="eleitoral"]) .botao-tema--excel:not(.docia-botao-ativo):hover {
+    background-color: color-mix(in srgb, currentColor 6%, white);
+    border-color: color-mix(in srgb, currentColor 20%, transparent);
+    color: #1D6F42;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    transform: translateY(-1px);
 }
 
 /*  O botão de filtros sai da lista acima porque precisa de duas propriedades
@@ -2483,6 +2532,7 @@ html[data-tela-cheia="1"] .docia-legenda__pct { width: 44px; }
 #btn-clear-filters:active,
 #toggle-sidebar-btn:active,
 .tela-voltar:active,
+.botao-tema:active,
 .docia-btn-copiar-coluna:active {
     translate: 0 1px;
 }
@@ -2494,6 +2544,7 @@ html[data-tela-cheia="1"] .docia-legenda__pct { width: 44px; }
     #btn-clear-filters:active,
     #toggle-sidebar-btn:active,
     .tela-voltar:active,
+    .botao-tema:active,
     .docia-btn-copiar-coluna:active { translate: none; }
 }
 
@@ -4744,6 +4795,18 @@ html:not([data-tema="eleitoral"]) #ia-tabela-rolagem thead th {
     font-size: 0.8125rem;
 }
 
+/*  O calendário mora direto no `<body>` (fora de `.menu-shell` e `.area-trabalho`),
+    então sem estas regras ele herdaria o azul nativo de seleção de texto e o
+    anel de foco ao interagir com o ano ou o mês pelo mouse.  */
+.docia-calendario ::selection {
+    background-color: rgba(107, 0, 123, 0.18);
+    color: inherit;
+}
+
+html[data-entrada="mouse"] .docia-calendario :focus-visible {
+    outline: none;
+}
+
 /*  O BICO SOME. O flatpickr desenha o triângulo com `::before`/`::after` em
     branco fixo e borda cinza — no eleitoral ele viraria uma lasca clara
     grudada no painel escuro, e repintar dois pseudo-elementos por posição
@@ -4791,38 +4854,156 @@ html:not([data-tema="eleitoral"]) #ia-tabela-rolagem thead th {
     font-weight: 700;
 }
 
-/*  O MÊS É UM `<select>` de verdade — é assim que se anda doze meses de uma
-    vez sem doze cliques na seta. O que sai é a APARÊNCIA nativa: a setinha do
-    sistema dentro de um calendário desenhado à mão é o pedaço que denuncia o
-    widget de fora. O hover é o que sobrou dizendo "isto abre".  */
-.docia-calendario .flatpickr-current-month .flatpickr-monthDropdown-months {
-    appearance: none;
-    -webkit-appearance: none;
+/*  O NOME DO MÊS ABRE A GRADE DE MESES. Ele é texto (`monthSelectorType:
+    'static'`), e não o `<select>` de fábrica: a lista que o `<select>` abre é
+    desenhada pelo sistema, fora do alcance desta folha, e era o único pedaço do
+    calendário com cara de outro programa. Mesmo vocabulário do ano ao lado:
+    fundo lavado no hover, e roxo enquanto a grade está aberta.  */
+.docia-calendario .flatpickr-current-month span.cur-month.docia-calendario__nome-mes {
+    display: inline-flex;
+    align-items: center;
     height: 1.625rem;
     padding: 0 0.5rem;
     border-radius: 0.5rem;
-    background: transparent;
-    font-size: 0.875rem;
-    font-weight: 700;
+    color: var(--tema-texto-forte);
     cursor: pointer;
-    transition: background-color 0.15s ease;
+    transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-.docia-calendario .flatpickr-current-month .flatpickr-monthDropdown-months:hover {
+.docia-calendario .flatpickr-current-month span.cur-month.docia-calendario__nome-mes:hover,
+.docia-calendario .flatpickr-current-month span.cur-month.docia-calendario__nome-mes--aberto {
+    background-color: rgba(107, 0, 123, 0.08);
+    color: #6B007B;
+}
+
+/*  A GRADE cobre a semana e os dias (o `innerContainer`), e não o calendário
+    inteiro: o cabeçalho continua à mostra para trocar o ano antes de escolher
+    o mês, e o rodapé com o OK também. Três colunas de quatro, com a mesma
+    célula dos dias — canto de 0.5rem, fundo lavado no hover — e o mês que está
+    no cabeçalho marcado pelo mesmo lavado, um degrau mais forte, em roxo.  */
+.docia-calendario .flatpickr-innerContainer {
+    position: relative;
+}
+
+.docia-calendario__meses {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem 0.5rem;
+    background-color: var(--tema-superficie);
+}
+
+.docia-calendario__meses[hidden] {
+    display: none;
+}
+
+.docia-calendario__mes {
+    border: 0;
+    border-radius: 0.5rem;
+    background: transparent;
+    color: var(--tema-texto-forte);
+    font-family: inherit;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.docia-calendario__mes:hover {
     background-color: rgba(107, 0, 123, 0.08);
 }
 
-/*  As opções caem no menu do SISTEMA, fora do alcance do CSS da página: só o
-    fundo e a tinta passam, e sem eles o menu do escuro abre branco.  */
-.docia-calendario .flatpickr-monthDropdown-months .flatpickr-monthDropdown-month {
-    background-color: var(--tema-superficie);
-    color: var(--tema-texto-forte);
+.docia-calendario__mes.docia-calendario__mes--atual {
+    background-color: rgba(107, 0, 123, 0.12);
+    color: #6B007B;
+    font-weight: 700;
+}
+
+/*  O ANO E SUAS SETAS. Sem estas regras, a folha original do flatpickr
+    pinta um fundo cinza quadrado no hover e mostra caixas `.arrowUp`/`.arrowDown`
+    com borda e triângulos pretos sobre o ano ao interagir com ele.  */
+.docia-calendario .flatpickr-current-month .numInputWrapper {
+    display: inline-flex;
+    align-items: center;
+    width: auto;
+    height: 1.625rem;
+    padding: 0 1.125rem 0 0.375rem;
+    border-radius: 0.5rem;
+    background: transparent;
+    transition: background-color 0.15s ease;
+}
+
+.docia-calendario .flatpickr-current-month .numInputWrapper:hover,
+.docia-calendario .flatpickr-current-month .numInputWrapper:focus-within {
+    background-color: rgba(107, 0, 123, 0.08);
+}
+
+.docia-calendario .flatpickr-current-month .numInputWrapper:focus-within span {
+    opacity: 1;
 }
 
 .docia-calendario .flatpickr-current-month input.cur-year {
+    width: 4.25ch;
+    min-width: 4.25ch;
     padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--tema-texto-forte);
+    font-family: inherit;
     font-size: 0.875rem;
     font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    outline: none;
+}
+
+.docia-calendario .flatpickr-current-month input.cur-year:hover,
+.docia-calendario .flatpickr-current-month input.cur-year:focus {
+    background: transparent;
+    color: var(--tema-texto-forte);
+    outline: none;
+}
+
+.docia-calendario .flatpickr-current-month .numInputWrapper span.arrowUp,
+.docia-calendario .flatpickr-current-month .numInputWrapper span.arrowDown {
+    right: 0.125rem;
+    width: 0.9375rem;
+    padding: 0;
+    border: 0;
+    border-radius: 0.25rem;
+    background: transparent;
+    transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+
+.docia-calendario .flatpickr-current-month .numInputWrapper span.arrowUp:hover,
+.docia-calendario .flatpickr-current-month .numInputWrapper span.arrowDown:hover,
+.docia-calendario .flatpickr-current-month .numInputWrapper span.arrowUp:active,
+.docia-calendario .flatpickr-current-month .numInputWrapper span.arrowDown:active {
+    background-color: rgba(107, 0, 123, 0.14);
+}
+
+.docia-calendario .flatpickr-current-month .numInputWrapper span.arrowUp::after {
+    left: 50%;
+    transform: translateX(-50%);
+    border-bottom-color: var(--tema-texto-medio);
+}
+
+.docia-calendario .flatpickr-current-month .numInputWrapper span.arrowUp:hover::after {
+    border-bottom-color: #6B007B;
+}
+
+.docia-calendario .flatpickr-current-month .numInputWrapper span.arrowDown::after {
+    left: 50%;
+    transform: translateX(-50%);
+    border-top-color: var(--tema-texto-medio);
+}
+
+.docia-calendario .flatpickr-current-month .numInputWrapper span.arrowDown:hover::after {
+    border-top-color: #6B007B;
 }
 
 .docia-calendario .flatpickr-months .flatpickr-prev-month,
@@ -4900,8 +5081,11 @@ html:not([data-tema="eleitoral"]) #ia-tabela-rolagem thead th {
     font-weight: 600;
 }
 
-.docia-calendario .flatpickr-day:hover {
+.docia-calendario .flatpickr-day:hover,
+.docia-calendario .flatpickr-day:focus {
     background-color: rgba(107, 0, 123, 0.08);
+    border-color: transparent;
+    color: var(--tema-texto-forte);
 }
 
 .docia-calendario .flatpickr-day.prevMonthDay,
@@ -4910,39 +5094,47 @@ html:not([data-tema="eleitoral"]) #ia-tabela-rolagem thead th {
     opacity: 0.6;
 }
 
+.docia-calendario .flatpickr-day.prevMonthDay:hover,
+.docia-calendario .flatpickr-day.prevMonthDay:focus,
+.docia-calendario .flatpickr-day.nextMonthDay:hover,
+.docia-calendario .flatpickr-day.nextMonthDay:focus {
+    background-color: rgba(107, 0, 123, 0.08);
+    border-color: transparent;
+    color: var(--tema-texto-fraco);
+}
+
 /*  HOJE É UM ARO, não um fundo: o fundo é a marca de ESCOLHIDO, e as duas
     coisas juntas na mesma célula dizem a mesma coisa duas vezes. `inset` para
-    não empurrar a grade.  */
+    não empurrar a grade. `:hover` e `:focus` vencem o `#959ea9` de fábrica.  */
 .docia-calendario .flatpickr-day.today {
+    border-color: transparent;
     box-shadow: inset 0 0 0 1px #6B007B;
 }
 
-.docia-calendario .flatpickr-day.selected,
-.docia-calendario .flatpickr-day.selected:hover {
-    background-color: #6B007B;
+.docia-calendario .flatpickr-day.today:hover,
+.docia-calendario .flatpickr-day.today:focus {
+    background-color: rgba(107, 0, 123, 0.08);
     border-color: transparent;
-    color: #FFFFFF;
+    color: var(--tema-texto-forte);
 }
 
-/*  O PERÍODO (`mode: 'range'`). De fábrica o widget pinta as pontas de azul e o
-    miolo de cinza com uma sombra lateral de 5px, e emenda as pontas numa pílula
-    só. Aqui as PONTAS são o dia escolhido de sempre (roxo sólido, canto do resto
-    da grade) e o MIOLO é a faixa lavada contínua — sem canto, porque os dias já
-    se encostam (`margin: 0`). O hoje dentro da faixa mantém o aro.
-    A última regra tira a sombra azul de 10px que o widget põe no fim colado ao
-    início; o seletor dele pesa cinco classes, daí a repetição.  */
-.docia-calendario .flatpickr-day.startRange,
-.docia-calendario .flatpickr-day.endRange,
-.docia-calendario .flatpickr-day.startRange:hover,
-.docia-calendario .flatpickr-day.endRange:hover {
-    background-color: #6B007B;
-    border-color: transparent;
-    border-radius: 0.5rem;
-    color: #FFFFFF;
-}
-
+/*  O PERÍODO (`mode: 'range'`). O miolo (`inRange`) vem ANTES das pontas
+    (`selected`/`startRange`/`endRange`) para que uma ponta com `inRange`
+    simultâneo mantenha o fundo roxo sólido, a letra branca e o canto de 0.5rem.  */
 .docia-calendario .flatpickr-day.inRange,
-.docia-calendario .flatpickr-day.inRange:hover {
+.docia-calendario .flatpickr-day.inRange:hover,
+.docia-calendario .flatpickr-day.inRange:focus,
+.docia-calendario .flatpickr-day.prevMonthDay.inRange,
+.docia-calendario .flatpickr-day.prevMonthDay.inRange:hover,
+.docia-calendario .flatpickr-day.prevMonthDay.inRange:focus,
+.docia-calendario .flatpickr-day.nextMonthDay.inRange,
+.docia-calendario .flatpickr-day.nextMonthDay.inRange:hover,
+.docia-calendario .flatpickr-day.nextMonthDay.inRange:focus,
+.docia-calendario .flatpickr-day.today.inRange,
+.docia-calendario .flatpickr-day.today.inRange:hover,
+.docia-calendario .flatpickr-day.today.inRange:focus,
+.docia-calendario .flatpickr-day.prevMonthDay.today.inRange,
+.docia-calendario .flatpickr-day.nextMonthDay.today.inRange {
     background-color: rgba(107, 0, 123, 0.10);
     border-color: transparent;
     border-radius: 0;
@@ -4951,6 +5143,40 @@ html:not([data-tema="eleitoral"]) #ia-tabela-rolagem thead th {
 
 .docia-calendario .flatpickr-day.inRange:not(.today) {
     box-shadow: none;
+}
+
+.docia-calendario .flatpickr-day.selected,
+.docia-calendario .flatpickr-day.selected:hover,
+.docia-calendario .flatpickr-day.selected:focus,
+.docia-calendario .flatpickr-day.selected.inRange,
+.docia-calendario .flatpickr-day.selected.prevMonthDay,
+.docia-calendario .flatpickr-day.selected.nextMonthDay,
+.docia-calendario .flatpickr-day.startRange,
+.docia-calendario .flatpickr-day.startRange:hover,
+.docia-calendario .flatpickr-day.startRange:focus,
+.docia-calendario .flatpickr-day.startRange.inRange,
+.docia-calendario .flatpickr-day.startRange.prevMonthDay,
+.docia-calendario .flatpickr-day.startRange.nextMonthDay,
+.docia-calendario .flatpickr-day.endRange,
+.docia-calendario .flatpickr-day.endRange:hover,
+.docia-calendario .flatpickr-day.endRange:focus,
+.docia-calendario .flatpickr-day.endRange.inRange,
+.docia-calendario .flatpickr-day.endRange.prevMonthDay,
+.docia-calendario .flatpickr-day.endRange.nextMonthDay,
+.docia-calendario .flatpickr-day.selected.startRange,
+.docia-calendario .flatpickr-day.startRange.startRange,
+.docia-calendario .flatpickr-day.endRange.startRange,
+.docia-calendario .flatpickr-day.selected.endRange,
+.docia-calendario .flatpickr-day.startRange.endRange,
+.docia-calendario .flatpickr-day.endRange.endRange,
+.docia-calendario .flatpickr-day.selected.startRange.endRange,
+.docia-calendario .flatpickr-day.startRange.startRange.endRange,
+.docia-calendario .flatpickr-day.endRange.startRange.endRange {
+    background-color: #6B007B;
+    border-color: transparent;
+    border-radius: 0.5rem;
+    color: #FFFFFF;
+    opacity: 1;
 }
 
 .docia-calendario .flatpickr-day.selected.startRange + .endRange:not(:nth-child(7n+1)),

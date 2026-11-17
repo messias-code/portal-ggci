@@ -3679,6 +3679,11 @@
             const SEPARADOR_PERIODO = ' até ';
             const MOLDE_PERIODO = 'dd/mm/aaaa até dd/mm/aaaa';
             const FRASE_VAZIO = 'Selecione o período';
+            /*  O PRIMEIRO ANO QUE O FILTRO ACEITA. Os dados analisados começam em
+                2025, e um período anterior só devolveria a tabela vazia. A trava vale
+                nos dois caminhos: no calendário (`minDate` apaga os dias, a seta e o
+                ano antes dele) e no teclado (`isoDigitado` recusa o ano).  */
+            const ANO_MINIMO = 2025;
 
             /*  `0706` -> `07/06/`. A BARRA ENTRA SOZINHA e já fica à frente do
                 próximo número, para quem digita seguir sem procurar a tecla: dois
@@ -3706,6 +3711,7 @@
                 const partes = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(texto).trim());
                 if (!partes) return null;
                 const [, dia, mes, ano] = partes;
+                if (Number(ano) < ANO_MINIMO) return null;
                 const data = new Date(Number(ano), Number(mes) - 1, Number(dia));
                 if (data.getDate() !== Number(dia) || data.getMonth() !== Number(mes) - 1) return null;
                 return ano + '-' + mes + '-' + dia;
@@ -3726,6 +3732,41 @@
                 return isos.sort();
             };
 
+            /*  CONFERE SE UM PAR DE DATAS FORMA UM MÊS INTEIRO, do dia 1 ao último
+                dia daquele mesmo mês/ano. É o que separa "navegação de mês"
+                (escolhido na lista ou nas setas enquanto já há um mês inteiro)
+                de um período manual clicado dia a dia.  */
+            const ehMesInteiro = (datas) => {
+                if (!Array.isArray(datas) || datas.length !== 2) return false;
+                const [inicio, fim] = datas;
+                if (!(inicio instanceof Date) || !(fim instanceof Date)) return false;
+                const ano = inicio.getFullYear();
+                const mes = inicio.getMonth();
+                if (fim.getFullYear() !== ano || fim.getMonth() !== mes) return false;
+                return inicio.getDate() === 1
+                    && fim.getDate() === new Date(ano, mes + 1, 0).getDate();
+            };
+
+            const ehMesInteiroDoMesAtual = (fp) => ehMesInteiro(fp.selectedDates)
+                && fp.selectedDates[0].getFullYear() === fp.currentYear
+                && fp.selectedDates[0].getMonth() === fp.currentMonth;
+
+            /*  Controla quando o próximo dígito deve substituir o período já
+                escrito no campo em vez de esbarrar no limite de 16 dígitos da
+                máscara `comBarras`. Nasce ligado ao focar/abrir ou quando o
+                calendário preenche o campo.  */
+            let substituirAoDigitar = false;
+            let recemFocado = false;
+            let recemAberto = false;
+            /*  Fecha a grade de meses; montada no `onReady`, chamada também no
+                Esc e no fechamento do calendário.  */
+            let fecharMeses = () => {};
+
+            const selecionarMesInteiro = (fp, ano = fp.currentYear, mes = fp.currentMonth) => {
+                fp.setDate([new Date(ano, mes, 1), new Date(ano, mes + 1, 0)], false);
+                substituirAoDigitar = true;
+            };
+
             /*  O ÚNICO CAMINHO QUE VAI AO SERVIDOR, venha o dia do calendário ou do
                 teclado. Ler o texto do campo em vez do estado do widget é o que faz
                 os dois caminhos valerem igual: digitar e clicar direto no OK não
@@ -3738,11 +3779,24 @@
                 UM CLIQUE SÓ NO CALENDÁRIO E OK é o período de um dia: o campo
                 mostra só aquela data, e `periodoDigitado` a repete no fim.  */
             const aplicarDataProc = (fp) => {
+                if (fp.currentYearElement) {
+                    const textoAno = String(fp.currentYearElement.value || '').trim();
+                    if (/^\d{4}$/.test(textoAno)) {
+                        const anoDigitado = parseInt(textoAno, 10);
+                        if (anoDigitado >= ANO_MINIMO && anoDigitado <= 2100 && anoDigitado !== fp.currentYear) {
+                            fp.changeYear(anoDigitado);
+                            if (fp.selectedDates.length !== 1) {
+                                selecionarMesInteiro(fp, anoDigitado, fp.currentMonth);
+                            }
+                        }
+                    }
+                }
                 const digitado = (fp.altInput.value || '').trim();
                 if (digitado) {
                     const periodo = periodoDigitado(digitado);
                     if (!periodo) {
                         fp.setDate(dataProcAplicada, false);
+                        substituirAoDigitar = true;
                         return;
                     }
                     fp.setDate(periodo, false);
@@ -3753,6 +3807,7 @@
                 }
                 sincronizarDataProc();
                 fp.close();
+                fp.altInput.blur();
                 recarregar();
             };
 
@@ -3765,16 +3820,45 @@
                     (ou uma vez só e OK) é o período de um dia.  */
                 mode: 'range',
                 dateFormat: 'Y-m-d',
+                minDate: ANO_MINIMO + '-01-01',
                 altInput: true,
                 altFormat: 'd/m/Y',
                 /*  Substitui o `form-control input` que o flatpickr põe por padrão no
                     campo visível — classe de Bootstrap, que este portal não carrega.  */
                 altInputClass: 'docia-campo-data__entrada',
-                allowInput: true,
+                /*  Mantemos `allowInput: false` no widget para que o `onBlur` e o
+                    `documentClick` internos do flatpickr não reparseiem e sobrescrevam
+                    a seleção quando o foco vai para o `<input>` de ano; o `readonly` de `altInput` é removido logo no `onReady`
+                    para preservar a digitação livre com nossa máscara.  */
+                allowInput: false,
                 closeOnSelect: false,
                 /*  `type="date"` faz o flatpickr devolver o popup NATIVO no celular, que
                     é justamente o que este bloco existe para não usar.  */
                 disableMobile: true,
+                /*  O NOME DO MÊS É TEXTO, e não o `<select>` de fábrica: a lista que o
+                    `<select>` abre é desenhada pelo SISTEMA — caixa cinza, letra do
+                    sistema, azul de seleção —, fora do alcance de qualquer CSS. Quem
+                    abre a escolha do mês é a grade montada no `onReady`.  */
+                monthSelectorType: 'static',
+                onOpen: (datas, texto, fp) => {
+                    if (caixaDataProc) caixaDataProc.classList.add('docia-campo-data--aberto');
+                    substituirAoDigitar = true;
+                    recemAberto = true;
+                    fp.altInput.placeholder = MOLDE_PERIODO;
+                },
+                onChange: () => {
+                    substituirAoDigitar = true;
+                },
+                onYearChange: (datas, texto, fp) => {
+                    if (fp.selectedDates.length !== 1) {
+                        selecionarMesInteiro(fp);
+                    }
+                },
+                onMonthChange: (datas, texto, fp) => {
+                    if (ehMesInteiro(fp.selectedDates)) {
+                        selecionarMesInteiro(fp);
+                    }
+                },
                 onReady: (datas, texto, fp) => {
                     fp.calendarContainer.classList.add('docia-calendario');
 
@@ -3789,8 +3873,26 @@
                     fp.calendarContainer.appendChild(rodape);
 
                     const alvo = fp.altInput;
+                    alvo.removeAttribute('readonly');
+
+                    alvo.addEventListener('keydown', (evento) => {
+                        if (evento.ctrlKey || evento.metaKey || evento.altKey) return;
+                        if (/^\d$/.test(evento.key)) {
+                            const temSelecaoParcial = alvo.selectionStart !== null
+                                && alvo.selectionEnd !== null
+                                && alvo.selectionStart !== alvo.selectionEnd
+                                && (alvo.selectionStart > 0 || alvo.selectionEnd < alvo.value.length);
+                            if (substituirAoDigitar && !temSelecaoParcial) {
+                                alvo.value = '';
+                                substituirAoDigitar = false;
+                            }
+                        } else if (evento.key === 'Backspace' || evento.key === 'Delete') {
+                            substituirAoDigitar = false;
+                        }
+                    });
 
                     alvo.addEventListener('input', (evento) => {
+                        substituirAoDigitar = false;
                         let texto = comBarras(alvo.value);
                         /*  APAGAR TEM QUE APAGAR. Sem esta saída, o backspace que come o
                             dígito logo depois de uma barra vê a máscara devolvê-la na
@@ -3811,25 +3913,39 @@
                         cinza de fundo e não vai ao servidor por engano.  */
                     /*  O TEXTO INTEIRO NASCE SELECIONADO, para a primeira tecla trocar
                         a data em vez de tentar somar dígitos a uma que já está
-                        completa — a máscara para no oitavo, e sem isto digitar por
-                        cima de `07/06/2002` não mudava nada.
+                        completa — a máscara para no décimo sexto, e sem isto digitar
+                        por cima de um período já preenchido não mudava nada.
 
                         NO QUADRO SEGUINTE: é o `mouseup` do clique que põe o cursor
                         onde se clicou, e ele desfaria uma seleção feita agora.
 
-                        NO `click` TAMBÉM, e não só no `focus`: depois de um Esc o
-                        widget devolve o foco ao campo sozinho, e o clique seguinte
-                        não é mais um `focus` — era o caso em que a data velha ficava
-                        de pé engolindo tudo que se digitava.  */
+                        NO PRIMEIRO CLIQUE DE FOCO/ABERTURA: cliques subsequentes no
+                        campo já aberto deixam o usuário posicionar o cursor normalmente
+                        para editar apenas uma parte da data.  */
                     const selecionarTudo = () => setTimeout(() => alvo.select(), 0);
                     alvo.addEventListener('focus', () => {
                         alvo.placeholder = MOLDE_PERIODO;
+                        substituirAoDigitar = true;
+                        recemFocado = true;
                         selecionarTudo();
+                        setTimeout(() => {
+                            recemFocado = false;
+                            recemAberto = false;
+                        }, 0);
                     });
-                    alvo.addEventListener('click', selecionarTudo);
+                    alvo.addEventListener('click', () => {
+                        if (recemFocado || recemAberto) {
+                            recemFocado = false;
+                            recemAberto = false;
+                            substituirAoDigitar = true;
+                            selecionarTudo();
+                        } else {
+                            substituirAoDigitar = false;
+                        }
+                    });
                     /*  O MOLDE SÓ CAI QUANDO O CALENDÁRIO FECHA. Clicar numa seta de mês
                         tira o foco do campo e disparava este `blur` com o calendário
-                        ainda aberto: o `dd/mm/aaaa` virava `Selecione uma data` no meio
+                        ainda aberto: o `dd/mm/aaaa` virava `Selecione o período` no meio
                         do preenchimento, como se a escolha tivesse sido descartada.  */
                     alvo.addEventListener('blur', () => {
                         if (fp.isOpen) return;
@@ -3850,33 +3966,100 @@
                         evento.preventDefault();
                     });
 
-                    /*  ESCOLHER O MÊS NA LISTA ACENDE O MÊS INTEIRO: do dia 1 ao último,
-                        como se a pessoa tivesse clicado nas duas pontas. Continua sendo
-                        só o calendário aceso — quem vai ao servidor é o OK, como nos
-                        cliques nos dias. As setas de mês ficam de fora: elas são o
-                        caminho de quem está procurando um dia, e preencher cada mês
-                        atravessado trocaria a escolha por baixo da pessoa.
+                    /*  A GRADE DE MESES: clicar no nome do mês abre os doze por cima dos
+                        dias, no mesmo desenho deles — é a lista do `<select>` de fábrica
+                        redesenhada dentro do calendário (ver `monthSelectorType`).
 
-                        O ouvinte do flatpickr nesta lista foi registrado antes deste,
-                        por isso aqui `currentMonth`/`currentYear` já são o mês novo.
-                        O dia 0 do mês seguinte é o último deste — 28, 29, 30 ou 31.  */
-                    if (fp.monthsDropdownContainer) {
-                        fp.monthsDropdownContainer.addEventListener('change', () => {
-                            const ano = fp.currentYear;
-                            const mes = fp.currentMonth;
-                            fp.setDate([new Date(ano, mes, 1), new Date(ano, mes + 1, 0)], false);
+                        ESCOLHER O MÊS ACENDE O MÊS INTEIRO: do dia 1 ao último, como se
+                        a pessoa tivesse clicado nas duas pontas. Continua sendo só o
+                        calendário aceso — quem vai ao servidor é o OK, como nos cliques
+                        nos dias. Escolher de novo o mês que já está no cabeçalho também
+                        acende — a lista nativa não avisava nesse caso.
+
+                        O ANO FICA À MOSTRA com a grade aberta: troca-se o ano primeiro e
+                        escolhe-se o mês depois. Clicar fora da grade (no nome do mês de
+                        novo, numa seta) a fecha sem mudar nada.  */
+                    const nomeDoMes = fp.monthNav.querySelector('.cur-month');
+                    const gradeMeses = document.createElement('div');
+                    gradeMeses.className = 'docia-calendario__meses';
+                    gradeMeses.hidden = true;
+                    const botoesMes = fp.l10n.months.longhand.map((nome, mes) => {
+                        const botao = document.createElement('button');
+                        botao.type = 'button';
+                        botao.className = 'docia-calendario__mes';
+                        botao.textContent = nome;
+                        botao.addEventListener('click', () => {
+                            fecharMeses();
+                            fp.changeMonth(mes, false);
+                            selecionarMesInteiro(fp, fp.currentYear, mes);
                         });
+                        gradeMeses.appendChild(botao);
+                        return botao;
+                    });
+                    fp.innerContainer.appendChild(gradeMeses);
+
+                    fecharMeses = () => {
+                        gradeMeses.hidden = true;
+                        if (nomeDoMes) nomeDoMes.classList.remove('docia-calendario__nome-mes--aberto');
+                    };
+                    const abrirMeses = () => {
+                        botoesMes.forEach((botao, mes) => botao.classList.toggle(
+                            'docia-calendario__mes--atual', mes === fp.currentMonth));
+                        gradeMeses.hidden = false;
+                        if (nomeDoMes) nomeDoMes.classList.add('docia-calendario__nome-mes--aberto');
+                    };
+                    if (nomeDoMes) {
+                        nomeDoMes.classList.add('docia-calendario__nome-mes');
+                        nomeDoMes.title = 'Escolher o mês';
+                        nomeDoMes.addEventListener('click', () => {
+                            if (gradeMeses.hidden) abrirMeses();
+                            else fecharMeses();
+                        });
+                    }
+                    fp.monthNav.addEventListener('click', (evento) => {
+                        if (evento.target.closest('.flatpickr-prev-month, .flatpickr-next-month')) fecharMeses();
+                    });
+
+                    /*  ALTERAR O ANO MANUALMENTE NO `<input>` DO CABEÇALHO sincroniza
+                        `fp.currentYear` e acende o mês inteiro no novo ano assim que os
+                        4 dígitos são válidos, sem precisar trocar o mês de lugar.  */
+                    if (fp.currentYearElement) {
+                        const sincronizarAno = () => {
+                            const textoAno = String(fp.currentYearElement.value || '').trim();
+                            if (!/^\d{4}$/.test(textoAno)) return;
+                            const ano = parseInt(textoAno, 10);
+                            /*  Ano antes do primeiro aceito volta ao que o calendário
+                                está mostrando: sem isto o cabeçalho diria "2023" sobre
+                                os dias de 2025.  */
+                            if (ano < ANO_MINIMO) {
+                                fp.currentYearElement.value = String(fp.currentYear);
+                                return;
+                            }
+                            if (ano > 2100) return;
+                            if (ano !== fp.currentYear) {
+                                fp.changeYear(ano);
+                            } else if (fp.selectedDates.length !== 1 && !ehMesInteiroDoMesAtual(fp)) {
+                                selecionarMesInteiro(fp, ano, fp.currentMonth);
+                            }
+                        };
+                        fp.currentYearElement.addEventListener('input', sincronizarAno);
+                        fp.currentYearElement.addEventListener('change', sincronizarAno);
                     }
 
                     /*  ROLAR FECHA O CALENDÁRIO. Ele mora no `<body>`, posicionado uma
                         vez só na abertura: rolar a barra de filtros levava o campo
                         embora e deixava o calendário parado no ar, por cima dos
                         outros filtros. `scroll` não borbulha, por isso a CAPTURA no
-                        `document` — é ela que ouve a rolagem de qualquer caixa, a
-                        barra de filtros inclusive. Fechar é fechar-sem-confirmar: o
-                        `onClose` devolve o campo à data que está valendo.  */
+                        `document` — ignorando tanto o próprio calendário quanto a caixa
+                        do campo (que pode rolar horizontalmente ao digitar/mostrar um
+                        período longo). Fechar é fechar-sem-confirmar: o `onClose`
+                        devolve o campo à data que está valendo.  */
                     document.addEventListener('scroll', (evento) => {
-                        if (!fp.isOpen || fp.calendarContainer.contains(evento.target)) return;
+                        if (!fp.isOpen
+                            || fp.calendarContainer.contains(evento.target)
+                            || (caixaDataProc && caixaDataProc.contains(evento.target))) {
+                            return;
+                        }
                         fp.close();
                     }, true);
 
@@ -3897,10 +4080,8 @@
                         onde Enter num campo recarrega a página inteira.  */
                     /*  ESC DESISTE: devolve o campo à data que a tabela está usando e
                         fecha o calendário. Mora aqui pelo mesmo motivo do Enter, e com um
-                        agravante — com `allowInput` ligado o widget IGNORA as teclas que
-                        vêm do campo, de propósito, para não atrapalhar quem digita. O Esc
-                        dele simplesmente não existe neste modo, e o calendário ficava
-                        aberto por cima da tabela até um clique fora.  */
+                        agravante — quando o foco está no campo ou dentro do calendário
+                        (ano, mês, dia), o Esc restaura o estado aplicado e fecha.  */
                     if (caixaDataProc) {
                         caixaDataProc.addEventListener('keydown', (evento) => {
                             if (evento.target !== alvo) return;
@@ -3913,13 +4094,49 @@
                             if (evento.key === 'Escape') {
                                 evento.preventDefault();
                                 evento.stopPropagation();
+                                /*  O foco segue no campo enquanto se clica no
+                                    calendário: com a grade de meses aberta, o Esc
+                                    fecha só a grade.  */
+                                if (!gradeMeses.hidden) {
+                                    fecharMeses();
+                                    return;
+                                }
                                 fp.setDate(dataProcAplicada, false);
                                 fp.close();
+                                alvo.blur();
                             }
                         }, true);
                     }
+
+                    fp.calendarContainer.addEventListener('keydown', (evento) => {
+                        /*  Com a grade de meses aberta, o Esc fecha só a grade.  */
+                        if (evento.key === 'Escape' && !gradeMeses.hidden) {
+                            evento.preventDefault();
+                            evento.stopPropagation();
+                            fecharMeses();
+                            return;
+                        }
+                        if (evento.key === 'Escape') {
+                            evento.preventDefault();
+                            evento.stopPropagation();
+                            fp.setDate(dataProcAplicada, false);
+                            fp.close();
+                            alvo.blur();
+                            return;
+                        }
+                        if (evento.key === 'Enter' && (evento.target === fp.currentYearElement || evento.target === ok)) {
+                            evento.preventDefault();
+                            evento.stopPropagation();
+                            aplicarDataProc(fp);
+                        }
+                    }, true);
                 },
                 onClose: (datas, texto, fp) => {
+                    if (caixaDataProc) caixaDataProc.classList.remove('docia-campo-data--aberto');
+                    fecharMeses();
+                    substituirAoDigitar = true;
+                    recemFocado = false;
+                    recemAberto = false;
                     /*  No período, o calendário pode fechar com só o início aceso: a
                         volta ao aplicado é sempre, e não só quando o texto difere.  */
                     fp.setDate(dataProcAplicada, false);

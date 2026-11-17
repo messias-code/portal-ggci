@@ -271,6 +271,40 @@ html[data-tema="eleitoral"] .docia-botao-ativo {
 html[data-tema="eleitoral"] .docia-botao-ativo:hover {
     background-color: var(--tema-primaria-suave) !important;
 }
+html[data-tema="eleitoral"] .tela-voltar:not(.tema-toggle):not(.docia-botao-ativo):not(.botao-tema--excel),
+html[data-tema="eleitoral"] .area-trabalho .tela-voltar:not(.tema-toggle):not(.docia-botao-ativo):not(.botao-tema--excel),
+html[data-tema="eleitoral"] .botao-tema:not(.docia-botao-ativo):not(.botao-tema--excel),
+html[data-tema="eleitoral"] .area-trabalho .botao-tema:not(.docia-botao-ativo):not(.botao-tema--excel) {
+    background-color: rgba(102, 203, 182, 0.12);
+    background-image: none !important;
+    border-color: var(--tema-primaria-borda) !important;
+    color: #B4EEE0;
+}
+html[data-tema="eleitoral"] .tela-voltar:not(.tema-toggle):not(.docia-botao-ativo):not(.botao-tema--excel):hover,
+html[data-tema="eleitoral"] .area-trabalho .tela-voltar:not(.tema-toggle):not(.docia-botao-ativo):not(.botao-tema--excel):hover,
+html[data-tema="eleitoral"] .botao-tema:not(.docia-botao-ativo):not(.botao-tema--excel):hover,
+html[data-tema="eleitoral"] .area-trabalho .botao-tema:not(.docia-botao-ativo):not(.botao-tema--excel):hover {
+    background-color: rgba(102, 203, 182, 0.20);
+    border-color: var(--tema-primaria-borda) !important;
+    color: var(--tema-texto-forte);
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    transform: translateY(-1px);
+}
+html[data-tema="eleitoral"] .botao-tema--excel:not(.docia-botao-ativo),
+html[data-tema="eleitoral"] .area-trabalho .botao-tema--excel:not(.docia-botao-ativo) {
+    background-color: rgba(98, 209, 145, 0.08);
+    background-image: none !important;
+    border-color: rgba(98, 209, 145, 0.30) !important;
+    color: #A7EBC4;
+}
+html[data-tema="eleitoral"] .botao-tema--excel:not(.docia-botao-ativo):hover,
+html[data-tema="eleitoral"] .area-trabalho .botao-tema--excel:not(.docia-botao-ativo):hover {
+    background-color: rgba(98, 209, 145, 0.14);
+    border-color: rgba(98, 209, 145, 0.30) !important;
+    color: #D3F5E1;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    transform: translateY(-1px);
+}
 
 /* --- Linha ativa da legenda ----------------------------------------------- */
 html[data-tema="eleitoral"] .docia-legenda__item--ativo {
@@ -457,6 +491,7 @@ html[data-tema="eleitoral"] .docia-campo-data:hover {
 }
 
 html[data-tema="eleitoral"] .docia-campo-data:focus-within,
+html[data-tema="eleitoral"] .docia-campo-data.docia-campo-data--aberto,
 html[data-tema="eleitoral"] .docia-campo-data:has(.docia-campo-data__entrada.active) {
     box-shadow: inset 0 0 0 1px var(--tema-primaria-borda),
                 0 0 0 3px rgba(111, 211, 191, 0.10);
@@ -525,11 +560,60 @@ html[data-tema="eleitoral"] .docia-calendario.flatpickr-calendar {
     box-shadow: 0 14px 34px rgba(0, 0, 0, 0.45);
 }
 
+html[data-tema="eleitoral"] .docia-calendario ::selection {
+    background-color: var(--tema-primaria-lavada);
+    color: inherit;
+}
+
 html[data-tema="eleitoral"] .docia-calendario .flatpickr-day:hover,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day:focus,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.today:hover,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.today:focus,
 html[data-tema="eleitoral"] .docia-calendario .flatpickr-months .flatpickr-prev-month:hover,
 html[data-tema="eleitoral"] .docia-calendario .flatpickr-months .flatpickr-next-month:hover,
-html[data-tema="eleitoral"] .docia-calendario .flatpickr-current-month .flatpickr-monthDropdown-months:hover {
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-current-month .numInputWrapper:hover,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-current-month .numInputWrapper:focus-within {
     background-color: var(--tema-primaria-lavada);
+}
+
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.prevMonthDay:hover,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.prevMonthDay:focus,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.nextMonthDay:hover,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.nextMonthDay:focus {
+    background-color: var(--tema-primaria-lavada);
+    color: var(--tema-texto-fraco);
+}
+
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-current-month span.cur-month.docia-calendario__nome-mes:hover,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-current-month span.cur-month.docia-calendario__nome-mes--aberto {
+    background-color: var(--tema-primaria-lavada);
+    color: var(--tema-primaria-suave);
+}
+
+/*  A grade de meses: o hover é a lavada dos dias, e o mês do cabeçalho leva a
+    lavada com a primária na letra — o roxo do claro some no grafite.  */
+html[data-tema="eleitoral"] .docia-calendario__mes:hover {
+    background-color: var(--tema-primaria-lavada);
+}
+
+html[data-tema="eleitoral"] .docia-calendario__mes.docia-calendario__mes--atual {
+    background-color: var(--tema-primaria-lavada);
+    color: var(--tema-primaria);
+}
+
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-current-month .numInputWrapper span.arrowUp:hover,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-current-month .numInputWrapper span.arrowDown:hover,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-current-month .numInputWrapper span.arrowUp:active,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-current-month .numInputWrapper span.arrowDown:active {
+    background-color: rgba(111, 211, 191, 0.16);
+}
+
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-current-month .numInputWrapper span.arrowUp:hover::after {
+    border-bottom-color: var(--tema-primaria);
+}
+
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-current-month .numInputWrapper span.arrowDown:hover::after {
+    border-top-color: var(--tema-primaria);
 }
 
 html[data-tema="eleitoral"] .docia-calendario .flatpickr-months .flatpickr-prev-month:hover svg,
@@ -541,26 +625,61 @@ html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.today {
     box-shadow: inset 0 0 0 1px var(--tema-primaria);
 }
 
+/*  O MIOLO DO PERÍODO é a mesma lavada do hover, que no escuro é o tom que se
+    lê sobre o grafite (o lilás do claro some nele). Vem ANTES das pontas para
+    não cobrir o fundo sólido quando a ponta também estiver `inRange`.  */
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.inRange,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.inRange:hover,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.inRange:focus,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.prevMonthDay.inRange,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.prevMonthDay.inRange:hover,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.prevMonthDay.inRange:focus,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.nextMonthDay.inRange,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.nextMonthDay.inRange:hover,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.nextMonthDay.inRange:focus,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.today.inRange,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.today.inRange:hover,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.today.inRange:focus,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.prevMonthDay.today.inRange,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.nextMonthDay.today.inRange {
+    background-color: var(--tema-primaria-lavada);
+    color: var(--tema-texto-forte);
+}
+
 /*  O DIA ESCOLHIDO E O BOTÃO SÃO ÁREA SÓLIDA, e área sólida no eleitoral é
     `--tema-primaria-forte`, não `--tema-primaria`: a primária é o teal claro
     dos traços finos (texto, ícone, borda), e o branco por cima dela não se lê.
     A forte é o tom medido para levar branco em cima (ver `tema.css`).  */
 html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.selected,
 html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.selected:hover,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.selected:focus,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.selected.inRange,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.selected.prevMonthDay,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.selected.nextMonthDay,
 html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.startRange,
 html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.startRange:hover,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.startRange:focus,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.startRange.inRange,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.startRange.prevMonthDay,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.startRange.nextMonthDay,
 html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.endRange,
 html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.endRange:hover,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.endRange:focus,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.endRange.inRange,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.endRange.prevMonthDay,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.endRange.nextMonthDay,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.selected.startRange,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.startRange.startRange,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.endRange.startRange,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.selected.endRange,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.startRange.endRange,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.endRange.endRange,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.selected.startRange.endRange,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.startRange.startRange.endRange,
+html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.endRange.startRange.endRange,
 html[data-tema="eleitoral"] .docia-calendario__ok {
     background-color: var(--tema-primaria-forte);
     color: #FFFFFF;
-}
-
-/*  O MIOLO DO PERÍODO é a mesma lavada do hover, que no escuro é o tom que se
-    lê sobre o grafite (o lilás do claro some nele).  */
-html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.inRange,
-html[data-tema="eleitoral"] .docia-calendario .flatpickr-day.inRange:hover {
-    background-color: var(--tema-primaria-lavada);
 }
 
 html[data-tema="eleitoral"] .docia-calendario__ok:hover {
