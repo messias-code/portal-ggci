@@ -591,7 +591,15 @@
             abrir(cat.modal);
         };
 
-        cat.modal.addEventListener('change', contar);
+        // Documentos do mesmo grupo (itens 3 e 4 = "Cursos") são lidos juntos: marcar um marca o outro.
+        cat.modal.addEventListener('change', (evento) => {
+            const caixa = evento.target;
+            if (caixa.matches && caixa.matches('input[data-grupo]')) {
+                cat.caixas().filter((c) => c.dataset.grupo === caixa.dataset.grupo && !c.disabled)
+                    .forEach((c) => { c.checked = caixa.checked; });
+            }
+            contar();
+        });
         cat.modal.querySelector('[data-rc-marcar]').addEventListener('click', () => { cat.caixas().forEach((c) => { c.checked = true; }); contar(); });
         cat.modal.querySelector('[data-rc-limpar]').addEventListener('click', () => { cat.caixas().forEach((c) => { c.checked = false; }); contar(); });
         cat.modal.querySelector('[data-rc-aplicar]').addEventListener('click', () => {
@@ -641,130 +649,94 @@
        ---------------------------------------------------------------------- */
     const URL_BASE = '/automacoes/renovacao-cadastramento/api/';
     const csrf = () => (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
-    const CLASSE_LINHA = {
-        ok: 'text-emerald-600 font-bold',
-        alerta: 'rc-log-alerta font-bold',
-        erro: 'text-red-500 font-bold',
-        info: 'text-gray-700',
-    };
     let vigia = null;
-    let linhasDoMotor = null;   // <div> onde as linhas do status.json são redesenhadas
+    let autoRolagem = true;
 
-    function linhaConsole(texto, classe) {
-        const linha = document.createElement('div');
-        linha.className = classe || 'text-gray-700';
-        linha.textContent = texto;
-        return linha;
-    }
+    // Desenho do console: static/js/console-motor.js (o mesmo da Análise IA).
 
     function progresso(pct) {
         el('progress-bar').style.width = `${pct}%`;
         el('progress-text').textContent = `${pct}%`;
     }
 
-    // O estado do Baixar é uma classe própria (`rc-baixar--pronto`): as utilitárias
-    // verdes que as outras telas trocam no JS podem não existir no bundle purgado.
+    // Barra vermelha quando o motor para com erro ou é abortado (as classes existem no bundle).
+    function barraDeErro(erro) {
+        const barra = el('progress-bar');
+        barra.classList.replace(erro ? 'from-pink-400' : 'from-red-500', erro ? 'from-red-500' : 'from-pink-400');
+        barra.classList.replace(erro ? 'to-purple-500' : 'to-red-600', erro ? 'to-red-600' : 'to-purple-500');
+    }
+
+    // Estados visuais em static/css/motor-botoes.css (compartilhado com a Análise IA).
     function baixarPronto(pronto) {
         const botao = el('btn-download');
-        botao.classList.toggle('rc-baixar--pronto', pronto);
+        botao.classList.toggle('motor-baixar--pronto', pronto);
         botao.disabled = !pronto;
     }
 
     function iniciarOcupado(ocupado) {
         const botao = el('btn-start');
         botao.disabled = ocupado;
-        botao.classList.toggle('rc-iniciar--ocupado', ocupado);
+        botao.classList.toggle('motor-iniciar--ocupado', ocupado);
         botao.querySelector('i').className = ocupado ? 'fa-solid fa-circle-notch fa-spin' : 'fa-solid fa-play';
         el('btn-stop').disabled = !ocupado;
     }
 
-    function cabecalhoConsole() {
+    function desenharConsole(linhas, rodando) {
         const log = el('console-logs');
-        log.innerHTML = '';
-        const prompt = document.createElement('div');
-        prompt.className = 'flex gap-2 mb-1';
-        prompt.innerHTML = '<span class="text-pink-600 font-bold">ovg@probem-ai:</span><span class="text-purple-600">~</span>'
-            + '<span class="text-purple-400">$</span><span class="text-purple-900 font-bold">init_renovacao_cadastramento --verbose</span>';
-        log.appendChild(prompt);
-        return log;
+        log.innerHTML = window.ConsoleMotor.html('init_renovacao_cadastramento --verbose', linhas, rodando);
+        if (autoRolagem) log.scrollTop = log.scrollHeight;
     }
 
-    function areaDoMotor() {
-        if (!linhasDoMotor || !linhasDoMotor.isConnected) {
-            linhasDoMotor = document.createElement('div');
-            linhasDoMotor.className = 'mt-2';
-            el('console-logs').appendChild(linhasDoMotor);
-        }
-        return linhasDoMotor;
-    }
-
-    function desenharStatus(st) {
-        const area = areaDoMotor();
-        area.innerHTML = '';
-        st.linhas.forEach((l) => area.appendChild(linhaConsole(l.texto, CLASSE_LINHA[l.tipo] || CLASSE_LINHA.info)));
-        if (st.estado === 'concluido' && st.resumo) {
-            const r = st.resumo;
-            area.appendChild(linhaConsole(`✔ ${r.instituicoes} instituições (${r.ativas} ativas, ${r.inativas} inativas), ${r.cursos} cursos no banco`, CLASSE_LINHA.ok));
-            if (r.sem_par) area.appendChild(linhaConsole(`⚠ ${r.sem_par} sem cadastro no banco de dados — saem sem CNPJ e códigos`, CLASSE_LINHA.alerta));
-            if (r.emec) {
-                area.appendChild(linhaConsole(`✔ Veredito dos cursos: ${r.cursos_confere} conferem, ${r.cursos_diverge} divergem, ${r.cursos_nao_encontrados} sem par no e-MEC`, CLASSE_LINHA.ok));
-                if (r.ies_sem_emec) area.appendChild(linhaConsole(`⚠ ${r.ies_sem_emec} instituições sem dados do e-MEC (sem código MEC ou sem resposta) — veja a aba Veredito Cursos`, CLASSE_LINHA.alerta));
-            }
-        }
-        progresso(st.progresso || 0);
+    el('console-logs').addEventListener('scroll', () => {
         const log = el('console-logs');
-        log.scrollTop = log.scrollHeight;
-    }
+        autoRolagem = log.scrollHeight - log.scrollTop - log.clientHeight < 10;
+    });
 
     function acompanhar() {
         clearInterval(vigia);
         iniciarOcupado(true);
         baixarPronto(false);
-        const consultar = () => fetch(`${URL_BASE}status/`)
-            .then((r) => r.json())
-            .then((st) => {
-                if (st.estado === 'nenhum') return;
-                desenharStatus(st);
-                if (st.estado !== 'rodando') {
-                    clearInterval(vigia);
-                    iniciarOcupado(false);
-                    baixarPronto(st.estado === 'concluido');
-                }
-            })
-            .catch((erro) => console.error('[Renovação de Cadastramento] Falha ao ler o status:', erro));
+        let emVoo = false;   // uma consulta por vez: servidor lento não empilha pedidos
+        const consultar = () => {
+            if (emVoo) return;
+            emVoo = true;
+            fetch(`${URL_BASE}status/`)
+                .then((r) => r.json())
+                .then((st) => {
+                    if (st.estado === 'nenhum') return;
+                    const rodando = st.estado === 'rodando';
+                    desenharConsole(st.linhas, rodando);
+                    progresso(st.progresso || 0);
+                    if (!rodando) {
+                        clearInterval(vigia);
+                        iniciarOcupado(false);
+                        baixarPronto(st.estado === 'concluido');
+                        barraDeErro(st.estado !== 'concluido');
+                    }
+                })
+                .catch((erro) => console.error('[Renovação de Cadastramento] Falha ao ler o status:', erro))
+                .finally(() => { emVoo = false; });
+        };
         consultar();
-        vigia = setInterval(consultar, 2000);
+        vigia = setInterval(consultar, 1500);
     }
 
     el('btn-start').addEventListener('click', () => {
         if (el('btn-start').disabled) return;
         const selecao = window.rcSelecaoAtual();
-        const log = cabecalhoConsole();
-        linhasDoMotor = null;
+        autoRolagem = true;
+        barraDeErro(false);
+        progresso(0);
 
         // Todas as categorias em "Nenhum" não deixa nada para o robô ler.
         if (categorias.every((cat) => modo(cat.nomeRadio) === 'nenhum')) {
-            log.appendChild(linhaConsole('✖ Nada a conferir: todas as categorias de documento estão em "Nenhum".', 'text-red-500 font-bold'));
+            desenharConsole([{ tipo: 'selo', cor: 'red', rotulo: 'NADA A CONFERIR', texto: 'Todas as categorias de documento estão em "Nenhum".' }], false);
             return;
         }
 
-        log.appendChild(linhaConsole('› Seleção montada:', 'text-pink-500 italic mb-2'));
-        log.appendChild(linhaConsole(
-            selecao.instituicoes
-                ? `  Instituições (${selecao.instituicoes.length}): ${selecao.instituicoes.join(' · ')}`
-                : '  Instituições: todas'));
-        categorias.forEach((cat) => {
-            const lista = selecao.documentos[cat.chave];
-            let texto;
-            if (lista === null) texto = 'todos os documentos';
-            else if (lista.length === 0) texto = 'não conferir';
-            else texto = `(${lista.length}) ${lista.map((c) => tituloDoDoc(cat, c)).join(' · ')}`;
-            log.appendChild(linhaConsole(`  ${cat.titulo}: ${texto}`));
-        });
-
+        desenharConsole([{ tipo: 'sub', texto: 'Aguardando início…' }], true);
         iniciarOcupado(true);
         baixarPronto(false);
-        progresso(0);
         fetch(`${URL_BASE}iniciar/`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
@@ -778,7 +750,8 @@
             .catch((erro) => {
                 console.error('[Renovação de Cadastramento] Falha ao iniciar:', erro);
                 iniciarOcupado(false);
-                log.appendChild(linhaConsole(`✖ ${erro.message}`, 'text-red-500 font-bold'));
+                barraDeErro(true);
+                desenharConsole([{ tipo: 'selo', cor: 'red', rotulo: 'ERRO', texto: erro.message }], false);
             });
     });
 
@@ -799,10 +772,7 @@
     fetch(`${URL_BASE}status/`)
         .then((r) => r.json())
         .then((st) => {
-            if (st.estado === 'rodando') {
-                cabecalhoConsole();
-                acompanhar();
-            }
+            if (st.estado === 'rodando') acompanhar();
         })
         .catch(() => {});
 

@@ -27,8 +27,12 @@ from django.shortcuts import redirect, render
 # ela é o 10 para não haver dois documentos com o mesmo número.
 #
 # `ativo`: só os documentos com `'ativo': True` podem ser escolhidos. Os outros aparecem
-# na tela desabilitados. Em 16/11/2026 o desenvolvimento foca só no 2 (ato de
-# autorização) e no 3 (atestado dos cursos); liberar outro é acrescentar a chave aqui.
+# na tela desabilitados. Em 16/11/2026 o desenvolvimento foca no 2 (ato de autorização) e no
+# 3 (atestado dos cursos); em 17/11/2026 entrou o 4 (cursos ofertados), que o motor lê junto
+# com o 3 — os dois falam dos cursos. Liberar outro é acrescentar a chave aqui.
+#
+# `grupo`: documentos lidos JUNTOS pelo motor. Na tela levam a mesma etiqueta e marcar um marca
+# o outro (o 3 comprova os cursos, o 4 diz quais e como são ofertados).
 # "Todos" na tela quer dizer todos os ATIVOS.
 DOCUMENTOS = [
     {'chave': 'oficio_solicitacao', 'icone': 'fa-envelope-open-text',
@@ -41,10 +45,11 @@ DOCUMENTOS = [
     {'chave': 'atestado_funcionamento_cursos', 'icone': 'fa-graduation-cap',
      'titulo': 'Atestado de funcionamento dos cursos',
      'descricao': 'Curso regularmente autorizado pelo MEC ou pelo Conselho Estadual de Educação.',
-     'ativo': True},
+     'ativo': True, 'grupo': 'Cursos'},
     {'chave': 'cursos_ofertados', 'icone': 'fa-list-check',
      'titulo': 'Cursos que serão ofertados no ProBem',
-     'descricao': 'Relação dos cursos que a IES vai ofertar no semestre.'},
+     'descricao': 'Relação dos cursos que a IES vai ofertar no semestre.',
+     'ativo': True, 'grupo': 'Cursos'},
     {'chave': 'comprovante_cnpj', 'icone': 'fa-id-card',
      'titulo': 'Comprovante de CNPJ',
      'descricao': 'Inscrição e situação cadastral do CNPJ da mantenedora e da IES.'},
@@ -268,7 +273,7 @@ def api_status(request):
     # "rodando" sem processo vivo: morreu sem gravar o fim (prazo, reinício do servidor).
     if status['estado'] == 'rodando' and not _rodando(request.user):
         status['estado'] = 'erro'
-        status['linhas'].append({'texto': '✖ O motor parou sem terminar.', 'tipo': 'erro'})
+        status['linhas'].append({'tipo': 'selo', 'cor': 'red', 'rotulo': 'ERRO', 'texto': 'O motor parou sem terminar.'})
     return JsonResponse({'status': 'ok', **status})
 
 
@@ -286,20 +291,63 @@ def api_parar(request):
         return JsonResponse({'status': 'erro', 'mensagem': 'Nenhuma execução em andamento.'}, status=409)
     status = motor.ler_status(_pasta(request.user)) or {'linhas': [], 'progresso': 0, 'resumo': None}
     status['estado'] = 'parado'
-    status['linhas'].append({'texto': '■ Execução interrompida pelo usuário.', 'tipo': 'alerta'})
+    status['linhas'].append({'tipo': 'selo', 'cor': 'red', 'rotulo': 'ABORTADO PELO USUÁRIO',
+                             'texto': 'Processo interrompido manualmente.'})
     motor._gravar_json(os.path.join(_pasta(request.user), 'status.json'), status)
     return JsonResponse({'status': 'ok'})
 
 
-@login_required(login_url='/')
-def api_baixar(request):
-    """Entrega a última planilha gerada por este usuário."""
-    if not _tem_permissao(request.user):
-        return JsonResponse({'status': 'erro', 'mensagem': 'Sem permissão.'}, status=403)
+# Download pelo túnel HTTPS do Cloudflare, como o da Análise IA (`baixar_resultado_ia`): o
+# portal é servido em HTTP, e o Chrome barra download de página sem HTTPS ("permissão" para
+# manter o arquivo). O domínio do túnel não tem a sessão do usuário, então o redirecionamento
+# leva um token assinado que vale 5 minutos e só abre a planilha daquele usuário.
+SAL_DOWNLOAD = 'renovacao_cadastramento.baixar'
+VALIDADE_TOKEN_SEGUNDOS = 300
 
+
+def _url_do_tunel(request):
+    """URL do túnel HTTPS ativo (gravada pelo portal.sh), ou None se não houver ou já estivermos nele."""
+    import sys
+    caminho = '/tmp/cf_accel_dev.json' if 'runserver' in sys.argv else '/tmp/cf_accel.json'
+    try:
+        with open(caminho, encoding='utf-8') as arquivo:
+            url = json.load(arquivo).get('url') or ''
+    except (OSError, ValueError):
+        return None
+    if not url.startswith('https://') or 'api.trycloudflare.com' in url or 'trycloudflare.com' in request.get_host():
+        return None
+    return url.rstrip('/')
+
+
+def api_baixar(request):
+    """Entrega a última planilha gerada pelo usuário (sessão, ou token do redirecionamento)."""
+    from django.core import signing
+    from django.shortcuts import redirect as redirecionar
+    from django.urls import reverse
+    from .services import motor
     from .services.planilha import NOME_ARQUIVO
-    caminho = os.path.join(_pasta(request.user), NOME_ARQUIVO)
+
+    token = request.GET.get('t')
+    if token:
+        try:
+            usuario_id = signing.loads(token, salt=SAL_DOWNLOAD, max_age=VALIDADE_TOKEN_SEGUNDOS)
+        except signing.BadSignature:   # inclui o token vencido
+            return JsonResponse({'status': 'erro', 'mensagem': 'Link de download vencido. Clique em Baixar de novo.'},
+                                status=403)
+    else:
+        if not request.user.is_authenticated:
+            return redirect('/')
+        if not _tem_permissao(request.user):
+            return JsonResponse({'status': 'erro', 'mensagem': 'Sem permissão.'}, status=403)
+        usuario_id = request.user.pk
+
+    caminho = os.path.join(motor.pasta_do_usuario(usuario_id), NOME_ARQUIVO)
     if not os.path.exists(caminho):
         return JsonResponse({'status': 'erro', 'mensagem': 'Nenhuma planilha gerada ainda.'}, status=404)
-    return FileResponse(open(caminho, 'rb'), as_attachment=True, filename=os.path.basename(caminho),
+
+    tunel = None if token else _url_do_tunel(request)
+    if tunel:
+        token = signing.dumps(usuario_id, salt=SAL_DOWNLOAD)
+        return redirecionar(f"{tunel}{reverse('renovacao_cadastramento_baixar')}?t={token}")
+    return FileResponse(open(caminho, 'rb'), as_attachment=True, filename=NOME_ARQUIVO,
                         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')

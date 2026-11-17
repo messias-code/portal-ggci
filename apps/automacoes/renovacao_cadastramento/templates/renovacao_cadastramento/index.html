@@ -9,7 +9,8 @@
     Autor: N/A
     Dependências Principais: TailwindCSS (CDN), FontAwesome, Turbo (Hotwire)
     O QUE FAZ: Monta a seleção do que o robô vai conferir: quais instituições e quais documentos.
-    ESTADO: só front-end. Ainda não há motor; o Iniciar apenas descreve a seleção no console.
+    ESTADO: o Iniciar dispara o motor em segundo plano (banco → formulário → e-MEC → documentos →
+    veredito nas três fontes → planilha) e o console acompanha pelo api/status/.
     -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -30,6 +31,7 @@
     <link rel="stylesheet" href="{% static 'css/output.css' %}">
     <!-- Console de processamento: utilitárias que o bundle purgou + os dois temas. -->
     <link rel="stylesheet" href="{% static 'css/console.css' %}?v=1">
+    <link rel="stylesheet" href="{% static 'css/motor-botoes.css' %}?v=1">
 
     <!-- Tokens de cor dos temas e o botão sol/lua (compartilhado por todo o portal) -->
     <link rel="stylesheet" href="{% static 'css/tema.css' %}">
@@ -48,7 +50,7 @@
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <link rel="stylesheet" href="{% static 'renovacao_cadastramento/css/renovacao_cadastramento.css' %}?v=12">
+    <link rel="stylesheet" href="{% static 'renovacao_cadastramento/css/renovacao_cadastramento.css' %}?v=14">
     <script type="module" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@8.0.4/dist/turbo.es.2017-esm.js"></script>
 </head>
 
@@ -414,12 +416,13 @@
                     {% for doc in cat.documentos %}
                     <!-- Documento sem `ativo` em views.DOCUMENTOS: aparece, mas não pode ser escolhido. -->
                     <label class="rc-doc{% if not doc.ativo %} rc-doc--inativo{% endif %}"{% if not doc.ativo %} title="Indisponível nesta fase do desenvolvimento"{% endif %}>
-                        <input type="checkbox" value="{{ doc.chave }}" data-titulo="{{ doc.titulo }}"{% if not doc.ativo %} disabled{% endif %}>
+                        <input type="checkbox" value="{{ doc.chave }}" data-titulo="{{ doc.titulo }}"{% if doc.grupo %} data-grupo="{{ doc.grupo }}"{% endif %}{% if not doc.ativo %} disabled{% endif %}>
                         <span class="rc-doc__numero">{{ forloop.counter }}</span>
                         <span class="rc-doc__icone"><i class="fa-solid {{ doc.icone }}"></i></span>
                         <span class="rc-doc__texto">
                             <span class="rc-doc__titulo">{{ doc.titulo }}</span>
                             <span class="rc-doc__descricao">{{ doc.descricao }}</span>
+                            {% if doc.grupo %}<span class="rc-doc__grupo"><i class="fa-solid fa-link"></i> {{ doc.grupo }} · lidos juntos</span>{% endif %}
                         </span>
                         {% if doc.ativo %}
                         <i class="rc-doc__check fa-solid fa-circle-check"></i>
@@ -441,7 +444,8 @@
     </div>
     {% endfor %}
 
-    <script src="{% static 'renovacao_cadastramento/js/renovacao_cadastramento.js' %}?v=8"></script>
+    <script src="{% static 'js/console-motor.js' %}?v=1"></script>
+    <script src="{% static 'renovacao_cadastramento/js/renovacao_cadastramento.js' %}?v=11"></script>
 </body>
 
 </html>

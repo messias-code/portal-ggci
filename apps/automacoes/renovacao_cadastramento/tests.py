@@ -84,13 +84,15 @@ class RotasTests(TestCase):
         'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
         'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
     })
-    def test_so_documentos_2_e_3_habilitados(self):
+    def test_so_documentos_2_3_e_4_habilitados(self):
         html = self.client.get(reverse('renovacao_cadastramento_view')).content.decode()
-        self.assertEqual(html.count('rc-doc rc-doc--inativo'), 8)
+        self.assertEqual(html.count('rc-doc rc-doc--inativo'), 7)
         self.assertIn('value="ato_autorizacao_mec" data-titulo="Ato de autorização e funcionamento da IES junto ao MEC">', html)
-        self.assertIn('value="atestado_funcionamento_cursos" data-titulo="Atestado de funcionamento dos cursos">', html)
+        self.assertIn('value="atestado_funcionamento_cursos" data-titulo="Atestado de funcionamento dos cursos" data-grupo="Cursos">', html)
         self.assertIn('value="oficio_solicitacao" data-titulo="Ofício de solicitação" disabled>', html)
-        self.assertIn('Todos os 2 documentos', html)
+        self.assertIn('value="cursos_ofertados" data-titulo="Cursos que serão ofertados no ProBem" data-grupo="Cursos">', html)
+        self.assertEqual(html.count('Cursos · lidos juntos'), 2)
+        self.assertIn('Todos os 3 documentos', html)
 
     @mock.patch('apps.automacoes.renovacao_cadastramento.services.sibu.instituicoes_sibu')
     def test_instituicoes_trazem_codigos_mec(self, instituicoes_sibu):
@@ -185,11 +187,11 @@ class PlanilhaTests(SimpleTestCase):
     def test_selecao_filtra(self):
         self.assertEqual([i['nome'] for i in self.montar(['FAPM'])], ['FAPM - FACULDADE APM'])
 
-    def test_xlsx_abas_colunas_e_link_para_cursos(self):
+    def test_xlsx_aba_principal_com_resumo_por_ies_e_sem_celulas_vazias(self):
         import os
         import tempfile
         import openpyxl
-        from .services.planilha import COLUNAS_ANALISE, COLUNAS_CURSOS, gravar_planilha
+        from .services.planilha import COLUNAS_CURSOS_EMEC, gravar_planilha
 
         with tempfile.TemporaryDirectory() as pasta:
             caminho = os.path.join(pasta, 'renovacao_de_cadastramento.xlsx')
@@ -198,24 +200,25 @@ class PlanilhaTests(SimpleTestCase):
 
         self.assertEqual({k: resumo[k] for k in ('instituicoes', 'ativas', 'inativas', 'sem_par', 'cursos', 'emec')},
                          {'instituicoes': 3, 'ativas': 1, 'inativas': 1, 'sem_par': 1, 'cursos': 2, 'emec': False})
-        self.assertEqual(livro.sheetnames, ['Análise e-MEC', 'Cursos'])
-        analise, cursos = livro['Análise e-MEC'], livro['Cursos']
-        self.assertEqual([c.value for c in analise[1]], COLUNAS_ANALISE)
-        self.assertEqual([c.value for c in cursos[1]], COLUNAS_CURSOS)
-
-        unisem = [c.value for c in analise[4]]
-        self.assertEqual(unisem, ['SERRA DA MESA', '05.995.086/0001-53', 2372, 'UNISEM - CENTRO UNIVERSITARIO',
-                                  '05.995.086/0001-53', 3757, 'Ativo', '2 cursos  ›  ver na aba Cursos'])
-        self.assertEqual(analise['H4'].hyperlink.location, "'Cursos'!A2")
-        self.assertEqual(analise['H2'].value, 'Nenhum curso cadastrado')
-        self.assertIsNone(analise['H2'].hyperlink)
-
-        self.assertEqual([c.value for c in cursos[2]], ['SERRA DA MESA', 2372, 'UNISEM - CENTRO UNIVERSITARIO', 3757,
-                                                        'DIREITO', 'Bacharelado', 'PRESENCIAL', 10, 'Aberta'])
-        self.assertEqual(cursos['I3'].value, 'Fechada')
-        self.assertEqual(cursos['I3'].font.color.rgb, 'FFC00000')   # Fechada em vermelho
-        self.assertNotEqual(cursos['I2'].font.color and cursos['I2'].font.color.rgb, 'FFC00000')
-        self.assertIsNone(cursos['H3'].value)   # sem períodos no banco: célula vazia, não zero
+        self.assertEqual(livro.sheetnames, ['Cursos e-MEC'])
+        aba = livro['Cursos e-MEC']
+        self.assertEqual([c.value for c in aba[1]], COLUNAS_CURSOS_EMEC)
+        linhas = [dict(zip(COLUNAS_CURSOS_EMEC, [c.value for c in r])) for r in aba.iter_rows(min_row=2)]
+        # FAPM (resumo, sem cursos) · SEM PAR (resumo) · UNISEM (resumo + 2 cursos)
+        self.assertEqual([l['Curso'] for l in linhas],
+                         ['Nenhum curso no banco', 'Nenhum curso no banco',
+                          '2 no banco · e-MEC não consultado', 'DIREITO', 'PEDAGOGIA'])
+        unisem, direito, pedagogia = linhas[2:]
+        self.assertEqual((unisem['Código IES'], unisem['CNPJ IES'], unisem['Status OVG'], unisem['Código Man']),
+                         (3757, '05.995.086/0001-53', 'Ativo', 2372))
+        self.assertEqual((direito['No banco'], direito['Grau'], direito['Períodos (banco)'], direito['Inscrição'],
+                          direito['Situação e-MEC']), ('Sim', 'Bacharelado', 10, 'Aberta', 'e-MEC não consultado'))
+        self.assertEqual((pedagogia['Períodos (banco)'], pedagogia['Inscrição']), ('Não localizado no banco', 'Fechada'))
+        self.assertEqual(aba.cell(row=6, column=COLUNAS_CURSOS_EMEC.index('Inscrição') + 1).font.color.rgb, 'FFC00000')
+        # Cursos ficam recolhíveis embaixo da linha-resumo da IES.
+        self.assertEqual((aba.row_dimensions[4].outline_level, aba.row_dimensions[5].outline_level), (0, 1))
+        # Curso nenhum com célula vazia.
+        self.assertFalse([c for l in linhas[3:] for c, v in l.items() if v in (None, '')])
 
 
 # ── Recortes reais do e-MEC (IES 5550, 17/11/2026) ─────────────────────────────
@@ -302,6 +305,17 @@ class EmecLeituraTests(SimpleTestCase):
             {'ano': '2018', 'enade': '3', 'cpc': '3', 'cc': '4', 'idd': '3'}])
 
 
+HTML_ATOS = """<table><thead><tr class="corTitulo avalLinhaCampos">
+<th><b>Ato Regulatório</b></th><th><b>Tipo de documento</b></th><th><b>Nº do documento</b></th>
+<th><b>Data do documento</b></th><th><b>Data de publicação</b></th><th><b>Prazo de validade</b></th>
+<th><b>Arquivo para download</b></th></tr></thead><tbody>
+<tr class="corDetalhe2"><td>Renovação de Reconhecimento de Curso </td><td>Portaria </td><td>737 de 30/12/2013 </td>
+<td>30/12/2013 </td><td>31/12/2013 </td><td>Vinculado ao Ciclo Avaliativo </td><td></td></tr>
+<tr class="corDetalhe1"><td>Reconhecimento de Curso </td><td>Portaria </td><td>750 de 06/10/2006* </td>
+<td>- </td><td>10/10/2006 </td><td>Vinculado ao Ciclo Avaliativo </td><td>Não Anexado</td></tr>
+</tbody></table>"""
+
+
 class SessaoFalsa:
     """Responde pelas URLs do e-MEC com os recortes acima; `falhar` simula queda."""
 
@@ -320,7 +334,8 @@ class SessaoFalsa:
         if self.falhar:
             raise ErroEmec('HTTP 500')
         for trecho, html in (('listar-curso-agrupado', HTML_AGRUPADO), ('listar-curso-desagrupado', HTML_DESAGRUPADO),
-                             ('detalhe-curso-tabela', HTML_DETALHE), ('historico-indicadores', HTML_HISTORICO)):
+                             ('detalhe-curso-tabela', HTML_DETALHE), ('historico-indicadores', HTML_HISTORICO),
+                             ('listar-ato-regulatorio', HTML_ATOS)):
             if trecho in caminho:
                 return html
         raise AssertionError(caminho)
@@ -338,8 +353,11 @@ class CursosDaIesTests(SimpleTestCase):
         self.assertEqual(cursos[0]['detalhe']['vagas_anuais'], '270')
         self.assertEqual(len(cursos[0]['historico']), 2)
         self.assertIsNone(cursos[1]['detalhe'])
-        # 1 agrupado + 2 grupos + detalhe e histórico do único ativo.
-        self.assertEqual(len(sessao.pedidos), 5)
+        self.assertEqual(cursos[0]['atos'][0], {'ato': 'Renovação de Reconhecimento de Curso', 'tipo': 'Portaria',
+                                                'numero': '737', 'data': '30/12/2013', 'publicacao': '31/12/2013',
+                                                'validade': 'Vinculado ao Ciclo Avaliativo'})
+        # 1 agrupado + 2 grupos + detalhe, histórico e atos do único ativo.
+        self.assertEqual(len(sessao.pedidos), 6)
 
 
 def _curso_emec(codigo, nome, ativo=True, grau='Bacharelado', modalidade='Presencial', periodicidade='Noturno - 8 semestres'):
@@ -351,6 +369,15 @@ def _curso_banco(nome, periodos=8, tipo='Bacharelado', modalidade='PRESENCIAL'):
     return {'cur_nome': nome, 'tipo': tipo, 'modalidade': modalidade, 'qtde_periodo': periodos, 'ativo_inscricao': 'S'}
 
 
+class CursosEmecRelevantesTests(SimpleTestCase):
+    def test_so_os_ativos(self):
+        from .services.planilha import cursos_emec_relevantes
+        cursos = [_curso_emec('1', 'ADMINISTRAÇÃO', ativo=False), _curso_emec('2', 'ADMINISTRAÇÃO'),
+                  _curso_emec('3', 'ADMINISTRACAO', ativo=False),
+                  _curso_emec('4', 'BIOMEDICINA', ativo=False), _curso_emec('5', 'BIOMEDICINA', ativo=False)]
+        self.assertEqual([c['codigo'] for c in cursos_emec_relevantes(cursos)], ['2'])
+
+
 class VereditoTests(SimpleTestCase):
     def comparar(self, banco, emec):
         from .services.veredito import comparar_cursos
@@ -358,27 +385,27 @@ class VereditoTests(SimpleTestCase):
 
     def test_confere_sem_acento_e_prefere_o_codigo_ativo(self):
         emec = [_curso_emec('1', 'CIÊNCIAS CONTÁBEIS', ativo=False), _curso_emec('2', 'CIÊNCIAS CONTÁBEIS')]
-        self.assertEqual(self.comparar([_curso_banco('CIENCIAS CONTABEIS')], emec), [('Confere', '2', [])])
+        self.assertEqual(self.comparar([_curso_banco('CIENCIAS CONTABEIS')], emec), [('Alinhado', '2', [])])
 
     def test_periodos_divergentes(self):
         emec = [_curso_emec('1', 'DIREITO', periodicidade='Matutino - 10 semestres\nNoturno - 10 semestres')]
         self.assertEqual(self.comparar([_curso_banco('DIREITO', 8)], emec),
-                         [('Diverge', '1', ['Períodos: banco 8, e-MEC 10'])])
+                         [('Divergente', '1', ['Períodos: banco 8, e-MEC 10'])])
 
     def test_inativo_grau_e_modalidade(self):
         emec = [_curso_emec('1', 'PEDAGOGIA', ativo=False, grau='Licenciatura', modalidade='A Distância')]
         veredito, _, motivos = self.comparar([_curso_banco('PEDAGOGIA')], emec)[0]
-        self.assertEqual(veredito, 'Diverge')
+        self.assertEqual(veredito, 'Divergente')
         self.assertEqual(motivos, ['Curso inativo no e-MEC', 'Grau: banco Bacharelado, e-MEC Licenciatura',
                                    'Modalidade: banco PRESENCIAL, e-MEC A Distância'])
 
     def test_ead_do_banco_casa_com_a_distancia(self):
         emec = [_curso_emec('1', 'PEDAGOGIA', modalidade='A Distância')]
-        self.assertEqual(self.comparar([_curso_banco('PEDAGOGIA', modalidade='A DISTÂNCIA (EAD)')], emec)[0][0], 'Confere')
+        self.assertEqual(self.comparar([_curso_banco('PEDAGOGIA', modalidade='A DISTÂNCIA (EAD)')], emec)[0][0], 'Alinhado')
 
     def test_tecnologo_do_banco_e_tecnologico_no_emec(self):
         emec = [_curso_emec('1', 'GESTÃO HOSPITALAR', grau='Tecnológico', periodicidade='Noturno - 6 semestres')]
-        self.assertEqual(self.comparar([_curso_banco('GESTÃO HOSPITALAR', 6, tipo='Técnologo')], emec)[0][0], 'Confere')
+        self.assertEqual(self.comparar([_curso_banco('GESTÃO HOSPITALAR', 6, tipo='Técnologo')], emec)[0][0], 'Alinhado')
 
     def test_semipresencial_nao_e_presencial(self):
         # Caso real: FAPM (26085), GESTÃO HOSPITALAR presencial no banco e semipresencial no e-MEC.
@@ -386,11 +413,194 @@ class VereditoTests(SimpleTestCase):
         self.assertEqual(self.comparar([_curso_banco('GESTÃO HOSPITALAR')], emec)[0][2],
                          ['Modalidade: banco PRESENCIAL, e-MEC Semipresencial'])
         self.assertEqual(self.comparar([_curso_banco('GESTÃO HOSPITALAR', modalidade='SEMI-PRESENCIAL (EAD)')], emec)[0][0],
-                         'Confere')
+                         'Alinhado')
+
+    def test_ativo_no_emec_sem_par_no_banco_alerta(self):
+        emec = [_curso_emec('1', 'DIREITO'), _curso_emec('2', 'DIREITO'),          # 2 campi: 1 alerta só
+                _curso_emec('3', 'ENFERMAGEM'), _curso_emec('4', 'NUTRIÇÃO', ativo=False),
+                _curso_emec('5', 'PEDAGOGIA', grau='Licenciatura')]
+        r = self.comparar([_curso_banco('ENFERMAGEM')], emec)
+        self.assertEqual([(v, c) for v, c, _ in r], [('Alinhado', '3'), ('Ativo no e-MEC, ausente no banco', '1'),
+                                                      ('Ativo no e-MEC, ausente no banco', '5')])
 
     def test_nao_encontrado(self):
         self.assertEqual(self.comparar([_curso_banco('MEDICINA')], [_curso_emec('1', 'DIREITO')])[0][:2],
                          ('Não encontrado no e-MEC', None))
+
+
+def _visao(nome, itens=(3,), semestres=(), atos=(), confirmados=(), graus=(), modalidades=()):
+    return {nome: {'itens': set(itens), 'graus': set(graus), 'modalidades': set(modalidades),
+                   'semestres': set(semestres), 'vagas': set(), 'atos': list(atos),
+                   'atos_confirmados': list(confirmados), 'codigos': set(), 'documentos': ['Item 3 · arquivo 1']}}
+
+
+class VereditoTresFontesTests(SimpleTestCase):
+    """Documento comprova, e-MEC valida, banco diz se estamos ajustados."""
+    ATO = {'tipo': 'Portaria', 'numero': '669', 'data': '26/11/2024'}
+
+    def comparar(self, banco, emec, visao):
+        from .services.veredito import comparar_cursos
+        return [(r['veredito'], r['motivos']) for r in comparar_cursos(banco, emec, visao)]
+
+    def test_alinhado_exige_ato_confirmado(self):
+        emec = [_curso_emec('1', 'ADMINISTRAÇÃO')]
+        self.assertEqual(self.comparar([_curso_banco('ADMINISTRACAO')], emec,
+                                       _visao('ADMINISTRACAO', semestres=[8], atos=[self.ATO], confirmados=[self.ATO])),
+                         [('Alinhado', [])])
+        self.assertEqual(self.comparar([_curso_banco('ADMINISTRACAO')], emec, _visao('ADMINISTRACAO', atos=[self.ATO])),
+                         [('Sem comprovação', ['Documento cita o curso, mas nenhum ato confere com o e-MEC'])])
+        self.assertEqual(self.comparar([_curso_banco('ADMINISTRACAO')], emec, {}),
+                         [('Sem comprovação', ['Nenhum documento enviado cita o curso'])])
+
+    def test_periodos_do_documento_contra_o_banco(self):
+        emec = [_curso_emec('1', 'DIREITO', periodicidade='Noturno - 10 semestres')]
+        r = self.comparar([_curso_banco('DIREITO', 10)], emec,
+                          _visao('DIREITO', semestres=[8], atos=[self.ATO], confirmados=[self.ATO]))
+        self.assertEqual(r, [('Divergente', ['Períodos: banco 10, documento 8'])])
+
+    def test_ofertado_no_documento_e_ativo_no_emec_sem_banco(self):
+        emec = [_curso_emec('1', 'PSICOLOGIA')]
+        r = self.comparar([], emec, _visao('PSICOLOGIA', itens=[4]))
+        self.assertEqual(r, [('Ativo no e-MEC, ausente no banco',
+                              ['Bacharelado Presencial ativo no e-MEC sem cadastro no banco'
+                               ' — a IES o apresentou como ofertado (item 4)'])])
+
+    def test_curso_so_no_documento(self):
+        self.assertEqual(self.comparar([], [], _visao('MEDICINA'))[0][0], 'Citado no documento, ausente no banco')
+
+
+ATESTADO_IES = """                         FACULDADE SOBRESP DE CRISTALINA
+       ATESTADO DE REGULARIDADE E FUNCIONAMENTO DE CURSOS
+         Atestamos, para os devidos fins de direito, que os cursos abaixo estão em funcionamento:
+Administração (74226): Regularmente autorizado/ reconhecido pela Portaria nº 669 de
+26/11/2024, modalidade presencial, com duração de 8 semestres letivos.
+Direito (1059849): Regularmente autorizado/reconhecido pelo Decreto nº 12.769 de
+05/12/2025, Portaria nº 490 de 18/09/2026, na modalidade presencial com 10 semestres letivos.
+"""
+
+DOU_TABELA = """                                PORTARIA N° 194, DE 29 de maio de 2026.
+A SECRETÁRIA DE REGULAÇÃO E SUPERVISÃO DA EDUCAÇÃO SUPERIOR, no uso da atribuição que lhe confere o
+Decreto nº 12.769, de 5 de dezembro de 2025, resolve: Art. 1º Ficam autorizados os cursos superiores.
+                            ENFERMAGEM                                                                CAMPELO, 36,
+ 16    202519367 1712835                      80 (oitenta) ANHANGUERA DE     EDUCACIONAL S/A (CNPJ:
+                            (Bacharelado)                  CARUARU (23897)   38733648000140)
+                            AGRONOMIA         120 (cento e                   EDUCACIONAL              QUADRA 102,
+ 17    202519368 1712836                                   ANHANGUERA DE
+                            (Bacharelado)         vinte)   GOIÂNIA (13133)   04310392000146)          GOIÂNIA/GO
+                            ODONTOLOGIA                    ANHANGUERA DE     EDUCACIONAL              COUTINHO, 733,
+ 18    202519297 1712768                      80 (oitenta) ITAPETININGA (23893) PARTICIPACOES        CENTRO
+"""
+
+MODELO_OVG_2_PAGINAS = """                         CONSULTA AS INSTITUIÇÕES - CURSOS OFERTADOS 202
+                                                             MODALIDADE (Presencial,
+                  IES                    NOME DO CURSO
+                                                              Semipresencial ou EaD)
+Faculdade Impacto de Porangatu- GO   Administração          Presencial
+Faculdade Impacto de Porangatu- GO   Agronomia              Presencial
+Faculdade Impacto de Porangatu- GO   Fisioterapia           Presencial
+RSOS OFERTADOS 2027.1
+     Tipo (Bacharelado, Licenciatura         Quantidade de
+             ou Tecnólogo)             Períodos/semestres do curso
+    Bacharelado                                                  8
+    Bacharelado                                                 10
+    Bacharelado                                                 10
+"""
+
+RELACAO_OVG = """                         CONSULTA AS INSTITUIÇÕES - CURSOS OFERTADOS 2027.1
+                                                             MODALIDADE (Presencial,     Tipo (Bacharelado,       Quantidade de
+                  IES                    NOME DO CURSO        Semipresencial ou EaD)      Licenciatura)            Períodos/semestres
+Faculdade Impacto de Porangatu- GO   Administração          Presencial                  Bacharelado              8
+Faculdade Impacto de Porangatu- GO   Ciências Contabéis     Presencial                  Bacharelado              8
+Faculdade Impacto de Porangatu- GO   Engenharia Civil       Presencial                  Bacharelado              10
+"""
+
+
+class DocumentosTests(SimpleTestCase):
+    """Leitor dos documentos dos itens 3 e 4 (recortes reais, em texto)."""
+
+    def test_atos_em_varios_formatos(self):
+        from .services.documentos import atos_no_texto
+        casos = {'reconhecido pela Portaria nº 669 de 26/11/2024, modalidade': ('669', '26/11/2024'),
+                 'PORTARIA N° 190, DE 08 de maio de 2026.': ('190', '08/05/2026'),
+                 'Portaria nº 1.503 de 13 de outubro de 2009.': ('1503', '13/10/2009'),
+                 'PORTARIA SERES/MEC Nº 386, DE 13 DE AGOSTO DE 2024': ('386', '13/08/2024'),
+                 'Resolução CEE/CES N. 08, de 17 de fevereiro de 2023': ('8', '17/02/2023'),
+                 'Port. Seres MEC 441 de 27/08/2026': ('441', '27/08/2026')}
+        for texto, esperado in casos.items():
+            self.assertEqual([(a['numero'], a['data']) for a in atos_no_texto(texto)], [esperado], texto)
+        self.assertEqual(atos_no_texto('Portarias Normativas MEC n° 20 e nº 23, de 21 de dezembro de 2017'), [])
+
+    def test_atestado_da_ies_codigo_ato_e_semestres(self):
+        from .services.documentos import ler_documento
+        emec = [_curso_emec('74226', 'ADMINISTRAÇÃO'), _curso_emec('1059849', 'DIREITO')]
+        d = ler_documento(ATESTADO_IES, '1696', emec, [])
+        self.assertEqual(d['tipo'], 'Atestado da IES')
+        adm, direito = d['cursos']
+        self.assertEqual((adm['codigos'], adm['por'], adm['semestres'], adm['modalidade'], adm['atos']),
+                         (['74226'], 'codigo', [8], 'Presencial', [{'tipo': 'Portaria', 'numero': '669', 'data': '26/11/2024'}]))
+        self.assertEqual([a['numero'] for a in direito['atos']], ['12769', '490'])
+        self.assertEqual(direito['semestres'], [10])
+
+    def test_dou_em_tabela_so_a_linha_da_ies(self):
+        from .services.documentos import ler_documento
+        emec = [_curso_emec('1712836', 'AGRONOMIA'), _curso_emec('1', 'ENFERMAGEM'), _curso_emec('2', 'ODONTOLOGIA')]
+        d = ler_documento(DOU_TABELA, '13133', emec, [], 'ANHANGUERA (GOIANIA) - FACULDADE ANHANGUERA DE GOIANIA')
+        self.assertEqual(d['tipo'], 'Portaria (DOU)')
+        self.assertEqual({c['nome'] for c in d['cursos']}, {'AGRONOMIA'})
+        self.assertEqual(d['cursos'][0]['atos'], [{'tipo': 'Portaria', 'numero': '194', 'data': '29/05/2026'}])
+
+    def test_tabela_da_relacao_de_cursos(self):
+        from .services.documentos import cursos_das_tabelas
+        banco = [_curso_banco('ADMINISTRACAO'), _curso_banco('CIENCIAS CONTABEIS'), _curso_banco('ENGENHARIA CIVIL', 10)]
+        linhas = [(c['nome'], c['grau'], c['modalidade'], c['semestres']) for c in cursos_das_tabelas(RELACAO_OVG, [], banco)
+                  if c['conhecido']]
+        self.assertEqual(linhas, [('ADMINISTRACAO', 'Bacharelado', 'Presencial', [8]),
+                                  ('CIENCIAS CONTABEIS', 'Bacharelado', 'Presencial', [8]),
+                                  ('ENGENHARIA CIVIL', 'Bacharelado', 'Presencial', [10])])
+
+    def test_modelo_da_ovg_em_duas_paginas_casa_pela_ordem(self):
+        # Caso real (FIP, 22463): a linha "Semipresencial ou EaD)" do título desalinhava os períodos.
+        from .services.documentos import cursos_das_tabelas
+        banco = [_curso_banco('ADMINISTRACAO'), _curso_banco('AGRONOMIA', 10), _curso_banco('FISIOTERAPIA', 10)]
+        linhas = [(c['nome'], c['grau'], c['semestres']) for c in cursos_das_tabelas(MODELO_OVG_2_PAGINAS, [], banco)]
+        self.assertEqual(linhas, [('ADMINISTRACAO', 'Bacharelado', [8]), ('AGRONOMIA', 'Bacharelado', [10]),
+                                  ('FISIOTERAPIA', 'Bacharelado', [10])])
+
+    def test_nome_tolerante(self):
+        from .services.documentos import _padrao_do_nome, _expandir, _normalizar_ato
+        padrao = _padrao_do_nome('GESTAO EM TECNOLOGIA DA INFORMACAO')
+        self.assertTrue(padrao.search(_normalizar_ato('Gestão da Tecnologia da Informação')))
+        self.assertTrue(_padrao_do_nome('ENGENHARIA DE SOFTWARE').search(_expandir(_normalizar_ato('Eng. Software'))))
+        self.assertTrue(_padrao_do_nome('LETRAS PORTUGUES E INGLES').search(_normalizar_ato('LETRAS - PORTUGUÊS E INGLÊS')))
+
+    def test_semestres_de_celula(self):
+        from .services.documentos import semestres_de
+        self.assertEqual(semestres_de('8'), [8])
+        self.assertEqual(semestres_de('4 anos'), [8])
+        self.assertEqual(semestres_de('10 \\ 12'), [10, 12])
+        self.assertEqual(semestres_de('-'), [])
+
+    def test_arquivo_html_ou_vazio_nao_quebra(self):
+        from .services.documentos import extrair_texto
+        self.assertEqual(extrair_texto(b'<html>nada</html>')[1], 'Arquivo inválido')
+
+
+class FormularioTests(SimpleTestCase):
+    def test_resposta_mais_recente_e_os_dois_blocos(self):
+        from .services.formulario import arquivos_por_resposta
+        vazio = [''] * 26
+        def linha(carimbo, nome, i3, i4, nome2='', i3b=''):
+            l = list(vazio)
+            l[0], l[2], l[5], l[6], l[14], l[17] = carimbo, nome, i3, i4, nome2, i3b
+            return l
+        link = lambda fid: f'https://drive.google.com/open?id={fid}'
+        csv = [vazio,
+               linha('01/11/2026 10:00:00', 'FAP', link('A' * 25), link('B' * 25)),
+               linha('05/11/2026 10:00:00', 'FAP', link('C' * 25), link('D' * 25), 'FAP', link('E' * 25))]
+        r = arquivos_por_resposta(csv)
+        self.assertEqual(r['FAP']['carimbo'], '05/11/2026 10:00:00')
+        self.assertEqual([(a['id'][0], a['item'], a['bloco']) for a in r['FAP']['arquivos']],
+                         [('C', 3, 1), ('D', 4, 1), ('E', 3, 2)])
 
 
 class MotorTests(SimpleTestCase):
@@ -403,6 +613,8 @@ class MotorTests(SimpleTestCase):
     CATALOGO = {'ANHANGUERA': {'instituicoes': [{'nome_instituicao': 'FACULDADE ANHANGUERA DE ANAPOLIS', 'cnpj': ''},
                                                 {'nome_instituicao': 'SEM CODIGO', 'cnpj': ''}]}}
     CURSOS = {88: [_curso_banco('ADMINISTRACAO'), _curso_banco('MEDICINA', 12)], 9: [_curso_banco('DIREITO', 10)]}
+
+    formulario = staticmethod(lambda alvos, casar, linhas, avisar=None: {})
 
     def rodar(self, documentos, sessao):
         import json
@@ -417,7 +629,9 @@ class MotorTests(SimpleTestCase):
                 mock.patch.multiple('apps.automacoes.renovacao_cadastramento.services.sibu',
                                     instituicoes_sibu=mock.Mock(return_value=self.BANCO),
                                     cursos_por_ies=mock.Mock(return_value=self.CURSOS),
-                                    casar_instituicao=casar):
+                                    casar_instituicao=casar), \
+                mock.patch('apps.automacoes.renovacao_cadastramento.services.formulario.baixar',
+                           side_effect=self.formulario):
             motor.executar(pasta, sessao_emec=lambda: sessao)
         status = json.load(open(os.path.join(pasta, 'status.json')))
         return status, os.path.join(pasta, 'renovacao_de_cadastramento.xlsx')
@@ -428,22 +642,46 @@ class MotorTests(SimpleTestCase):
         status, caminho = self.rodar({'documentos': None}, SessaoFalsa())
         self.assertEqual(status['estado'], 'concluido')
         self.assertEqual(status['progresso'], 100)
+        tipos = [l['tipo'] for l in status['linhas']]
+        self.assertEqual([l['texto'] for l in status['linhas'] if l['tipo'] == 'comando'],
+                         ['banco_dados --run', 'formulario --run', 'emec_cursos --run', 'planilha --run'])
+        self.assertEqual(tipos[-1], 'fim')
+        emec_ok = [l for l in status['linhas'] if l['tipo'] == 'item' and l['campos'][0] == 'E-MEC'
+                   and l['campos'][1].startswith('(5550)')]
+        # O formulário simulado não tem resposta: IES sem documentação enviada.
+        self.assertEqual(emec_ok[0]['campos'][2], '2 cursos · 1 ativo · sem documentação enviada')
+        self.assertTrue(any(l['tipo'] == 'item' and l['campos'][-1] == 'sem documentação' for l in status['linhas']))
+        self.assertEqual(emec_ok[0]['texto'], '0 alinhados · 2 com pendência')
         r = status['resumo']
-        self.assertEqual((r['cursos_confere'], r['cursos_diverge'], r['cursos_nao_encontrados'], r['ies_sem_emec']),
-                         (1, 0, 1, 1))
+        self.assertEqual(r['vereditos'], {'Sem comprovação': 1, 'Não encontrado no e-MEC': 1})
+        self.assertEqual(r['ies_sem_emec'], 1)
 
         livro = openpyxl.load_workbook(caminho)
-        self.assertEqual(livro.sheetnames, ['Análise e-MEC', 'Cursos', 'Cursos e-MEC', 'Veredito Cursos'])
+        self.assertEqual(livro.sheetnames, ['Cursos e-MEC', 'Veredito Cursos', 'Documentos'])
+        self.assertEqual(livro['Documentos'].sheet_properties.tabColor.rgb, 'FFF28C28')
         cursos_emec, veredito = livro['Cursos e-MEC'], livro['Veredito Cursos']
         self.assertEqual([c.value for c in cursos_emec[1]], COLUNAS_CURSOS_EMEC)
         self.assertEqual([c.value for c in veredito[1]], COLUNAS_VEREDITO)
-        linha = dict(zip(COLUNAS_CURSOS_EMEC, [c.value for c in cursos_emec[2]]))
-        self.assertEqual((linha['Código Curso'], linha['Situação'], linha['Vagas Anuais'], linha['Município/UF']),
-                         (51251, 'Ativo', '270', 'Anápolis / GO'))
+        linhas = [dict(zip(COLUNAS_CURSOS_EMEC, [c.value for c in r])) for r in cursos_emec.iter_rows(min_row=2)]
+        self.assertEqual(linhas[0]['Curso'], '2 no banco · 1 ativos no e-MEC · sem documentação enviada')
+        linha = next(l for l in linhas if l['Curso'] == 'ADMINISTRACAO')
+        self.assertEqual((linha['Código Curso e-MEC'], linha['Situação e-MEC'], linha['Vagas Anuais'],
+                          linha['Município/UF'], linha['No banco']), (51251, 'Ativo', '270', 'Anápolis / GO', 'Sim'))
+        medicina = next(l for l in linhas if l['Curso'] == 'MEDICINA')
+        self.assertEqual((medicina['Situação e-MEC'], medicina['Coordenador']), ('Não localizado no e-MEC',) * 2)
         self.assertEqual(linha['Histórico de Indicadores'],
                          '2022: ENADE 2 · CPC 4 · CC - · IDD 3\n2018: ENADE 3 · CPC 3 · CC 4 · IDD 3')
-        vereditos = [(l[3].value, l[11].value) for l in veredito.iter_rows(min_row=2)]
-        self.assertEqual(vereditos, [('ADMINISTRACAO', 'Confere'), ('MEDICINA', 'Não encontrado no e-MEC'),
+        primeira = dict(zip(COLUNAS_VEREDITO, [c.value for c in veredito[2]]))
+        self.assertNotIn('Itens com o curso', COLUNAS_VEREDITO)
+        self.assertEqual((primeira['Grau (documento)'], primeira['Atos citados'], primeira['Periodicidade e-MEC']),
+                         ('Sem documentação enviada', 'Sem documentação enviada', 'Matutino - 8 semestres\nNoturno - 8 semestres'))
+        self.assertEqual(primeira['Motivo'], 'A IES não enviou documentação no formulário para comparação')
+        documentos = [[c.value for c in r] for r in livro['Documentos'].iter_rows(min_row=2)]
+        self.assertEqual([d[5] for d in documentos], ['Sem documentação enviada'] * 2)
+        self.assertFalse([c.value for r in veredito.iter_rows(min_row=2) for c in r if c.value in (None, '')])
+        coluna = COLUNAS_VEREDITO.index('Veredito')
+        vereditos = [(l[3].value, l[coluna].value) for l in veredito.iter_rows(min_row=2)]
+        self.assertEqual(vereditos, [('ADMINISTRACAO', 'Sem comprovação'), ('MEDICINA', 'Não encontrado no e-MEC'),
                                      ('DIREITO', 'Sem código MEC no banco de dados')])
 
     def test_sem_item_3_nao_abre_o_emec(self):
@@ -451,12 +689,13 @@ class MotorTests(SimpleTestCase):
         # Sessão None: se o motor tentasse abrir o e-MEC, quebraria aqui.
         status, caminho = self.rodar({'documentos': ['ato_autorizacao_mec']}, None)
         self.assertEqual(status['estado'], 'concluido')
-        self.assertEqual(openpyxl.load_workbook(caminho).sheetnames, ['Análise e-MEC', 'Cursos'])
+        self.assertEqual(openpyxl.load_workbook(caminho).sheetnames, ['Cursos e-MEC'])
 
     def test_emec_fora_nao_derruba_o_motor(self):
         status, _ = self.rodar({'documentos': None}, SessaoFalsa(falhar=True))
         self.assertEqual(status['estado'], 'concluido')
-        self.assertTrue(any('e-MEC não respondeu' in l['texto'] for l in status['linhas']))
+        self.assertTrue(any(l['tipo'] == 'item' and l['nivel'] == 'erro' and 'e-MEC não respondeu' in l['texto']
+                            for l in status['linhas']))
         self.assertEqual(status['resumo']['ies_sem_emec'], 2)
 
 
@@ -505,7 +744,8 @@ class MotorRotasTests(TestCase):
         self.iniciar({'instituicoes': None})
         status = self.client.get(reverse('renovacao_cadastramento_status')).json()
         self.assertEqual(status['estado'], 'erro')
-        self.assertEqual(status['linhas'][-1]['texto'], '✖ O motor parou sem terminar.')
+        self.assertEqual((status['linhas'][-1]['rotulo'], status['linhas'][-1]['texto']),
+                         ('ERRO', 'O motor parou sem terminar.'))
 
     def test_status_sem_execucao(self):
         self.assertEqual(self.client.get(reverse('renovacao_cadastramento_status')).json()['estado'], 'nenhum')
@@ -524,7 +764,8 @@ class MotorRotasTests(TestCase):
         self.assertEqual(encerrar.call_args[0], ('executar_renovacao_cadastramento', self.usuario.pk))
         self.assertEqual(self.client.get(reverse('renovacao_cadastramento_status')).json()['estado'], 'parado')
 
-    def test_baixar(self):
+    @mock.patch('apps.automacoes.renovacao_cadastramento.views._url_do_tunel', return_value=None)
+    def test_baixar(self, _):
         import os
         self.assertEqual(self.client.get(reverse('renovacao_cadastramento_baixar')).status_code, 404)
         pasta = os.path.join(self.pasta.name, f'usuario_{self.usuario.pk}')
@@ -534,6 +775,42 @@ class MotorRotasTests(TestCase):
         self.assertEqual(baixado.status_code, 200)
         self.assertIn('renovacao_de_cadastramento.xlsx', baixado['Content-Disposition'])
         self.assertEqual(b''.join(baixado.streaming_content), b'xlsx')
+
+    def _planilha(self):
+        import os
+        pasta = os.path.join(self.pasta.name, f'usuario_{self.usuario.pk}')
+        os.makedirs(pasta, exist_ok=True)
+        open(os.path.join(pasta, 'renovacao_de_cadastramento.xlsx'), 'wb').write(b'xlsx')
+
+    def test_baixar_redireciona_para_o_tunel_https_com_token(self):
+        self._planilha()
+        with mock.patch('apps.automacoes.renovacao_cadastramento.views._url_do_tunel',
+                        return_value='https://x.trycloudflare.com'):
+            resposta = self.client.get(reverse('renovacao_cadastramento_baixar'))
+        self.assertEqual(resposta.status_code, 302)
+        destino = resposta['Location']
+        self.assertTrue(destino.startswith('https://x.trycloudflare.com/automacoes/renovacao-cadastramento/api/baixar/?t='))
+
+        # No túnel não há sessão: o token sozinho entrega o arquivo.
+        self.client.logout()
+        baixado = self.client.get(reverse('renovacao_cadastramento_baixar') + '?' + destino.split('?')[1])
+        self.assertEqual(baixado.status_code, 200)
+        self.assertEqual(b''.join(baixado.streaming_content), b'xlsx')
+
+    def test_token_falso_ou_vencido_e_recusado(self):
+        from django.core import signing
+        self._planilha()
+        self.client.logout()
+        url = reverse('renovacao_cadastramento_baixar')
+        self.assertEqual(self.client.get(url + '?t=falso').status_code, 403)
+        token = signing.dumps(self.usuario.pk, salt='renovacao_cadastramento.baixar')
+        with mock.patch('django.core.signing.time.time', return_value=__import__('time').time() + 301):
+            self.assertEqual(self.client.get(url + f'?t={token}').status_code, 403)
+
+    def test_baixar_sem_sessao_nem_token_e_recusado(self):
+        self.client.logout()
+        # A view manda para o login; o SingleSessionMiddleware troca o 302 de rota /api/ por 401.
+        self.assertEqual(self.client.get(reverse('renovacao_cadastramento_baixar')).status_code, 401)
 
     def test_selecao_vazia_e_recusada(self):
         self.assertEqual(self.iniciar({'instituicoes': []})[0].status_code, 400)

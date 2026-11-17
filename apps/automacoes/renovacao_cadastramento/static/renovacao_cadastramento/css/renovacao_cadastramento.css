@@ -451,6 +451,21 @@ html[data-tema="eleitoral"] .rc-modal__caixa { background-color: var(--tema-fund
     line-height: 1.35;
     color: var(--rc-texto-fraco);
 }
+.rc-doc__grupo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-top: 0.3rem;
+    padding: 0.05rem 0.45rem;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--rc-cor);
+    background: var(--rc-lavado);
+    border: 1px solid var(--rc-borda);
+    width: fit-content;
+}
 
 .rc-doc__check {
     flex-shrink: 0;
@@ -667,23 +682,8 @@ html[data-tema="eleitoral"] .rc-cursos--erro { color: var(--tema-status-alerta);
     border: 1px solid var(--rc-neutro);
 }
 
-/* --- Iniciar / Baixar do motor -------------------------------------------
-   Classes próprias: as utilitárias verdes que outras telas trocam por JS podem
-   não existir no bundle purgado. O verde do Baixar pronto é o das outras telas. */
-#btn-start.rc-iniciar--ocupado { opacity: 0.6; cursor: wait; }
-/* Parar só vale com o motor rodando; o id vence as utilitárias fixas do botão. */
-#btn-stop:disabled { opacity: 0.45; cursor: not-allowed; }
-#btn-stop:not(:disabled) { opacity: 1; cursor: pointer; }
-#btn-download.rc-baixar--pronto {
-    background-image: linear-gradient(to right, #22c55e, #16a34a, #15803d);
-    color: #ffffff;
-    cursor: pointer;
-    box-shadow: 0 6px 16px rgba(22, 163, 74, 0.25);
-}
-#btn-download.rc-baixar--pronto:hover { background-image: linear-gradient(to bottom right, #22c55e, #16a34a, #15803d); }
+/* Estados de Iniciar / Parar / Baixar: static/css/motor-botoes.css (compartilhado). */
 
-.console-ggci .rc-log-alerta { color: #b45309; }
-html[data-tema="eleitoral"] .console-ggci .rc-log-alerta { color: var(--tema-status-alerta); }
 
 /* --- Padronização de botões secundários (estilo Voltar, sem blur/halo) ---- */
 .tela-voltar:not(.tema-toggle),

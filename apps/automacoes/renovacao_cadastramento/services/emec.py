@@ -52,6 +52,11 @@ def url_detalhe_curso(codigo_curso):
     return f"/emec/consulta-curso/detalhe-curso-tabela/{_parametro('co_ies_curso', codigo_curso)}"
 
 
+def url_atos_curso(codigo_ies, codigo_curso):
+    return (f"/emec/consulta-curso/listar-ato-regulatorio/{_parametro('co_ies', codigo_ies)}/"
+            f"{_parametro('co_ies_curso', codigo_curso)}/list/1000")
+
+
 def url_historico_curso(codigo_curso):
     return (f"/emec/consulta-curso/listar-historico-indicadores-curso/"
             f"{_parametro('co_ies_curso', codigo_curso)}/list/1000")
@@ -152,6 +157,37 @@ def ler_historico(html):
         if len(valores) == len(cabecalho) and valores:
             historico.append(dict(zip(cabecalho, valores)))
     return historico
+
+
+CAMPOS_ATO = {'Ato Regulatório': 'ato', 'Tipo de documento': 'tipo', 'Nº do documento': 'numero',
+              'Data do documento': 'data', 'Data de publicação': 'publicacao', 'Prazo de validade': 'validade'}
+
+
+def ler_atos(html):
+    """
+    Atos regulatórios do curso: [{'ato', 'tipo', 'numero', 'data', 'publicacao', 'validade'}].
+    O e-MEC às vezes põe a data dentro do número ("737 de 30/12/2013", "750 de 06/10/2006*"):
+    o número fica só com os dígitos e a data vai para `data` quando a coluna própria vem vazia.
+    """
+    cabecalho = [CAMPOS_ATO.get(t, t) for t in _cabecalho(html)]
+    atos = []
+    for linha in re.findall(r'<tr\b[^>]*>(.*?)</tr>', _corpo(html), flags=re.S | re.I):
+        valores = [_texto(c) for c in _celulas(linha)]
+        if len(valores) < 4:
+            continue
+        ato = {campo: _sem_registro(v) for campo, v in zip(cabecalho, valores) if campo in CAMPOS_ATO.values()}
+        embutida = re.search(r'(\d{2}/\d{2}/\d{4})', ato.get('numero', ''))
+        if embutida and not ato.get('data'):
+            ato['data'] = embutida.group(1)
+        ato['numero'] = numero_de_ato(ato.get('numero', ''))
+        atos.append(ato)
+    return atos
+
+
+def numero_de_ato(texto):
+    """'737 de 30/12/2013' → '737'; '1.503' → '1503'; '02' → '2'. Chave para comparar com o documento."""
+    achado = re.match(r'\s*([\d.]+)', texto or '')
+    return str(int(achado.group(1).replace('.', ''))) if achado and achado.group(1).replace('.', '') else ''
 
 
 def semestres(periodicidade):
@@ -265,10 +301,10 @@ class SessaoEmec:
 
 def cursos_da_ies(sessao, codigo_ies):
     """
-    O QUE FAZ: todos os cursos de graduação da IES no e-MEC, com detalhes e histórico de
-      indicadores dos ATIVOS (os inativos ficam só com a linha da lista, como na tela).
+    O QUE FAZ: todos os cursos de graduação da IES no e-MEC; detalhes, histórico de indicadores
+      e atos regulatórios só dos ATIVOS (os inativos ficam só com a linha da lista).
     RETORNO: [{codigo, modalidade, grau, curso, uf, municipio, enade, cpc, cc, idd, situacao,
-              ativo, detalhe: {...} | None, historico: [...]}], na ordem do e-MEC.
+              ativo, detalhe: {...} | None, historico: [...], atos: [...]}], na ordem do e-MEC.
     """
     grupos = ler_cursos_agrupados(sessao.buscar(url_cursos_agrupados(codigo_ies)))
     cursos = {}
@@ -280,9 +316,11 @@ def cursos_da_ies(sessao, codigo_ies):
 
     ativos = [c for c in cursos.values() if c['ativo']]
     paginas = sessao.buscar_varios([url for c in ativos
-                                    for url in (url_detalhe_curso(c['codigo']), url_historico_curso(c['codigo']))])
+                                    for url in (url_detalhe_curso(c['codigo']), url_historico_curso(c['codigo']),
+                                                url_atos_curso(codigo_ies, c['codigo']))])
     for curso in cursos.values():
-        curso['detalhe'], curso['historico'] = None, []
-    for curso, detalhe, historico in zip(ativos, paginas[0::2], paginas[1::2]):
+        curso['detalhe'], curso['historico'], curso['atos'] = None, [], []
+    for curso, detalhe, historico, atos in zip(ativos, paginas[0::3], paginas[1::3], paginas[2::3]):
         curso['detalhe'], curso['historico'] = ler_detalhe_curso(detalhe), ler_historico(historico)
+        curso['atos'] = ler_atos(atos)
     return list(cursos.values())
