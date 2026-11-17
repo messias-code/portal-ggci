@@ -66,7 +66,7 @@ def baixar_pdf(uni_codigo, documentos_id, semestre, envio_id=None, coleta_id=Non
         browser = playwright.chromium.launch(headless=True)
         try:
             page = browser.new_context(accept_downloads=True).new_page()
-            page.goto("http://10.237.1.11/pbu/entrar/")
+            page.goto("http://10.237.1.4/probem_gestao/entrar/")
             page.get_by_role("textbox", name="Usuário").fill(os.getenv('PORTAL_PBU_USER') or "")
             page.get_by_role("textbox", name="Senha").fill(os.getenv('PORTAL_PBU_PASS_AGENDAMENTOS') or "")
             page.get_by_role("button", name="Entrar").click()

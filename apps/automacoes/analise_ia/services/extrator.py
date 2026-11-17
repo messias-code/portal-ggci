@@ -212,7 +212,7 @@ def extrair_documento_scriptcase(tarefa, doc_config, semestre_str, is_pendentes=
                 page = context.new_page()
                 
                 try:
-                    page.goto("http://10.237.1.11/pbu/entrar/")
+                    page.goto("http://10.237.1.4/probem_gestao/entrar/")
                     page.get_by_role("textbox", name="Usuário").fill(os.getenv('PORTAL_PBU_USER') or "")
                     page.get_by_role("textbox", name="Senha").fill(os.getenv('PORTAL_PBU_PASS_AGENDAMENTOS') or "")
                     page.get_by_role("button", name="Entrar").click()
