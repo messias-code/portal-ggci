@@ -46,11 +46,25 @@ function initAnaliseIA() {
         progressText.innerText = `${valor}%`;
     }
 
+    // Estados visuais em static/css/motor-botoes.css (os mesmos da Renovação de Cadastramento).
+    function iniciarOcupado(ocupado) {
+        btnStart.disabled = ocupado;
+        btnStart.classList.toggle('motor-iniciar--ocupado', ocupado);
+        const icone = btnStart.querySelector('i');
+        if (icone) icone.className = ocupado ? 'fa-solid fa-circle-notch fa-spin' : 'fa-solid fa-play';
+    }
+
+    function pararDisponivel(disponivel) {
+        btnStop.innerHTML = '<i class="fa-solid fa-stop"></i><span>Parar</span>';
+        btnStop.classList.remove('opacity-90', 'cursor-not-allowed', 'cursor-pointer');
+        btnStop.disabled = !disponivel;
+    }
+
+    pararDisponivel(false);
+
     function prepararUIInicio() {
         iniciando = true;
-        btnStart.disabled = true;
-        btnStart.classList.add('opacity-50', 'cursor-not-allowed');
-        btnStart.classList.remove('cursor-pointer');
+        iniciarOcupado(true);
 
         // === RESET DO BOTÃO DE DOWNLOAD AO INICIAR ===
         btnDownload.disabled = true;
@@ -66,18 +80,7 @@ function initAnaliseIA() {
         progressBar.classList.replace('to-red-600', 'to-purple-500');
         pintarProgresso(0);
 
-        consoleLogs.innerHTML = `
-            <div class="flex gap-2 mb-1 text-[14px]">
-                <span class="text-pink-600 font-bold">ovg@probem-ai:</span>
-                <span class="text-purple-600">~</span>
-                <span class="text-purple-400">$</span>
-                <span class="text-purple-900 font-bold">init_analise_ia --verbose</span>
-            </div>
-            <div class="text-pink-500/80 italic mb-2 text-[13px] flex items-center gap-2">
-                <i class="fa-solid fa-angle-right"></i> Aguardando início...
-            </div>
-            <span class=\"console-spinner\"></span>
-        `;
+        consoleLogs.innerHTML = window.ConsoleMotor.html('init_analise_ia --verbose', [{ tipo: 'sub', texto: 'Aguardando início…' }], true);
     }
 
     consoleLogs.addEventListener('scroll', () => {
@@ -212,18 +215,15 @@ function initAnaliseIA() {
                 iniciando = false;
                 if (data.status === 'ok') {
                     window.__processo_id = data.processo_id;
-                    btnStop.innerHTML = '<i class="fa-solid fa-stop"></i><span>Parar</span>';
-                    btnStop.classList.remove('opacity-90', 'cursor-not-allowed');
-                    btnStop.classList.add('cursor-pointer');
-                    btnStop.disabled = false;
+                    pararDisponivel(true);
                     iniciarMonitoramento(data.processo_id);
                 } else {
-                    adicionarLog(`<div class="text-red-500">Erro: ${data.mensagem}</div>`);
+                    adicionarLog(window.ConsoleMotor.linha({ tipo: 'selo', cor: 'red', rotulo: 'ERRO', texto: data.mensagem }));
                     resetarBotoesFalha();
                 }
             })
             .catch(err => {
-                adicionarLog(`<div class="text-red-500">Erro de conexão: ${err}</div>`);
+                adicionarLog(window.ConsoleMotor.linha({ tipo: 'selo', cor: 'red', rotulo: 'ERRO DE CONEXÃO', texto: String(err) }));
                 resetarBotoesFalha();
             });
         };
@@ -291,13 +291,8 @@ function initAnaliseIA() {
 
     function resetarBotoesFalha() {
         iniciando = false;
-        btnStart.disabled = false;
-        btnStart.classList.remove('opacity-50', 'cursor-not-allowed');
-        btnStart.classList.add('cursor-pointer');
-        btnStop.innerHTML = '<i class="fa-solid fa-stop"></i><span>Parar</span>';
-        btnStop.classList.add('opacity-90', 'cursor-not-allowed');
-        btnStop.classList.remove('cursor-pointer');
-        btnStop.disabled = true;
+        iniciarOcupado(false);
+        pararDisponivel(false);
         
         if (smoothInterval) { clearInterval(smoothInterval); smoothInterval = null; }
         const spinEl = document.querySelector('.console-spinner');
@@ -307,7 +302,8 @@ function initAnaliseIA() {
     /**
      * O QUE FAZ: Motor de Long-Polling para monitoramento.
      * POR QUÊ EXISTE: Como os dados demoram de 2 a 10 min pra extrair, o usuário deve receber feedback (Tail logs).
-     * COMO FUNCIONA: Inicia um `setInterval` injetando estilos dinâmicos (Tailwind) com RegExp pra limpar os TextNodes do Python.
+     * COMO FUNCIONA: `setInterval` lê o status; o log cru vira linhas estruturadas em `log_ia.js` e o
+     * desenho é o `ConsoleMotor` (static/js/console-motor.js), o mesmo da Renovação de Cadastramento.
      */
     // Aponta para a consulta do processo acompanhado agora (o Parar a chama na hora).
     let consultarStatus = () => {};
@@ -336,7 +332,7 @@ function initAnaliseIA() {
                         if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
                         window.__processo_id = null;
                         if (res.status === 404) {
-                            adicionarLog(`<div class="text-red-500">Erro 404: Processo ${processo_id} não encontrado no banco. Polling encerrado.</div>`);
+                            adicionarLog(window.ConsoleMotor.linha({ tipo: 'selo', cor: 'red', rotulo: 'ERRO 404', texto: `Processo ${processo_id} não encontrado no banco. Acompanhamento encerrado.` }));
                         }
                         resetarBotoesFalha();
                         return;
@@ -345,106 +341,10 @@ function initAnaliseIA() {
                 })
                 .then(data => {
                     if (!data || minhaSeq !== seqConsulta) return;
-                    let promptHtml = `
-                    <div class="flex items-center gap-1.5 font-mono text-[14px] mb-1">
-                        <span class="text-pink-600 font-bold">ovg@probem-ai:</span>
-                        <span class="text-purple-600">~</span>
-                        <span class="text-purple-400">$</span>
-                        <span class="text-purple-900 font-bold"> init_analise_ia --verbose</span>
-                    </div>
-                `;
-
-                    let rawLog = data.log || "";
-                    rawLog = rawLog.replace(/^.*\[(?:EXTRACAO|ETL)_PROGRESSO\].*$\n?/gm, '');
-                    rawLog = rawLog.replace(/\[\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}\]\s*/g, '');
-
-                    const mkBadge = (bg, bdr, lc, pc, icon, label, msg) =>
-                        `<div class="my-2"><span class="${bg} border ${bdr} px-2.5 py-1 rounded shadow-sm inline-flex items-center break-words"><span class="${lc} font-bold text-[11px] uppercase mr-2">${icon} ${label}</span><span class="${pc} mx-2">|</span><span class="text-purple-800 text-[13px]">${msg}</span></span></div>`;
-
-                    const B = {
-                        emerald: (i, l, m) => mkBadge('bg-emerald-50', 'border-emerald-200', 'text-emerald-600', 'text-emerald-300', i, l, m),
-                        red: (i, l, m) => mkBadge('bg-red-50', 'border-red-200', 'text-red-600', 'text-red-300', i, l, m),
-                        indigo: (i, l, m) => mkBadge('bg-purple-50', 'border-purple-200', 'text-purple-600', 'text-purple-300', i, l, m),
-                        pink: (i, l, m) => mkBadge('bg-pink-50', 'border-pink-200', 'text-pink-600', 'text-pink-300', i, l, m),
-                        blue: (i, l, m) => mkBadge('bg-blue-50', 'border-blue-200', 'text-blue-600', 'text-blue-300', i, l, m),
-                        yellow: (i, l, m) => mkBadge('bg-yellow-50', 'border-yellow-200', 'text-yellow-600', 'text-yellow-300', i, l, m)
-                    };
-
-                    rawLog = rawLog.replace(/\[([^<>[\]]+?)\s*\|\s*([^<>[\]]+?)\s*\|\s*([^<>[\]]+?)\]\s*(.*?)(?=\n|\[[^<>\[\]]+?\||$)/g, (_, p1, p2, p3, rest) => {
-                        let msg = rest.replace('->', '→').trim();
-                        // === DETECÇÃO DE ÍCONE BASEADA NO CONTEÚDO ===
-                        let isWarn = msg.includes('⚠️');
-                        let isError = msg.includes('❌');
-                        
-                        // Limpa emojis redundantes da mensagem final
-                        let cleanMsg = msg.replace(/⚠️|❌|✅/g, '').trim();
-                        
-                        let icon = isWarn ? '<span class="text-yellow-500 font-bold">!</span>' : 
-                                   isError ? '<span class="text-red-500 font-bold">✖</span>' : 
-                                   '<span class="text-green-500">✔</span>';
-                                   
-                        return `<div class="ml-4 my-0.5 text-[13px] font-mono break-words">${icon} <span class="text-pink-600 uppercase font-semibold">${p1.trim()}</span> <span class="text-purple-200">│</span> <span class="text-purple-600 uppercase">${p2.trim()}</span> <span class="text-purple-200">│</span> <span class="text-emerald-600">${p3.trim()}</span> <span class="text-purple-200">│</span> <span class="text-purple-800">${cleanMsg}</span></div>`;
-                    });
-
-                    // BADGES E MENSAGENS
-                    rawLog = rawLog.replace(/✅ Planilhas consolidadas e limpas\./g, B.indigo('✔', 'MATRIZ', 'Matriz consolidada e limpa.'));
-                    rawLog = rawLog.replace(/✅ Regras de negócio aplicadas\./g, B.pink('✔', 'MODELO', 'Regras de negócio aplicadas.'));
-                    rawLog = rawLog.replace(/🚀 Inciando limpeza e recriação dos diretórios de extração\.\.\./g, B.blue('⚙', 'SISTEMA', 'Limpando e recriando diretórios...'));
-                    rawLog = rawLog.replace(/✅ Dados financeiros carregados com sucesso\./g, B.emerald('✔', 'FINANCEIRO', 'Dados financeiros carregados.'));
-
-                    rawLog = rawLog.replace(/⚠️ EXTRAÇÃO VAZIA: Nenhum arquivo corresponde aos filtros \(Bloqueio por Regras\)\./g, B.yellow('!', 'FILTRO VAZIO', 'Combinação de filtros não gerou dados.'));
-                    rawLog = rawLog.replace(/🛑 Processo abortado de forma inteligente\./g, '');
-
-                    rawLog = rawLog.replace(/🔄 Processando: .*/g, '');
-                    rawLog = rawLog.replace(/✅ Gerado com sucesso e colunas ordenadas: .*?[\\/]([^\\/]+\.xlsx)/g, `<div class="ml-4 my-0.5 text-[13px] text-purple-800"><span class="text-emerald-600 font-bold">💾</span> $1 <span class="text-purple-300">→</span> salvo</div>`);
-
-                    rawLog = rawLog.replace(/🚀 Iniciando GGCI - Gerando Relatório Geral\.\.\./g, '');
-                    rawLog = rawLog.replace(/📥 Lido: (.*?)\s*→\s*(.*)/g, `<div class="ml-4 my-0.5 text-[13px] text-purple-800"><span class="text-yellow-500 font-bold">📥</span> Lido: $1 <span class="text-purple-300">→</span> $2</div>`);
-                    rawLog = rawLog.replace(/🔍 Identificando bolsistas sem documentação entregue\.\.\./g, `<div class="ml-4 my-0.5 text-[13px] text-gray-400">↳ Identificando bolsistas com pendências...</div>`);
-                    rawLog = rawLog.replace(/🗄️ Buscando dados financeiros dos bolsistas\.\.\./g, `<div class="ml-4 my-0.5 text-[13px] text-gray-400">↳ Buscando dados financeiros dos bolsistas...</div>`);
-                    rawLog = rawLog.replace(/🗄️ Conectando ao sistema de pagamentos\.\.\./g, `<div class="ml-6 my-0.5 text-[13px] text-gray-400">↳ Conectando ao sistema de pagamentos...</div>`);
-                    rawLog = rawLog.replace(/🤖 Calculando auditorias e cruzando dados financeiros \(Documentos\)\.\.\./g, `<div class="ml-4 my-0.5 text-[13px] text-gray-400">↳ Cruzando dados financeiros — Documentos...</div>`);
-                    rawLog = rawLog.replace(/🤖 Calculando auditorias e cruzando dados financeiros \(RIAF\)\.\.\./g, `<div class="ml-4 my-0.5 text-[13px] text-gray-400">↳ Cruzando dados financeiros — RIAF...</div>`);
-                    rawLog = rawLog.replace(/💾 Finalizando e gerando o Relatório Geral\.\.\./g, `<div class="ml-4 my-0.5 text-[13px] text-gray-400">↳ Finalizando relatório geral...</div>`);
-
-                    // === NOVAS MENSAGENS GRANULARES DO GGCI ===
-                    rawLog = rawLog.replace(/💾 Inicializando conversor e motor do Excel\.\.\./g, `<div class="ml-4 my-0.5 text-[13px] text-gray-400">↳ Inicializando motor do Excel...</div>`);
-                    rawLog = rawLog.replace(/💾 Gerando aba Documentos \((\d+) linhas\)\.\.\./g, `<div class="ml-6 my-0.5 text-[13px] text-purple-800">↳ Gerando aba Documentos <span class="text-purple-300">→</span> <span class="text-emerald-600">$1 linhas</span></div>`);
-                    rawLog = rawLog.replace(/💾 Gerando aba Riaf \((\d+) linhas\)\.\.\./g, `<div class="ml-6 my-0.5 text-[13px] text-purple-800">↳ Gerando aba RIAF <span class="text-purple-300">→</span> <span class="text-emerald-600">$1 linhas</span></div>`);
-                    rawLog = rawLog.replace(/💾 Processando Resumo Quantitativo\.\.\./g, `<div class="ml-6 my-0.5 text-[13px] text-purple-800">↳ Processando Resumo Quantitativo...</div>`);
-                    rawLog = rawLog.replace(/💾 Gerando Abas Gerenciais \(Relatório IES\)\.\.\./g, `<div class="ml-6 my-0.5 text-[13px] text-purple-800">↳ Gerando Relatório IES...</div>`);
-                    rawLog = rawLog.replace(/💾 Salvando e compilando arquivo físico\.\.\./g, `<div class="ml-6 my-0.5 text-[13px] text-purple-800">↳ Salvando arquivo físico...</div>`);
-
-                    // === TIMING REPORT (escondido do log visual) ===
-                    rawLog = rawLog.replace(/📊 Timing por bloco:[\s\S]*?(?=\n🎉|\n❌|$)/g, '');
-                    rawLog = rawLog.replace(/⏱ .*/g, '');
-
-                    rawLog = rawLog.replace(/➕ Injetados (\d+) registros 'Ausentes' \(Docs\)\./g, `<div class="ml-6 my-0.5 text-[13px] text-purple-800">↳ <span class="text-green-400 font-bold">+$1</span> bolsistas pendentes (Docs)</div>`);
-                    rawLog = rawLog.replace(/➕ Injetados (\d+) registros 'Ausentes' \(Riaf\)\./g, `<div class="ml-6 my-0.5 text-[13px] text-purple-800">↳ <span class="text-green-400 font-bold">+$1</span> bolsistas pendentes (RIAF)</div>`);
-
-                    rawLog = rawLog.replace(/🎉 Extração concluída: (.*)\./g, B.emerald('✔', 'OK', '$1.'));
-                    rawLog = rawLog.replace(/🎉 Consolidação concluída: (.*)\./g, B.emerald('✔', 'OK', '$1.'));
-                    rawLog = rawLog.replace(/🎉 Regras aplicadas: (.*)\./g, B.emerald('✔', 'OK', '$1.'));
-                    rawLog = rawLog.replace(/🎉 SUPER-EXTRAÇÃO CONCLUÍDA E SALVA/g, B.emerald('✔', 'CONCLUÍDO', 'Relatório Geral gerado com sucesso!'));
-                    rawLog = rawLog.replace(/🚨 \[SISTEMA\] Processo de IA abortado manualmente pelo usuário!/g, B.red('!', 'ABORTADO PELO USUÁRIO', 'Processo interrompido manualmente.'));
-                    rawLog = rawLog.replace(/🚨 \[SISTEMA\] (Processo abortado.*)/g, B.red('■', 'ABORTADO', '$1'));
-
-                    const termCmd = (cmd) => `<div class="flex items-center gap-1 mt-4 mb-1.5 font-mono text-[14px] break-words"><span class="text-pink-600 font-bold">ovg@probem-ai:</span><span class="text-purple-600"> ~</span><span class="text-purple-400"> $</span><span class="text-purple-900 font-bold"> ${cmd}</span></div>`;
-                    rawLog = rawLog.replace(/🚀 Iniciando processamento massivo\.\.\./g, termCmd('extracao_ia --run'));
-                    rawLog = rawLog.replace(/🔄 Consolidando e limpando as planilhas base\.\.\./g, termCmd('consolidacao_ia --run'));
-                    rawLog = rawLog.replace(/🗄️ Analisando regras de negócio\.\.\./g, termCmd('ggci_ia --run'));
-                    rawLog = rawLog.replace(/🎉 Processamento concluído em (.*)!/g, termCmd('exit 0  <span class="text-gray-500 mx-1">—</span> <span class="text-emerald-400 font-semibold ml-1">✔ Concluído em $1</span>'));
-
-                    rawLog = rawLog
-                        .replace(/✅/g, '')
-                        .replace(/❌/g, '<span class="text-red-500 font-bold mr-1">✖</span>')
-                        .replace(/⚠️/g, '<span class="text-yellow-500 font-bold mr-1">!</span>')
-                        .replace(/🚨/g, '');
-
-                    let htmlLog = rawLog.replace(/\n{3,}/g, '\n\n').replace(/\n/g, '<div class="h-px"></div>');
+                    // Log cru → linhas estruturadas (log_ia.js) → mesmo console da Renovação (console-motor.js).
+                    const rawLog = data.log || "";
                     const rodando = data.status_codigo !== 'CONCLUIDO' && data.status_codigo !== 'FALHA';
-
-                    consoleLogs.innerHTML = promptHtml + `<div class="mt-3 font-mono text-[14px] tracking-tight leading-snug text-gray-700">${htmlLog}</div>` + (rodando ? `<span class=\"console-spinner\"></span>` : '');
+                    consoleLogs.innerHTML = window.ConsoleMotor.html('init_analise_ia --verbose', window.LogIA.interpretar(rawLog), rodando);
 
                     if (autoScroll) consoleLogs.scrollTop = consoleLogs.scrollHeight;
 
@@ -469,7 +369,7 @@ function initAnaliseIA() {
 
                         if (data.status_codigo === 'CONCLUIDO') {
 
-                            if ((rawLog.includes('FILTRO VAZIO') || rawLog.includes('Nenhum dado processado')) && !data.arquivo_resultado) {
+                            if ((rawLog.includes('EXTRAÇÃO VAZIA') || rawLog.includes('Nenhum dado processado')) && !data.arquivo_resultado) {
                                 btnDownload.innerHTML = '<i class="fa-solid fa-ban"></i><span>Sem Arquivos</span>';
                             } else {
                                 btnDownload.disabled = false;
@@ -509,13 +409,8 @@ function initAnaliseIA() {
                         }
 
                         // Liberar botões
-                        btnStart.disabled = false;
-                        btnStart.classList.remove('opacity-50', 'cursor-not-allowed');
-                        btnStart.classList.add('cursor-pointer');
-                        btnStop.innerHTML = '<i class="fa-solid fa-stop"></i><span>Parar</span>';
-                        btnStop.classList.add('opacity-90', 'cursor-not-allowed');
-                        btnStop.classList.remove('cursor-pointer');
-                        btnStop.disabled = true;
+                        iniciarOcupado(false);
+                        pararDisponivel(false);
                     }
                 })
                 .catch(err => console.error("Monitoramento error:", err))
