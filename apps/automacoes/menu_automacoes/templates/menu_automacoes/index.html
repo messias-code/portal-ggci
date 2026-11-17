@@ -22,7 +22,7 @@
     <link rel="stylesheet" href="{% static 'css/tema.css' %}">
 
     <!-- Modo escuro da casca de menu, compartilhado por Início/Ferramentas/Automações/Dashboards -->
-    <link rel="stylesheet" href="{% static 'css/tema-menu.css' %}">
+    <link rel="stylesheet" href="{% static 'css/tema-menu.css' %}?v=3">
     
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -188,7 +188,6 @@
                     </div>
                 </a>
 
-            </div>
                 <a href="{% url 'renovacao_cadastramento_view' %}" class="card-modulo card-modulo--c card-modulo--ovg group flex flex-row items-center p-5 lg:p-6 border border-white/30 rounded-[2rem] shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden w-full max-w-[28rem] min-h-[14rem] h-[14rem]">
                     <div class="card-modulo__halo absolute -right-10 -top-10 w-48 h-48 bg-white/10 blur-3xl rounded-full group-hover:bg-white/20 transition-all z-0"></div>
                     <div class="card-modulo__icone flex-shrink-0 w-24 h-24 bg-white/10 backdrop-blur-md rounded-[1.2rem] border border-white/30 shadow-[inset_0_0_20px_rgba(255,255,255,0.1)] flex items-center justify-center relative overflow-hidden mr-5 group-hover:bg-white/20 transition-all z-10 text-white">
@@ -209,6 +208,7 @@
                     </div>
                 </a>
 
+            </div>
         </main>
     </div>
 
