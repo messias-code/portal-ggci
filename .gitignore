@@ -147,4 +147,10 @@ gestao_acessos_iniciais.json
 # ARTEFATOS EXPLICATIVOS
 # ==========================================
 artefatos_explicativos/
-relatorio_vulnerabilidades.md
+relatorio_gestao_vulnerabilidades_e_patches.md
+
+# ==========================================
+# ANÁLISES LOCAIS
+# ==========================================
+Rafael_Analise/
+Rafael_analise/
