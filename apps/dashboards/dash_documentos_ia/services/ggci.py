@@ -1261,7 +1261,7 @@ def buscar_dados_pagamentos_mes_a_mes_sql(semestres_presentes):
         print(f"[GGCI       | ERRO          | HIST  ] Detalhes: {e}")
         return pd.DataFrame()
 
-def mesclar_sql_e_reordenar(df, df_sql, df_pag=None, df_mes_a_mes=None):
+def mesclar_sql_e_reordenar(df, df_sql, df_pag=None, df_mes_a_mes=None, is_riaf=False):
     """
     O QUE FAZ: Concatena a base extraída pelo scraper (df) com os dados lidos do banco (df_sql).
     POR QUÊ EXISTE: Núcleo do processamento de dados cruzados. Junta "O que o portal diz" com "O que o banco diz".
@@ -1417,7 +1417,12 @@ def mesclar_sql_e_reordenar(df, df_sql, df_pag=None, df_mes_a_mes=None):
                     if col_df == 'Matricula':
                         df[col_df] = df[col_df].replace(r'^\s*[-]*\s*$', np.nan, regex=True)
                     df[col_df] = df[col_df].replace(['', ' ', '-', 'nan', 'NaN', 'NAN', 'None', '<NA>', 'NÃO INFORMADO', 'NAO INFORMADO', 'Não Informado'], np.nan)
-                    df[col_df] = df[col_df].fillna(df[actual_col_sql])
+                    if is_riaf and col_df in ['Mensalidade C/ Desconto', 'Mensalidade S/ Desconto', 'Matricula C/ Desconto', 'Matricula S/ Desconto', 'valor_beneficio', 'valor_financiamento', 'qual_beneficio', 'qual_financiamento']:
+                        val_num = pd.to_numeric(df[col_df], errors='coerce').fillna(0.0)
+                        mask_preencher = df[col_df].isna() | (val_num == 0.0)
+                        df.loc[mask_preencher, col_df] = df.loc[mask_preencher, actual_col_sql]
+                    else:
+                        df[col_df] = df[col_df].fillna(df[actual_col_sql])
                 
                 # Opcional: remover a coluna SQL para não sujar o export
                 if actual_col_sql != col_df:
@@ -1719,16 +1724,34 @@ def mesclar_sql_e_reordenar(df, df_sql, df_pag=None, df_mes_a_mes=None):
             df['tipo_bolsa_final'] = df['tipo_bolsa_final'].fillna("SEM DADOS")
         
         mask_tem_pag = df['qtd_pagtos_resumo'].notna()
-        df.loc[mask_tem_pag, 'qtd_pagtos'] = df.loc[mask_tem_pag, 'qtd_pagtos_resumo'].astype(int)
-        df.loc[mask_tem_pag, 'último_valor_pago_referencia'] = df.loc[mask_tem_pag, 'valor_calculo_real']
-        
-        if 'qtd_pagtos_retro_resumo' in df.columns:
-            df.loc[mask_tem_pag, 'qtd_pagtos_retroativos'] = df.loc[mask_tem_pag, 'qtd_pagtos_retro_resumo']
-            
-        df['qtd_pagtos_retroativos'] = pd.to_numeric(df.get('qtd_pagtos_retroativos', pd.Series(0.0, index=df.index)), errors='coerce').fillna(0).astype(int)
-        
-        df['total bolsa paga'] = df['qtd_pagtos'] * df['último_valor_pago_referencia']  
-        df.loc[mask_tem_pag, 'total bolsa paga'] = df.loc[mask_tem_pag, 'total_bolsa_real']
+        if is_riaf:
+            total_existente = pd.to_numeric(df.get('total bolsa paga', 0.0), errors='coerce').fillna(0.0)
+            if 'total_bolsa_paga' in df.columns:
+                total_existente = np.maximum(total_existente, pd.to_numeric(df['total_bolsa_paga'], errors='coerce').fillna(0.0))
+            mask_sem_especifico = (total_existente == 0.0)
+            mask_aplicar = mask_tem_pag & mask_sem_especifico
+
+            df.loc[mask_aplicar, 'qtd_pagtos'] = df.loc[mask_aplicar, 'qtd_pagtos_resumo'].astype(int)
+            df.loc[mask_aplicar, 'último_valor_pago_referencia'] = df.loc[mask_aplicar, 'valor_calculo_real']
+            if 'qtd_pagtos_retro_resumo' in df.columns:
+                df.loc[mask_aplicar, 'qtd_pagtos_retroativos'] = df.loc[mask_aplicar, 'qtd_pagtos_retro_resumo']
+            df.loc[mask_aplicar, 'total bolsa paga'] = df.loc[mask_aplicar, 'total_bolsa_real']
+
+            if 'total_bolsa_paga' in df.columns:
+                df['total bolsa paga'] = np.where(df['total bolsa paga'].isna() | (df['total bolsa paga'] == 0.0), df['total_bolsa_paga'], df['total bolsa paga'])
+            if 'ultimo_valor_pago_ref' in df.columns:
+                df['último_valor_pago_referencia'] = np.where(df['último_valor_pago_referencia'].isna() | (df['último_valor_pago_referencia'] == 0.0), df['ultimo_valor_pago_ref'], df['último_valor_pago_referencia'])
+        else:
+            df.loc[mask_tem_pag, 'qtd_pagtos'] = df.loc[mask_tem_pag, 'qtd_pagtos_resumo'].astype(int)
+            df.loc[mask_tem_pag, 'último_valor_pago_referencia'] = df.loc[mask_tem_pag, 'valor_calculo_real']
+
+            if 'qtd_pagtos_retro_resumo' in df.columns:
+                df.loc[mask_tem_pag, 'qtd_pagtos_retroativos'] = df.loc[mask_tem_pag, 'qtd_pagtos_retro_resumo']
+
+            df['qtd_pagtos_retroativos'] = pd.to_numeric(df.get('qtd_pagtos_retroativos', pd.Series(0.0, index=df.index)), errors='coerce').fillna(0).astype(int)
+
+            df['total bolsa paga'] = df['qtd_pagtos'] * df['último_valor_pago_referencia']  
+            df.loc[mask_tem_pag, 'total bolsa paga'] = df.loc[mask_tem_pag, 'total_bolsa_real']
         
         # INJETANDO A SOMA DO SISTEMA (Mês a Mês calculado)
         df['soma_deveria_sistema'] = 0.0
@@ -2118,7 +2141,7 @@ def calcular_auditoria_ia(df):
         df_novos = df_documentos[mask_processados].copy() if mask_processados.any() else pd.DataFrame()
         
         colunas_cache = [
-            'Inscrição', 'Semestre', 'Documento Tipo', 'Status_IA', 'Data_Processamento_Cache', 'IA_Run_Date', 'Gemini Inconsistencias',
+            'Inscrição', 'Semestre', 'Documento Tipo', 'Coleta ID', 'Status_IA', 'Data_Processamento_Cache', 'IA_Run_Date', 'Gemini Inconsistencias',
             'Gemini CPF', 'Gemini Matricula', 'Gemini Telefone', 'Gemini Periodo', 
             'Gemini Quantidade Periodos', 'Gemini Cnpj Faculdade', 'Gemini Mensalidade S/ Desconto', 
             'Gemini Mensalidade C/ Desconto', 'Gemini Valor Beneficio', 'Gemini Valor Financiado', 
@@ -2181,7 +2204,13 @@ def calcular_auditoria_ia(df):
                         df_cache['Data_Processamento_Cache'] = pd.to_datetime(df_cache['Data_Processamento_Cache'], errors='coerce').fillna(pd.Timestamp('2000-01-01'))
 
                     # KEEP THE NEWEST RECORD
-                    df_cache = df_cache.sort_values('Data_Processamento_Cache').drop_duplicates(subset=['Inscrição', 'Semestre', 'Documento Tipo'], keep='last')
+                    if 'Coleta ID' in df_cache.columns:
+                        is_riaf_c = df_cache['Documento Tipo'].astype(str).str.upper().str.contains('RIAF') & df_cache['Coleta ID'].notna()
+                        df_c_outros = df_cache[~is_riaf_c].sort_values('Data_Processamento_Cache').drop_duplicates(subset=['Inscrição', 'Semestre', 'Documento Tipo'], keep='last')
+                        df_c_riaf = df_cache[is_riaf_c].sort_values('Data_Processamento_Cache').drop_duplicates(subset=['Inscrição', 'Semestre', 'Documento Tipo', 'Coleta ID'], keep='last')
+                        df_cache = pd.concat([df_c_outros, df_c_riaf], ignore_index=True)
+                    else:
+                        df_cache = df_cache.sort_values('Data_Processamento_Cache').drop_duplicates(subset=['Inscrição', 'Semestre', 'Documento Tipo'], keep='last')
                     if travado:
                         gravar_parquet_atomico(df_cache, cache_path)
                     else:
@@ -2203,10 +2232,28 @@ def calcular_auditoria_ia(df):
         if not df_cache.empty:
             df_work = df_documentos.copy()
             doc_tipo_col = df_work.get('Documento Tipo', pd.Series(['']*len(df_work), index=df_work.index)).astype(str).str.strip()
-            df_work['chave_temp'] = df_work['Inscrição'].astype(str).str.replace(r'\.0$', '', regex=True) + "_" + df_work['Semestre'].astype(str).str.strip() + "_" + doc_tipo_col
+            if 'Coleta ID' in df_work.columns:
+                coleta_col = df_work['Coleta ID'].astype(str).str.replace(r'\.0$', '', regex=True).replace({'nan': '', '<NA>': '', 'None': ''}).str.strip()
+            else:
+                coleta_col = pd.Series([''] * len(df_work), index=df_work.index)
+            is_riaf_work = doc_tipo_col.str.upper().str.contains('RIAF') & (coleta_col != '') & (coleta_col != '0')
+            df_work['chave_temp'] = np.where(
+                is_riaf_work,
+                df_work['Inscrição'].astype(str).str.replace(r'\.0$', '', regex=True) + "_" + df_work['Semestre'].astype(str).str.strip() + "_" + doc_tipo_col + "_" + coleta_col,
+                df_work['Inscrição'].astype(str).str.replace(r'\.0$', '', regex=True) + "_" + df_work['Semestre'].astype(str).str.strip() + "_" + doc_tipo_col
+            )
             
             doc_tipo_cache = df_cache.get('Documento Tipo', pd.Series(['']*len(df_cache), index=df_cache.index)).astype(str).str.strip()
-            df_cache['chave_temp'] = df_cache['Inscrição'].astype(str).str.replace(r'\.0$', '', regex=True) + "_" + df_cache['Semestre'].astype(str).str.strip() + "_" + doc_tipo_cache
+            if 'Coleta ID' in df_cache.columns:
+                coleta_cache = df_cache['Coleta ID'].astype(str).str.replace(r'\.0$', '', regex=True).replace({'nan': '', '<NA>': '', 'None': ''}).str.strip()
+            else:
+                coleta_cache = pd.Series([''] * len(df_cache), index=df_cache.index)
+            is_riaf_cache = doc_tipo_cache.str.upper().str.contains('RIAF') & (coleta_cache != '') & (coleta_cache != '0')
+            df_cache['chave_temp'] = np.where(
+                is_riaf_cache,
+                df_cache['Inscrição'].astype(str).str.replace(r'\.0$', '', regex=True) + "_" + df_cache['Semestre'].astype(str).str.strip() + "_" + doc_tipo_cache + "_" + coleta_cache,
+                df_cache['Inscrição'].astype(str).str.replace(r'\.0$', '', regex=True) + "_" + df_cache['Semestre'].astype(str).str.strip() + "_" + doc_tipo_cache
+            )
             
             df_cache_idx = df_cache.drop_duplicates(subset=['chave_temp'], keep='last').set_index('chave_temp')
             df_work_idx = df_work.set_index('chave_temp')
@@ -2220,39 +2267,19 @@ def calcular_auditoria_ia(df):
             mask_vazio = (st_ia == '') | (st_ia == 'não processado') | (st_ia == 'nan') | (st_ia == 'none')
             
             mask_is_in_cache = df_work_idx.index.isin(df_cache_idx.index)
-            mask_newer = pd.Series(False, index=df_work_idx.index)
-            common_idx = df_work_idx.index[mask_is_in_cache]
-            if not common_idx.empty:
-                data_cache_col = df_cache_idx.loc[common_idx, 'Data_Processamento_Cache']
-                data_atual_col = df_work_idx.loc[common_idx, 'Data_Processamento_Atual']
-                
-                # A COMPARAÇÃO DE DATAS NÃO VALE PARA QUEM ESTÁ `AUSENTE` AGORA.
-                #
-                # `Data_Processamento_Atual` de uma linha ausente é a sentinela 2000-01-01 —
-                # ela não tem data porque não há documento. Comparar contra isso dá SEMPRE
-                # "cache mais novo", e aí qualquer veredito guardado, de qualquer época,
-                # ressuscita um documento que o SIBU já não tem: a linha some dos pendentes e
-                # a IES deixa de ser cobrada por um documento que nunca entregou. Aconteceu com
-                # a inscrição 2194690 em 2025-2, com um `Inválido` lido em 20/08 sobrepondo uma
-                # pendência real — ela era a única divergência entre os 1.004 que o site cobra
-                # e os 1.003 do dashboard.
-                #
-                # PARA ESSAS LINHAS VALE SÓ `recent_cache`, e é o suficiente: o cache existe
-                # para cobrir a latência do espelho D-1 — documento processado HOJE que o
-                # espelho só mostra amanhã —, e é exatamente isso que `IA_Run_Date == hoje`
-                # diz. Cache de ontem para trás não tem latência nenhuma a cobrir; se o
-                # documento ainda não está no espelho depois de um dia, ele não existe mais.
-                ausente_agora = st_ia.loc[common_idx].isin(
-                    [s.strip().lower() for s in _STATUS_SEM_DOCUMENTO])
-                cache_mais_novo = (data_cache_col > data_atual_col) & ~ausente_agora
+            data_cache_col = pd.Series(pd.to_datetime(df_work_idx.index.map(df_cache_idx['Data_Processamento_Cache']), errors='coerce'), index=df_work_idx.index).fillna(pd.Timestamp('2000-01-01'))
+            data_atual_col = df_work_idx['Data_Processamento_Atual']
+            
+            # A COMPARAÇÃO DE DATAS NÃO VALE PARA QUEM ESTÁ `AUSENTE` AGORA.
+            ausente_agora = st_ia.isin([s.strip().lower() for s in _STATUS_SEM_DOCUMENTO])
+            cache_mais_novo = (data_cache_col > data_atual_col) & ~ausente_agora & mask_is_in_cache
 
-                if 'IA_Run_Date' in df_cache_idx.columns:
-                    ia_run_date_col = pd.to_datetime(df_cache_idx.loc[common_idx, 'IA_Run_Date'], errors='coerce')
-                    # Sobrepõe o banco apenas se a IA rodou "hoje" (por data/dia), pois o D-1 atualiza no dia seguinte
-                    recent_cache = ia_run_date_col.dt.date == pd.Timestamp.now().date()
-                    mask_newer.loc[common_idx] = cache_mais_novo | recent_cache
-                else:
-                    mask_newer.loc[common_idx] = cache_mais_novo
+            if 'IA_Run_Date' in df_cache_idx.columns:
+                ia_run_date_col = pd.Series(pd.to_datetime(df_work_idx.index.map(df_cache_idx['IA_Run_Date']), errors='coerce'), index=df_work_idx.index)
+                recent_cache = (ia_run_date_col.dt.date == pd.Timestamp.now().date()) & mask_is_in_cache
+                mask_newer = cache_mais_novo | recent_cache
+            else:
+                mask_newer = cache_mais_novo
             
             mask_restaurar = mask_is_in_cache & (mask_vazio | mask_newer)
             
@@ -3186,7 +3213,17 @@ def gerar_resumo_quantitativo(df_target, tipos_documentos):
         group_benef = group_raw.assign(_inad=s_inadimplente.loc[group_raw.index])
         group_benef = group_benef.sort_values(by=chaves, ascending=ordem, na_position='last')
 
-        group_benef = group_benef.drop_duplicates(subset=['CPF', 'Documento Tipo'], keep='first')
+        # Para Contrato, Histórico, Benefício e Financiamento: 1 linha por (CPF, Documento Tipo).
+        # Para RIAF (Nova Metodologia): se houver múltiplas coletas/versões financeiras, cada versão é uma pendência/envio!
+        is_riaf_g = group_benef['Documento Tipo'] == DOC_RIAF
+        col_c_resumo = 'Coleta ID' if 'Coleta ID' in group_benef.columns else ('coleta_id' if 'coleta_id' in group_benef.columns else None)
+        if col_c_resumo and is_riaf_g.any():
+            gb_outros = group_benef[~is_riaf_g].drop_duplicates(subset=['CPF', 'Documento Tipo'], keep='first')
+            group_benef['_c_dedup'] = group_benef[col_c_resumo].astype(str).str.split('.').str[0].str.strip()
+            gb_riaf = group_benef[is_riaf_g].drop_duplicates(subset=['CPF', 'Documento Tipo', '_c_dedup'], keep='first')
+            group_benef = pd.concat([gb_outros, gb_riaf]).drop(columns=['_c_dedup'], errors='ignore')
+        else:
+            group_benef = group_benef.drop_duplicates(subset=['CPF', 'Documento Tipo'], keep='first')
 
         #  BENEFICIÁRIO É QUEM TEM AO MENOS UMA LINHA FORA DA INADIMPLÊNCIA. Quem só
         #  aparece por cobrança injetada não é bolsista do semestre — ver o bloco de
@@ -4606,6 +4643,25 @@ def _avisar_espelhos_ausentes(ausentes):
     print(f"[GGCI       | INCOMPLETO    | FINAL ] O relatório abaixo está SEM esses dados. Rode a extração de novo para regerar as tabelas.")
 
 
+def deduplicar_dataset(df_entrada, is_riaf=False):
+    """
+    O QUE FAZ: Remove duplicatas da base extraída, preservando versões diferentes no RIAF.
+    """
+    if df_entrada.empty: return df_entrada
+    if 'data_coleta' in df_entrada.columns:
+        df_entrada['temp_data'] = pd.to_datetime(df_entrada['data_coleta'], format='%d/%m/%Y', errors='coerce')
+        df_entrada.sort_values(by=['temp_data'], ascending=False, inplace=True, na_position='last')
+        df_entrada.drop(columns=['temp_data'], inplace=True)
+        
+    if all(c in df_entrada.columns for c in ['Inscrição', 'Semestre', 'Documento Tipo']):
+        col_coleta = 'Coleta ID' if 'Coleta ID' in df_entrada.columns else ('coleta_id' if 'coleta_id' in df_entrada.columns else None)
+        if is_riaf and col_coleta:
+            df_entrada.drop_duplicates(subset=['Inscrição', 'Semestre', 'Documento Tipo', col_coleta], keep='first', inplace=True)
+        else:
+            df_entrada.drop_duplicates(subset=['Inscrição', 'Semestre', 'Documento Tipo'], keep='first', inplace=True)
+    return df_entrada
+
+
 def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_relatorio=False, gerar_relatorio_riaf=False, gerar_quantitativo=True, gerar_pagamentos=True, sems_riaf=None, sems_contratos=None, processo_id=None, formato="EXCEL"):
     """
     O QUE FAZ: Ponto de entrada final do fluxo de transformação (ETAPA 3). Lê os CSVs temporários, aplica regras, cria o Excel Final.
@@ -4865,7 +4921,12 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                         'gemini_nome_mantenedora': 'Gemini Nome Mantenedora', 'gemini_nome_financiamento': 'Gemini Nome Financiamento',
                         'gemini_assinatura_aluno': 'Gemini Assinatura Aluno', 'gemini_assinatura_ies': 'Gemini Assinatura Ies',
                         'gemini_modalidade': 'Gemini Modalidade', 'gemini_email': 'Gemini Email', 'gemini_tipo_bolsa': 'Gemini Tipo Bolsa',
-                        'gemini_curso': 'Gemini Curso', 'gemini_semestre': 'Gemini Semestre', 'qtde_token': 'Qtde Token'
+                        'gemini_curso': 'Gemini Curso', 'gemini_semestre': 'Gemini Semestre', 'qtde_token': 'Qtde Token',
+                        'matricula_sem_desconto': 'Matricula S/ Desconto', 'matricula_com_desconto': 'Matricula C/ Desconto',
+                        'mensalidade_sem_desconto': 'Mensalidade S/ Desconto', 'mensalidade_com_desconto': 'Mensalidade C/ Desconto',
+                        'beneficio_nome': 'qual_beneficio', 'nome_financiamento': 'qual_financiamento',
+                        'valor_beneficio': 'valor_beneficio', 'valor_financiado': 'valor_financiamento',
+                        'nome_faculdade': 'Faculdade', 'curso': 'Curso', 'cpf': 'CPF'
                     }
                     df_espelho_pd = df_espelho_pd.rename(columns=mapa_colunas)
                     df_espelho_pd['Semestre'] = df_espelho_pd['Semestre'].astype(str).str.replace('/', '-')
@@ -4917,7 +4978,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             df_riaf['Documento Tipo'] = df_riaf['Documento Tipo'].apply(limpar_texto_geral).map(mapa_docs_oficiais).fillna(df_riaf['Documento Tipo'])
 
     # --- DEDUPLICAÇÃO GLOBAL (Garante que alunos com múltiplos uploads não dupliquem linhas) ---
-    def deduplicar_dataset(df_entrada):
+    def deduplicar_dataset(df_entrada, is_riaf=False):
         if df_entrada.empty: return df_entrada
         if 'data_coleta' in df_entrada.columns:
             df_entrada['temp_data'] = pd.to_datetime(df_entrada['data_coleta'], format='%d/%m/%Y', errors='coerce')
@@ -4925,11 +4986,15 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             df_entrada.drop(columns=['temp_data'], inplace=True)
             
         if all(c in df_entrada.columns for c in ['Inscrição', 'Semestre', 'Documento Tipo']):
-            df_entrada.drop_duplicates(subset=['Inscrição', 'Semestre', 'Documento Tipo'], keep='first', inplace=True)
+            col_coleta = 'Coleta ID' if 'Coleta ID' in df_entrada.columns else ('coleta_id' if 'coleta_id' in df_entrada.columns else None)
+            if is_riaf and col_coleta:
+                df_entrada.drop_duplicates(subset=['Inscrição', 'Semestre', 'Documento Tipo', col_coleta], keep='first', inplace=True)
+            else:
+                df_entrada.drop_duplicates(subset=['Inscrição', 'Semestre', 'Documento Tipo'], keep='first', inplace=True)
         return df_entrada
 
-    df_docs = deduplicar_dataset(df_docs)
-    df_riaf = deduplicar_dataset(df_riaf)
+    df_docs = deduplicar_dataset(df_docs, is_riaf=False)
+    df_riaf = deduplicar_dataset(df_riaf, is_riaf=True)
     
     # Padroniza todas as colunas de IES
     for col in ['Faculdade', 'IES Anterior', 'IES Posterior', 'Gemini Nome Faculdade']:
@@ -5008,7 +5073,13 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
         # 'Documento Tipo' tem 5 valores distintos em ~167 mil linhas: limpar_texto_geral
         # roda por valor, não por linha (ver aplicar_por_distintos).
         chaves_docs_entregues = set(zip(df_docs['Inscrição'].astype(str).str.split('.').str[0].str.strip(), df_docs['Semestre'].astype(str).str.strip().str.replace('/', '-'), aplicar_por_distintos(df_docs['Documento Tipo'], limpar_texto_geral))) if not df_docs.empty else set()
-        chaves_riaf_entregues = set(zip(df_riaf['Inscrição'].astype(str).str.split('.').str[0].str.strip(), df_riaf['Semestre'].astype(str).str.strip().str.replace('/', '-'))) if not df_riaf.empty else set()
+        if not df_riaf.empty:
+            _col_c = df_riaf['Coleta ID'].fillna(0).astype(str).str.split('.').str[0].str.strip() if 'Coleta ID' in df_riaf.columns else pd.Series(['0'] * len(df_riaf))
+            chaves_riaf_entregues_coleta = set(zip(df_riaf['Inscrição'].astype(str).str.split('.').str[0].str.strip(), df_riaf['Semestre'].astype(str).str.strip().str.replace('/', '-'), _col_c))
+            chaves_riaf_entregues = set(zip(df_riaf['Inscrição'].astype(str).str.split('.').str[0].str.strip(), df_riaf['Semestre'].astype(str).str.strip().str.replace('/', '-')))
+        else:
+            chaves_riaf_entregues_coleta = set()
+            chaves_riaf_entregues = set()
 
         cronometrar_fim('pend preparar base', _t_pend)
         _t_pend = time.perf_counter()
@@ -5177,62 +5248,113 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             _t_pend = time.perf_counter()
 
             if check_riaf:
-                df_ativos_riaf = df_ativos.copy()
                 try:
-                    df_ativos_riaf['ano'] = df_ativos_riaf['SEMESTRE'].str.split('-').str[0].astype(int)
-                    df_ativos_riaf = df_ativos_riaf[df_ativos_riaf['ano'] >= 2026]
-                    
-                    # REGRA DA OVG: não gerar Ausente pro RIAF se a competência não teve repasse
-                    # confirmado. Mesmo critério dos documentos — ver `sem_repasse_liquido`.
-                    if 'qtd_pagtos' in df_ativos_riaf.columns:
-                        df_ativos_riaf = df_ativos_riaf[~sem_repasse_liquido(df_ativos_riaf)]
-                    
-                    if not df_ativos_riaf.empty:
-                        # OTIMIZAÇÃO/PEDIDO: Filtra para gerar Ausentes *apenas* para os alunos da view pendente
-                        try:
-                            caminho_riaf = os.path.join(PROJECT_ROOT, f"apps/dashboards/dash_documentos_ia/dados/tabelas_sql/PY_ggci_pendentes_riaf_geral{SUFIXO_TABELAS}.parquet")
-                            if os.path.exists(caminho_riaf):
-                                df_pend = pl.read_parquet(caminho_riaf).to_pandas()
-                            else:
-                                df_pend = pd.DataFrame()
+                    caminho_riaf = os.path.join(PROJECT_ROOT, f"apps/dashboards/dash_documentos_ia/dados/tabelas_sql/PY_ggci_pendentes_riaf_geral{SUFIXO_TABELAS}.parquet")
+                    if os.path.exists(caminho_riaf):
+                        df_pend = pl.read_parquet(caminho_riaf).to_pandas()
+                    else:
+                        df_pend = pd.DataFrame()
+
+                    if not df_pend.empty and 'coleta_id' in df_pend.columns:
+                        # NOVA METODOLOGIA: Cada linha de df_pend é uma versão financeira paga que não possui RIAF entregue.
+                        df_ativos_map = df_ativos.drop_duplicates(subset=['UNI_CODIGO']).set_index('UNI_CODIGO') if not df_ativos.empty else pd.DataFrame()
+                        
+                        for _, row_pend in df_pend.iterrows():
+                            uni_code = row_pend['uni_codigo']
+                            sem_pend = str(row_pend['semestre']).strip().replace('/', '-')
+                            cid_pend = str(row_pend['coleta_id']).split('.')[0].strip()
                             
+                            # Se o RIAF desta coleta já foi entregue, ignora
+                            if (str(uni_code), sem_pend, cid_pend) in chaves_riaf_entregues_coleta:
+                                continue
+                                
+                            cad = df_ativos_map.loc[uni_code].to_dict() if (not df_ativos_map.empty and uni_code in df_ativos_map.index) else {}
+                            
+                            dt_col = row_pend.get('data_coleta')
+                            dt_col_str = pd.to_datetime(dt_col).strftime('%d/%m/%Y') if pd.notna(dt_col) else '-'
+                            
+                            novo_ausente = {
+                                'Status_IA': 'Ausente',
+                                'Inscrição': uni_code,
+                                'Bolsista': limpar_texto_geral(cad.get('UNI_NOME') or ''),
+                                'CPF': cad.get('UNI_CPF', ''),
+                                'Semestre': sem_pend,
+                                'Faculdade': limpar_texto_geral(row_pend.get('ies_nome') or cad.get('INS_NOME') or ''),
+                                'Curso': limpar_texto_geral(cad.get('CUR_NOME') or ''),
+                                'Documento Tipo': DOC_RIAF,
+                                'Coleta ID': row_pend.get('coleta_id'),
+                                'data_coleta': dt_col_str,
+                                'data_coleta_atual_sistema': dt_col_str,
+                                'Matricula S/ Desconto': float(row_pend.get('matricula_sem_desc') or 0.0),
+                                'Matricula C/ Desconto': float(row_pend.get('matricula_com_desc') or 0.0),
+                                'Mensalidade S/ Desconto': float(row_pend.get('mensalidade_sem_desc') or 0.0),
+                                'Mensalidade C/ Desconto': float(row_pend.get('mensalidade_com_desc') or 0.0),
+                                'matricula_sem_desc': float(row_pend.get('matricula_sem_desc') or 0.0),
+                                'matricula_com_desc': float(row_pend.get('matricula_com_desc') or 0.0),
+                                'mensalidade_sem_desc': float(row_pend.get('mensalidade_sem_desc') or 0.0),
+                                'mensalidade_com_desc': float(row_pend.get('mensalidade_com_desc') or 0.0),
+                                'valor_beneficio': float(row_pend.get('valor_beneficio') or 0.0),
+                                'beneficio': str(row_pend.get('beneficio') or 'Sem Benefícios'),
+                                'qual_beneficio': str(row_pend.get('beneficio') or 'Sem Benefícios'),
+                                'valor_financiamento': float(row_pend.get('valor_financiamento') or 0.0),
+                                'financiamento': str(row_pend.get('financiamento') or 'Sem Financiamento'),
+                                'qual_financiamento': str(row_pend.get('financiamento') or 'Sem Financiamento'),
+                                'total bolsa paga': float(row_pend.get('total_pago_versao') or 0.0),
+                                'total_bolsa_paga': float(row_pend.get('total_pago_versao') or 0.0),
+                                'qtd_pagtos': int(row_pend.get('qtd_meses_pagos') or 0),
+                                'último_valor_pago_referencia': float(row_pend.get('ultimo_valor_pago_ref') or 0.0),
+                                'ultimo_valor_pago_ref': float(row_pend.get('ultimo_valor_pago_ref') or 0.0),
+                                'ins_mantenedora': row_pend.get('mantenedora') or cad.get('ins_mantenedora', ''),
+                                'veredito_documento': 'Ausente',
+                                'motivos_divergencia': '',
+                                'documento_ausente': None
+                            }
+                            for col_cad, col_dest in [
+                                ('matricula', 'Matricula'), ('modalidade_aluno', 'modalidade_aluno'), ('modalidade_ies', 'modalidade_ies'), 
+                                ('email', 'E-mail'), ('telefone_1', 'Telefone 1'), ('telefone_2', 'Telefone 2'),
+                                ('data_nascimento', 'Data nascimento'), ('periodo_atual', 'Semestre atual'),
+                                ('periodo_no_semestre', 'Período no semestre'), ('periodo_quantidade', 'Semestre quantidade'),
+                                ('ins_cnpj', 'Ins. Cnpj'), ('ins_razao_social', 'Ins. Razão Social'), ('ins_nome_fantasia', 'Ins. Nome Fantasia')
+                            ]:
+                                if col_cad in cad and pd.notna(cad[col_cad]):
+                                    novo_ausente[col_dest] = cad[col_cad]
+                            novos_ausentes_riaf.append(novo_ausente)
+                    else:
+                        df_ativos_riaf = df_ativos.copy()
+                        df_ativos_riaf['ano'] = df_ativos_riaf['SEMESTRE'].str.split('-').str[0].astype(int)
+                        df_ativos_riaf = df_ativos_riaf[df_ativos_riaf['ano'] >= 2026]
+                        if 'qtd_pagtos' in df_ativos_riaf.columns:
+                            df_ativos_riaf = df_ativos_riaf[~sem_repasse_liquido(df_ativos_riaf)]
+                        if not df_ativos_riaf.empty:
                             if 'semestre' in df_pend.columns:
                                 pend_set = set(df_pend['uni_codigo'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip() + "_" + df_pend['semestre'].astype(str).str.strip().str.replace('/', '-'))
                                 df_ativos_riaf['UNI_CODIGO_STR'] = df_ativos_riaf['UNI_CODIGO'].astype(str).str.split('.').str[0].str.strip()
                                 df_ativos_riaf['chave_ativos'] = df_ativos_riaf['UNI_CODIGO_STR'] + "_" + df_ativos_riaf['SEMESTRE'].astype(str).str.strip().str.replace('/', '-')
                                 df_ativos_riaf = df_ativos_riaf[df_ativos_riaf['chave_ativos'].isin(pend_set) | df_ativos_riaf['UNI_CODIGO_STR'].isin(pend_set)]
-                            else:
-                                pend_list = df_pend['uni_codigo'].dropna().astype(str).str.replace(r'\.0$', '', regex=True).tolist()
-                                df_ativos_riaf['UNI_CODIGO_STR'] = df_ativos_riaf['UNI_CODIGO'].astype(str).str.split('.').str[0].str.strip()
-                                df_ativos_riaf = df_ativos_riaf[df_ativos_riaf['UNI_CODIGO_STR'].isin(pend_list)]
-                        except Exception as e:
-                            print(f"[GGCI       | ERRO          | RIAF  ] Falha ao filtrar pendentes: {e}")
-                            df_ativos_riaf['UNI_CODIGO_STR'] = df_ativos_riaf['UNI_CODIGO'].astype(str).str.split('.').str[0].str.strip()
-                            
-                        df_ativos_riaf['chave_temp'] = list(zip(
-                            df_ativos_riaf['UNI_CODIGO_STR'],
-                            df_ativos_riaf['SEMESTRE'].astype(str).str.strip().str.replace('/', '-')
-                        ))
-                        df_ativos_riaf = df_ativos_riaf[~df_ativos_riaf['chave_temp'].isin(chaves_riaf_entregues)]
-
-                        riaf_records = df_ativos_riaf.to_dict('records')
-                        for row in riaf_records:
-                            novo_ausente = {
-                                'Status_IA': 'Ausente', 'Inscrição': row['UNI_CODIGO'], 
-                                'Bolsista': limpar_texto_geral(row['UNI_NOME']), 'CPF': row['UNI_CPF'], 
-                                'Semestre': row['SEMESTRE'], 'Faculdade': limpar_texto_geral(row['INS_NOME']), 
-                                'Curso': limpar_texto_geral(row['CUR_NOME']), 'Documento Tipo': DOC_RIAF
-                            }
-                            for col_orig, col_dest in [
-                                ('matricula', 'Matricula'), ('modalidade_aluno', 'modalidade_aluno'), ('modalidade_ies', 'modalidade_ies'), 
-                                ('email', 'E-mail'), ('telefone_1', 'Telefone 1'), ('telefone_2', 'Telefone 2'),
-                                ('data_nascimento', 'Data nascimento'), ('periodo_atual', 'Semestre atual'),
-                                ('periodo_no_semestre', 'Período no semestre'), ('periodo_quantidade', 'Semestre quantidade')
-                            ]:
-                                if col_orig in row and pd.notna(row[col_orig]):
-                                    novo_ausente[col_dest] = row[col_orig]
-                            novos_ausentes_riaf.append(novo_ausente)
-                except: pass
+                            df_ativos_riaf['chave_temp'] = list(zip(
+                                df_ativos_riaf['UNI_CODIGO'].astype(str).str.split('.').str[0].str.strip(),
+                                df_ativos_riaf['SEMESTRE'].astype(str).str.strip().str.replace('/', '-')
+                            ))
+                            df_ativos_riaf = df_ativos_riaf[~df_ativos_riaf['chave_temp'].isin(chaves_riaf_entregues)]
+                            riaf_records = df_ativos_riaf.to_dict('records')
+                            for row in riaf_records:
+                                novo_ausente = {
+                                    'Status_IA': 'Ausente', 'Inscrição': row['UNI_CODIGO'], 
+                                    'Bolsista': limpar_texto_geral(row['UNI_NOME']), 'CPF': row['UNI_CPF'], 
+                                    'Semestre': row['SEMESTRE'], 'Faculdade': limpar_texto_geral(row['INS_NOME']), 
+                                    'Curso': limpar_texto_geral(row['CUR_NOME']), 'Documento Tipo': DOC_RIAF
+                                }
+                                for col_orig, col_dest in [
+                                    ('matricula', 'Matricula'), ('modalidade_aluno', 'modalidade_aluno'), ('modalidade_ies', 'modalidade_ies'), 
+                                    ('email', 'E-mail'), ('telefone_1', 'Telefone 1'), ('telefone_2', 'Telefone 2'),
+                                    ('data_nascimento', 'Data nascimento'), ('periodo_atual', 'Semestre atual'),
+                                    ('periodo_no_semestre', 'Período no semestre'), ('periodo_quantidade', 'Semestre quantidade')
+                                ]:
+                                    if col_orig in row and pd.notna(row[col_orig]):
+                                        novo_ausente[col_dest] = row[col_orig]
+                                novos_ausentes_riaf.append(novo_ausente)
+                except Exception as e:
+                    print(f"[GGCI       | ERRO          | RIAF  ] Falha ao injetar ausentes riaf: {e}")
 
             cronometrar_fim('pend montar ausentes riaf', _t_pend)
 
@@ -5360,7 +5482,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
 
         if not df_riaf.empty:
             with cronometrar('riaf mesclar_sql'):
-                df_riaf = mesclar_sql_e_reordenar(df_riaf, df_financas, df_pag, df_mes_a_mes)
+                df_riaf = mesclar_sql_e_reordenar(df_riaf, df_financas, df_pag, df_mes_a_mes, is_riaf=True)
             with cronometrar('riaf transicoes'):
                 df_riaf = aplicar_transicoes(df_riaf, df_pag)
             with cronometrar('riaf auditoria_ia'):
@@ -5400,7 +5522,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             
             colunas_remover = ['situacao', 'situacao_atual_sistema', 
                                'sit_data_atual_sistema', 'sit_obs_atual_sistema', 'soma_cd_sem_desconto', 'soma_cd_com_desconto',
-                               'Coleta ID', 'Tipo Bolsa', 'Valor Financiamentos', 'Valor Beneficios', 'Ins. Razão Social']
+                               'Tipo Bolsa', 'Valor Financiamentos', 'Valor Beneficios', 'Ins. Razão Social']
             df_target.drop(columns=colunas_remover, inplace=True, errors='ignore')
 
             if 'Ins. Cnpj' in df_target.columns:
@@ -5578,7 +5700,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
             'data_coleta_atual_sistema', 'inscricao_ano_semestre', 'data_ingresso', 'Check Contrato',
             'Check Financiamento', 'Check Benefícios', 'Check RIAF', 'Check Histórico', 'Check Doc beneficios',
             'Duração Total Semestres', 'Qtd Disciplinas Matriculadas', 'Qtd Disciplinas Reprovadas', 'Perfil do Beneficiario',
-            'assinou_o_termo', 'renovou', 'acessou_o_portal', 'data_e_hora_do_acesso'
+            'assinou_o_termo', 'renovou', 'acessou_o_portal', 'data_e_hora_do_acesso', 'Coleta ID'
         ]
         
         # Mapeamento case-insensitive e trim
@@ -5614,6 +5736,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
         if not df_riaf.empty: df_riaf = selecionar_colunas_do_relatorio(df_riaf)
         # Nomes internos -> nomes finais das colunas do relatório.
         mapa_colunas_padrao = {
+            'Coleta ID': 'coleta_id',
             'Documento Tipo': 'tipo_documento',
             'Status_IA': 'status_ia',
             'Gemini Inconsistencias': 'gemini_inconsistencia',
@@ -5782,7 +5905,7 @@ def gerar_relatorio_geral(docs_selecionados=None, periodos_por_doc=None, gerar_r
                 df_riaf['gemini_cnpj_faculdade'] = cnpj_ia.astype(str).str.zfill(14).where(cnpj_ia.notna(), None)
 
             colunas_riaf = [
-                'status_ia', 'gemini_inconsistencia', 'semestre', 'gemini_semestre', 'bolsista', 
+                'coleta_id', 'status_ia', 'gemini_inconsistencia', 'semestre', 'gemini_semestre', 'bolsista', 
                 'inscricao', 'inscricao_anterior', 'inscricao_posterior', 'cpf', 'gemini_cpf', 
                 'tipo_bolsa_final', 'gemini_tipo_bolsa_final', 'mudou_bolsa', 'bolsa_anterior', 
                 # `ins_mantenedora` SÓ AQUI, e não em `COLUNAS_ABA_DOCUMENTO`: a mantenedora

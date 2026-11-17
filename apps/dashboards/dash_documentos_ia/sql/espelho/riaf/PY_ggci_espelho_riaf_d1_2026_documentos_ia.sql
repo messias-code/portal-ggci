@@ -13,7 +13,7 @@ WITH UltimaTentativa AS (
             AND l_cur.lan_anomes <= CAST(CONCAT(LEFT(df.semestre, 4), IF(RIGHT(df.semestre, 1) = '1', '06', '12')) AS UNSIGNED)
           ORDER BY l_cur.lan_anomes DESC LIMIT 1) AS cur_codigo_semestre,
         ROW_NUMBER() OVER(
-            PARTITION BY uni_codigo, semestre 
+            PARTITION BY uni_codigo, semestre, COALESCE(coleta_dados_id, 0)
             ORDER BY data_create DESC, id DESC
         ) as ordem_tentativa
     FROM sibu.documentos_faculdades df
