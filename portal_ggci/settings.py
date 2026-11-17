@@ -82,6 +82,7 @@ INSTALLED_APPS = [
     'apps.automacoes.menu_automacoes',
     'apps.automacoes.analise_ia',
     'apps.automacoes.enquadramento_cursos',
+    'apps.automacoes.renovacao_cadastramento',
     'apps.dashboards.menu_dashboards',
     'apps.dashboards.dash_documentos_ia',
     'apps.dashboards.dash_polichat',

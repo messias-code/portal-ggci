@@ -388,7 +388,11 @@ try:
 
     new_env += '# --- 6. SERVIDOR E AUTOMACOES ---\\n'
     new_env += f\\\"PWD_SERVER='{data.get('PWD_SERVER', get_val('PWD_SERVER', ''))}'\\n\\\"
-    new_env += f\\\"SSH_KEY_PASSPHRASE='{data.get('SSH_KEY_PASSPHRASE', get_val('SSH_KEY_PASSPHRASE', ''))}'\\n\\\"
+    new_env += f\\\"SSH_KEY_PASSPHRASE='{data.get('SSH_KEY_PASSPHRASE', get_val('SSH_KEY_PASSPHRASE', ''))}'\\n\\n\\\"
+
+    new_env += '# --- 7. CONTA GOOGLE DO GGCI (RENOVACAO DE CADASTRAMENTO) ---\\n'
+    new_env += f\\\"GOOGLE_GGCI_USER='{data.get('GOOGLE_GGCI_USER', get_val('GOOGLE_GGCI_USER', ''))}'\\n\\\"
+    new_env += f\\\"GOOGLE_GGCI_PASS='{data.get('GOOGLE_GGCI_PASS', get_val('GOOGLE_GGCI_PASS', ''))}'\\n\\\"
 
     with open('.env', 'w') as f: f.write(new_env)
 except Exception as e:

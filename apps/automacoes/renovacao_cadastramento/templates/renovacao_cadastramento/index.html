@@ -1,0 +1,447 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <!-- 
+    === ARQUIVO: apps/automacoes/renovacao_cadastramento/templates/renovacao_cadastramento/index.html ===
+    Propósito: Tela da automação Renovação de Cadastramento (confere os PDFs das IES com o Cadastro e-MEC).
+    Autor: N/A
+    Dependências Principais: TailwindCSS (CDN), FontAwesome, Turbo (Hotwire)
+    O QUE FAZ: Monta a seleção do que o robô vai conferir: quais instituições e quais documentos.
+    ESTADO: só front-end. Ainda não há motor; o Iniciar apenas descreve a seleção no console.
+    -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Token do Django para o POST do Iniciar (lido pelo JS). -->
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>Renovação de Cadastramento - Portal GGCI</title>
+    <link rel="icon" type="image/png" href="{% static 'img/favicon.png' %}?v=1">
+
+    <!--
+        MOTOR DE TEMAS — precisa vir antes de tudo.
+        Carregado SEM 'defer'/'async' de propósito: executado de forma síncrona
+        aqui no <head>, grava o atributo data-tema no <html> antes da primeira
+        pintura, eliminando o flash do tema padrão. Como a preferência vive no
+        localStorage, o modo escolhido em qualquer tela já chega aplicado aqui.
+    -->
+    <script src="{% static 'js/tema.js' %}"></script>
+
+    <link rel="stylesheet" href="{% static 'css/output.css' %}">
+    <!-- Console de processamento: utilitárias que o bundle purgou + os dois temas. -->
+    <link rel="stylesheet" href="{% static 'css/console.css' %}?v=1">
+
+    <!-- Tokens de cor dos temas e o botão sol/lua (compartilhado por todo o portal) -->
+    <link rel="stylesheet" href="{% static 'css/tema.css' %}">
+
+    <!-- Modo escuro da casca de menu (barra lateral + cabeçalho), compartilhado -->
+    <link rel="stylesheet" href="{% static 'css/tema-menu.css' %}">
+
+    <!-- Modo escuro da área de trabalho (painéis, campos, botões), compartilhado -->
+    <link rel="stylesheet" href="{% static 'css/tema-ferramenta.css' %}">
+
+    <!-- Remapeia em bloco as utilitárias neutras dentro de .area-trabalho -->
+    <link rel="stylesheet" href="{% static 'css/tema-conteudo.css' %}">
+
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <link rel="stylesheet" href="{% static 'renovacao_cadastramento/css/renovacao_cadastramento.css' %}?v=12">
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@8.0.4/dist/turbo.es.2017-esm.js"></script>
+</head>
+
+<body class="grid-bg bg-[#f8f6fb] text-gray-800 fixed inset-0 p-4 lg:p-6 flex transition-colors duration-500 overflow-hidden">
+
+        <!-- 
+        ======================================================================
+        1. ELEMENTOS DECORATIVOS DE BACKGROUND (LIGHT BLOBS / BLUR EFFECTS)
+        ----------------------------------------------------------------------
+        Divs com desfoque gaussiano (blur-[140px]) e alta opacidade que criam o
+        efeito estético de iluminação colorida flutuante nos quatro cantos da tela,
+        trazendo profundidade visual sem prejudicar o desempenho.
+        ======================================================================
+    -->
+    <div class="menu-blob menu-blob--1 absolute top-[-20%] left-[-15%] w-[70vw] h-[70vh] bg-pink-500/70 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="menu-blob menu-blob--2 absolute top-[-20%] right-[-15%] w-[70vw] h-[70vh] bg-yellow-400/75 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="menu-blob menu-blob--3 absolute bottom-[-20%] left-[-15%] w-[70vw] h-[70vh] bg-purple-700/60 rounded-full blur-[140px] pointer-events-none z-0"></div>
+    <div class="menu-blob menu-blob--4 absolute bottom-[-20%] right-[-15%] w-[70vw] h-[70vh] bg-green-600/65 rounded-full blur-[140px] pointer-events-none z-0"></div>
+
+    <div
+        class="menu-shell w-full h-full bg-white/70 backdrop-blur-2xl border border-white/80 rounded-[2rem] shadow-2xl flex overflow-hidden relative z-10">
+
+        <aside class="menu-sidebar w-[18rem] lg:w-[20rem] flex flex-col border-r border-purple-100/50 bg-white/40">
+            <div class="menu-divisoria h-28 flex items-center justify-center border-b border-purple-100/50">
+                <!--
+                    As duas versões da logo são publicadas e o CSS de tema decide
+                    qual fica visível. O elemento oculto sai da árvore de
+                    acessibilidade, então o leitor de tela anuncia apenas uma.
+                -->
+                <img src="{% static 'img/logos/ovg.png' %}" alt="OVG Logo"
+                    class="logo-tema logo-tema--claro h-[4.46rem] drop-shadow-md">
+                <img src="{% static 'img/logos/ovg-eleitoral.png' %}" alt="OVG Logo"
+                    class="logo-tema logo-tema--eleitoral h-[4.46rem] drop-shadow-md">
+            </div>
+            <nav class="flex-1 px-6 py-8 space-y-2 overflow-hidden">
+                <p class="menu-nav-titulo text-[13px] font-bold text-purple-700 uppercase tracking-widest mb-4 px-2">Navegação Principal
+                </p>
+                <a href="{% url 'inicio' %}"
+                    class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
+                    <i class="fa-solid fa-user-shield text-[23px] w-6 text-center"></i><span>Início</span>
+                </a>
+                {% if user.p_ferramentas or user.usuario == 'admin@ovg.org.br' %}
+                <a href="{% url 'ferramentas' %}"
+                    class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
+                    <i class="fa-solid fa-screwdriver-wrench text-[23px] w-6 text-center"></i><span>Ferramentas</span>
+                </a>
+                {% else %}
+                <div class="menu-nav-bloqueado flex items-center space-x-4 px-4 py-3 text-gray-400 bg-gray-50/50 rounded-xl font-semibold text-base cursor-not-allowed opacity-70"
+                    title="Acesso Restrito">
+                    <i class="fa-solid fa-lock text-[23px] w-6 text-center"></i><span>Ferramentas</span>
+                </div>
+                {% endif %}
+                <a href="{% url 'automacoes' %}"
+                    class="nav-active flex items-center space-x-3 px-4 py-3 rounded-xl font-bold text-base">
+                    <i class="fa-brands fa-whmcs text-[28px] w-6 text-center"></i><span>Automações</span>
+                </a>
+                {% if user.p_dash_polichat or user.p_dash_documentos_ia or user.usuario == 'admin@ovg.org.br' %}
+                <a href="{% url 'dashboards' %}"
+                    class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
+                    <i class="fa-solid fa-chart-line text-[23px] w-6 text-center"></i><span>Dashboards</span>
+                </a>
+                {% else %}
+                <div class="menu-nav-bloqueado flex items-center space-x-4 px-4 py-3 text-gray-400 bg-gray-50/50 rounded-xl font-semibold text-base cursor-not-allowed opacity-70"
+                    title="Acesso Restrito">
+                    <i class="fa-solid fa-lock text-[23px] w-6 text-center"></i><span>Dashboards</span>
+                </div>
+                {% endif %}
+                {% if user.p_sugestoes or user.usuario == 'admin@ovg.org.br' %}
+                <a href="{% url 'sugestoes' %}"
+                    class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
+                    <i class="fa-solid fa-lightbulb text-[23px] w-6 text-center"></i><span>Sugestões</span>
+                </a>
+                {% else %}
+                <div class="menu-nav-bloqueado flex items-center space-x-4 px-4 py-3 text-gray-400 bg-gray-50/50 rounded-xl font-semibold text-base cursor-not-allowed opacity-70"
+                    title="Acesso Restrito">
+                    <i class="fa-solid fa-lock text-[23px] w-6 text-center"></i><span>Sugestões</span>
+                </div>
+                {% endif %}
+            </nav>
+            <div class="menu-divisoria p-6 border-t border-purple-100/50">
+                <a href="{% url 'logout' %}"
+                    class="menu-sair flex items-center justify-center space-x-2 w-full px-4 py-3 bg-red-50 text-red-600 rounded-xl font-extrabold text-sm hover:bg-red-500 hover:text-white transition-all shadow-sm">
+                    <i class="fa-solid fa-right-from-bracket"></i><span>SAIR DO SISTEMA</span>
+                </a>
+            </div>
+        </aside>
+
+        <main class="area-trabalho flex-1 flex flex-col h-full overflow-hidden relative">
+
+            <header
+                class="h-28 px-8 lg:px-10 flex justify-between items-center border-b border-pink-100/50 bg-white/40 backdrop-blur-md shrink-0 z-10">
+                <div class="flex items-center gap-5">
+                    <div
+                        class="tela-header-icone w-16 h-16 bg-gradient-to-br from-pink-100 to-fuchsia-100 text-pink-600 rounded-2xl flex items-center justify-center border border-pink-200 shadow-sm">
+                        <i class="fa-solid fa-file-circle-check text-3xl"></i>
+                    </div>
+                    <div>
+                        <h2 class="menu-header-titulo text-2xl font-black text-gray-800 tracking-tight">Renovação de Cadastramento</h2>
+                        <p class="text-[14px] text-gray-500 font-semibold mt-0.5">Conferência dos documentos das IES com o Cadastro e-MEC.</p>
+                    </div>
+                </div>
+                <!--
+                    Agrupa o seletor de modo e o botão Voltar no canto direito do
+                    cabeçalho. O <header> é 'justify-between' e este bloco é o
+                    segundo filho, então o alinhamento à direita já vem de graça.
+                -->
+                <div class="flex items-center gap-4">
+                    <button type="button"
+                        class="tema-toggle"
+                        data-tema-toggle
+                        aria-label="Ativar modo eleitoral"
+                        aria-pressed="false">
+                        <svg class="tema-toggle__icone tema-toggle__icone--lua" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"
+                            stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                        <svg class="tema-toggle__icone tema-toggle__icone--sol" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.6"/>
+                            <path d="M12 2.4V4.4M12 19.6V21.6M21.6 12H19.6M4.4 12H2.4M18.79 5.21L17.38 6.62M6.62 17.38L5.21 18.79M18.79 18.79L17.38 17.38M6.62 6.62L5.21 5.21"
+                                stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+
+                    <a href="{% url 'automacoes' %}" class="tela-voltar px-5 py-2.5 bg-white/80 hover:bg-pink-50 text-pink-600 font-bold rounded-xl transition-all shadow-sm border border-pink-100 inline-flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-arrow-left mr-2 mt-[1px]"></i>
+                    <span class="leading-none">Voltar</span>
+                </a>
+                </div>
+            </header>
+
+            <div class="flex-1 p-4 lg:p-6 flex flex-col gap-3 overflow-hidden relative z-10">
+
+                <div
+                    class="bg-white/80 backdrop-blur-xl border border-white/80 px-5 pb-5 pt-2 lg:px-6 lg:pb-6 lg:pt-3 rounded-[1.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col shrink-0">
+
+                    <h3
+                        class="font-extrabold text-[16px] text-gray-800 mb-3 flex items-center gap-2 border-b border-gray-200/80 pb-2">
+                        <i class="fa-solid fa-sliders text-purple-600"></i> Configurações de Análise
+                    </h3>
+                    <!--
+                        A seleção tem dois eixos independentes: DE QUEM olhar (instituições)
+                        e O QUE olhar (documentos). "Nenhum" só aparece se houver mais de uma
+                        caixa de documentos — com uma só, ele deixaria o robô sem nada.
+                        Tudo nasce em "tudo"; restringir é opcional. O formato de saída não
+                        é opção: o relatório é sempre Excel.
+                    -->
+                    <div class="rc-grade" style="--rc-colunas: {{ categorias|length|add:1 }};">
+
+                        <!-- Instituições -->
+                        <div class="flex flex-col p-5 border border-gray-200 rounded-2xl bg-white shadow-sm gap-3 h-full">
+                            <h4 class="text-[11px] font-black text-gray-700 uppercase tracking-widest flex items-center gap-2">
+                                <i class="fa-solid fa-building-columns text-purple-500 text-lg"></i> Instituições
+                            </h4>
+                            <p class="text-[12px] text-gray-500 font-medium leading-relaxed">
+                                De quais faculdades o robô vai conferir os documentos.
+                            </p>
+                            <div class="rc-escolha" role="radiogroup" aria-label="Instituições a analisar">
+                                <label class="rc-escolha__opcao">
+                                    <input type="radio" name="rc-modo-ies" value="todas" checked>
+                                    <i class="fa-solid fa-layer-group"></i><span>Todas</span>
+                                </label>
+                                <label class="rc-escolha__opcao">
+                                    <input type="radio" name="rc-modo-ies" value="selecionadas">
+                                    <i class="fa-solid fa-hand-pointer"></i><span>Selecionar</span>
+                                </label>
+                            </div>
+                            <div class="rc-resumo">
+                                <span class="rc-resumo__texto" id="rc-resumo-ies">Todas as instituições</span>
+                                <button type="button" id="rc-abrir-ies" class="rc-resumo__botao" hidden>
+                                    <i class="fa-solid fa-sliders"></i> Editar
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Documentos (uma caixa por entrada de CATEGORIAS em views.py) -->
+                        {% for cat in categorias %}
+                        <div class="rc-caixa-docs flex flex-col p-5 border border-gray-200 rounded-2xl bg-white shadow-sm gap-3 h-full" data-categoria="{{ cat.chave }}" data-titulo="{{ cat.titulo }}">
+                            <h4 class="text-[11px] font-black text-gray-700 uppercase tracking-widest flex items-center gap-2">
+                                <i class="fa-solid {{ cat.icone }} text-purple-500 text-lg"></i> {{ cat.titulo }}
+                            </h4>
+                            <p class="text-[12px] text-gray-500 font-medium leading-relaxed">
+                                {{ cat.descricao }}
+                            </p>
+                            <div class="rc-escolha" role="radiogroup" aria-label="Documentos de {{ cat.titulo }}">
+                                <label class="rc-escolha__opcao">
+                                    <input type="radio" name="rc-modo-docs-{{ cat.chave }}" value="todos" checked>
+                                    <i class="fa-solid fa-layer-group"></i><span>Todos</span>
+                                </label>
+                                <label class="rc-escolha__opcao">
+                                    <input type="radio" name="rc-modo-docs-{{ cat.chave }}" value="selecionados">
+                                    <i class="fa-solid fa-hand-pointer"></i><span>Selecionar</span>
+                                </label>
+{% if categorias|length > 1 %}
+                                <label class="rc-escolha__opcao">
+                                    <input type="radio" name="rc-modo-docs-{{ cat.chave }}" value="nenhum">
+                                    <i class="fa-solid fa-ban"></i><span>Nenhum</span>
+                                </label>
+                                {% endif %}
+                            </div>
+                            <div class="rc-resumo">
+                                <span class="rc-resumo__texto" data-rc-resumo>Todos os {{ cat.qtd_ativos }} documentos</span>
+                                <button type="button" class="rc-resumo__botao" data-rc-abrir hidden>
+                                    <i class="fa-solid fa-sliders"></i> Editar
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+
+                    </div>
+                </div>
+
+                <div
+                    class="bg-white/90 backdrop-blur-xl border border-white/80 p-2 rounded-[1rem] shadow-[0_8px_20px_rgb(0,0,0,0.03)] flex items-center shrink-0">
+
+                    <button id="btn-start"
+                        class="text-white bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-purple-300 shadow-lg shadow-purple-500/40 font-bold rounded-xl text-[13px] px-5 py-2.5 tracking-widest uppercase flex items-center justify-center gap-2 w-36 transition-all cursor-pointer">
+                        <i class="fa-solid fa-play"></i><span>Iniciar</span>
+                    </button>
+
+                    <button id="btn-stop"
+                        class="ml-2 text-white bg-gradient-to-r from-pink-500 via-pink-600 to-pink-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-pink-300 shadow-md shadow-pink-500/30 font-bold rounded-xl text-[13px] px-5 py-2.5 tracking-widest uppercase flex items-center justify-center gap-2 w-36 transition-all cursor-not-allowed opacity-90">
+                        <i class="fa-solid fa-stop"></i><span>Parar</span>
+                    </button>
+
+                    <div
+                        class="flex-1 mx-4 bg-gray-100 rounded-lg h-7 border border-gray-200 shadow-inner relative flex items-center justify-center overflow-hidden">
+                        <div id="progress-bar"
+                            class="absolute top-0 left-0 h-full bg-gradient-to-r from-pink-400 to-purple-500 transition-all duration-500 ease-out"
+                            style="width: 0%;"></div>
+                        <span id="progress-text"
+                            class="relative z-10 text-[13px] font-black text-gray-700 tracking-wide drop-shadow-[0_0_2px_rgba(255,255,255,0.8)]">0%</span>
+                    </div>
+
+                    <button id="btn-download"
+                        class="text-gray-500 bg-gradient-to-r from-gray-100 via-gray-200 to-gray-300 focus:ring-4 focus:outline-none focus:ring-gray-200 shadow-sm font-bold rounded-xl text-[13px] px-5 py-2.5 tracking-widest uppercase flex items-center justify-center gap-2 w-72 transition-all cursor-not-allowed">
+                        <i class="fa-solid fa-download"></i><span>Baixar</span>
+                    </button>
+
+                </div>
+
+                <div class="flex-1 min-h-[150px] console-ggci border rounded-[1.5rem] flex flex-col overflow-hidden">
+                    <!-- Barra de título, no estilo de uma janela de terminal. As três
+                         bolinhas são a convenção do macOS e valem igual nos dois temas. -->
+                    <div class="console-ggci__cromo px-5 py-2.5 flex items-center justify-between border-b shrink-0">
+                        <div class="flex space-x-2.5">
+                            <div class="w-3.5 h-3.5 rounded-full bg-[#ff5f56] shadow-sm"></div>
+                            <div class="w-3.5 h-3.5 rounded-full bg-[#ffbd2e] shadow-sm"></div>
+                            <div class="w-3.5 h-3.5 rounded-full bg-[#27c93f] shadow-sm"></div>
+                        </div>
+                        <span class="text-purple-800 text-[11px] font-mono tracking-widest font-bold flex items-center gap-2">
+                            <i class="fa-solid fa-terminal text-pink-500"></i> CONSOLE DE PROCESSAMENTO
+                        </span>
+                        <div class="w-10"></div>
+                    </div>
+
+                    <div id="console-logs"
+                        class="console-ggci__log p-6 flex-1 overflow-y-auto overflow-x-hidden font-mono text-[13px] leading-relaxed text-gray-700 break-words">
+                        <div class="flex gap-2 mb-1">
+                            <span class="text-pink-600 font-bold">ovg@probem-ai:</span>
+                            <span class="text-purple-600">~</span>
+                            <span class="text-purple-400">$</span>
+                            <span class="text-purple-900 font-bold animate-pulse">init_renovacao_cadastramento --verbose</span>
+                        </div>
+                        <div class="text-pink-500 italic mb-2">
+                            <i class="fa-solid fa-angle-right"></i> Aguardando início...
+                        </div>
+                        <span class="console-spinner"></span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!--
+        MODAIS — irmãos do `.menu-shell`, e não filhos: a casca tem `backdrop-filter`,
+        que cria containing block para `position: fixed`; de dentro dela o modal se
+        ancoraria na casca em vez de cobrir a tela. Levam `area-trabalho` para o tema
+        eleitoral repintar as utilitárias neutras também aqui.
+    -->
+
+    <!-- Modal: Instituições (mesmo desenho do filtro do Documentos IA) -->
+    <div id="rc-modal-ies" class="area-trabalho rc-modal" aria-hidden="true">
+        <div class="rc-modal__caixa rc-modal__caixa--larga bg-gray-50 rounded-2xl flex flex-col overflow-hidden shadow-2xl border border-gray-200">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0 bg-white">
+                <div class="flex items-center gap-4">
+                    <div class="modal-header-icone rc-solido w-12 h-12 rounded-xl flex items-center justify-center shadow-sm text-white">
+                        <i class="fa-solid fa-building-columns text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-800 tracking-tight">Instituições</h3>
+                        <p class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mt-0.5">Selecione as Mantenedoras e IES</p>
+                    </div>
+                </div>
+                <button type="button" data-rc-fechar class="text-gray-400 hover:text-gray-800 hover:bg-gray-100 w-10 h-10 flex items-center justify-center rounded-xl transition-colors shrink-0" aria-label="Fechar">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <div class="flex-1 flex overflow-hidden bg-transparent" style="min-height: 0;">
+                <div class="flex flex-col border-r border-gray-200 bg-gray-50/50" style="width: 55%; min-height: 0;">
+                    <div class="p-5 border-b border-gray-200 shrink-0 bg-white">
+                        <div class="relative">
+                            <i class="fa-solid fa-search absolute text-gray-400" style="left: 1.25rem; top: 50%; transform: translateY(-50%);"></i>
+                            <input type="text" id="rc-busca-ies" placeholder="Pesquisar por nome da Mantenedora ou Instituição..." class="rc-campo w-full pr-10 py-3 bg-white border-2 border-gray-100 rounded-xl text-sm text-gray-700 shadow-sm focus:outline-none transition-colors" style="padding-left: 3rem;">
+                        </div>
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-5 space-y-4 rc-rolagem" id="rc-lista-mantenedoras" style="min-height: 0;"></div>
+                </div>
+
+                <div class="flex flex-col bg-gray-100/50" style="width: 45%; min-height: 0;">
+                    <div class="px-6 py-5 border-b border-gray-200 flex justify-between items-center bg-white shrink-0">
+                        <div class="flex items-center gap-3">
+                            <div class="rc-marcador w-2 h-6 rounded-full"></div>
+                            <h4 class="text-sm font-extrabold text-gray-800 uppercase tracking-wide">Selecionadas (<span id="rc-qtd-ies" class="rc-cor">0</span>)</h4>
+                        </div>
+                        <button type="button" id="rc-limpar-ies" class="tela-voltar text-xs font-bold px-4 py-2 bg-white hover:bg-pink-50 text-pink-600 rounded-xl transition-all shadow-sm border border-pink-100 botao-tema">Limpar Tudo</button>
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-6 space-y-2 rc-rolagem" id="rc-lista-selecionadas" style="min-height: 0;"></div>
+                </div>
+            </div>
+
+            <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 bg-white shrink-0">
+                <button type="button" data-rc-fechar class="tela-voltar px-6 py-2.5 text-sm font-bold bg-white hover:bg-pink-50 text-pink-600 rounded-xl transition-all shadow-sm border border-pink-100 botao-tema">Cancelar</button>
+                <button type="button" id="rc-aplicar-ies" class="modal-confirmar rc-solido px-8 py-2.5 text-sm font-bold rounded-xl transition-all shadow-md hover:opacity-90 flex items-center gap-2 text-white">
+                    <i class="fa-solid fa-check"></i> Aplicar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modais de documentos: um por categoria do formulário -->
+    {% for cat in categorias %}
+    <div class="area-trabalho rc-modal rc-modal-docs" data-categoria="{{ cat.chave }}" aria-hidden="true">
+        <div class="rc-modal__caixa bg-gray-50 rounded-2xl flex flex-col overflow-hidden shadow-2xl border border-gray-200">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0 bg-white">
+                <div class="flex items-center gap-4">
+                    <div class="modal-header-icone rc-solido w-12 h-12 rounded-xl flex items-center justify-center shadow-sm text-white">
+                        <i class="fa-solid {{ cat.icone }} text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-800 tracking-tight">{{ cat.titulo }}</h3>
+                        <p class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mt-0.5">Selecione os documentos que o robô vai conferir</p>
+                    </div>
+                </div>
+                <button type="button" data-rc-fechar class="text-gray-400 hover:text-gray-800 hover:bg-gray-100 w-10 h-10 flex items-center justify-center rounded-xl transition-colors shrink-0" aria-label="Fechar">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <div class="px-6 py-3 border-b border-gray-200 flex justify-between items-center bg-white shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="rc-marcador w-2 h-6 rounded-full"></div>
+                    <h4 class="text-sm font-extrabold text-gray-800 uppercase tracking-wide">Selecionados (<span data-rc-qtd class="rc-cor">0</span> de {{ cat.qtd_ativos }})</h4>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" data-rc-marcar class="tela-voltar text-xs font-bold px-4 py-2 bg-white hover:bg-pink-50 text-pink-600 rounded-xl transition-all shadow-sm border border-pink-100 botao-tema">Marcar Todos</button>
+                    <button type="button" data-rc-limpar class="tela-voltar text-xs font-bold px-4 py-2 bg-white hover:bg-pink-50 text-pink-600 rounded-xl transition-all shadow-sm border border-pink-100 botao-tema">Limpar Tudo</button>
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-5 rc-rolagem" style="min-height: 0;">
+                <div class="rc-docs">
+                    {% for doc in cat.documentos %}
+                    <!-- Documento sem `ativo` em views.DOCUMENTOS: aparece, mas não pode ser escolhido. -->
+                    <label class="rc-doc{% if not doc.ativo %} rc-doc--inativo{% endif %}"{% if not doc.ativo %} title="Indisponível nesta fase do desenvolvimento"{% endif %}>
+                        <input type="checkbox" value="{{ doc.chave }}" data-titulo="{{ doc.titulo }}"{% if not doc.ativo %} disabled{% endif %}>
+                        <span class="rc-doc__numero">{{ forloop.counter }}</span>
+                        <span class="rc-doc__icone"><i class="fa-solid {{ doc.icone }}"></i></span>
+                        <span class="rc-doc__texto">
+                            <span class="rc-doc__titulo">{{ doc.titulo }}</span>
+                            <span class="rc-doc__descricao">{{ doc.descricao }}</span>
+                        </span>
+                        {% if doc.ativo %}
+                        <i class="rc-doc__check fa-solid fa-circle-check"></i>
+                        {% else %}
+                        <i class="rc-doc__check fa-solid fa-lock"></i>
+                        {% endif %}
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 bg-white shrink-0">
+                <button type="button" data-rc-fechar class="tela-voltar px-6 py-2.5 text-sm font-bold bg-white hover:bg-pink-50 text-pink-600 rounded-xl transition-all shadow-sm border border-pink-100 botao-tema">Cancelar</button>
+                <button type="button" data-rc-aplicar class="modal-confirmar rc-solido px-8 py-2.5 text-sm font-bold rounded-xl transition-all shadow-md hover:opacity-90 flex items-center gap-2 text-white">
+                    <i class="fa-solid fa-check"></i> Aplicar
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    <script src="{% static 'renovacao_cadastramento/js/renovacao_cadastramento.js' %}?v=8"></script>
+</body>
+
+</html>

@@ -1,0 +1,742 @@
+/*
+=== ARQUIVO: apps/automacoes/renovacao_cadastramento/static/renovacao_cadastramento/css/renovacao_cadastramento.css ===
+Propósito: Extensão de estilos base que o framework TailwindCSS não abrange nativamente.
+Autor: N/A
+Dependências Principais: Nenhum (CSS Puro)
+*/
+
+/* 
+ * O QUE FAZ: Ajusta comportamentos globais de fonte e interações nativas do browser.
+ * POR QUÊ EXISTE: Resetar a bordinha padrão feia de checkboxes e calibrar o tamanho da fonte. 
+ * COMO FUNCIONA: Herda a tipografia `Poppins` do layout base e desabilita outlines em formulários.
+ */
+html { font-size: 90%; }
+
+/* ==========================================================================
+   ROXO OVG NO LUGAR DO VIOLETA DO TAILWIND
+   ==========================================================================
+   A tela usa as utilitárias `purple-*` (Configurar Documentos, Iniciar, chaves,
+   ícones, console…), e o `purple` do Tailwind é um violeta azulado que não é o
+   da marca. O `output.css` é Tailwind v4: toda utilitária lê `--color-purple-N`,
+   então redefinir a escala aqui troca a tela inteira de uma vez — markup, JS do
+   console, gradientes e sombras — sem precisar de classe nova (o bundle é
+   purgado).
+
+   O ROXO OVG É O DO MENU: o título "Navegação Principal" é `--ovg-roxo-escuro`
+   (#64528c, tema.css) — é ele o roxo da marca, e é ele o 600 e o 700 daqui (os
+   tons que pintam botões, chaves e textos). O 500 é `--ovg-roxo-medio`, a ponta
+   clara dos degradês (o Iniciar vai do 500 ao 700); 800 = profundo, 50 = lavado,
+   200 = borda. Fora de layer: vence o `@layer theme` do bundle. O eleitoral não
+   é afetado — lá `tema-conteudo.css` repinta as utilitárias com as cores do tema.
+   ========================================================================== */
+:root {
+    --color-purple-50:  var(--ovg-roxo-lavado, #f5f3fa);
+    --color-purple-100: #ebe6f5;
+    --color-purple-200: var(--ovg-roxo-borda, #d8cfea);
+    --color-purple-300: #b9abd6;
+    --color-purple-400: var(--ovg-roxo-claro, #8c76b8);
+    --color-purple-500: var(--ovg-roxo-medio, #7660a1);
+    --color-purple-600: var(--ovg-roxo-escuro, #64528c);
+    --color-purple-700: var(--ovg-roxo-escuro, #64528c);
+    --color-purple-800: var(--ovg-roxo-profundo, #523f78);
+    --color-purple-900: #43325f;
+    --color-purple-950: #2e2242;
+}
+
+/* A MANCHA ROXA DO FUNDO NÃO ENTRA NA TROCA ACIMA. O terceiro borrão da página
+   (`.menu-blob--3`, canto inferior esquerdo) é `bg-purple-700/60`: com a escala
+   redefinida ele virava o roxo OVG acinzentado, e o fundo destas telas ficava menos
+   colorido que o dos menus. Aqui ele volta ao violeta original do Tailwind. No
+   eleitoral quem pinta é `tema-menu.css`, com especificidade maior. */
+.menu-blob--3 {
+    background-color: color-mix(in oklab, oklch(49.6% 0.265 301.924) 60%, transparent);
+}
+
+body { font-family: 'Poppins', sans-serif; }
+
+/* Animações das Bolhas de Fundo */
+
+/* Customização da Barra de Rolagem Principal */
+.custom-scrollbar::-webkit-scrollbar { width: 8px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(168, 85, 247, 0.4); border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(168, 85, 247, 0.7); }
+
+/* Remove a bordinha azul feia padrão dos navegadores nos checkboxes */
+input[type="checkbox"]:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+/* ==========================================================================
+   PLANO DE FUNDO - MALHA DE GRID (.grid-bg)
+   Cria um efeito sutil de linhas de grade (grid) roxas cruzadas no plano de fundo,
+   proporcionando profundidade visual e um aspecto técnico/moderno à interface.
+   ========================================================================== */
+.grid-bg {
+    background-image: 
+        linear-gradient(rgba(147, 51, 234, 0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(147, 51, 234, 0.07) 1px, transparent 1px);
+    background-size: 113px 75px;
+}
+
+.neon-btn::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: 0 15px 35px rgba(124, 58, 237, 0.35), 0 0 20px rgba(217, 70, 239, 0.25);
+    opacity: 0;
+    transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: -1;
+    pointer-events: none;
+}
+
+.neon-btn:hover {
+    transform: translateY(-2px);
+}
+
+.neon-btn:hover::after {
+    opacity: 1;
+}
+
+.neon-btn:active {
+    transform: translateY(0);
+}
+
+
+
+
+
+.neon-item:hover::before,
+
+
+/* =========================================
+   EFEITOS DE NAVEGAÇÃO OTIMIZADOS (OVG)
+   Alta performance: Anima apenas opacity e transform (GPU 60fps)
+========================================= */
+
+.nav-active {
+    position: relative;
+    background: linear-gradient(to right, var(--color-purple-600), var(--color-purple-500)); /* roxo OVG */
+    box-shadow: 0 10px 20px rgba(147, 51, 234, 0.25);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    isolation: isolate;
+    will-change: transform;
+    color: white !important;
+}
+
+.nav-active::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: 0 15px 30px rgba(147, 51, 234, 0.4), 0 0 15px rgba(168, 85, 247, 0.3);
+    opacity: 0;
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: -1;
+    pointer-events: none;
+}
+
+.nav-active:hover {
+    transform: translateY(-2px);
+}
+
+.nav-active:hover::after {
+    opacity: 1;
+}
+
+.nav-inactive {
+    position: relative;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), color 0.3s ease;
+    isolation: isolate;
+    will-change: transform;
+    color: #4b5563; /* text-gray-600 */
+}
+
+.nav-inactive::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background-color: #ffffff;
+    box-shadow: 0 4px 15px rgba(147, 51, 234, 0.08);
+    opacity: 0;
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: -1;
+    pointer-events: none;
+}
+
+.nav-inactive:hover {
+    transform: translateY(-1px);
+    color: var(--color-purple-600) !important; /* roxo OVG */
+}
+
+.nav-inactive:hover::before {
+    opacity: 1;
+}
+
+
+/* ==========================================================================
+   RENOVAÇÃO DE CADASTRAMENTO — CONFIGURAÇÃO E MODAIS
+   ==========================================================================
+   CSS puro com prefixo `rc-`: o Tailwind do portal é um bundle purgado, classe
+   utilitária nova não existe no output.css e falha em silêncio.
+
+   A cor vem de quatro variáveis. No modo claro é o roxo OVG do menu
+   (`--ovg-roxo-escuro`); no eleitoral elas apontam para os tokens do tema, e é
+   só isso que muda — nenhuma regra abaixo é reescrita por tema.
+   ========================================================================== */
+.area-trabalho {
+    --rc-cor: #64528c;                       /* traço: texto, ícone, borda ativa */
+    --rc-solido: #64528c;                    /* área cheia: botão, selo */
+    --rc-lavado: rgba(100, 82, 140, 0.07);   /* fundo do item marcado */
+    --rc-borda: rgba(100, 82, 140, 0.30);
+    --rc-neutro: #e5e7eb;
+    --rc-texto: #374151;
+    --rc-texto-fraco: #6b7280;
+    --rc-superficie: #ffffff;
+    --rc-superficie-2: #f3f4f6;
+}
+
+html[data-tema="eleitoral"] .area-trabalho {
+    --rc-cor: var(--tema-primaria);
+    --rc-solido: var(--tema-primaria-forte);
+    --rc-lavado: var(--tema-primaria-lavada);
+    --rc-borda: var(--tema-primaria-borda);
+    --rc-neutro: var(--tema-borda-forte);
+    --rc-texto: var(--tema-texto-forte);
+    --rc-texto-fraco: var(--tema-texto-fraco);
+    --rc-superficie: var(--tema-superficie);
+    --rc-superficie-2: var(--tema-superficie-2);
+}
+
+.rc-cor { color: var(--rc-cor); }
+.rc-solido { background-color: var(--rc-solido); }
+.rc-marcador { background-color: var(--rc-solido); }
+.rc-campo:focus { border-color: var(--rc-cor); }
+
+.rc-rolagem { scrollbar-width: thin; scrollbar-color: var(--rc-borda) transparent; }
+
+/* --- Grade das caixas: Instituições + uma por categoria de documento ------ */
+.rc-grade {
+    display: grid;
+    grid-template-columns: repeat(var(--rc-colunas, 2), minmax(0, 1fr));
+    gap: 1.25rem;
+    align-items: stretch;
+}
+
+@media (max-width: 1100px) {
+    .rc-grade { grid-template-columns: 1fr; }
+}
+
+/* --- "Todas" × "Somente as selecionadas" ---------------------------------
+   Um par de rádios desenhado como controle segmentado. O input fica invisível
+   mas presente (foco por teclado continua funcionando); quem pinta é o
+   `:has(:checked)` do rótulo. */
+.rc-escolha {
+    display: flex;
+    gap: 0.25rem;
+    padding: 0.25rem;
+    border-radius: 0.85rem;
+    background: var(--rc-superficie-2);
+    border: 1px solid var(--rc-neutro);
+}
+
+.rc-escolha__opcao {
+    position: relative;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.4rem;
+    border-radius: 0.65rem;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--rc-texto-fraco);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+/* Com três opções em três colunas o rótulo não cabe em tela média: o ícone é
+   enfeite, o texto é a informação — some o ícone primeiro. */
+@media (max-width: 1500px) {
+    .rc-escolha__opcao { min-width: 0; padding-left: 0.2rem; padding-right: 0.2rem; }
+    .rc-escolha__opcao i { display: none; }
+}
+
+.rc-escolha__opcao input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.rc-escolha__opcao:hover { color: var(--rc-cor); }
+
+.rc-escolha__opcao:has(input:checked) {
+    background: var(--rc-solido);
+    color: #ffffff;
+}
+
+.rc-escolha__opcao:has(input:focus-visible) {
+    outline: 2px solid var(--rc-cor);
+    outline-offset: 2px;
+}
+
+/* --- Linha de resumo: diz o que está valendo com o modal fechado ---------- */
+.rc-resumo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    min-height: 2.4rem;
+    padding: 0.35rem 0.4rem 0.35rem 0.85rem;
+    border-radius: 0.75rem;
+    border: 1px dashed var(--rc-neutro);
+}
+
+.rc-resumo__texto {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--rc-texto);
+}
+
+.rc-resumo__texto--alerta { color: #b45309; }
+html[data-tema="eleitoral"] .rc-resumo__texto--alerta { color: var(--tema-status-alerta); }
+
+.rc-resumo__botao {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: 0.6rem;
+    border: 1px solid var(--rc-borda);
+    background: var(--rc-lavado);
+    color: var(--rc-cor);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.rc-resumo__botao[hidden] { display: none; }
+.rc-resumo__botao:hover { background: var(--rc-borda); }
+
+/* --- Modais -------------------------------------------------------------- */
+.rc-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background-color: rgba(15, 23, 42, 0.35);
+}
+
+.rc-modal--aberto { display: flex; }
+
+.rc-modal__caixa {
+    width: 95%;
+    max-width: 860px;
+    max-height: 88vh;
+}
+
+/* No eleitoral as utilitárias de fundo viram superfícies translúcidas (feitas para
+   ficar sobre a casca). Solto sobre a página, o modal deixava a tela vazar por trás. */
+html[data-tema="eleitoral"] .rc-modal__caixa { background-color: var(--tema-fundo) !important; }
+
+.rc-modal__caixa--larga {
+    max-width: 1400px;
+    height: 85vh;
+    max-height: 800px;
+    min-height: 560px;
+}
+
+/* --- Lista de documentos ------------------------------------------------- */
+.rc-docs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.rc-doc {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.8rem 0.9rem;
+    border-radius: 0.9rem;
+    border: 1.5px solid var(--rc-neutro);
+    background: var(--rc-superficie);
+    cursor: pointer;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.rc-doc input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.rc-doc:hover { border-color: var(--rc-borda); }
+
+.rc-doc:has(input:checked) {
+    border-color: var(--rc-cor);
+    background: var(--rc-lavado);
+}
+
+.rc-doc:has(input:focus-visible) {
+    outline: 2px solid var(--rc-cor);
+    outline-offset: 2px;
+}
+
+.rc-doc__numero {
+    flex-shrink: 0;
+    width: 1.4rem;
+    font-size: 11px;
+    font-weight: 800;
+    text-align: center;
+    color: var(--rc-texto-fraco);
+}
+
+.rc-doc__icone {
+    flex-shrink: 0;
+    width: 2.4rem;
+    height: 2.4rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.7rem;
+    background: var(--rc-superficie-2);
+    color: var(--rc-texto-fraco);
+    font-size: 15px;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.rc-doc:has(input:checked) .rc-doc__icone {
+    background: var(--rc-solido);
+    color: #ffffff;
+}
+
+.rc-doc__texto {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.rc-doc__titulo {
+    font-size: 12.5px;
+    font-weight: 800;
+    line-height: 1.25;
+    color: var(--rc-texto);
+}
+
+.rc-doc__descricao {
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.35;
+    color: var(--rc-texto-fraco);
+}
+
+.rc-doc__check {
+    flex-shrink: 0;
+    font-size: 18px;
+    color: var(--rc-neutro);
+    transition: color 0.15s ease;
+}
+
+.rc-doc:has(input:checked) .rc-doc__check { color: var(--rc-cor); }
+
+/* --- Itens montados pelo JS no modal de instituições ---------------------- */
+.rc-icone-vazio { color: var(--rc-neutro); }
+.rc-contador {
+    margin-left: auto;
+    border-radius: 6px;
+    border: 1px solid var(--rc-borda);
+    background: var(--rc-lavado);
+    color: var(--rc-cor);
+}
+.rc-selo-ies { background: var(--rc-lavado); color: var(--rc-cor); }
+.rc-elipse { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* --- Documento indisponível (sem `ativo` em views.DOCUMENTOS) -------------
+   Continua visível para a pessoa saber que existe, mas apagado e com cadeado:
+   o input é `disabled` e o rótulo não reage ao hover. */
+.rc-doc--inativo {
+    cursor: not-allowed;
+    opacity: 0.5;
+    filter: grayscale(1);
+    background: var(--rc-superficie-2);
+}
+.rc-doc--inativo input { cursor: not-allowed; }
+.rc-doc--inativo:hover { border-color: var(--rc-neutro); }
+
+/* --- Códigos MEC e cursos no modal de instituições ----------------------- */
+.rc-textos {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+/* Etiquetas copiáveis (CNPJ e código MEC). Ficam fora dos botões de marcar/abrir;
+   clicar copia o valor e a própria etiqueta confirma por 1,4 s. */
+.rc-dados {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+.rc-dados--mantenedora { padding: 0 1rem 0.75rem 3.25rem; margin-top: -0.35rem; }
+.rc-dados--ies { padding: 0 0.75rem 0.7rem 2.45rem; }
+
+.rc-dado {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 6px;
+    border: 1px solid var(--rc-neutro);
+    background: var(--rc-superficie);
+    font-size: 10.5px;
+    line-height: 1.5;
+    color: var(--rc-texto);
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+.rc-dado__rotulo { font-weight: 600; color: var(--rc-texto-fraco); }
+.rc-dado__valor { font-weight: 700; font-variant-numeric: tabular-nums; }
+.rc-dado__icone { font-size: 10px; color: var(--rc-texto-fraco); }
+
+.rc-dado:hover { background: var(--rc-lavado); color: var(--rc-cor); }
+.rc-dado:hover .rc-dado__icone { color: var(--rc-cor); }
+.rc-dado:focus-visible { outline: 2px solid var(--rc-cor); outline-offset: 1px; }
+
+.rc-dado--copiado,
+.rc-dado--copiado:hover { background: var(--rc-lavado); color: var(--rc-cor); }
+.rc-dado--copiado .rc-dado__icone { color: var(--rc-cor); }
+.rc-dado--falhou .rc-dado__icone { color: #b91c1c; }
+
+.rc-dado--vazio { cursor: default; font-style: italic; opacity: 0.7; }
+.rc-dado--vazio:hover { background: var(--rc-superficie); color: var(--rc-texto); }
+
+.rc-aviso-banco {
+    padding: 0.6rem 0.85rem;
+    border-radius: 0.75rem;
+    border: 1px dashed var(--rc-neutro);
+    font-size: 12px;
+    font-weight: 600;
+    color: #b45309;
+}
+html[data-tema="eleitoral"] .rc-aviso-banco { color: var(--tema-status-alerta); }
+
+/* --- IES dentro da mantenedora expandida --------------------------------
+   Antes eram linhas soltas separadas por fio de ponta a ponta, com o check e o
+   nome desalinhados do cabeçalho. Agora: um recuo de tom mais fundo (separa do
+   cabeçalho sem linha dura) e um cartão por IES, separados por espaço. */
+.rc-ies-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    padding: 0.6rem 0.75rem 0.75rem;
+    background: var(--rc-superficie-2);
+    border-top: 1px solid var(--rc-neutro);
+}
+
+.rc-ies-item {
+    border-radius: 0.75rem;
+    border: 1px solid var(--rc-neutro);
+    background: var(--rc-superficie);
+    transition: background-color 0.15s ease;
+}
+/* Hover só muda o tom do fundo (nada de borda que escurece). */
+.rc-ies-item:has(.rc-ies-item__marcar:hover) { background: var(--rc-lavado); }
+.rc-ies-item--marcada { background: var(--rc-lavado); border-color: var(--rc-borda); }
+
+.rc-ies-item__topo {
+    display: flex;
+    align-items: flex-start;
+}
+
+.rc-ies-item__marcar {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    padding: 0.65rem 0.5rem 0.4rem 0.8rem;
+    text-align: left;
+    cursor: pointer;
+}
+.rc-ies-item__marcar:focus-visible { outline: 2px solid var(--rc-cor); outline-offset: -2px; border-radius: 0.75rem; }
+
+.rc-ies-item__check {
+    flex-shrink: 0;
+    width: 1rem;
+    margin-top: 1px;
+    font-size: 15px;
+    color: var(--rc-neutro);
+}
+.rc-ies-item--marcada .rc-ies-item__check { color: var(--rc-cor); }
+
+.rc-ies-item__nome {
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--rc-texto);
+}
+.rc-ies-item--marcada .rc-ies-item__nome { color: var(--rc-cor); font-weight: 700; }
+
+.rc-info {
+    flex-shrink: 0;
+    width: 2rem;
+    height: 2rem;
+    margin: 0.35rem 0.4rem 0 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.55rem;
+    color: var(--rc-texto-fraco);
+    font-size: 15px;
+    cursor: pointer;
+    transition: color 0.15s ease, background-color 0.15s ease;
+}
+.rc-info:hover,
+.rc-info--aberto { color: var(--rc-cor); background: var(--rc-lavado); }
+.rc-info:focus-visible { outline: 2px solid var(--rc-cor); outline-offset: -2px; }
+.rc-info:disabled { color: var(--rc-neutro); background: none; cursor: not-allowed; }
+
+.rc-cursos {
+    margin: 0.1rem 0.75rem 0.75rem 2.45rem;
+    padding: 0.65rem 0.8rem;
+    border-radius: 0.75rem;
+    background: var(--rc-superficie-2);
+    font-size: 11.5px;
+    color: var(--rc-texto-fraco);
+}
+.rc-cursos--erro { color: #b45309; }
+html[data-tema="eleitoral"] .rc-cursos--erro { color: var(--tema-status-alerta); }
+
+.rc-cursos__titulo {
+    margin-bottom: 0.4rem;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--rc-cor);
+}
+
+.rc-cursos__lista {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    max-height: 16rem;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--rc-borda) transparent;
+}
+
+.rc-curso {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 0.5rem;
+}
+.rc-curso__nome { font-weight: 700; color: var(--rc-texto); }
+.rc-curso__meta { font-size: 10.5px; }
+.rc-curso__selo {
+    font-size: 9.5px;
+    font-weight: 700;
+    padding: 0 0.4rem;
+    border-radius: 4px;
+    background: var(--rc-superficie);
+    border: 1px solid var(--rc-neutro);
+}
+
+/* --- Iniciar / Baixar do motor -------------------------------------------
+   Classes próprias: as utilitárias verdes que outras telas trocam por JS podem
+   não existir no bundle purgado. O verde do Baixar pronto é o das outras telas. */
+#btn-start.rc-iniciar--ocupado { opacity: 0.6; cursor: wait; }
+/* Parar só vale com o motor rodando; o id vence as utilitárias fixas do botão. */
+#btn-stop:disabled { opacity: 0.45; cursor: not-allowed; }
+#btn-stop:not(:disabled) { opacity: 1; cursor: pointer; }
+#btn-download.rc-baixar--pronto {
+    background-image: linear-gradient(to right, #22c55e, #16a34a, #15803d);
+    color: #ffffff;
+    cursor: pointer;
+    box-shadow: 0 6px 16px rgba(22, 163, 74, 0.25);
+}
+#btn-download.rc-baixar--pronto:hover { background-image: linear-gradient(to bottom right, #22c55e, #16a34a, #15803d); }
+
+.console-ggci .rc-log-alerta { color: #b45309; }
+html[data-tema="eleitoral"] .console-ggci .rc-log-alerta { color: var(--tema-status-alerta); }
+
+/* --- Padronização de botões secundários (estilo Voltar, sem blur/halo) ---- */
+.tela-voltar:not(.tema-toggle),
+.botao-tema {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background-image: none !important;
+    transition: background-color 0.18s ease, color 0.18s ease,
+                border-color 0.18s ease, box-shadow 0.18s ease,
+                transform 0.2s ease, translate 0.12s ease;
+}
+
+.tela-voltar:not(.tema-toggle)::before,
+.tela-voltar:not(.tema-toggle)::after,
+.botao-tema::before,
+.botao-tema::after {
+    display: none !important;
+    content: none !important;
+}
+
+html:not([data-tema="eleitoral"]) .tela-voltar:not(.tema-toggle),
+html:not([data-tema="eleitoral"]) .botao-tema {
+    background-color: #FFFFFF;
+    border-color: color-mix(in srgb, currentColor 20%, transparent);
+    color: #DB2777;
+}
+
+html:not([data-tema="eleitoral"]) .tela-voltar:not(.tema-toggle):hover,
+html:not([data-tema="eleitoral"]) .botao-tema:hover {
+    background-color: color-mix(in srgb, currentColor 6%, white);
+    border-color: color-mix(in srgb, currentColor 20%, transparent);
+    color: #DB2777;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    transform: translateY(-1px);
+}
+
+html[data-tema="eleitoral"] .tela-voltar:not(.tema-toggle),
+html[data-tema="eleitoral"] .area-trabalho .tela-voltar:not(.tema-toggle),
+html[data-tema="eleitoral"] .botao-tema,
+html[data-tema="eleitoral"] .area-trabalho .botao-tema {
+    background-color: rgba(102, 203, 182, 0.12);
+    background-image: none !important;
+    border-color: var(--tema-primaria-borda) !important;
+    color: #B4EEE0;
+}
+
+html[data-tema="eleitoral"] .tela-voltar:not(.tema-toggle):hover,
+html[data-tema="eleitoral"] .area-trabalho .tela-voltar:not(.tema-toggle):hover,
+html[data-tema="eleitoral"] .botao-tema:hover,
+html[data-tema="eleitoral"] .area-trabalho .botao-tema:hover {
+    background-color: rgba(102, 203, 182, 0.20);
+    border-color: var(--tema-primaria-borda) !important;
+    color: var(--tema-texto-forte);
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    transform: translateY(-1px);
+}

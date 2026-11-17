@@ -36,6 +36,16 @@ body { font-family: 'Poppins', sans-serif; }
     background-size: 113px 75px;
 }
 
+/* Card no roxo OVG — o mesmo do título "Navegação Principal" (`--ovg-roxo-escuro`).
+   No tema eleitoral quem pinta é a variante por posição (`card-modulo--c`). */
+.card-modulo--ovg {
+    background-image: linear-gradient(to bottom right, #64528c, #523f78);
+}
+.card-modulo--ovg .card-modulo__btn,
+.card-modulo--ovg .card-modulo__restrito {
+    color: #64528c;
+}
+
 .neon-btn::after {
     content: "";
     position: absolute;

@@ -43,6 +43,7 @@ urlpatterns = [
     path('automacoes/', include('apps.automacoes.menu_automacoes.urls')),
     path('automacoes/analise-ia/', include('apps.automacoes.analise_ia.urls')),
     path('automacoes/enquadramento-cursos/', include('apps.automacoes.enquadramento_cursos.urls')),
+    path('automacoes/renovacao-cadastramento/', include('apps.automacoes.renovacao_cadastramento.urls')),
 
     # Dashboards
     path('dashboards/', include('apps.dashboards.menu_dashboards.urls')),
