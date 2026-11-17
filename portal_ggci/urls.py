@@ -9,13 +9,21 @@ que processarão e devolverão a página ou os dados corretos.
 
 from django.contrib import admin
 from django.urls import path, include
-from django.views.generic import TemplateView
+from django.templatetags.static import static
+from django.utils.functional import lazy
+from django.views.generic import RedirectView, TemplateView
 
 from apps.inicio.gestao_acessos import views as gestao_acessos_views
 from portal_ggci import execucoes
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+
+    # Ícone da aba do navegador. Todo navegador pede `/favicon.ico` sozinho quando a
+    # página não declara ícone — e nenhuma das telas do portal declara (não há template
+    # base). Uma rota aqui cobre todas de uma vez, inclusive o login. O `lazy` é para o
+    # `static()` resolver a URL com hash do manifest só na hora do pedido.
+    path('favicon.ico', RedirectView.as_view(url=lazy(static, str)('img/favicon.png'))),
     
     # Login e Logout
     path('', TemplateView.as_view(template_name='gestao_acessos/login/index.html'), name='home'),
