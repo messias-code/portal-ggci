@@ -353,6 +353,7 @@ def status_atualizacao_docia(request, processo_id):
 
 
 @csrf_exempt
+@login_required(login_url='/')
 def parar_atualizacao_docia(request, processo_id):
     """
     O QUE FAZ: Aborta uma atualização em andamento (botão Parar ou saída da página).
@@ -360,11 +361,15 @@ def parar_atualizacao_docia(request, processo_id):
         dele — e nenhum outro) e só depois grava FALHA. Ver `abortar_execucao`. Quando a
         resposta chega, o motor já morreu: dá para iniciar outra atualização na sequência.
 
-    Sem `login_required` de propósito: o sendBeacon do `pagehide` não carrega a sessão de
-    forma confiável em todos os navegadores, e o alvo é sempre um ID específico já criado.
+    Exige login e a permissão do dashboard: o sendBeacon do `pagehide` leva o cookie de
+    sessão (mesma origem — conferido no Chromium ao navegar, recarregar e fechar a aba). Segue
+    `csrf_exempt` porque o sendBeacon não manda header. A permissão é a do módulo, e não "só
+    quem iniciou": a execução é compartilhada, e quem a acompanha também pode pará-la.
     """
     if request.method != 'POST':
         return JsonResponse({'status': 'erro', 'msg': 'Método não permitido.'}, status=400)
+    if not _tem_permissao(request.user):
+        return JsonResponse({'status': 'erro', 'msg': 'Acesso negado.'}, status=403)
 
     aviso = "\n\n🚨 [SISTEMA] Processo abortado manualmente pelo usuário!"
     encontrou = abortar_execucao(ProcessamentoDocIA, 'executar_doc_ia', processo_id, aviso)

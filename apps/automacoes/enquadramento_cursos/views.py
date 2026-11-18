@@ -11,6 +11,7 @@ import sys
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
+from django.core import signing
 from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.csrf import csrf_exempt
@@ -23,6 +24,7 @@ AVISO_ABORTADO = "\n\n🚨 [SISTEMA] Processo de IA abortado manualmente pelo us
 
 
 @csrf_exempt
+@login_required(login_url='/')
 def iniciar_processamento_ia(request):
     """
     O QUE FAZ: Inicia um novo processamento em background (Motor de Enquadramento).
@@ -93,6 +95,7 @@ def iniciar_processamento_ia(request):
 
 
 @csrf_exempt
+@login_required(login_url='/')
 def parar_processamento_ia(request, processo_id):
     """
     O QUE FAZ: Aborta forçosamente um processamento em andamento.
@@ -131,6 +134,12 @@ def checar_status_ia(request, processo_id):
         return JsonResponse({'status': 'erro', 'mensagem': 'Processo não encontrado'}, status=404)
 
 
+# Download pelo túnel do Cloudflare: o domínio dele não tem a sessão, então o redirecionamento
+# leva um token assinado de 5 minutos que só abre este processo (ver `analise_ia.views`).
+SAL_DOWNLOAD = 'enquadramento_cursos.baixar'
+VALIDADE_TOKEN_SEGUNDOS = 300
+
+
 def baixar_resultado_ia(request, processo_id):
     """
     O QUE FAZ: Fornece o arquivo ZIP final gerado.
@@ -139,7 +148,19 @@ def baixar_resultado_ia(request, processo_id):
       1. Tenta redirecionar para um servidor externo Cloudflare se configurado (Acelerador).
       2. Em falha/local, responde diretamente com o arquivo (em memória, que não é o ideal para ZIPs grandes).
     PARÂMETROS: request, processo_id (int)
+    ACESSO: sessão logada, ou o token `t` que o próprio redirecionamento ao túnel acrescenta.
     """
+    token = request.GET.get('t')
+    if token:
+        try:
+            if signing.loads(token, salt=SAL_DOWNLOAD, max_age=VALIDADE_TOKEN_SEGUNDOS) != processo_id:
+                raise signing.BadSignature
+        except signing.BadSignature:   # inclui o token vencido
+            return JsonResponse({'status': 'erro', 'mensagem': 'Link de download vencido. Clique em Baixar de novo.'},
+                                status=403)
+    elif not request.user.is_authenticated:
+        return redirect('/')
+
     try:
         processo = ProcessamentoEnquadramentoCursos.objects.get(id=processo_id)
         
@@ -160,8 +181,9 @@ def baixar_resultado_ia(request, processo_id):
                         host_atual = request.get_host()
                         
                         # Prevenção de Loop de Redirecionamento
-                        if url_cf and "trycloudflare.com" not in host_atual:
-                            return redirect(f"{url_cf}/automacoes/enquadramento-cursos/api/baixar-resultado/{processo_id}/")
+                        if not token and url_cf and "trycloudflare.com" not in host_atual:
+                            token = signing.dumps(processo_id, salt=SAL_DOWNLOAD)
+                            return redirect(f"{url_cf}/automacoes/enquadramento-cursos/api/baixar-resultado/{processo_id}/?t={token}")
             except Exception:
                 pass  # Segue para o envio local em caso de erro
 

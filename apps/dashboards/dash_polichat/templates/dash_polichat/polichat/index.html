@@ -662,7 +662,8 @@
     // URL do Web Worker de sincronização — precisa vir do template, já que
     // polichat.js é um arquivo estático puro e não passa pelo template engine.
     window.POLICHAT_WORKER_URL = "{% static 'dash_polichat/js/polichat-worker.js' %}?v=2";
+    window.CSRF_TOKEN = "{{ csrf_token }}";
 </script>
-<script src="{% static 'dash_polichat/js/polichat.js' %}?v=79"></script>
+<script src="{% static 'dash_polichat/js/polichat.js' %}?v=80"></script>
 </body>
 </html>

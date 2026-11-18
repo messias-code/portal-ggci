@@ -11,6 +11,7 @@ import sys
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
+from django.core import signing
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
@@ -76,7 +77,7 @@ def _bloqueio_do_outro_motor(request, eu):
     return None
 
 
-@csrf_exempt
+@login_required(login_url='/')
 def iniciar_processamento_ia(request):
     """
     O QUE FAZ: Inicia um novo processamento em background (Motor de IA).
@@ -164,7 +165,10 @@ def iniciar_processamento_ia(request):
     return JsonResponse({'status': 'erro', 'mensagem': 'Método inválido'}, status=400)
 
 
+# Segue `csrf_exempt`: o `pagehide` chama esta rota por `sendBeacon`, que não manda header
+# (o cookie de sessão vai, então o login é exigido).
 @csrf_exempt
+@login_required(login_url='/')
 def parar_processamento_ia(request, processo_id):
     """
     O QUE FAZ: Aborta forçosamente um processamento em andamento.
@@ -188,6 +192,7 @@ def parar_processamento_ia(request, processo_id):
     return JsonResponse({'status': 'erro', 'mensagem': 'Método inválido'}, status=400)
 
 
+@login_required(login_url='/')
 def checar_status_ia(request, processo_id):
     """
     O QUE FAZ: Retorna o status atual de um processamento.
@@ -217,6 +222,13 @@ def checar_status_ia(request, processo_id):
         return JsonResponse({'status': 'erro', 'mensagem': 'Processo não encontrado'}, status=404)
 
 
+# O acelerador redireciona o download para o túnel HTTPS do Cloudflare, outro domínio, onde a
+# pessoa não tem sessão. O redirecionamento leva um token assinado que vale 5 minutos e só abre
+# este processo — o mesmo desenho de `renovacao_cadastramento.views.api_baixar`.
+SAL_DOWNLOAD = 'analise_ia.baixar'
+VALIDADE_TOKEN_SEGUNDOS = 300
+
+
 def baixar_resultado_ia(request, processo_id):
     """
     O QUE FAZ: Fornece o arquivo Excel final gerado.
@@ -225,7 +237,19 @@ def baixar_resultado_ia(request, processo_id):
       1. Tenta redirecionar para um servidor externo Cloudflare se configurado (Acelerador).
       2. Em falha/local, delega o envio do payload ao Nginx através do header `X-Accel-Redirect` (altíssima performance).
     PARÂMETROS: request, processo_id (int)
+    ACESSO: sessão logada, ou o token `t` que o próprio redirecionamento ao túnel acrescenta.
     """
+    token = request.GET.get('t')
+    if token:
+        try:
+            if signing.loads(token, salt=SAL_DOWNLOAD, max_age=VALIDADE_TOKEN_SEGUNDOS) != processo_id:
+                raise signing.BadSignature
+        except signing.BadSignature:   # inclui o token vencido
+            return JsonResponse({'status': 'erro', 'mensagem': 'Link de download vencido. Clique em Baixar de novo.'},
+                                status=403)
+    elif not request.user.is_authenticated:
+        return redirect('/')
+
     try:
         processo = ProcessamentoAnaliseIA.objects.get(id=processo_id)
         
@@ -251,8 +275,9 @@ def baixar_resultado_ia(request, processo_id):
                         host_atual = request.get_host()
                         
                         # Prevenção de Loop de Redirecionamento e bug de extração da URL
-                        if url_cf and "api.trycloudflare.com" not in url_cf and "trycloudflare.com" not in host_atual:
-                            return redirect(f"{url_cf}/automacoes/analise-ia/api/baixar-resultado/{processo_id}/")
+                        if not token and url_cf and "api.trycloudflare.com" not in url_cf and "trycloudflare.com" not in host_atual:
+                            token = signing.dumps(processo_id, salt=SAL_DOWNLOAD)
+                            return redirect(f"{url_cf}/automacoes/analise-ia/api/baixar-resultado/{processo_id}/?t={token}")
             except Exception:
                 pass  # Segue para o envio local em caso de erro
 

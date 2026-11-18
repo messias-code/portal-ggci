@@ -8,7 +8,6 @@ import time
 import pandas as pd
 from datetime import datetime
 from django.http import JsonResponse, FileResponse, Http404
-from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from django.utils import timezone
 from .models import ProcessamentoPolichat
@@ -23,7 +22,7 @@ SLA_ESPERA_SEG = 15 * 60   # limite da fila (status Aguardando)
 SLA_TOTAL_SEG  = 45 * 60   # limite fila + conversa (status Em Atendimento)
 
 
-@csrf_exempt
+@login_required(login_url='/')
 def iniciar_extracao_polichat(request):
     if request.method == 'POST':
         # --- BLOQUEIO DE HORÁRIO ---
@@ -206,6 +205,7 @@ def status_loop_polichat(request):
     })
 
 
+@login_required(login_url='/')
 def baixar_resultado_polichat(request, processo_id):
     try:
         processo = ProcessamentoPolichat.objects.get(id=processo_id)

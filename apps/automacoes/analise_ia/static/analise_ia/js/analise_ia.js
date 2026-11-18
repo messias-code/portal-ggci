@@ -192,7 +192,7 @@ function initAnaliseIA() {
             prepararUIInicio();
             return fetch('/automacoes/analise-ia/api/iniciar-processamento/', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': window.CSRF_TOKEN },
                 body: JSON.stringify(Object.assign({}, payloadConfig, forcar ? { forcar: true } : {}))
             })
             /*  409 É O DOCUMENTOS IA RODANDO, e não um erro. Os dois dirigem o mesmo
