@@ -1726,3 +1726,34 @@ body {
     --poli-console-trilho: #ede8f5;
     --poli-console-trilho-borda: rgba(233, 213, 255, 0.5);
 }
+
+/* Spinner do console (Braille). O Polichat não carrega `static/css/console.css`, que tem a
+   mesma regra escopada em `.console-ggci`: sem esta, o `<span class="console-spinner">` do
+   template e do polichat.js ficava vazio, e nada girava enquanto a extração rodava. */
+@keyframes poli-braille-spin {
+    0% { content: '⠋'; }
+    10% { content: '⠙'; }
+    20% { content: '⠹'; }
+    30% { content: '⠸'; }
+    40% { content: '⠼'; }
+    50% { content: '⠴'; }
+    60% { content: '⠦'; }
+    70% { content: '⠧'; }
+    80% { content: '⠇'; }
+    90% { content: '⠏'; }
+    100% { content: '⠋'; }
+}
+.console-spinner {
+    display: inline-block;
+    color: oklch(52.6% 0.19 337.893); /* text-pink-600 */
+    font-weight: 700;
+    margin-left: 0.25rem;
+    font-size: 16px;
+}
+html[data-tema="eleitoral"] .console-spinner {
+    color: var(--tema-primaria);
+}
+.console-spinner::after {
+    content: '⠋';
+    animation: poli-braille-spin 0.8s step-end infinite;
+}
