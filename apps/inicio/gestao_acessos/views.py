@@ -190,6 +190,7 @@ def gestao_acessos(request):
             'p_formatador_dados': 1 if u.p_formatador_dados else 0,
             'p_analise_ia': 1 if u.p_analise_ia else 0,
             'p_enquadramento_cursos': 1 if u.p_enquadramento_cursos else 0,
+            'p_renovacao_cadastramento': 1 if u.p_renovacao_cadastramento else 0,
             'p_sugestoes': 1 if u.p_sugestoes else 0,
             'p_controle_acesso': 1 if u.p_controle_acesso else 0,
             'p_dash_polichat': 1 if u.p_dash_polichat else 0,
@@ -269,6 +270,7 @@ def api_salvar_usuario(request):
             
             p_analise_ia = 1 if request.POST.get('p_analise_ia') else 0
             p_enquadramento_cursos = 1 if request.POST.get('p_enquadramento_cursos') else 0
+            p_renovacao_cadastramento = 1 if request.POST.get('p_renovacao_cadastramento') else 0
             
             p_sugestoes = 1 if request.POST.get('p_sugestoes') else 0
             p_controle_acesso = 1 if request.POST.get('p_controle_acesso') else 0
@@ -292,6 +294,7 @@ def api_salvar_usuario(request):
                     p_formatador_dados=p_formatador_dados,
                     p_analise_ia=p_analise_ia,
                     p_enquadramento_cursos=p_enquadramento_cursos,
+                    p_renovacao_cadastramento=p_renovacao_cadastramento,
                     p_sugestoes=p_sugestoes,
                     p_controle_acesso=p_controle_acesso,
                     p_dash_polichat=p_dash_polichat,
@@ -327,6 +330,7 @@ def api_salvar_usuario(request):
                 
                 alvo.p_analise_ia = p_analise_ia
                 alvo.p_enquadramento_cursos = p_enquadramento_cursos
+                alvo.p_renovacao_cadastramento = p_renovacao_cadastramento
                 
                 alvo.p_sugestoes = p_sugestoes
                 alvo.p_controle_acesso = p_controle_acesso

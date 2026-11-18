@@ -34,6 +34,7 @@ class Usuario(AbstractBaseUser):
     
     p_analise_ia = models.BooleanField(default=False)
     p_enquadramento_cursos = models.BooleanField(default=False)
+    p_renovacao_cadastramento = models.BooleanField(default=False)
 
     p_sugestoes = models.BooleanField(default=False)
     p_controle_acesso = models.BooleanField(default=False)

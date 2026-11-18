@@ -196,7 +196,7 @@
                     <div class="flex flex-col justify-center text-left flex-1 z-10 w-full relative">
                         <h5 class="mb-1.5 text-xl font-extrabold tracking-tight text-white drop-shadow-sm">Renovação de Cadastramento</h5>
                         <p class="card-modulo__desc mb-4 text-pink-50/90 text-[12px] leading-relaxed font-medium">Analisa documentos em PDF e cruza os dados com o Cadastro e-MEC, validando-os na base oficial do MEC.</p>
-                        {% if user.p_analise_ia or user.usuario == 'admin@ovg.org.br' %}
+                        {% if user.p_renovacao_cadastramento or user.usuario == 'admin@ovg.org.br' %}
                             <span class="card-modulo__btn inline-flex items-center justify-center w-max bg-white hover:bg-gray-100 hover:scale-[1.03] transition-all font-bold rounded-xl text-[13px] px-4 py-2 shadow-md relative">
                                 Acessar Automação <svg class="w-4 h-4 ml-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
                             </span>

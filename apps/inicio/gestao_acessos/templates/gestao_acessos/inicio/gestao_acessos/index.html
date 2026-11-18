@@ -100,7 +100,7 @@
                 {% endif %}
 
                 <!-- Menu Automações Dinâmico -->
-                {% if user.p_analise_ia or user.p_enquadramento_cursos or user.usuario == 'admin@ovg.org.br' %}
+                {% if user.p_analise_ia or user.p_enquadramento_cursos or user.p_renovacao_cadastramento or user.usuario == 'admin@ovg.org.br' %}
                 <a href="{% url 'automacoes' %}"
                     class="nav-inactive flex items-center space-x-4 px-4 py-3 rounded-xl font-semibold text-base">
                     <i class="fa-brands fa-whmcs text-[28px] w-6 text-center"></i><span>Automações</span>
@@ -358,7 +358,7 @@
                                         {% if u.can_edit %}
                                         <!-- Ao clicar, injeta os dados do usuário direto no modal via JS -->
                                         <button
-                                            onclick="abrirModalEdicao({'id': {{ u.id }}, 'nome': '{{ u.nome|escapejs }}', 'usuario': '{{ u.usuario|escapejs }}', 'perfil': '{{ u.perfil }}', 'p_ferramentas': {{ u.p_ferramentas }}, 'p_formatador_listas': {{ u.p_formatador_listas }}, 'p_formatador_dados': {{ u.p_formatador_dados }}, 'p_analise_ia': {{ u.p_analise_ia }}, 'p_enquadramento_cursos': {{ u.p_enquadramento_cursos }}, 'p_sugestoes': {{ u.p_sugestoes }}, 'p_controle_acesso': {{ u.p_controle_acesso }}, 'p_dash_polichat': {{ u.p_dash_polichat }}, 'p_gestao_polichat': {{ u.p_gestao_polichat }}, 'p_dash_documentos_ia': {{ u.p_dash_documentos_ia }} })"
+                                            onclick="abrirModalEdicao({'id': {{ u.id }}, 'nome': '{{ u.nome|escapejs }}', 'usuario': '{{ u.usuario|escapejs }}', 'perfil': '{{ u.perfil }}', 'p_ferramentas': {{ u.p_ferramentas }}, 'p_formatador_listas': {{ u.p_formatador_listas }}, 'p_formatador_dados': {{ u.p_formatador_dados }}, 'p_analise_ia': {{ u.p_analise_ia }}, 'p_enquadramento_cursos': {{ u.p_enquadramento_cursos }}, 'p_renovacao_cadastramento': {{ u.p_renovacao_cadastramento }}, 'p_sugestoes': {{ u.p_sugestoes }}, 'p_controle_acesso': {{ u.p_controle_acesso }}, 'p_dash_polichat': {{ u.p_dash_polichat }}, 'p_gestao_polichat': {{ u.p_gestao_polichat }}, 'p_dash_documentos_ia': {{ u.p_dash_documentos_ia }} })"
                                             class="ga-acao ga-acao--editar w-9 h-9 rounded-xl bg-amber-100 text-amber-600 hover:bg-amber-500 hover:text-white transition-all flex items-center justify-center shadow-sm relative z-10"
                                             title="Editar Usuário">
                                             <i class="fa-solid fa-pen text-sm"></i>
@@ -430,7 +430,7 @@
 
     <!-- JS Externo: Contém a lógica de busca local, abertura/fechamento dos modais e submissão dos dados -->
     <!-- Arquivo localizado em: static/js/menu/inicio/gestao_acessos.js -->
-    <script src="{% static 'gestao_acessos/js/gestao_acessos.js' %}?v=10" defer></script>
+    <script src="{% static 'gestao_acessos/js/gestao_acessos.js' %}?v=11" defer></script>
 </body>
 
 </html>
