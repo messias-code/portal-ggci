@@ -55,10 +55,22 @@ def formatar_tempo_exato(td):
         return f"{d}d {h:02d}:{m:02d}:{s:02d}"
     return f"{h:02d}:{m:02d}:{s:02d}"
 
+# Cache da base tratada que o dashboard lê. O `.pkl` é o formato antigo: só se confere que
+# ele existe (nunca é carregado), para a primeira rodada depois da troca não virar uma
+# extração completa à toa — a base já existe, só está no formato velho.
+ARQUIVO_CACHE = os.path.join(DOWNLOAD_PATH, "cache_dataframe.parquet")
+ARQUIVO_CACHE_LEGADO = os.path.join(DOWNLOAD_PATH, "cache_dataframe.pkl")
+
+
+def tem_cache():
+    return os.path.exists(ARQUIVO_CACHE) or os.path.exists(ARQUIVO_CACHE_LEGADO)
+
+
 def limpar_pasta_downloads():
     os.makedirs(DOWNLOAD_PATH, exist_ok=True)
     now = time.time()
-    for pat in ["*.crdownload", "relatorio_chats_temp*", "*_temp_*.xlsx", "cache_dataframe_temp_*.pkl"]:
+    for pat in ["*.crdownload", "relatorio_chats_temp*", "*_temp_*.xlsx", "cache_dataframe_temp_*.pkl",
+                "cache_dataframe_temp_*.parquet"]:
         for f in glob.glob(os.path.join(DOWNLOAD_PATH, pat)):
             try:
                 # Apenas limpa arquivos temporários que sejam mais velhos que 10 minutos (zumbis)
@@ -518,16 +530,19 @@ def analisar_e_limpar_dados(primeira_vez_dia=False):
             ws.set_column(i, i, min(max(t, len(str(col)))+2, 45))
         writer.close()
 
-        # >>> GERAÇÃO NATIVA DO PICKLE DE ALTA VELOCIDADE <<<
-        ARQUIVO_PICKLE_TMP = os.path.join(DOWNLOAD_PATH, f"cache_dataframe_temp_{_run_id}.pkl")
-        ARQUIVO_PICKLE = os.path.join(DOWNLOAD_PATH, "cache_dataframe.pkl")
-        df_final.to_pickle(ARQUIVO_PICKLE_TMP)
+        # >>> CACHE DE LEITURA RÁPIDA DO DASHBOARD (Parquet) <<<
+        # Era pickle, que executa código ao ser lido. O Parquet devolve o mesmo DataFrame.
+        ARQUIVO_CACHE_TMP = os.path.join(DOWNLOAD_PATH, f"cache_dataframe_temp_{_run_id}.parquet")
+        df_final.to_parquet(ARQUIVO_CACHE_TMP)
 
         os.replace(ARQUIVO_CSV_TMP, ARQUIVO_CSV)
         os.replace(ARQUIVO_EXCEL_TMP, ARQUIVO_EXCEL)
-        os.replace(ARQUIVO_PICKLE_TMP, ARQUIVO_PICKLE) # Substitui atômico o cache do Django
+        os.replace(ARQUIVO_CACHE_TMP, ARQUIVO_CACHE) # Substitui atômico o cache do Django
+        # O pickle antigo deixa de ser lido por ninguém: some na primeira gravação nova.
+        if os.path.exists(ARQUIVO_CACHE_LEGADO):
+            os.remove(ARQUIVO_CACHE_LEGADO)
 
-        print(f"🏆 SUCESSO! Base atualizada (Polars). Pickle ultra-rápido gerado.")
+        print(f"🏆 SUCESSO! Base atualizada (Polars). Cache Parquet gerado.")
         return True
     except Exception as e:
         print(f"❌ Erro no processamento: {e}")
@@ -542,12 +557,10 @@ def executar_pipeline():
     import datetime
     hoje_str = datetime.date.today().strftime("%Y-%m-%d")
     arquivo_controle = os.path.join(DOWNLOAD_PATH, "ultimo_anual.txt")
-    ARQUIVO_PICKLE = os.path.join(DOWNLOAD_PATH, "cache_dataframe.pkl")
-    
     primeira_vez_dia = True
     extracao_completa = False
     
-    if not os.path.exists(ARQUIVO_PICKLE):
+    if not tem_cache():
         extracao_completa = True
     elif os.path.exists(arquivo_controle):
         with open(arquivo_controle, "r") as f:
