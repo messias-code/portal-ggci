@@ -50,7 +50,7 @@
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <link rel="stylesheet" href="{% static 'renovacao_cadastramento/css/renovacao_cadastramento.css' %}?v=14">
+    <link rel="stylesheet" href="{% static 'renovacao_cadastramento/css/renovacao_cadastramento.css' %}?v=15">
     <script type="module" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@8.0.4/dist/turbo.es.2017-esm.js"></script>
 </head>
 
@@ -251,7 +251,7 @@
                                 {% endif %}
                             </div>
                             <div class="rc-resumo">
-                                <span class="rc-resumo__texto" data-rc-resumo>Todos os {{ cat.qtd_ativos }} documentos</span>
+                                <span class="rc-resumo__texto" data-rc-resumo>{% if cat.qtd_ativos == 1 %}{% for doc in cat.documentos %}{% if doc.ativo %}{{ doc.titulo }}{% endif %}{% endfor %}{% else %}Todos os {{ cat.qtd_ativos }} documentos{% endif %}</span>
                                 <button type="button" class="rc-resumo__botao" data-rc-abrir hidden>
                                     <i class="fa-solid fa-sliders"></i> Editar
                                 </button>
@@ -416,13 +416,12 @@
                     {% for doc in cat.documentos %}
                     <!-- Documento sem `ativo` em views.DOCUMENTOS: aparece, mas não pode ser escolhido. -->
                     <label class="rc-doc{% if not doc.ativo %} rc-doc--inativo{% endif %}"{% if not doc.ativo %} title="Indisponível nesta fase do desenvolvimento"{% endif %}>
-                        <input type="checkbox" value="{{ doc.chave }}" data-titulo="{{ doc.titulo }}"{% if doc.grupo %} data-grupo="{{ doc.grupo }}"{% endif %}{% if not doc.ativo %} disabled{% endif %}>
-                        <span class="rc-doc__numero">{{ forloop.counter }}</span>
+                        <input type="checkbox" value="{{ doc.chave }}" data-titulo="{{ doc.titulo }}"{% if not doc.ativo %} disabled{% endif %}>
+                        <span class="rc-doc__numero">{{ doc.numero }}</span>
                         <span class="rc-doc__icone"><i class="fa-solid {{ doc.icone }}"></i></span>
                         <span class="rc-doc__texto">
                             <span class="rc-doc__titulo">{{ doc.titulo }}</span>
                             <span class="rc-doc__descricao">{{ doc.descricao }}</span>
-                            {% if doc.grupo %}<span class="rc-doc__grupo"><i class="fa-solid fa-link"></i> {{ doc.grupo }} · lidos juntos</span>{% endif %}
                         </span>
                         {% if doc.ativo %}
                         <i class="rc-doc__check fa-solid fa-circle-check"></i>
@@ -445,7 +444,7 @@
     {% endfor %}
 
     <script src="{% static 'js/console-motor.js' %}?v=1"></script>
-    <script src="{% static 'renovacao_cadastramento/js/renovacao_cadastramento.js' %}?v=11"></script>
+    <script src="{% static 'renovacao_cadastramento/js/renovacao_cadastramento.js' %}?v=12"></script>
 </body>
 
 </html>

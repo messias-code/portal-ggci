@@ -636,6 +636,37 @@ def cursos_das_tabelas(layout, cursos_emec, cursos_banco):
 # UM ARQUIVO → JSON  /  TODOS OS ARQUIVOS DA IES → UMA VISÃO POR CURSO
 # ══════════════════════════════════════════════════════════════════════════════
 TIPO_RELACAO = 'Relação de cursos ofertados'
+
+# AFIRMAÇÃO EXPLÍCITA (regra do time em 18/11/2026): citar os cursos não basta. O documento tem
+# que DIZER que são os cursos em funcionamento (item 3) ou os que serão ofertados (item 4).
+# Sem a frase, ele "não informa de forma 100% confiável" e a IES precisa reenviar.
+# Caso real: o item 4 da Anhanguera Anápolis era uma exportação de planilha (curso, turno,
+# semestre) sem frase nenhuma; um "item 3" era certidão da Junta Comercial.
+_AFIRMA_OFERTA = re.compile(r'\bCURSOS?\s+(?:QUE\s+SERAO\s+|A\s+SEREM\s+)?OFERTADOS?\b|\bOFERTAREMOS\b'
+                            r'|\bOFERTA\s+DOS?\s+CURSOS?\b')
+_AFIRMA_FUNCIONAMENTO = re.compile(r'\b(?:ATESTA|ATESTAMOS|DECLARA|DECLARAMOS|CERTIFICA|CERTIFICAMOS)\b.{0,300}?'
+                                   r'\b(?:FUNCIONAMENTO|REGULAR\w*|AUTORIZAD\w*|RECONHECID\w*)\b')
+_ATO_OFICIAL = re.compile(r'\bFICA[MS]?\s+(?:AUTORIZAD|RECONHECID|RENOVAD)\w*.{0,80}')
+TIPOS_OFICIAIS = (TIPO_PORTARIA, TIPO_DECLARACAO, TIPO_CEE)
+
+
+def afirmacao_explicita(texto, item, tipo):
+    """
+    O trecho em que o documento afirma o que é, ou '' se não afirma.
+    Item 3: ato oficial (portaria do DOU, declaração do MEC, resolução do CEE) já é a afirmação;
+      atestado da IES precisa de "atestamos/declaramos ... em funcionamento/autorizados".
+    Item 4: "cursos (que serão) ofertados" — vale também em título ("Cursos ofertados 2027/1").
+    """
+    t = normalizar(texto[:30000])
+    padroes = (_AFIRMA_OFERTA,) if item == 4 else (_AFIRMA_FUNCIONAMENTO, _AFIRMA_OFERTA)
+    for padrao in padroes:
+        achado = padrao.search(t)
+        if achado:
+            return t[max(achado.start() - 40, 0):achado.end() + 60].strip()
+    if item == 3 and tipo in TIPOS_OFICIAIS:
+        achado = _ATO_OFICIAL.search(t)
+        return achado.group(0).strip() if achado else f'Ato oficial ({tipo})'
+    return ''
 ITENS = {3: 'Atestado de funcionamento dos cursos', 4: 'Cursos que serão ofertados'}
 
 
@@ -649,7 +680,8 @@ def ler_arquivo(conteudo, item, codigo_ies, nome_ies, cursos_emec, cursos_banco)
     """
     textos, problema = extrair_texto(conteudo)
     if problema:
-        return {'item': item, 'tipo': problema, 'legivel': False, 'cita_ies': None, 'atos': [], 'cursos': []}
+        return {'item': item, 'tipo': problema, 'legivel': False, 'cita_ies': None, 'atos': [], 'cursos': [],
+                'afirmacao': ''}
     leitura = ler_documento(textos, codigo_ies, cursos_emec, cursos_banco, nome_ies)
     cursos = leitura['cursos']
     if leitura['tipo'] not in (TIPO_PORTARIA, TIPO_DECLARACAO):
@@ -669,7 +701,8 @@ def ler_arquivo(conteudo, item, codigo_ies, nome_ies, cursos_emec, cursos_banco)
         if item == 4 and leitura['tipo'] in (TIPO_ATESTADO, TIPO_OUTRO):
             leitura['tipo'] = TIPO_RELACAO
     return {'item': item, 'tipo': leitura['tipo'], 'legivel': True, 'cita_ies': leitura['cita_ies'],
-            'atos': leitura['atos'], 'cursos': cursos}
+            'atos': leitura['atos'], 'cursos': cursos,
+            'afirmacao': afirmacao_explicita(textos['corrido'], item, leitura['tipo'])}
 
 
 def consolidar(documentos, cursos_emec):
@@ -677,8 +710,9 @@ def consolidar(documentos, cursos_emec):
     O QUE FAZ: junta o que TODOS os documentos da IES dizem, um registro por curso (nome normalizado).
     PARÂMETROS: documentos — [{'rotulo', 'item', ... JSON de `ler_arquivo`}].
     RETORNO: {nome: {'itens': {3, 4}, 'graus', 'modalidades', 'semestres', 'atos', 'atos_confirmados',
-             'codigos', 'documentos'}} — `atos_confirmados`: atos citados que o e-MEC lista para um
-             curso com esse nome (é a comprovação).
+             'codigos', 'documentos', 'explicito'}} — `atos_confirmados`: atos citados que o e-MEC
+             lista para um curso com esse nome (é a comprovação); `explicito`: algum documento que
+             cita o curso afirma de forma explícita o que é (`afirmacao_explicita`).
     """
     emec_por_codigo = {str(c['codigo']): c for c in cursos_emec}
     emec_por_nome = {}
@@ -689,8 +723,9 @@ def consolidar(documentos, cursos_emec):
         for c in doc['cursos']:
             v = visao.setdefault(c['nome'], {'itens': set(), 'graus': set(), 'modalidades': set(), 'semestres': set(),
                                               'vagas': set(), 'atos': [], 'atos_confirmados': [], 'codigos': set(),
-                                              'documentos': []})
+                                              'documentos': [], 'explicito': False})
             v['itens'].add(doc['item'])
+            v['explicito'] = v['explicito'] or bool(doc.get('afirmacao'))
             v['graus'].update([c['grau']] if c['grau'] else [])
             v['modalidades'].update([c['modalidade']] if c['modalidade'] else [])
             v['semestres'].update(c['semestres'])

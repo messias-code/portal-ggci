@@ -27,45 +27,42 @@ from django.shortcuts import redirect, render
 # ela é o 10 para não haver dois documentos com o mesmo número.
 #
 # `ativo`: só os documentos com `'ativo': True` podem ser escolhidos. Os outros aparecem
-# na tela desabilitados. Em 16/11/2026 o desenvolvimento foca no 2 (ato de autorização) e no
+# na tela desabilitados. Em 16/11/2026 o desenvolvimento focava no 2 (ato de autorização) e no
 # 3 (atestado dos cursos); em 17/11/2026 entrou o 4 (cursos ofertados), que o motor lê junto
-# com o 3 — os dois falam dos cursos. Liberar outro é acrescentar a chave aqui.
+# com o 3. Em 18/11/2026 o 2 voltou a ficar desabilitado: o motor ainda não faz nada com ele.
+# Liberar outro é acrescentar a chave aqui.
 #
-# `grupo`: documentos lidos JUNTOS pelo motor. Na tela levam a mesma etiqueta e marcar um marca
-# o outro (o 3 comprova os cursos, o 4 diz quais e como são ofertados).
+# Os itens 3 e 4 são UM cartão só (pedido do usuário em 18/11/2026): o motor sempre os lê
+# juntos — o 3 comprova os cursos, o 4 diz quais e como são ofertados. O cartão devolve a chave
+# do item 3; o motor reconhece as duas (`motor.DOCS_DE_CURSO`). `numero` é o do formulário.
 # "Todos" na tela quer dizer todos os ATIVOS.
 DOCUMENTOS = [
-    {'chave': 'oficio_solicitacao', 'icone': 'fa-envelope-open-text',
+    {'chave': 'oficio_solicitacao', 'numero': '1', 'icone': 'fa-envelope-open-text',
      'titulo': 'Ofício de solicitação',
      'descricao': 'Ofício dirigido à Diretora-Geral da OVG, assinado pelo representante legal da IES.'},
-    {'chave': 'ato_autorizacao_mec', 'icone': 'fa-stamp',
+    {'chave': 'ato_autorizacao_mec', 'numero': '2', 'icone': 'fa-stamp',
      'titulo': 'Ato de autorização e funcionamento da IES junto ao MEC',
-     'descricao': 'Ato que autorizou o credenciamento e o recredenciamento da IES.',
+     'descricao': 'Ato que autorizou o credenciamento e o recredenciamento da IES.'},
+    {'chave': 'atestado_funcionamento_cursos', 'icone': 'fa-graduation-cap', 'numero': '3 e 4',
+     'titulo': 'Atestado de funcionamento e cursos ofertados',
+     'descricao': 'Cursos autorizados pelo MEC e os que a IES vai ofertar no ProBem, conferidos juntos.',
      'ativo': True},
-    {'chave': 'atestado_funcionamento_cursos', 'icone': 'fa-graduation-cap',
-     'titulo': 'Atestado de funcionamento dos cursos',
-     'descricao': 'Curso regularmente autorizado pelo MEC ou pelo Conselho Estadual de Educação.',
-     'ativo': True, 'grupo': 'Cursos'},
-    {'chave': 'cursos_ofertados', 'icone': 'fa-list-check',
-     'titulo': 'Cursos que serão ofertados no ProBem',
-     'descricao': 'Relação dos cursos que a IES vai ofertar no semestre.',
-     'ativo': True, 'grupo': 'Cursos'},
-    {'chave': 'comprovante_cnpj', 'icone': 'fa-id-card',
+    {'chave': 'comprovante_cnpj', 'numero': '5', 'icone': 'fa-id-card',
      'titulo': 'Comprovante de CNPJ',
      'descricao': 'Inscrição e situação cadastral do CNPJ da mantenedora e da IES.'},
-    {'chave': 'atos_constitutivos_mantenedora', 'icone': 'fa-building',
+    {'chave': 'atos_constitutivos_mantenedora', 'numero': '6', 'icone': 'fa-building',
      'titulo': 'Atos constitutivos — Mantenedora',
      'descricao': 'Estatuto, contrato social, lei de criação ou documento equivalente.'},
-    {'chave': 'atos_constitutivos_ies', 'icone': 'fa-building-columns',
+    {'chave': 'atos_constitutivos_ies', 'numero': '7', 'icone': 'fa-building-columns',
      'titulo': 'Atos constitutivos — Instituição de ensino',
      'descricao': 'Atos constitutivos da IES, com a última alteração consolidada.'},
-    {'chave': 'representacao_legal_mantenedora', 'icone': 'fa-user-tie',
+    {'chave': 'representacao_legal_mantenedora', 'numero': '8', 'icone': 'fa-user-tie',
      'titulo': 'Representação legal — Mantenedora',
      'descricao': 'Documentos pessoais do representante legal que assina o Termo de Cadastramento.'},
-    {'chave': 'representacao_legal_ies', 'icone': 'fa-user-graduate',
+    {'chave': 'representacao_legal_ies', 'numero': '9', 'icone': 'fa-user-graduate',
      'titulo': 'Representação legal — Instituição de ensino',
      'descricao': 'Ato de nomeação, posse, eleição ou designação do Diretor ou Reitor.'},
-    {'chave': 'procuracao', 'icone': 'fa-file-signature',
+    {'chave': 'procuracao', 'numero': '10', 'icone': 'fa-file-signature',
      'titulo': 'Procuração e documentos do procurador',
      'descricao': 'Só quando o Termo de Cadastramento é assinado por procurador.'},
 ]
@@ -93,9 +90,9 @@ CATEGORIAS = [
 
 
 def _tem_permissao(user):
-    # Por enquanto a mesma permissão da Análise IA. Quando a automação ganhar permissão
-    # própria, o corte muda aqui e no card de `menu_automacoes`.
-    return getattr(user, 'p_analise_ia', False) or user.usuario == 'admin@ovg.org.br'
+    # Permissão própria desde 18/11/2026 (antes usava a da Análise IA e não aparecia na
+    # Gestão de Acessos). O mesmo corte está no card de `menu_automacoes`.
+    return getattr(user, 'p_renovacao_cadastramento', False) or user.usuario == 'admin@ovg.org.br'
 
 
 @login_required(login_url='/')
@@ -151,7 +148,7 @@ def api_instituicoes(request):
         print(f'[renovacao_cadastramento] Falha ao ler instituicao no banco: {erro}')
         return JsonResponse({'status': 'ok', 'mantenedoras': mantenedoras, 'ies': {},
                              'codigos_mantenedora': {}, 'cnpjs_mantenedora': {},
-                             'aviso': 'Banco de dados indisponível: CNPJs, códigos MEC e cursos não carregados.'})
+                             'aviso': 'Sistema OVG indisponível: CNPJs, códigos MEC e cursos não carregados.'})
 
     texto = lambda valor: str(valor).strip() if valor not in (None, '') else ''
     ies, codigos_mantenedora, cnpjs_mantenedora = {}, {}, {}
@@ -196,7 +193,7 @@ def api_cursos(request, ins_codigo):
         cursos = sibu.cursos_da_ies(ins_codigo)
     except Exception as erro:
         print(f'[renovacao_cadastramento] Falha ao ler cursos da IES {ins_codigo}: {erro}')
-        return JsonResponse({'status': 'erro', 'mensagem': 'Banco de dados indisponível.'}, status=503)
+        return JsonResponse({'status': 'erro', 'mensagem': 'Sistema OVG indisponível.'}, status=503)
 
     return JsonResponse({'status': 'ok', 'cursos': [
         {'nome': c['cur_nome'], 'tipo': c['tipo'] or '', 'modalidade': c['modalidade'] or '',

@@ -84,15 +84,16 @@ class RotasTests(TestCase):
         'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
         'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
     })
-    def test_so_documentos_2_3_e_4_habilitados(self):
+    def test_so_os_itens_3_e_4_habilitados(self):
         html = self.client.get(reverse('renovacao_cadastramento_view')).content.decode()
-        self.assertEqual(html.count('rc-doc rc-doc--inativo'), 7)
-        self.assertIn('value="ato_autorizacao_mec" data-titulo="Ato de autorização e funcionamento da IES junto ao MEC">', html)
-        self.assertIn('value="atestado_funcionamento_cursos" data-titulo="Atestado de funcionamento dos cursos" data-grupo="Cursos">', html)
+        self.assertEqual(html.count('rc-doc rc-doc--inativo'), 8)
+        self.assertIn('value="ato_autorizacao_mec" data-titulo="Ato de autorização e funcionamento da IES junto ao MEC" disabled>', html)
+        # Itens 3 e 4 são um cartão só, com a numeração do formulário.
+        self.assertIn('value="atestado_funcionamento_cursos" data-titulo="Atestado de funcionamento e cursos ofertados">', html)
+        self.assertIn('<span class="rc-doc__numero">3 e 4</span>', html)
+        self.assertNotIn('value="cursos_ofertados"', html)
         self.assertIn('value="oficio_solicitacao" data-titulo="Ofício de solicitação" disabled>', html)
-        self.assertIn('value="cursos_ofertados" data-titulo="Cursos que serão ofertados no ProBem" data-grupo="Cursos">', html)
-        self.assertEqual(html.count('Cursos · lidos juntos'), 2)
-        self.assertIn('Todos os 3 documentos', html)
+        self.assertIn('data-rc-resumo>Atestado de funcionamento e cursos ofertados</span>', html)
 
     @mock.patch('apps.automacoes.renovacao_cadastramento.services.sibu.instituicoes_sibu')
     def test_instituicoes_trazem_codigos_mec(self, instituicoes_sibu):
@@ -140,6 +141,17 @@ class RotasTests(TestCase):
         self.client.force_login(outro)
         self.assertEqual(self.client.get(reverse('renovacao_cadastramento_cursos', args=[1])).status_code, 403)
 
+    def test_permissao_propria_e_nao_a_da_analise_ia(self):
+        from apps.inicio.gestao_acessos.models import Usuario
+        so_analise = Usuario.objects.create_user(usuario='analise@ovg.org.br', nome='Analise', perfil='comum',
+                                                 password='x', p_analise_ia=True)
+        self.client.force_login(so_analise)
+        self.assertEqual(self.client.get(reverse('renovacao_cadastramento_view')).status_code, 302)
+        renovacao = Usuario.objects.create_user(usuario='renovacao@ovg.org.br', nome='Renovacao', perfil='comum',
+                                                password='x', p_renovacao_cadastramento=True)
+        self.client.force_login(renovacao)
+        self.assertEqual(self.client.get(reverse('automacoes')).status_code, 200)
+
 
 class PlanilhaTests(SimpleTestCase):
     """Montagem das linhas e o xlsx gravado (sem banco: tudo injetado)."""
@@ -182,7 +194,7 @@ class PlanilhaTests(SimpleTestCase):
                          ('Inativo', '03.676.813/0001-94', '26085', '18120'))
         self.assertEqual(unisem['status'], 'Ativo')
         self.assertEqual(len(unisem['cursos']), 2)
-        self.assertEqual((sem_par['status'], sem_par['cnpj'], sem_par['cursos']), ('Não encontrada no banco', '', []))
+        self.assertEqual((sem_par['status'], sem_par['cnpj'], sem_par['cursos']), ('Não encontrada no Sistema OVG', '', []))
 
     def test_selecao_filtra(self):
         self.assertEqual([i['nome'] for i in self.montar(['FAPM'])], ['FAPM - FACULDADE APM'])
@@ -204,21 +216,25 @@ class PlanilhaTests(SimpleTestCase):
         aba = livro['Cursos e-MEC']
         self.assertEqual([c.value for c in aba[1]], COLUNAS_CURSOS_EMEC)
         linhas = [dict(zip(COLUNAS_CURSOS_EMEC, [c.value for c in r])) for r in aba.iter_rows(min_row=2)]
-        # FAPM (resumo, sem cursos) · SEM PAR (resumo) · UNISEM (resumo + 2 cursos)
-        self.assertEqual([l['Curso'] for l in linhas],
-                         ['Nenhum curso no banco', 'Nenhum curso no banco',
-                          '2 no banco · e-MEC não consultado', 'DIREITO', 'PEDAGOGIA'])
-        unisem, direito, pedagogia = linhas[2:]
-        self.assertEqual((unisem['Código IES'], unisem['CNPJ IES'], unisem['Status OVG'], unisem['Código Man']),
-                         (3757, '05.995.086/0001-53', 'Ativo', 2372))
-        self.assertEqual((direito['No banco'], direito['Grau'], direito['Períodos (banco)'], direito['Inscrição'],
-                          direito['Situação e-MEC']), ('Sim', 'Bacharelado', 10, 'Aberta', 'e-MEC não consultado'))
-        self.assertEqual((pedagogia['Períodos (banco)'], pedagogia['Inscrição']), ('Não localizado no banco', 'Fechada'))
-        self.assertEqual(aba.cell(row=6, column=COLUNAS_CURSOS_EMEC.index('Inscrição') + 1).font.color.rgb, 'FFC00000')
-        # Cursos ficam recolhíveis embaixo da linha-resumo da IES.
-        self.assertEqual((aba.row_dimensions[4].outline_level, aba.row_dimensions[5].outline_level), (0, 1))
+        # ACADEMIA (mantenedora) → FAPM, SEM PAR · SERRA DA MESA (mantenedora) → UNISEM → 2 cursos
+        self.assertEqual([(l['Mantenedora / IES'], l['Curso_OVG']) for l in linhas],
+                         [('ACADEMIA', '2 IES'), ('FAPM - FACULDADE APM', 'Nenhum curso no Sistema OVG'),
+                          ('SEM PAR', 'Nenhum curso no Sistema OVG'), ('SERRA DA MESA', '1 IES'),
+                          ('UNISEM - CENTRO UNIVERSITARIO', '2 no Sistema OVG · e-MEC não consultado'),
+                          ('UNISEM - CENTRO UNIVERSITARIO', 'DIREITO'), ('UNISEM - CENTRO UNIVERSITARIO', 'PEDAGOGIA')])
+        # Linha da mantenedora: código MEC dela na primeira coluna.
+        self.assertEqual((linhas[0]['Código'], linhas[3]['Código']), (18120, 2372))
+        unisem, direito, pedagogia = linhas[4:]
+        self.assertEqual((unisem['Código'], unisem['CNPJ_IES_OVG'], unisem['Status_IES_OVG'], unisem['Código_Man_OVG'],
+                          unisem['Status_Comparativo']), (3757, '05.995.086/0001-53', 'Ativo', 2372, 'Não conferido'))
+        self.assertEqual((direito['Status_OVG'], direito['Grau_OVG'], direito['Períodos_OVG'], direito['Status_e-MEC'],
+                          direito['Status_Comparativo']), ('Ativo', 'Bacharelado', 10, 'e-MEC não consultado', 'Não conferido'))
+        self.assertEqual((pedagogia['Períodos_OVG'], pedagogia['Status_OVG']), ('Não localizado no Sistema OVG', 'Inativo'))
+        self.assertEqual(aba.cell(row=8, column=COLUNAS_CURSOS_EMEC.index('Status_OVG') + 1).font.color.rgb, 'FF9C0006')
+        # Três níveis recolhíveis: mantenedora (0) → IES (1) → cursos (2).
+        self.assertEqual([aba.row_dimensions[n].outline_level for n in range(2, 9)], [0, 1, 1, 0, 1, 2, 2])
         # Curso nenhum com célula vazia.
-        self.assertFalse([c for l in linhas[3:] for c, v in l.items() if v in (None, '')])
+        self.assertFalse([c for l in linhas[5:] for c, v in l.items() if v in (None, '')])
 
 
 # ── Recortes reais do e-MEC (IES 5550, 17/11/2026) ─────────────────────────────
@@ -281,11 +297,19 @@ class EmecLeituraTests(SimpleTestCase):
     def test_desagrupado_marca_ativo_pela_bola_verde(self):
         from .services.emec import ler_cursos_desagrupados
         ativo, inativo = ler_cursos_desagrupados(HTML_DESAGRUPADO)
-        self.assertEqual({k: ativo[k] for k in ('codigo', 'modalidade', 'grau', 'curso', 'municipio', 'enade', 'idd', 'situacao')},
+        self.assertEqual({k: ativo[k] for k in ('codigo', 'modalidade', 'grau', 'curso', 'municipio', 'situacao')},
                          {'codigo': '51251', 'modalidade': 'Presencial', 'grau': 'Bacharelado', 'curso': 'ADMINISTRAÇÃO',
-                          'municipio': 'Anápolis', 'enade': '2', 'idd': '3', 'situacao': 'Ativo'})
+                          'municipio': 'Anápolis', 'situacao': 'Ativo'})
         self.assertTrue(ativo['ativo'])
-        self.assertEqual((inativo['situacao'], inativo['enade']), ('Inativo', ''))
+        self.assertEqual(inativo['situacao'], 'Inativo')
+        # ENADE, CC e IDD não são capturados (só o CPC interessa ao time).
+        self.assertFalse({'enade', 'cc', 'idd', 'ENADE', 'CC', 'IDD'} & set(ativo))
+
+    def test_ies_traz_situacao_e_mantenedora(self):
+        from .services.emec import ler_ies
+        self.assertEqual(ler_ies(HTML_IES), {'situacao': 'Ativa', 'mantenedora_codigo': '16452',
+                                             'mantenedora': 'ANHANGUERA EDUCACIONAL PARTICIPACOES S/A',
+                                             'mantenedora_cnpj': '04.310.392/0001-46'})
 
     def test_detalhe_e_semestres(self):
         from .services.emec import ler_detalhe_curso, semestres
@@ -316,6 +340,16 @@ HTML_ATOS = """<table><thead><tr class="corTitulo avalLinhaCampos">
 </tbody></table>"""
 
 
+HTML_IES = """<table class="avalTabCampos">
+<tr><td width="153" class="subline2 tituloCampos" style="width: 22%;">Mantenedora:&nbsp;</td>
+<td class="subline2"><a href="javascript:;"><img src="/emec/img/default/lupinha.gif"></img>
+(16452) ANHANGUERA EDUCACIONAL PARTICIPACOES S/A </a></td></tr>
+<tr><td width="153" class="subline2 tituloCampos">CNPJ:&nbsp;</td><td class="subline2">
+04.310.392/0001-46 </td></tr></table>
+<table class="avalTabCampos"><tr><td class="subline2 tituloCampos">Situa&ccedil;&atilde;o:&nbsp;</td>
+<td class="subline2" style="color: #FF0000;">Ativa </td></tr></table>"""
+
+
 class SessaoFalsa:
     """Responde pelas URLs do e-MEC com os recortes acima; `falhar` simula queda."""
 
@@ -335,7 +369,7 @@ class SessaoFalsa:
             raise ErroEmec('HTTP 500')
         for trecho, html in (('listar-curso-agrupado', HTML_AGRUPADO), ('listar-curso-desagrupado', HTML_DESAGRUPADO),
                              ('detalhe-curso-tabela', HTML_DETALHE), ('historico-indicadores', HTML_HISTORICO),
-                             ('listar-ato-regulatorio', HTML_ATOS)):
+                             ('listar-ato-regulatorio', HTML_ATOS), ('consulta-ies/index', HTML_IES)):
             if trecho in caminho:
                 return html
         raise AssertionError(caminho)
@@ -351,7 +385,9 @@ class CursosDaIesTests(SimpleTestCase):
         cursos = cursos_da_ies(sessao, '5550')
         self.assertEqual([(c['codigo'], c['ativo']) for c in cursos], [('51251', True), ('51252', False)])
         self.assertEqual(cursos[0]['detalhe']['vagas_anuais'], '270')
-        self.assertEqual(len(cursos[0]['historico']), 2)
+        # CPC só do ano mais recente do histórico (2022), não o da lista.
+        self.assertEqual((cursos[0]['cpc'], cursos[0]['ano_cpc']), ('4', '2022'))
+        self.assertNotIn('historico', cursos[0])
         self.assertIsNone(cursos[1]['detalhe'])
         self.assertEqual(cursos[0]['atos'][0], {'ato': 'Renovação de Reconhecimento de Curso', 'tipo': 'Portaria',
                                                 'numero': '737', 'data': '30/12/2013', 'publicacao': '31/12/2013',
@@ -369,13 +405,125 @@ def _curso_banco(nome, periodos=8, tipo='Bacharelado', modalidade='PRESENCIAL'):
     return {'cur_nome': nome, 'tipo': tipo, 'modalidade': modalidade, 'qtde_periodo': periodos, 'ativo_inscricao': 'S'}
 
 
-class CursosEmecRelevantesTests(SimpleTestCase):
-    def test_so_os_ativos(self):
-        from .services.planilha import cursos_emec_relevantes
-        cursos = [_curso_emec('1', 'ADMINISTRAÇÃO', ativo=False), _curso_emec('2', 'ADMINISTRAÇÃO'),
-                  _curso_emec('3', 'ADMINISTRACAO', ativo=False),
-                  _curso_emec('4', 'BIOMEDICINA', ativo=False), _curso_emec('5', 'BIOMEDICINA', ativo=False)]
-        self.assertEqual([c['codigo'] for c in cursos_emec_relevantes(cursos)], ['2'])
+class ComparacaoTests(SimpleTestCase):
+    """Regra do time (18/11/2026): tudo alinhado com o e-MEC."""
+
+    def comparar(self, ovg, emec):
+        from .services.comparacao import comparar_cursos
+        return [(r['ovg'] and r['ovg']['cur_nome'], r['emec'] and r['emec']['codigo'], r['resultado'], r['motivos'])
+                for r in comparar_cursos(ovg, emec)]
+
+    def test_ativo_nos_dois_e_igual_esta_em_conformidade(self):
+        self.assertEqual(self.comparar([_curso_banco('ADMINISTRAÇÃO')], [_curso_emec('1', 'ADMINISTRACAO')]),
+                         [('ADMINISTRAÇÃO', '1', 'Em Conformidade', [])])
+
+    def test_ativo_no_ovg_e_inativo_no_emec_nao_conforme(self):
+        r = self.comparar([_curso_banco('DIREITO')], [_curso_emec('1', 'DIREITO', ativo=False)])
+        self.assertEqual(r[0][2:], ('Não Conforme', ['Ativo no Sistema OVG e inativo no e-MEC']))
+
+    def test_ativo_no_emec_e_inativo_no_ovg_atencao(self):
+        curso = dict(_curso_banco('DIREITO'), ativo_inscricao='N')
+        self.assertEqual(self.comparar([curso], [_curso_emec('1', 'DIREITO')])[0][2:],
+                         ('Atenção', ['Ativo no e-MEC e inativo no Sistema OVG']))
+
+    def test_curso_so_no_ovg_nao_conforme(self):
+        self.assertEqual(self.comparar([_curso_banco('MEDICINA')], [])[0][2:],
+                         ('Não Conforme', ['Curso do Sistema OVG que não existe no e-MEC']))
+
+    def test_curso_so_no_emec_ativo_atencao_inativo_conforme(self):
+        emec = [_curso_emec('1', 'ADMINISTRAÇÃO'), _curso_emec('2', 'ADMINISTRAÇÃO'),   # dois campi: 1 linha
+                _curso_emec('3', 'BIOMEDICINA', ativo=False)]
+        self.assertEqual(self.comparar([], emec),
+                         [(None, '1', 'Atenção', ['Ativo no e-MEC, sem cadastro no Sistema OVG']),
+                          (None, '3', 'Em Conformidade', ['Inativo no e-MEC: não precisa de cadastro no Sistema OVG'])])
+
+    def test_inativo_no_emec_sem_cadastro_mostra_nao_se_aplica(self):
+        from .services.planilha import _linhas_cursos
+        ies = {'codigo': '5550', 'nome': 'X', 'mantenedora': 'M', 'status': 'Ativo', 'cnpj': '', 'cnpj_mantenedora': '',
+               'codigo_mantenedora': '', 'cursos': [],
+               'emec': {'cursos': [_curso_emec('3', 'BIOMEDICINA', ativo=False)], 'ies': None}}
+        linha = _linhas_cursos(ies)[0]
+        self.assertEqual([linha[c] for c in ('Curso_OVG', 'Status_OVG', 'Grau_OVG', 'Modalidade_OVG', 'Períodos_OVG',
+                                              'Status_e-MEC', 'Status_Comparativo')],
+                         ['Não se aplica'] * 5 + ['Inativo', 'Em Conformidade'])
+
+    def test_cor_do_cpc(self):
+        import os
+        import tempfile
+        import openpyxl
+        from .services.planilha import COLUNAS_CURSOS_EMEC, gravar_planilha
+        cursos = [dict(_curso_emec(str(n), nome), cpc=cpc, ano_cpc='2023') for n, (nome, cpc) in
+                  enumerate((('ADMINISTRAÇÃO', '2'), ('DIREITO', '4'), ('PEDAGOGIA', ''), ('NUTRIÇÃO', 'SC')))]
+        ies = {'codigo': '5550', 'nome': 'X', 'mantenedora': 'M', 'status': 'Ativo', 'cnpj': '', 'cnpj_mantenedora': '',
+               'codigo_mantenedora': '', 'cursos': [], 'emec': {'cursos': cursos, 'ies': None}}
+        with tempfile.TemporaryDirectory() as pasta:
+            caminho = os.path.join(pasta, 'x.xlsx')
+            gravar_planilha([ies], caminho)
+            aba = openpyxl.load_workbook(caminho)['Cursos e-MEC']
+        coluna = COLUNAS_CURSOS_EMEC.index('CPC_e-MEC') + 1
+        cpc = {aba.cell(row=n, column=COLUNAS_CURSOS_EMEC.index('Curso_e-MEC') + 1).value:
+               (aba.cell(row=n, column=coluna).value, aba.cell(row=n, column=coluna).fill.fgColor.rgb)
+               for n in range(4, 8)}
+        self.assertEqual(cpc, {'ADMINISTRAÇÃO': (2, 'FFFFC7CE'), 'DIREITO': (4, 'FFFFFFFF'),
+                               'PEDAGOGIA': ('Não informado no e-MEC', 'FFFCE4D6'), 'NUTRIÇÃO': ('SC', 'FFFCE4D6')})
+
+    def test_grau_modalidade_e_periodos_diferentes_nao_conforme(self):
+        from .services.comparacao import comparar_cursos
+        r = comparar_cursos([_curso_banco('PEDAGOGIA', 8, modalidade='A DISTÂNCIA (EAD)')],
+                            [_curso_emec('1', 'PEDAGOGIA', grau='Licenciatura', periodicidade='Noturno - 10 semestres')])[0]
+        self.assertEqual(r['resultado'], 'Não Conforme')
+        self.assertEqual(r['divergentes'], {'Grau', 'Modalidade', 'Períodos'})
+
+    def test_nao_conforme_vem_primeiro(self):
+        r = self.comparar([_curso_banco('ADMINISTRAÇÃO'), _curso_banco('MEDICINA')],
+                          [_curso_emec('1', 'ADMINISTRAÇÃO'), _curso_emec('2', 'BIOMEDICINA')])
+        self.assertEqual([x[2] for x in r], ['Não Conforme', 'Atenção', 'Em Conformidade'])
+
+    def test_mantenedora_cnpj_e_situacao_da_ies(self):
+        from .services.comparacao import comparar_ies
+        ies = {'status': 'Ativo', 'cnpj_mantenedora': '04.310.392/0001-46', 'codigo_mantenedora': '16452'}
+        emec = {'situacao': 'Ativa', 'mantenedora_codigo': '16452', 'mantenedora': 'X',
+                'mantenedora_cnpj': '04.310.392/0001-46'}
+        self.assertEqual(comparar_ies(ies, emec)['resultado'], 'Em Conformidade')
+        r = comparar_ies(dict(ies, cnpj_mantenedora='11.111.111/0001-11'), dict(emec, situacao='Extinta'))
+        self.assertEqual((r['resultado'], r['divergentes']), ('Não Conforme', {'Situação', 'CNPJ Man'}))
+
+
+class OfertadosTests(SimpleTestCase):
+    """Item 4 lado a lado com o Sistema OVG e o e-MEC."""
+
+    def comparar(self, documentos, ovg, emec):
+        from .services.comparacao import comparar_ofertados
+        return [(r['nome'], r['resultado'], r['motivos']) for r in comparar_ofertados(documentos, ovg, emec)]
+
+    @staticmethod
+    def doc(nomes, afirmacao='CURSOS QUE SERAO OFERTADOS', item=4):
+        return {'item': item, 'legivel': True, 'afirmacao': afirmacao, 'rotulo': f'Item {item} · arquivo 1',
+                'cursos': [{'nome': n, 'grau': '', 'modalidade': '', 'semestres': [], 'vagas': None} for n in nomes]}
+
+    def test_regras(self):
+        emec = [_curso_emec('1', 'ADMINISTRAÇÃO'), _curso_emec('2', 'PEDAGOGIA'), _curso_emec('3', 'NUTRIÇÃO', ativo=False)]
+        r = self.comparar([self.doc(['ADMINISTRACAO', 'PEDAGOGIA', 'NUTRICAO', 'MEDICINA'])],
+                          [_curso_banco('ADMINISTRAÇÃO')], emec)
+        self.assertEqual(r, [
+            ('MEDICINA', 'Não Conforme', ['Ofertado pela IES, mas o curso não existe no e-MEC']),
+            ('NUTRICAO', 'Não Conforme', ['Ofertado pela IES, mas o curso está inativo no e-MEC']),
+            ('PEDAGOGIA', 'Atenção', ['Ofertado pela IES e ativo no e-MEC, mas ainda não temos esse curso '
+                                      'cadastrado no Sistema OVG']),
+            ('ADMINISTRACAO', 'Em Conformidade', [])])
+
+    def test_nome_parecido_nao_casa_por_palavra_de_ligacao(self):
+        r = self.comparar([self.doc(['ENGENHARIA DE COMPUTACAO'])], [_curso_banco('ENGENHARIA DE PRODUÇÃO')],
+                          [_curso_emec('1', 'ENGENHARIA DE COMPUTAÇÃO')])
+        self.assertEqual(r[0][1], 'Atenção')   # não temos o curso; não é a Engenharia de Produção
+
+    def test_item_4_sem_afirmacao_e_atencao_e_item_3_nao_entra(self):
+        emec = [_curso_emec('1', 'ADMINISTRAÇÃO')]
+        r = self.comparar([self.doc(['ADMINISTRACAO'], afirmacao=''), self.doc(['DIREITO'], item=3)],
+                          [_curso_banco('ADMINISTRAÇÃO')], emec)
+        self.assertEqual(r, [('ADMINISTRACAO', 'Atenção', [
+            'O documento do item 4 não afirma de forma explícita que são os cursos ofertados — não é 100% '
+            'confiável, reenviar'])])
 
 
 class VereditoTests(SimpleTestCase):
@@ -390,14 +538,14 @@ class VereditoTests(SimpleTestCase):
     def test_periodos_divergentes(self):
         emec = [_curso_emec('1', 'DIREITO', periodicidade='Matutino - 10 semestres\nNoturno - 10 semestres')]
         self.assertEqual(self.comparar([_curso_banco('DIREITO', 8)], emec),
-                         [('Divergente', '1', ['Períodos: banco 8, e-MEC 10'])])
+                         [('Divergente', '1', ['Períodos: Sistema OVG 8, e-MEC 10'])])
 
     def test_inativo_grau_e_modalidade(self):
         emec = [_curso_emec('1', 'PEDAGOGIA', ativo=False, grau='Licenciatura', modalidade='A Distância')]
         veredito, _, motivos = self.comparar([_curso_banco('PEDAGOGIA')], emec)[0]
         self.assertEqual(veredito, 'Divergente')
-        self.assertEqual(motivos, ['Curso inativo no e-MEC', 'Grau: banco Bacharelado, e-MEC Licenciatura',
-                                   'Modalidade: banco PRESENCIAL, e-MEC A Distância'])
+        self.assertEqual(motivos, ['Curso inativo no e-MEC', 'Grau: Sistema OVG Bacharelado, e-MEC Licenciatura',
+                                   'Modalidade: Sistema OVG PRESENCIAL, e-MEC A Distância'])
 
     def test_ead_do_banco_casa_com_a_distancia(self):
         emec = [_curso_emec('1', 'PEDAGOGIA', modalidade='A Distância')]
@@ -411,7 +559,7 @@ class VereditoTests(SimpleTestCase):
         # Caso real: FAPM (26085), GESTÃO HOSPITALAR presencial no banco e semipresencial no e-MEC.
         emec = [_curso_emec('1', 'GESTÃO HOSPITALAR', modalidade='Semipresencial')]
         self.assertEqual(self.comparar([_curso_banco('GESTÃO HOSPITALAR')], emec)[0][2],
-                         ['Modalidade: banco PRESENCIAL, e-MEC Semipresencial'])
+                         ['Modalidade: Sistema OVG PRESENCIAL, e-MEC Semipresencial'])
         self.assertEqual(self.comparar([_curso_banco('GESTÃO HOSPITALAR', modalidade='SEMI-PRESENCIAL (EAD)')], emec)[0][0],
                          'Alinhado')
 
@@ -420,23 +568,50 @@ class VereditoTests(SimpleTestCase):
                 _curso_emec('3', 'ENFERMAGEM'), _curso_emec('4', 'NUTRIÇÃO', ativo=False),
                 _curso_emec('5', 'PEDAGOGIA', grau='Licenciatura')]
         r = self.comparar([_curso_banco('ENFERMAGEM')], emec)
-        self.assertEqual([(v, c) for v, c, _ in r], [('Alinhado', '3'), ('Ativo no e-MEC, ausente no banco', '1'),
-                                                      ('Ativo no e-MEC, ausente no banco', '5')])
+        self.assertEqual([(v, c) for v, c, _ in r], [('Alinhado', '3'), ('Ativo no e-MEC, ausente no Sistema OVG', '1'),
+                                                      ('Ativo no e-MEC, ausente no Sistema OVG', '5')])
 
     def test_nao_encontrado(self):
         self.assertEqual(self.comparar([_curso_banco('MEDICINA')], [_curso_emec('1', 'DIREITO')])[0][:2],
                          ('Não encontrado no e-MEC', None))
 
 
-def _visao(nome, itens=(3,), semestres=(), atos=(), confirmados=(), graus=(), modalidades=()):
+def _visao(nome, itens=(3,), semestres=(), atos=(), confirmados=(), graus=(), modalidades=(), explicito=True):
     return {nome: {'itens': set(itens), 'graus': set(graus), 'modalidades': set(modalidades),
                    'semestres': set(semestres), 'vagas': set(), 'atos': list(atos),
-                   'atos_confirmados': list(confirmados), 'codigos': set(), 'documentos': ['Item 3 · arquivo 1']}}
+                   'atos_confirmados': list(confirmados), 'codigos': set(), 'documentos': ['Item 3 · arquivo 1'],
+                   'explicito': explicito}}
 
 
 class VereditoTresFontesTests(SimpleTestCase):
     """Documento comprova, e-MEC valida, banco diz se estamos ajustados."""
     ATO = {'tipo': 'Portaria', 'numero': '669', 'data': '26/11/2024'}
+
+    def test_documento_sem_afirmacao_explicita_pede_reenvio(self):
+        emec = [_curso_emec('1', 'ADMINISTRAÇÃO')]
+        visao = _visao('ADMINISTRACAO', semestres=[8], atos=[self.ATO], confirmados=[self.ATO], explicito=False)
+        self.assertEqual(self.comparar([_curso_banco('ADMINISTRACAO')], emec, visao),
+                         [('Reenviar documento', ['Documento não informa de forma 100% confiável: não afirma de '
+                                                  'forma explícita os cursos — reenviar'])])
+
+    def test_cita_o_curso_sem_portaria_pede_reenvio(self):
+        emec = [_curso_emec('1', 'ADMINISTRAÇÃO')]
+        self.assertEqual(self.comparar([_curso_banco('ADMINISTRACAO')], emec, _visao('ADMINISTRACAO')),
+                         [('Reenviar documento',
+                           ['Documento não é explícito: cita o curso sem portaria/resolução — reenviar'])])
+
+    def test_afirmacao_explicita_por_item(self):
+        from .services.documentos import TIPO_ATESTADO, TIPO_PORTARIA, TIPO_RELACAO, afirmacao_explicita
+        self.assertIn('ATESTAMOS', afirmacao_explicita(
+            'Atestamos, para os devidos fins, que os cursos abaixo encontram-se em pleno funcionamento', 3, TIPO_ATESTADO))
+        self.assertIn('FICAM AUTORIZADOS', afirmacao_explicita(
+            'Resolve: Art. 1º Ficam autorizados os cursos superiores de graduação', 3, TIPO_PORTARIA))
+        self.assertIn('CURSOS QUE SERAO OFERTADOS', afirmacao_explicita(
+            'Faculdade X — Cursos que serão ofertados no ProBem 2027/1', 4, TIPO_RELACAO))
+        # Exportação de planilha (caso da Anhanguera Anápolis): só curso, turno e semestre.
+        self.assertEqual(afirmacao_explicita('Nome Empresa Especialidade Regime Turno ANAPOLIS/GO Administração '
+                                             'Semestral Noturno Cursando 2º semestre', 4, TIPO_RELACAO), '')
+        self.assertEqual(afirmacao_explicita('Certidão de inteiro teor da Junta Comercial', 3, 'Não é atestado de curso'), '')
 
     def comparar(self, banco, emec, visao):
         from .services.veredito import comparar_cursos
@@ -456,17 +631,17 @@ class VereditoTresFontesTests(SimpleTestCase):
         emec = [_curso_emec('1', 'DIREITO', periodicidade='Noturno - 10 semestres')]
         r = self.comparar([_curso_banco('DIREITO', 10)], emec,
                           _visao('DIREITO', semestres=[8], atos=[self.ATO], confirmados=[self.ATO]))
-        self.assertEqual(r, [('Divergente', ['Períodos: banco 10, documento 8'])])
+        self.assertEqual(r, [('Divergente', ['Períodos: Sistema OVG 10, documento 8'])])
 
     def test_ofertado_no_documento_e_ativo_no_emec_sem_banco(self):
         emec = [_curso_emec('1', 'PSICOLOGIA')]
         r = self.comparar([], emec, _visao('PSICOLOGIA', itens=[4]))
-        self.assertEqual(r, [('Ativo no e-MEC, ausente no banco',
-                              ['Bacharelado Presencial ativo no e-MEC sem cadastro no banco'
+        self.assertEqual(r, [('Ativo no e-MEC, ausente no Sistema OVG',
+                              ['Bacharelado Presencial ativo no e-MEC sem cadastro no Sistema OVG'
                                ' — a IES o apresentou como ofertado (item 4)'])])
 
     def test_curso_so_no_documento(self):
-        self.assertEqual(self.comparar([], [], _visao('MEDICINA'))[0][0], 'Citado no documento, ausente no banco')
+        self.assertEqual(self.comparar([], [], _visao('MEDICINA'))[0][0], 'Citado no documento, ausente no Sistema OVG')
 
 
 ATESTADO_IES = """                         FACULDADE SOBRESP DE CRISTALINA
@@ -644,7 +819,7 @@ class MotorTests(SimpleTestCase):
         self.assertEqual(status['progresso'], 100)
         tipos = [l['tipo'] for l in status['linhas']]
         self.assertEqual([l['texto'] for l in status['linhas'] if l['tipo'] == 'comando'],
-                         ['banco_dados --run', 'formulario --run', 'emec_cursos --run', 'planilha --run'])
+                         ['sistema_ovg --run', 'formulario --run', 'emec_cursos --run', 'planilha --run'])
         self.assertEqual(tipos[-1], 'fim')
         emec_ok = [l for l in status['linhas'] if l['tipo'] == 'item' and l['campos'][0] == 'E-MEC'
                    and l['campos'][1].startswith('(5550)')]
@@ -657,20 +832,31 @@ class MotorTests(SimpleTestCase):
         self.assertEqual(r['ies_sem_emec'], 1)
 
         livro = openpyxl.load_workbook(caminho)
-        self.assertEqual(livro.sheetnames, ['Cursos e-MEC', 'Veredito Cursos', 'Documentos'])
+        self.assertEqual(livro.sheetnames, ['Cursos e-MEC', 'Cursos Ofertados', 'Veredito Cursos', 'Documentos'])
         self.assertEqual(livro['Documentos'].sheet_properties.tabColor.rgb, 'FFF28C28')
         cursos_emec, veredito = livro['Cursos e-MEC'], livro['Veredito Cursos']
         self.assertEqual([c.value for c in cursos_emec[1]], COLUNAS_CURSOS_EMEC)
         self.assertEqual([c.value for c in veredito[1]], COLUNAS_VEREDITO)
         linhas = [dict(zip(COLUNAS_CURSOS_EMEC, [c.value for c in r])) for r in cursos_emec.iter_rows(min_row=2)]
-        self.assertEqual(linhas[0]['Curso'], '2 no banco · 1 ativos no e-MEC · sem documentação enviada')
-        linha = next(l for l in linhas if l['Curso'] == 'ADMINISTRACAO')
-        self.assertEqual((linha['Código Curso e-MEC'], linha['Situação e-MEC'], linha['Vagas Anuais'],
-                          linha['Município/UF'], linha['No banco']), (51251, 'Ativo', '270', 'Anápolis / GO', 'Sim'))
-        medicina = next(l for l in linhas if l['Curso'] == 'MEDICINA')
-        self.assertEqual((medicina['Situação e-MEC'], medicina['Coordenador']), ('Não localizado no e-MEC',) * 2)
-        self.assertEqual(linha['Histórico de Indicadores'],
-                         '2022: ENADE 2 · CPC 4 · CC - · IDD 3\n2018: ENADE 3 · CPC 3 · CC 4 · IDD 3')
+        self.assertEqual([(l['Código'], l['Curso_OVG'], l['Status_Comparativo']) for l in linhas], [
+            (16452, '2 IES · 1 com não conformidade', 'Não Conforme'),
+            (5550, '2 no Sistema OVG · 1 ativo no e-MEC · 1 não conforme', 'Em Conformidade'),
+            (5550, 'MEDICINA', 'Não Conforme'), (5550, 'ADMINISTRACAO', 'Em Conformidade'),
+            ('Não localizado no Sistema OVG', '1 no Sistema OVG · Sem código MEC no Sistema OVG', 'Não conferido'),
+            ('Não localizado no Sistema OVG', 'DIREITO', 'Não conferido')])
+        resumo, medicina, adm = linhas[1:4]
+        # IES e mantenedora conferidas na página da IES do e-MEC.
+        self.assertEqual((resumo['Situação_IES_e-MEC'], resumo['CNPJ_Man_OVG'], resumo['CNPJ_Man_e-MEC'], resumo['Motivo']),
+                         ('Ativa', '04.310.392/0001-46', '04.310.392/0001-46', 'IES e mantenedora conferem com o e-MEC'))
+        self.assertEqual((medicina['Status_OVG'], medicina['Status_e-MEC'], medicina['Motivo']),
+                         ('Ativo', 'Não existe no e-MEC', 'Curso do Sistema OVG que não existe no e-MEC'))
+        # Lado a lado: Sistema OVG e e-MEC; CPC e ano só do mais recente.
+        self.assertEqual((adm['Curso_e-MEC'], adm['Status_OVG'], adm['Status_e-MEC'], adm['Períodos_OVG'], adm['Períodos_e-MEC'],
+                          adm['Código_Curso_e-MEC'], adm['Vagas_Anuais_e-MEC'], adm['CPC_e-MEC'], adm['Ano_CPC_e-MEC'],
+                          adm['Município/UF_e-MEC']),
+                         ('ADMINISTRAÇÃO', 'Ativo', 'Ativo', 8, 8, 51251, 270, 4, 2022, 'Anápolis / GO'))
+        self.assertFalse({'ENADE', 'CC', 'IDD', 'Histórico de Indicadores'} & set(COLUNAS_CURSOS_EMEC))
+        self.assertEqual(status['resumo']['comparacao'], {'Não Conforme': 1, 'Em Conformidade': 1})
         primeira = dict(zip(COLUNAS_VEREDITO, [c.value for c in veredito[2]]))
         self.assertNotIn('Itens com o curso', COLUNAS_VEREDITO)
         self.assertEqual((primeira['Grau (documento)'], primeira['Atos citados'], primeira['Periodicidade e-MEC']),
@@ -682,7 +868,7 @@ class MotorTests(SimpleTestCase):
         coluna = COLUNAS_VEREDITO.index('Veredito')
         vereditos = [(l[3].value, l[coluna].value) for l in veredito.iter_rows(min_row=2)]
         self.assertEqual(vereditos, [('ADMINISTRACAO', 'Sem comprovação'), ('MEDICINA', 'Não encontrado no e-MEC'),
-                                     ('DIREITO', 'Sem código MEC no banco de dados')])
+                                     ('DIREITO', 'Sem código MEC no Sistema OVG')])
 
     def test_sem_item_3_nao_abre_o_emec(self):
         import openpyxl

@@ -57,6 +57,11 @@ def url_atos_curso(codigo_ies, codigo_curso):
             f"{_parametro('co_ies_curso', codigo_curso)}/list/1000")
 
 
+def url_ies(codigo_ies):
+    """Detalhes da IES: situação da IES e a mantenedora (código, nome e CNPJ)."""
+    return f"/emec/consulta-ies/index/{_parametro('co_ies', codigo_ies)}"
+
+
 def url_historico_curso(codigo_curso):
     return (f"/emec/consulta-curso/listar-historico-indicadores-curso/"
             f"{_parametro('co_ies_curso', codigo_curso)}/list/1000")
@@ -109,9 +114,9 @@ def ler_cursos_agrupados(html):
     return grupos
 
 
+# ENADE, CC e IDD ficam de fora: o time só usa o CPC do ano mais recente (18/11/2026).
 CAMPOS_DESAGRUPADO = {'Código': 'codigo', 'Modalidade': 'modalidade', 'Grau': 'grau', 'Curso': 'curso',
-                      'UF': 'uf', 'Município': 'municipio', 'ENADE': 'enade', 'CPC': 'cpc', 'CC': 'cc',
-                      'IDD': 'idd', 'Situação': 'situacao'}
+                      'UF': 'uf', 'Município': 'municipio', 'CPC': 'cpc', 'Situação': 'situacao'}
 
 
 def ler_cursos_desagrupados(html):
@@ -120,7 +125,8 @@ def ler_cursos_desagrupados(html):
     cursos = []
     for codigo, linha in re.findall(r'<tr\b[^>]*\bid="tr_(\d+)"[^>]*>(.*?)</tr>', _corpo(html), flags=re.S | re.I):
         celulas = _celulas(linha)
-        curso = {campo: _sem_registro(_texto(c)) for campo, c in zip(cabecalho, celulas)}
+        curso = {campo: _sem_registro(_texto(c)) for campo, c in zip(cabecalho, celulas)
+                 if campo in CAMPOS_DESAGRUPADO.values()}
         curso['codigo'] = codigo
         curso['ativo'] = 'bolaVerde' in (celulas[-1] if celulas else '')
         curso['situacao'] = 'Ativo' if curso['ativo'] else 'Inativo'
@@ -157,6 +163,22 @@ def ler_historico(html):
         if len(valores) == len(cabecalho) and valores:
             historico.append(dict(zip(cabecalho, valores)))
     return historico
+
+
+def ler_ies(html):
+    """
+    Página de detalhes da IES → {'situacao', 'mantenedora_codigo', 'mantenedora', 'mantenedora_cnpj'}.
+    O e-MEC NÃO publica situação da mantenedora: a única situação da página é a da IES.
+    """
+    campos = {}
+    for rotulo, valor in re.findall(r'<td\b[^>]*tituloCampos[^>]*>(.*?)</td>\s*<td\b[^>]*>(.*?)</td>',
+                                    html, flags=re.S | re.I):
+        campos.setdefault(_texto(rotulo).rstrip(':').strip(), _texto(valor))
+    mantenedora = re.match(r'\((\d+)\)\s*(.*)', campos.get('Mantenedora', ''))
+    return {'situacao': campos.get('Situação', ''),
+            'mantenedora_codigo': mantenedora.group(1) if mantenedora else '',
+            'mantenedora': mantenedora.group(2).strip() if mantenedora else campos.get('Mantenedora', ''),
+            'mantenedora_cnpj': campos.get('CNPJ', '')}
 
 
 CAMPOS_ATO = {'Ato Regulatório': 'ato', 'Tipo de documento': 'tipo', 'Nº do documento': 'numero',
@@ -301,10 +323,12 @@ class SessaoEmec:
 
 def cursos_da_ies(sessao, codigo_ies):
     """
-    O QUE FAZ: todos os cursos de graduação da IES no e-MEC; detalhes, histórico de indicadores
+    O QUE FAZ: todos os cursos de graduação da IES no e-MEC; detalhes, CPC do ano mais recente
       e atos regulatórios só dos ATIVOS (os inativos ficam só com a linha da lista).
-    RETORNO: [{codigo, modalidade, grau, curso, uf, municipio, enade, cpc, cc, idd, situacao,
-              ativo, detalhe: {...} | None, historico: [...], atos: [...]}], na ordem do e-MEC.
+    RETORNO: [{codigo, modalidade, grau, curso, uf, municipio, cpc, ano_cpc, situacao,
+              ativo, detalhe: {...} | None, atos: [...]}], na ordem do e-MEC.
+    CPC: só o do ano mais recente do histórico (pedido do time em 18/11/2026), mesmo que
+      venha sem conceito; sem histórico, fica o CPC da lista e o ano em branco.
     """
     grupos = ler_cursos_agrupados(sessao.buscar(url_cursos_agrupados(codigo_ies)))
     cursos = {}
@@ -319,8 +343,10 @@ def cursos_da_ies(sessao, codigo_ies):
                                     for url in (url_detalhe_curso(c['codigo']), url_historico_curso(c['codigo']),
                                                 url_atos_curso(codigo_ies, c['codigo']))])
     for curso in cursos.values():
-        curso['detalhe'], curso['historico'], curso['atos'] = None, [], []
+        curso['detalhe'], curso['atos'], curso['ano_cpc'] = None, [], ''
     for curso, detalhe, historico, atos in zip(ativos, paginas[0::3], paginas[1::3], paginas[2::3]):
-        curso['detalhe'], curso['historico'] = ler_detalhe_curso(detalhe), ler_historico(historico)
-        curso['atos'] = ler_atos(atos)
+        curso['detalhe'], curso['atos'] = ler_detalhe_curso(detalhe), ler_atos(atos)
+        recente = ler_historico(historico)[:1]
+        if recente:
+            curso['ano_cpc'], curso['cpc'] = recente[0].get('ano', ''), _sem_registro(recente[0].get('cpc', ''))
     return list(cursos.values())

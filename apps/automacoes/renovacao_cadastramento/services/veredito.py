@@ -15,9 +15,11 @@ VEREDITOS
 ---------
 - Alinhado: ativo no e-MEC, comprovado por documento e banco igual ao e-MEC e ao documento.
 - Divergente: algum dado não bate (grau, modalidade, períodos), ou o curso não está ativo no e-MEC.
+- Reenviar documento: o documento não é explícito — não afirma que são os cursos em
+  funcionamento/ofertados, ou cita o curso sem portaria/resolução (regra do time, 18/11/2026).
 - Sem comprovação: os dados batem, mas nenhum documento comprova o curso com um ato válido.
-- Ativo no e-MEC, ausente no banco / Citado no documento, ausente no banco: o banco está atrasado
-  (ou a IES apresentou curso que não oferecemos).
+- Ativo no e-MEC, ausente no Sistema OVG: não é problema, é alerta (curso que ainda não cadastramos).
+- Citado no documento, ausente no Sistema OVG: a IES apresentou curso que não está nem no e-MEC.
 """
 
 from portal_ggci.mantenedoras import normalizar
@@ -27,9 +29,10 @@ from .emec import semestres
 ALINHADO = 'Alinhado'
 DIVERGE = 'Divergente'
 SEM_COMPROVACAO = 'Sem comprovação'
+REENVIAR = 'Reenviar documento'
 NAO_ENCONTRADO = 'Não encontrado no e-MEC'
-AUSENTE_NO_BANCO = 'Ativo no e-MEC, ausente no banco'
-SO_NO_DOCUMENTO = 'Citado no documento, ausente no banco'
+AUSENTE_NO_BANCO = 'Ativo no e-MEC, ausente no Sistema OVG'
+SO_NO_DOCUMENTO = 'Citado no documento, ausente no Sistema OVG'
 SEM_DOCUMENTACAO = 'A IES não enviou documentação no formulário para comparação'
 
 
@@ -50,8 +53,13 @@ def _grau(texto):
     return 'TECNOLOGICO' if chave.startswith('TECN') else chave
 
 
+_LIGACOES = {'DE', 'DA', 'DO', 'DAS', 'DOS', 'E', 'EM', 'A', 'O', 'NA', 'NO'}
+
+
 def _jaccard(a, b):
-    ta, tb = set(a.split()), set(b.split())
+    # Sem as palavras de ligação: com elas, ENGENHARIA DE COMPUTAÇÃO e ENGENHARIA DE PRODUÇÃO
+    # davam 0,5 e casavam (caso real da Anhanguera Anápolis, 18/11/2026).
+    ta, tb = set(a.split()) - _LIGACOES, set(b.split()) - _LIGACOES
     return len(ta & tb) / len(ta | tb) if ta and tb else 0.0
 
 
@@ -87,7 +95,7 @@ def _resumo_documento(doc):
         return None
     return {'itens': sorted(doc['itens']), 'graus': sorted(doc['graus']), 'modalidades': sorted(doc['modalidades']),
             'semestres': sorted(doc['semestres']), 'atos': doc['atos'], 'atos_confirmados': doc['atos_confirmados'],
-            'documentos': doc['documentos']}
+            'documentos': doc['documentos'], 'explicito': doc.get('explicito', False)}
 
 
 def _lista(valores):
@@ -112,7 +120,7 @@ def comparar_cursos(cursos_banco, cursos_emec, visao=None, sem_documentacao=Fals
         nomes_usados.add(normalizar(curso['cur_nome']))
         if emec:
             nomes_usados.add(normalizar(emec['curso']))
-        dados, comprovacao = [], []
+        dados, reenviar, comprovacao = [], [], []
         periodos = curso['qtde_periodo']
         periodos_txt = periodos if periodos is not None else '—'
 
@@ -123,15 +131,15 @@ def comparar_cursos(cursos_banco, cursos_emec, visao=None, sem_documentacao=Fals
             if not emec['ativo']:
                 dados.append('Curso inativo no e-MEC')
             if _grau(emec['grau']) != _grau(curso['tipo']):
-                dados.append(f"Grau: banco {curso['tipo'] or '—'}, e-MEC {emec['grau'] or '—'}")
+                dados.append(f"Grau: Sistema OVG {curso['tipo'] or '—'}, e-MEC {emec['grau'] or '—'}")
             if _modalidade(emec['modalidade']) != _modalidade(curso['modalidade']):
-                dados.append(f"Modalidade: banco {curso['modalidade'] or '—'}, e-MEC {emec['modalidade'] or '—'}")
+                dados.append(f"Modalidade: Sistema OVG {curso['modalidade'] or '—'}, e-MEC {emec['modalidade'] or '—'}")
             if emec['ativo']:
                 no_emec = semestres((emec.get('detalhe') or {}).get('periodicidade'))
                 if not no_emec:
                     dados.append('Periodicidade sem semestres no e-MEC')
                 elif periodos not in no_emec:
-                    dados.append(f"Períodos: banco {periodos_txt}, e-MEC {_lista(no_emec)}")
+                    dados.append(f"Períodos: Sistema OVG {periodos_txt}, e-MEC {_lista(no_emec)}")
 
         # documento comprova e informa
         if visao is not None:
@@ -140,26 +148,32 @@ def comparar_cursos(cursos_banco, cursos_emec, visao=None, sem_documentacao=Fals
             elif not doc:
                 comprovacao.append('Nenhum documento enviado cita o curso')
             else:
-                if not doc['atos_confirmados']:
-                    comprovacao.append('Documento cita o curso, mas nenhum ato confere com o e-MEC'
-                                       if doc['atos'] else 'Documento cita o curso sem portaria/resolução')
+                if not doc.get('explicito'):
+                    reenviar.append('Documento não informa de forma 100% confiável: não afirma de forma '
+                                    'explícita os cursos — reenviar')
+                if not doc['atos']:
+                    reenviar.append('Documento não é explícito: cita o curso sem portaria/resolução — reenviar')
+                elif not doc['atos_confirmados']:
+                    comprovacao.append('Documento cita o curso, mas nenhum ato confere com o e-MEC')
                 if doc['semestres'] and periodos not in doc['semestres']:
-                    dados.append(f"Períodos: banco {periodos_txt}, documento {_lista(doc['semestres'])}")
+                    dados.append(f"Períodos: Sistema OVG {periodos_txt}, documento {_lista(doc['semestres'])}")
                 if doc['modalidades'] and _modalidade(curso['modalidade']) not in {_modalidade(m) for m in doc['modalidades']}:
-                    dados.append(f"Modalidade: banco {curso['modalidade'] or '—'}, documento {', '.join(sorted(doc['modalidades']))}")
+                    dados.append(f"Modalidade: Sistema OVG {curso['modalidade'] or '—'}, documento {', '.join(sorted(doc['modalidades']))}")
                 if doc['graus'] and _grau(curso['tipo']) not in {_grau(g) for g in doc['graus']}:
-                    dados.append(f"Grau: banco {curso['tipo'] or '—'}, documento {', '.join(sorted(doc['graus']))}")
+                    dados.append(f"Grau: Sistema OVG {curso['tipo'] or '—'}, documento {', '.join(sorted(doc['graus']))}")
 
         if not emec:
             veredito = NAO_ENCONTRADO
         elif dados:
             veredito = DIVERGE
+        elif reenviar:
+            veredito = REENVIAR
         elif comprovacao:
             veredito = SEM_COMPROVACAO
         else:
             veredito = ALINHADO
         saida.append({'banco': curso, 'emec': emec, 'documento': _resumo_documento(doc),
-                      'veredito': veredito, 'motivos': dados + comprovacao})
+                      'veredito': veredito, 'motivos': dados + reenviar + comprovacao})
 
     # O caminho inverso: o que o banco não tem. A chave do e-MEC é nome + grau + modalidade, e
     # não o código: a mesma graduação em dois campi tem dois códigos ativos.
@@ -173,7 +187,7 @@ def comparar_cursos(cursos_banco, cursos_emec, visao=None, sem_documentacao=Fals
         vistos.add(chave)
         nomes_usados.add(chave[0])
         doc = _documento_do(emec['curso'], None, visao)
-        motivo = f"{emec['grau']} {emec['modalidade']} ativo no e-MEC sem cadastro no banco"
+        motivo = f"{emec['grau']} {emec['modalidade']} ativo no e-MEC sem cadastro no Sistema OVG"
         if doc and 4 in doc['itens']:
             motivo += ' — a IES o apresentou como ofertado (item 4)'
         saida.append({'banco': None, 'emec': emec, 'documento': _resumo_documento(doc),
@@ -183,5 +197,5 @@ def comparar_cursos(cursos_banco, cursos_emec, visao=None, sem_documentacao=Fals
             continue
         saida.append({'banco': None, 'emec': None, 'documento': _resumo_documento(doc), 'curso_documento': nome,
                       'veredito': SO_NO_DOCUMENTO,
-                      'motivos': ['O documento cita o curso, mas ele não está no banco nem ativo no e-MEC']})
+                      'motivos': ['O documento cita o curso, mas ele não está no Sistema OVG nem ativo no e-MEC']})
     return saida

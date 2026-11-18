@@ -129,15 +129,15 @@ def executar(pasta, sessao_emec=None):
                     f"{'Todas as instituições' if selecao is None else f'{len(selecao)} instituições'} · "
                     f"{'itens 3 e 4 (cursos): documentos + e-MEC' if com_emec else 'sem os itens 3 e 4: e-MEC não é consultado'}")
 
-        status.comando('banco_dados --run', progresso=2)
+        status.comando('sistema_ovg --run', progresso=2)
         status.sub('Lendo o cadastro das instituições e dos cursos…')
         instituicoes = planilha.montar_instituicoes(selecao, catalogo(), sibu.instituicoes_sibu(),
                                                     sibu.cursos_por_ies(), sibu.casar_instituicao)
         sem_par = sum(1 for i in instituicoes if i['status'] == planilha.SEM_PAR_NO_BANCO)
-        status.item('ok', ['BANCO', 'INSTITUIÇÕES', f'{len(instituicoes)} IES'],
+        status.item('ok', ['SISTEMA OVG', 'INSTITUIÇÕES', f'{len(instituicoes)} IES'],
                     f"{sum(len(i['cursos']) for i in instituicoes)} cursos cadastrados", progresso=5)
         if sem_par:
-            status.item('alerta', ['BANCO', 'SEM CADASTRO', f'{sem_par} IES'], 'saem sem CNPJ e códigos')
+            status.item('alerta', ['SISTEMA OVG', 'SEM CADASTRO', f'{sem_par} IES'], 'saem sem CNPJ e códigos')
 
         if com_emec:
             _documentos_do_formulario(instituicoes, status, sibu, pasta)
@@ -147,6 +147,9 @@ def executar(pasta, sessao_emec=None):
         status.sub(f'Gravando {planilha.NOME_ARQUIVO}…')
         resumo = planilha.gravar_planilha(instituicoes, os.path.join(pasta, planilha.NOME_ARQUIVO))
         if resumo['emec']:
+            c = resumo['comparacao']
+            status.selo('emerald' if set(c) <= {'Em Conformidade'} else 'yellow', 'SISTEMA OVG × E-MEC',
+                        ' · '.join(f'{n} {k.lower()}' for k, n in c.items()) or 'nenhum curso')
             v = resumo['vereditos']
             pendentes = sum(n for k, n in v.items() if k != veredito.ALINHADO)
             status.selo('emerald' if not pendentes else 'yellow', 'VEREDITO',
@@ -223,7 +226,7 @@ def _cursos_no_emec(instituicoes, status, sessao_emec, emec, veredito):
     com_codigo = [i for i in instituicoes if i['codigo'].isdigit()]
     for ies in instituicoes:
         if ies not in com_codigo:
-            ies['emec'] = {'erro': 'Sem código MEC no banco de dados'}
+            ies['emec'] = {'erro': 'Sem código MEC no Sistema OVG'}
 
     status.comando('emec_cursos --run', progresso=8)
     if len(com_codigo) < len(instituicoes):
@@ -243,7 +246,11 @@ def _cursos_no_emec(instituicoes, status, sessao_emec, emec, veredito):
                 ies['emec'] = {'erro': 'e-MEC não respondeu'}
                 status.item('erro', campos + ['sem resposta'], f'e-MEC não respondeu ({erro})', progresso=andamento)
                 continue
-            ies['emec'] = {'cursos': cursos}
+            try:
+                dados_ies = emec.ler_ies(sessao.buscar(emec.url_ies(ies['codigo'])))
+            except emec.ErroEmec:
+                dados_ies = None   # a planilha avisa "Dados da IES não lidos no e-MEC"
+            ies['emec'] = {'cursos': cursos, 'ies': dados_ies}
             if not cursos:
                 status.item('alerta', campos + ['0 cursos'],
                             'o e-MEC não lista cursos para esse código (código de campus/unidade?)', progresso=andamento)

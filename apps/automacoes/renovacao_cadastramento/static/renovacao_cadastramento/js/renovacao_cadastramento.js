@@ -113,7 +113,7 @@
             const m = modo(cat.nomeRadio);
             cat.caixa.querySelector('[data-rc-abrir]').hidden = m !== 'selecionados';
             resumo.classList.remove('rc-resumo__texto--alerta');
-            if (m === 'todos') resumo.textContent = `Todos os ${total} documentos`;
+            if (m === 'todos') resumo.textContent = total === 1 ? cat.caixas()[0].dataset.titulo : `Todos os ${total} documentos`;
             else if (m === 'nenhum') resumo.textContent = 'Esta categoria não será conferida';
             else if (cat.aplicados.length === 0) {
                 resumo.textContent = 'Nenhum documento selecionado';
@@ -448,7 +448,7 @@
                         info.title = 'Ver cursos cadastrados';
                     } else {
                         info.disabled = true;
-                        info.title = 'Instituição não encontrada no banco de dados';
+                        info.title = 'Instituição não encontrada no Sistema OVG';
                     }
 
                     topo.append(linha, info);
@@ -591,15 +591,7 @@
             abrir(cat.modal);
         };
 
-        // Documentos do mesmo grupo (itens 3 e 4 = "Cursos") são lidos juntos: marcar um marca o outro.
-        cat.modal.addEventListener('change', (evento) => {
-            const caixa = evento.target;
-            if (caixa.matches && caixa.matches('input[data-grupo]')) {
-                cat.caixas().filter((c) => c.dataset.grupo === caixa.dataset.grupo && !c.disabled)
-                    .forEach((c) => { c.checked = caixa.checked; });
-            }
-            contar();
-        });
+        cat.modal.addEventListener('change', contar);
         cat.modal.querySelector('[data-rc-marcar]').addEventListener('click', () => { cat.caixas().forEach((c) => { c.checked = true; }); contar(); });
         cat.modal.querySelector('[data-rc-limpar]').addEventListener('click', () => { cat.caixas().forEach((c) => { c.checked = false; }); contar(); });
         cat.modal.querySelector('[data-rc-aplicar]').addEventListener('click', () => {
