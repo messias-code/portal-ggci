@@ -343,11 +343,11 @@ def api_salvar_usuario(request):
                     alvo.nome = nome_completo
                     alvo.usuario = email
 
+                # A conta master nunca chega aqui com `resetar_senha` (forçado a False acima). O
+                # ramo que a resetava para uma senha fixa escrita no código era inalcançável e
+                # saiu: a senha não pode morar no código.
                 if resetar_senha:
-                    if email_atual == 'admin@ovg.org.br':
-                        alvo.set_password('4dmin_0VG@2026')
-                    else:
-                        alvo.set_password(senha_gerada)
+                    alvo.set_password(senha_gerada)
 
                 alvo.save()
                 return JsonResponse({'sucesso': True, 'mensagem': 'Acessos atualizados com sucesso!'})
