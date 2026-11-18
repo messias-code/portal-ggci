@@ -351,7 +351,8 @@
         }
     </script>
 
-    <script src="{% static 'enquadramento_cursos/js/enquadramento_cursos.js' %}?v=6"></script>
+    <script>window.CSRF_TOKEN = "{{ csrf_token }}";</script>
+    <script src="{% static 'enquadramento_cursos/js/enquadramento_cursos.js' %}?v=7"></script>
 </body>
 
 </html>

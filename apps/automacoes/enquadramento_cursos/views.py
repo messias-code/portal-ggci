@@ -14,7 +14,6 @@ from django.contrib.auth.decorators import login_required
 from django.core import signing
 from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import redirect, render
-from django.views.decorators.csrf import csrf_exempt
 
 from .models import ProcessamentoEnquadramentoCursos
 from portal_ggci.processos import abortar_execucao, popen_com_limite
@@ -23,7 +22,11 @@ from portal_ggci.processos import abortar_execucao, popen_com_limite
 AVISO_ABORTADO = "\n\n🚨 [SISTEMA] Processo de IA abortado manualmente pelo usuário!"
 
 
-@csrf_exempt
+def _tem_permissao(user):
+    """A mesma regra da tela (`enquadramento_cursos_view`): p_enquadramento_cursos ou o admin."""
+    return getattr(user, 'p_enquadramento_cursos', False) or user.usuario == 'admin@ovg.org.br'
+
+
 @login_required(login_url='/')
 def iniciar_processamento_ia(request):
     """
@@ -38,6 +41,8 @@ def iniciar_processamento_ia(request):
     RETORNO: JsonResponse com o status e ID do processo gerado.
     EFEITOS COLATERAIS: Cria arquivos no disco, inicia novo processo no SO, insere linha no BD.
     """
+    if not _tem_permissao(request.user):
+        return JsonResponse({'status': 'erro', 'mensagem': 'Acesso negado.'}, status=403)
     if request.method == 'POST':
         # 1. Leitura e Configuração de Payload
         payload = {}
@@ -94,7 +99,6 @@ def iniciar_processamento_ia(request):
     return JsonResponse({'status': 'erro', 'mensagem': 'Método inválido'}, status=400)
 
 
-@csrf_exempt
 @login_required(login_url='/')
 def parar_processamento_ia(request, processo_id):
     """
@@ -105,6 +109,8 @@ def parar_processamento_ia(request, processo_id):
     PARÂMETROS: request, processo_id (int)
     RETORNO: JsonResponse confirmando a parada — quando ela chega, o motor já morreu.
     """
+    if not _tem_permissao(request.user):
+        return JsonResponse({'status': 'erro', 'mensagem': 'Acesso negado.'}, status=403)
     if request.method == 'POST':
         if abortar_execucao(ProcessamentoEnquadramentoCursos, 'executar_motor_enquadramento',
                             processo_id, AVISO_ABORTADO):
@@ -114,12 +120,15 @@ def parar_processamento_ia(request, processo_id):
     return JsonResponse({'status': 'erro', 'mensagem': 'Método inválido'}, status=400)
 
 
+@login_required(login_url='/')
 def checar_status_ia(request, processo_id):
     """
     O QUE FAZ: Retorna o status atual de um processamento.
     POR QUÊ EXISTE: Para ser consumido via long-polling (AJAX) pelo front-end.
     COMO FUNCIONA: Busca o ID no banco e retorna seus campos.
     """
+    if not _tem_permissao(request.user):
+        return JsonResponse({'status': 'erro', 'mensagem': 'Acesso negado.'}, status=403)
     try:
         processo = ProcessamentoEnquadramentoCursos.objects.get(id=processo_id)
         
@@ -160,6 +169,8 @@ def baixar_resultado_ia(request, processo_id):
                                 status=403)
     elif not request.user.is_authenticated:
         return redirect('/')
+    elif not _tem_permissao(request.user):
+        return JsonResponse({'status': 'erro', 'mensagem': 'Acesso negado.'}, status=403)
 
     try:
         processo = ProcessamentoEnquadramentoCursos.objects.get(id=processo_id)
