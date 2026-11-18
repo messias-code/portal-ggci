@@ -15,7 +15,6 @@ from django.core import signing
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
-from django.views.decorators.csrf import csrf_exempt
 
 from .models import ProcessamentoAnaliseIA
 from portal_ggci.processos import abortar_execucao, execucao_viva, popen_com_limite
@@ -23,6 +22,11 @@ from portal_ggci.processos import abortar_execucao, execucao_viva, popen_com_lim
 # O front reconhece esta frase exata e a troca pelo selo "ABORTADO PELO USUÁRIO".
 AVISO_ABORTADO = "\n\n🚨 [SISTEMA] Processo de IA abortado manualmente pelo usuário!"
 STATUS_ATIVOS = ('PENDENTE', 'EXTRAINDO', 'CONSOLIDANDO', 'CRUZANDO')
+
+
+def _tem_permissao(user):
+    """A mesma regra da tela (`analise_ia_view`): p_analise_ia ou o admin."""
+    return getattr(user, 'p_analise_ia', False) or user.usuario == 'admin@ovg.org.br'
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TRAVA ENTRE OS DOIS MOTORES
@@ -91,6 +95,8 @@ def iniciar_processamento_ia(request):
     RETORNO: JsonResponse com o status e ID do processo gerado.
     EFEITOS COLATERAIS: Cria arquivos no disco, inicia novo processo no SO, insere linha no BD.
     """
+    if not _tem_permissao(request.user):
+        return JsonResponse({'status': 'erro', 'mensagem': 'Acesso negado.'}, status=403)
     if request.method == 'POST':
         bloqueio = _bloqueio_do_outro_motor(request, eu='analise_ia')
         if bloqueio is not None:
@@ -165,9 +171,8 @@ def iniciar_processamento_ia(request):
     return JsonResponse({'status': 'erro', 'mensagem': 'Método inválido'}, status=400)
 
 
-# Segue `csrf_exempt`: o `pagehide` chama esta rota por `sendBeacon`, que não manda header
-# (o cookie de sessão vai, então o login é exigido).
-@csrf_exempt
+# Com CSRF: o botão Parar manda `X-CSRFToken`, e o `sendBeacon` da saída da página (que não
+# aceita header) manda o `csrfmiddlewaretoken` num FormData — ver `analise_ia.js`.
 @login_required(login_url='/')
 def parar_processamento_ia(request, processo_id):
     """
@@ -178,6 +183,8 @@ def parar_processamento_ia(request, processo_id):
     PARÂMETROS: request, processo_id (int)
     RETORNO: JsonResponse confirmando a parada — quando ela chega, o motor já morreu.
     """
+    if not _tem_permissao(request.user):
+        return JsonResponse({'status': 'erro', 'mensagem': 'Acesso negado.'}, status=403)
     if request.method == 'POST':
         parou = abortar_execucao(ProcessamentoAnaliseIA, 'executar_motor_ia', processo_id, AVISO_ABORTADO)
         for outro_id in (ProcessamentoAnaliseIA.objects
@@ -199,6 +206,8 @@ def checar_status_ia(request, processo_id):
     POR QUÊ EXISTE: Para ser consumido via long-polling (AJAX) pelo front-end.
     COMO FUNCIONA: Busca o ID no banco e retorna seus campos.
     """
+    if not _tem_permissao(request.user):
+        return JsonResponse({'status': 'erro', 'mensagem': 'Acesso negado.'}, status=403)
     try:
         processo = ProcessamentoAnaliseIA.objects.get(id=processo_id)
         if processo.status in STATUS_ATIVOS and not execucao_viva('executar_motor_ia', processo_id):
@@ -249,6 +258,8 @@ def baixar_resultado_ia(request, processo_id):
                                 status=403)
     elif not request.user.is_authenticated:
         return redirect('/')
+    elif not _tem_permissao(request.user):
+        return JsonResponse({'status': 'erro', 'mensagem': 'Acesso negado.'}, status=403)
 
     try:
         processo = ProcessamentoAnaliseIA.objects.get(id=processo_id)

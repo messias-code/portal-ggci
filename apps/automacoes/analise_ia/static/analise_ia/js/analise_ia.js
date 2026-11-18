@@ -241,7 +241,9 @@ function initAnaliseIA() {
         if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
         seqConsulta++;
         if (currentId) {
-            fetch(`/automacoes/analise-ia/api/parar-processamento/${currentId}/`, { method: 'POST' })
+            fetch(`/automacoes/analise-ia/api/parar-processamento/${currentId}/`, {
+                method: 'POST', headers: { 'X-CSRFToken': window.CSRF_TOKEN }
+            })
                 /*  Só é "Abortado" se o servidor disser que parou. Antes qualquer resposta,
                     até um 500, virava "Abortado" — a tela confirmava uma parada que não
                     aconteceu e o motor seguia rodando.  */
@@ -271,8 +273,12 @@ function initAnaliseIA() {
         const currentId = window.__processo_id;
         // Se houver um processo rodando (pollInterval ativo), envia o sinal de parada
         if (currentId && pollInterval) {
-            // sendBeacon envia o POST garantido mesmo durante o descarregamento da página
-            navigator.sendBeacon(`/automacoes/analise-ia/api/parar-processamento/${currentId}/`);
+            // sendBeacon envia o POST garantido mesmo durante o descarregamento da página.
+            // Ele não aceita header, então o token CSRF vai no corpo (o Django lê o campo
+            // `csrfmiddlewaretoken`); o cookie de sessão segue junto, por ser a mesma origem.
+            const corpo = new FormData();
+            corpo.append('csrfmiddlewaretoken', window.CSRF_TOKEN);
+            navigator.sendBeacon(`/automacoes/analise-ia/api/parar-processamento/${currentId}/`, corpo);
         }
     }
 
