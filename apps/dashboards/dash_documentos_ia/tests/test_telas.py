@@ -566,7 +566,8 @@ class TestApiDaTela(BaseTelas):
         # `semestre` fica entre o veredito da IA e o nome: a mesma inscrição repete o
         # mesmo documento em vários semestres, e sem ele as linhas ficam idênticas.
         self.assertEqual(tabela["colunas"][2:6], ["status_ia", "semestre", "gemini_semestre", "bolsista"])
-        self.assertEqual(len(tabela["colunas"]), 35)
+        # 35 + as quatro de acesso (assinou o termo, renovou, acessou o portal, data e hora).
+        self.assertEqual(len(tabela["colunas"]), 39)
         for linha in tabela["linhas"]:
             self.assertEqual(len(linha), len(tabela["colunas"]))
 

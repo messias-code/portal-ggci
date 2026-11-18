@@ -208,18 +208,21 @@ class MotivosDaDivergenciaTests(SimpleTestCase):
         base.update(col)
         return self._motivos(documento=ggci.DOC_RIAF, Inscrição=[inscricao], **base)
 
-    def test_falso_invalido_do_riaf_diz_so_o_campo_que_divergia(self):
+    def test_riaf_com_cnpj_divergente_e_invalido_e_a_ia_acertou(self):
         """
         A 2220159 em 2026-1: a IA apontou CNPJ, modalidade e tipo de bolsa. Só o CNPJ
-        divergia (matriz no documento, filial no sistema); "Bolsa Parcial" é `Parcial`, e a
-        modalidade batia. Repetir as três frases só copiava a coluna ao lado.
+        divergia (matriz no documento, filial no sistema) — mas CNPJ diferente do INS. CNPJ
+        INVALIDA o RIAF desde 28/09/2026 (`matematica_invalida_riaf_extra`). Então a IA
+        acertou o veredito: o status fica `Inválido`, e não `Falso Inválido`.
+
+        Este teste esperava `Falso Inválido` desde que foi escrito (21/10/2026) e nunca
+        passou: contradizia a regra que já estava no motor.
         """
-        motivos, status = self._riaf_falso_invalido(
+        _, status = self._riaf_falso_invalido(
             2220159, 'CNPJ da ies diverge do sistema, modalidade diverge do sistema,'
                      ' tipo de bolsa diverge do sistema',
             **{'Gemini Cnpj Faculdade': [1060102000165], 'Gemini Tipo Bolsa': ['Bolsa Parcial']})
-        self.assertEqual(status, ['Falso Inválido'])
-        self.assertEqual(motivos, ["O Correto Seria: 'CNPJ da IES diverge do sistema'"])
+        self.assertEqual(status, ['Inválido'])
 
     def test_falso_invalido_do_riaf_sem_divergencia_diz_sem_inconsistencias(self):
         """CNPJ com o zero à esquerda perdido e bolsa com a palavra "Bolsa" não são divergência."""
@@ -228,19 +231,19 @@ class MotivosDaDivergenciaTests(SimpleTestCase):
             **{'Gemini Tipo Bolsa': ['Bolsa Parcial']})
         self.assertEqual(motivos, ["O Correto Seria: 'Sem inconsistências'"])
 
-    def test_falso_invalido_do_riaf_corrige_a_frase_pelo_valor_lido(self):
+    def test_riaf_com_bolsa_nao_localizada_e_desconto_divergente_e_invalido(self):
         """
-        A 2120558 em 2026-1: a IA disse que a modalidade e o tipo de bolsa divergiam. A
-        modalidade batia, e "OVG Agronomia 6" não diz se a bolsa é parcial ou integral —
-        o certo é "não localizado". O desconto, esse sim, divergia.
+        A 2120558 em 2026-1: "OVG Agronomia 6" não diz se a bolsa é parcial ou integral (tipo
+        de bolsa não localizado) e o desconto divergia. Os dois invalidam o RIAF, então a IA
+        acertou o `Inválido` — e a frase "O Correto Seria" só existe para o `Falso Inválido`.
+        Mesma história do teste acima: esperava `Falso Inválido` e nunca passou.
         """
-        motivos, _ = self._riaf_falso_invalido(
+        _, status = self._riaf_falso_invalido(
             2120558, 'Modalidade diverge do sistema, tipo de bolsa diverge do sistema,'
                      ' valor da mensalidade com desconto diverge do sistema',
             **{'Gemini Tipo Bolsa': ['OVG Agronomia 6'],
                'Mensalidade C/ Desconto': [500.0], 'Gemini Mensalidade C/ Desconto': [450.0]})
-        self.assertEqual(motivos, ["O Correto Seria: 'Tipo de bolsa não localizado no documento,"
-                                   " Valor da mensalidade com desconto diverge do sistema'"])
+        self.assertEqual(status, ['Inválido'])
 
     def test_falso_invalido_do_riaf_mantem_o_que_nao_da_para_conferir(self):
         """Nome do aluno e mantenedora não têm com que comparar: a frase da IA fica, depois das nossas."""

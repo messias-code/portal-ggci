@@ -259,7 +259,7 @@ class PararNoConsoleTests(SimpleTestCase):
         self.assertIn('id="btn-parar-console" class="docia-console-parar" hidden', self.html)
 
     def test_aparece_ao_acompanhar_e_some_ao_restaurar(self):
-        acompanhar = self.js.split('function acompanhar(processoId) {')[1][:200]
+        acompanhar = self.js.split('function acompanhar(processoId) {')[1][:600]
         self.assertIn('mostrarParar(true)', acompanhar)
         restaurar = self.js.split('function restaurarBotaoAtualizar() {')[1][:600]
         self.assertIn('mostrarParar(false)', restaurar)
@@ -277,7 +277,8 @@ class PararNoConsoleTests(SimpleTestCase):
 
     def test_falha_fecha_a_barra_em_vermelho(self):
         falha = self.js.split("} else if (data.status === 'FALHA') {")[1][:700]
-        self.assertIn("consoleBarra.style.width = '100%'", falha)
+        # A barra vai a 100% pelo `pintarProgresso`, o mesmo caminho do progresso normal.
+        self.assertIn("pintarProgresso(100)", falha)
         self.assertIn("consoleBarra.classList.add('docia-barra--falha')", falha)
         # E a próxima execução volta ao degradê.
         self.assertIn("consoleBarra.classList.remove('docia-barra--falha')", self.js)

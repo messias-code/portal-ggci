@@ -48,6 +48,7 @@ from apps.dashboards.dash_documentos_ia.views import (
 # É a fonte contra a qual o recorte da tela é conferido: nome que não está aqui é
 # nome que a tela pediria e o Parquet não teria.
 COLUNAS_NO_PARQUET_RIAF = [
+    'coleta_id',
     'status_ia', 'gemini_inconsistencia', 'semestre', 'gemini_semestre', 'bolsista',
     'inscricao', 'inscricao_anterior', 'inscricao_posterior', 'cpf', 'gemini_cpf',
     'tipo_bolsa_final', 'gemini_tipo_bolsa_final', 'mudou_bolsa', 'bolsa_anterior',
@@ -68,7 +69,9 @@ COLUNAS_NO_PARQUET_RIAF = [
     'observacao_situacao', 'email', 'gemini_email', 'telefone_1', 'telefone_2',
     'data_nascimento', 'matricula', 'periodo_atual', 'periodo_no_semestre',
     'qtd_periodos', 'modalidade_aluno', 'modalidade_ies', 'gemini_modalidade',
-    'documento_ausente', 'veredito_documento',
+    'documento_ausente', 'veredito_documento', 'motivos_divergencia',
+    # Acesso e assinatura (09/10/2026).
+    'assinou_o_termo', 'renovou', 'acessou_o_portal', 'data_e_hora_do_acesso',
 ]
 
 # O mesmo, para o Contrato.
@@ -124,27 +127,28 @@ class TestRecorteDoRiaf(unittest.TestCase):
         self.assertEqual(list(saida.columns), [
             'status_ia', 'gemini_inconsistencia', 'semestre', 'bolsista', 'inscricao',
             'inscricao_anterior', 'inscricao_posterior', 'cpf', 'gemini_cpf',
-            'bolsa', 'gemini_tipo_bolsa_final', 'mudou_bolsa', 'bolsa_anterior',
-            'bolsa_posterior', 'mudou_ies', 'ies_anterior', 'ies_posterior', 'faculdade',
-            'ins_cnpj', 'gemini_cnpj_faculdade', 'ins_mantenedora', 'curso', 'gemini_curso',
-            'gemini_assinatura_aluno', 'gemini_assinatura_ies',
-            'ultimo_valor_pago_ref', 'total_bolsa_paga', 'qtd_pagtos',
-            'qtd_pagtos_retroativos_(100%)', 'matricula_sem_desc',
+            'bolsa', 'gemini_tipo_bolsa_final', 'mudou_bolsa',
+            'bolsa_anterior', 'bolsa_posterior', 'mudou_ies', 'ies_anterior',
+            'ies_posterior', 'faculdade', 'ins_cnpj', 'gemini_cnpj_faculdade',
+            'ins_mantenedora', 'curso', 'gemini_curso', 'gemini_assinatura_aluno',
+            'gemini_assinatura_ies', 'ultimo_valor_pago_ref', 'total_bolsa_paga',
+            'qtd_pagtos', 'qtd_pagtos_retroativos_(100%)', 'matricula_sem_desc',
             'gemini_matricula_sem_desc', 'matricula_sd_doc', 'matricula_com_desc',
             'gemini_matricula_com_desc', 'matricula_cd_doc', 'mensalidade_sem_desc',
             'gemini_mensalidade_sem_desc', 'msd_doc', 'mensalidade_com_desc',
-            'gemini_mensalidade_com_desc', 'mcd_doc', 'valor_beneficio',
-            'beneficio', 'soma_valor_beneficio', 'gemini_valor_beneficio', 'gemini_nome_beneficio',
+            'gemini_mensalidade_com_desc', 'mcd_doc', 'valor_beneficio', 'beneficio',
+            'soma_valor_beneficio', 'gemini_valor_beneficio', 'gemini_nome_beneficio',
             'valor_financiamento', 'gemini_valor_financiamento',
-            'soma_valor_financiamento', 'financiamento', 'gemini_nome_financiamento', 'soma_ovg_devia_pagar_sis',
-            'soma_ovg_devia_pagar_ia', 'soma_prejuizo_ovg', 'soma_economia_ovg',
-            'diagnostico_financeiro_final', 'data_coleta', 'data_coleta_atual_sistema',
-            'data_create', 'data_processamento', 'processado', 'processar', 'qtd_token',
-            'qtd_disciplinas_matriculadas', 'qtd_disciplinas_reprovadas', 'perfil',
-            'status_vinculo', 'situacao_motivo', 'observacao_situacao', 'email',
-            'gemini_email', 'telefone_1', 'telefone_2', 'data_nascimento', 'matricula',
-            'periodo_no_semestre', 'periodo_atual', 'qtd_periodos', 'modalidade_aluno',
-            'modalidade_ies', 'gemini_modalidade',
+            'soma_valor_financiamento', 'financiamento', 'gemini_nome_financiamento',
+            'soma_ovg_devia_pagar_sis', 'soma_ovg_devia_pagar_ia', 'soma_prejuizo_ovg',
+            'soma_economia_ovg', 'diagnostico_financeiro_final', 'data_coleta',
+            'data_coleta_atual_sistema', 'data_create', 'data_processamento',
+            'processado', 'processar', 'qtd_token', 'qtd_disciplinas_matriculadas',
+            'qtd_disciplinas_reprovadas', 'perfil', 'status_vinculo', 'situacao_motivo',
+            'observacao_situacao', 'email', 'gemini_email', 'telefone_1', 'telefone_2',
+            'data_nascimento', 'matricula', 'periodo_no_semestre', 'periodo_atual',
+            'qtd_periodos', 'modalidade_aluno', 'modalidade_ies', 'assinou_o_termo',
+            'renovou', 'acessou_o_portal', 'data_e_hora_do_acesso', 'gemini_modalidade',
         ])
 
     def test_toda_coluna_da_ia_do_riaf_esta_na_tela(self):
@@ -173,15 +177,17 @@ class TestRecorteDoRiaf(unittest.TestCase):
             self.assertIn(nome, COLUNAS_NO_PARQUET_RIAF, nome)
 
     def test_o_que_ficou_de_fora_e_o_que_se_espera(self):
-        """As três colunas que o RIAF tem no Parquet e que esta tela não pede.
+        """As colunas que o RIAF tem no Parquet e que esta tela não pede.
 
         `documento_ausente` e `veredito_documento` são controle do motor, não dado do
         beneficiário. `gemini_semestre` fica de fora pelo motivo do teste acima.
         """
         de_fora = [c for c in COLUNAS_NO_PARQUET_RIAF
                    if c not in COLUNAS_ANALISE_IA['RIAF']]
+        # `coleta_id` e `motivos_divergencia` também são do motor (vínculo e explicação).
         self.assertEqual(de_fora, [
-            'gemini_semestre', 'documento_ausente', 'veredito_documento',
+            'coleta_id', 'gemini_semestre', 'documento_ausente', 'veredito_documento',
+            'motivos_divergencia',
         ])
 
     def test_coluna_ainda_nao_gravada_e_pulada(self):

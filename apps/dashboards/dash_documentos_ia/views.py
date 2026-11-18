@@ -2872,7 +2872,6 @@ COLUNAS_ANALISE_IA = {
     'CONTRATO': [
         'status_ia', 'gemini_inconsistencia', 'semestre', 'gemini_semestre', 'bolsista', 'inscricao',
         'inscricao_anterior', 'inscricao_posterior', 'cpf', 'gemini_cpf',
-        'apresentou_contrato', 'apresentou_riaf', 'situacao_beneficiario', 'frequencia_atual',
         'tipo_bolsa_final', 'mudou_bolsa', 'bolsa_anterior', 'bolsa_posterior',
         'mudou_ies', 'ies_anterior', 'ies_posterior', 'faculdade', 'curso',
         'ultimo_valor_pago_ref', 'total_bolsa_paga', 'qtd_pagtos',
@@ -2892,7 +2891,6 @@ COLUNAS_ANALISE_IA = {
     'RIAF': [
         'status_ia', 'gemini_inconsistencia', 'semestre', 'bolsista', 'inscricao',
         'inscricao_anterior', 'inscricao_posterior', 'cpf', 'gemini_cpf',
-        'apresentou_contrato', 'apresentou_riaf', 'situacao_beneficiario', 'frequencia_atual',
         'tipo_bolsa_final', 'gemini_tipo_bolsa_final', 'mudou_bolsa', 'bolsa_anterior',
         'bolsa_posterior',
         'mudou_ies', 'ies_anterior', 'ies_posterior', 'faculdade', 'cnpj_ies',
@@ -2920,7 +2918,6 @@ COLUNAS_ANALISE_IA = {
     'HISTÓRICO': [
         'status_ia', 'gemini_inconsistencia', 'semestre', 'gemini_semestre', 'bolsista', 'inscricao',
         'inscricao_anterior', 'inscricao_posterior', 'cpf', 'gemini_cpf',
-        'apresentou_contrato', 'apresentou_riaf', 'situacao_beneficiario', 'frequencia_atual',
         'tipo_bolsa_final', 'mudou_bolsa', 'bolsa_anterior', 'bolsa_posterior',
         'mudou_ies', 'ies_anterior', 'ies_posterior', 'faculdade', 'curso', 'gemini_curso',
         'ultimo_valor_pago_ref', 'total_bolsa_paga', 'qtd_pagtos',
