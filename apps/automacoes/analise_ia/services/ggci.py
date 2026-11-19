@@ -20,7 +20,8 @@ import zipfile
 import io
 from contextlib import contextmanager
 from urllib.parse import quote_plus
-from sqlalchemy import create_engine
+from sqlalchemy import bindparam, create_engine, text
+from portal_ggci.sql_seguro import lista_inteiros, lista_literais
 from dotenv import load_dotenv
 
 # Carrega variáveis de ambiente (.env)
@@ -871,7 +872,7 @@ def buscar_dados_financeiros_sql(semestres_presentes, inscricoes=None):
     if not semestres_presentes: return pd.DataFrame()
     
     sems_banco = [str(x).strip().replace('-', '/') for x in semestres_presentes]
-    sems_formatados = ",".join([f"'{x}'" for x in sems_banco])
+    sems_formatados = lista_literais(sems_banco)  # SQL do Polars: escapado, ver portal_ggci/sql_seguro.py
     
     caminho_beneficiarios = os.path.join(PROJECT_ROOT, f"apps/automacoes/analise_ia/dados/tabelas_sql/PY_ggci_coleta_de_dados_beneficiarios_temp_d1{SUFIXO_TABELAS}.parquet")
     caminho_pagamentos = os.path.join(PROJECT_ROOT, f"apps/automacoes/analise_ia/dados/tabelas_sql/PY_ggci_coleta_de_dados_pagamentos_temp_d1{SUFIXO_TABELAS}.parquet")
@@ -907,9 +908,9 @@ def buscar_dados_financeiros_sql(semestres_presentes, inscricoes=None):
             b.qtd_disciplinas_matriculadas, b.qtd_disciplinas_reprovadas
         FROM beneficiarios b
         LEFT JOIN pagamentos p ON b.codigo_aluno = p.codigo_aluno AND b.semestre = p.semestre_referencia_analise
-        WHERE (b.semestre IN ({sems_formatados}) {f"OR b.codigo_aluno IN ({','.join(map(str, inscricoes))})" if inscricoes else ""})
+        WHERE (b.semestre IN ({sems_formatados}) {f"OR b.codigo_aluno IN ({lista_inteiros(inscricoes)})" if inscricoes else ""})
         GROUP BY b.codigo_aluno, b.semestre, b.tipo_bolsa, b.status_vinculo, b.data_inclusao, b.ultima_observacao, b.ultimo_motivo, b.inclusao, b.flag_deficiencia, b.sexo, b.perfil, b.data_nascimento, b.email_aluno, b.telefone_principal, b.telefone_secundario, b.periodo_atual, b.periodo_quantidade, b.matricula_ies, b.modalidade_aluno, b.modalidade_ies, b.ins_cnpj, b.ins_razao_social, b.ins_nome_fantasia, b.ins_mantenedora, b.nome_faculdade_sql, b.nome_aluno, b.cpf_aluno, b.curso_aluno, b.qtd_disciplinas_matriculadas, b.qtd_disciplinas_reprovadas
-    """
+    """  # nosec B608 - SQL do Polars (sem parâmetros): valores escapados por lista_literais/lista_inteiros
     
     try:
         start_time = time.time()
@@ -1036,7 +1037,7 @@ def buscar_dados_pagamentos_mes_a_mes_sql(semestres_presentes):
     if not semestres_presentes: return pd.DataFrame()
     
     sems_banco = [str(x).strip().replace('-', '/') for x in semestres_presentes]
-    sems_formatados = ",".join([f"'{x}'" for x in sems_banco])
+    sems_formatados = lista_literais(sems_banco)  # SQL do Polars: escapado, ver portal_ggci/sql_seguro.py
     
     caminho_pagamentos = os.path.join(PROJECT_ROOT, f"apps/automacoes/analise_ia/dados/tabelas_sql/PY_ggci_coleta_de_dados_pagamentos_temp_d1{SUFIXO_TABELAS}.parquet")
     if not os.path.exists(caminho_pagamentos):
@@ -1051,7 +1052,7 @@ def buscar_dados_pagamentos_mes_a_mes_sql(semestres_presentes):
             lan_valor_complemento, lan_valor_cancelamento
         FROM pagamentos
         WHERE semestre_referencia_analise IN ({sems_formatados})
-    """
+    """  # nosec B608 - SQL do Polars (sem parâmetros): valores escapados por lista_literais/lista_inteiros
     
     try:
         start_time = time.time()
@@ -1782,15 +1783,15 @@ def aplicar_transicoes(df, df_pag):
     if cpfs:
         try:
             engine = get_engine()
-            cpfs_str = ",".join([f"'{cpf}'" for cpf in cpfs])
-            query_max_pag = f"""
+            query_max_pag = """
             SELECT b.uni_cpf as CPF, MAX(l.lan_anomes) as max_anomes
             FROM sibu.universitarios b
             JOIN sibu.lancamento l ON b.uni_codigo = l.uni_codigo
-            WHERE b.uni_cpf IN ({cpfs_str})
+            WHERE b.uni_cpf IN :cpfs
             GROUP BY b.uni_cpf
             """
-            df_max_pag = pd.read_sql(query_max_pag, engine)
+            df_max_pag = pd.read_sql(text(query_max_pag).bindparams(bindparam('cpfs', expanding=True)),
+                                     engine, params={'cpfs': cpfs})
             for _, row in df_max_pag.iterrows():
                 cpf = str(row['CPF']).zfill(11)
                 anomes = str(row['max_anomes'])
