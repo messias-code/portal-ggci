@@ -7,6 +7,7 @@ segurança, autenticação de usuários e manipulação do banco de dados (CRUD)
 """
 
 import json
+import logging
 from django.http import JsonResponse
 from django.contrib.auth import authenticate, login, logout
 from django.shortcuts import render, redirect
@@ -16,6 +17,9 @@ from django.contrib.sessions.models import Session
 from django.utils import timezone
 from django.conf import settings
 from .models import Usuario
+from . import limite_tentativas
+
+logger = logging.getLogger(__name__)
 import re
 
 # --------------------------------------------------------------------------
@@ -43,22 +47,35 @@ def verificar_login(request):
             if usuario and '@' not in usuario:
                 usuario += '@ovg.org.br'
 
+            eh_ajax = request.content_type == 'application/json' or request.headers.get('x-requested-with') == 'XMLHttpRequest'
+
+            # Força bruta: com 5 erros em 15 min o login deste usuário fica recusado até a
+            # janela expirar, mesmo com a senha certa. Ver `limite_tentativas`.
+            if limite_tentativas.bloqueado('login', usuario):
+                if eh_ajax:
+                    return JsonResponse({'sucesso': False, 'mensagem': limite_tentativas.MENSAGEM_BLOQUEIO})
+                return redirect('home')
+
             # O Django autentica usando o campo 'username' mapeado para nosso campo 'usuario'
             user = authenticate(request, username=usuario, password=senha)
 
             if user is not None:
+                limite_tentativas.limpar('login', usuario)
                 login(request, user)
                 if request.content_type == 'application/json' or request.headers.get('x-requested-with') == 'XMLHttpRequest':
                     return JsonResponse({'sucesso': True})
                 return redirect('inicio')
             else:
+                limite_tentativas.registrar_falha('login', usuario)
                 if request.content_type == 'application/json' or request.headers.get('x-requested-with') == 'XMLHttpRequest':
                     return JsonResponse({'sucesso': False, 'mensagem': 'Usuário ou senha incorretos.'})
                 return redirect('home')
                 
-        except Exception as e:
+        except Exception:
+            # O detalhe vai para o log; a tela de login não pode expor a exceção.
+            logger.exception("Erro no login")
             if request.content_type == 'application/json' or request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return JsonResponse({'sucesso': False, 'mensagem': f'Erro interno: {str(e)}'})
+                return JsonResponse({'sucesso': False, 'mensagem': 'Erro interno. Tente novamente.'})
             return redirect('home')
             
     return JsonResponse({'sucesso': False, 'mensagem': 'Método não permitido.'})

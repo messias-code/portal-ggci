@@ -233,3 +233,21 @@ SESSION_COOKIE_AGE = 1200
 SESSION_SAVE_EVERY_REQUEST = True
 # Se fechar o navegador, também desloga
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+# ==========================================================================
+# 10. CACHE DO LIMITE DE TENTATIVAS DE SENHA
+# ==========================================================================
+# `default` continua o mesmo de antes (memória do processo). `tentativas` fica em arquivo
+# porque o gunicorn roda 4 workers: em memória, cada um teria o próprio contador.
+# A pasta `.dados/` é do próprio ambiente (fora do Git e do rsync para a produção).
+CACHES = {
+    'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'},
+    'tentativas': {
+        'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+        'LOCATION': BASE_DIR / '.dados' / 'tentativas_login',
+    },
+}
+# Nos testes o contador fica em memória: em arquivo, um teste que erra a senha deixaria
+# o usuário bloqueado para a execução seguinte.
+if 'test' in sys.argv:
+    CACHES['tentativas'] = {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+                            'LOCATION': 'tentativas-teste'}
