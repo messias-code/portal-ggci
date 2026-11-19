@@ -24,6 +24,8 @@ from urllib.parse import quote_plus
 
 from dotenv import load_dotenv
 
+from portal_ggci.sql_seguro import identificador
+
 # override=True: o motor nasce de um Popen do worker do Django, e sem isso uma senha
 # trocada no .env só valeria depois de reiniciar o servidor (mesmo motivo do Documentos IA).
 load_dotenv(override=True)
@@ -176,7 +178,7 @@ def _ler_em_blocos(conn, nome_tabela):
     blocos, ultima = [], 0
     while True:
         bloco = pd.read_sql(
-            text(f"SELECT * FROM sibu.{nome_tabela} WHERE _linha > :ultima "
+            text(f"SELECT * FROM sibu.{nome_tabela} WHERE _linha > :ultima "  # nosec B608 - nome de tabela validado por identificador(); valores vão como parâmetro
                  f"ORDER BY _linha LIMIT {LINHAS_POR_BLOCO}"),
             conn, params={"ultima": ultima},
         )
@@ -211,7 +213,8 @@ def atualizar_parquets(forcar=False, total_etapas=None):
 
     os.makedirs(PASTA_PARQUETS, exist_ok=True)
     engine = _engine()
-    nomes = [f"{base}{ENV_SUFFIX}" for base in TABELAS.values()]
+    # identificador(): estes nomes entram no SQL como nome de tabela, que não aceita parâmetro.
+    nomes = [identificador(f"{base}{ENV_SUFFIX}") for base in TABELAS.values()]
 
     # VARREDURA DE RESÍDUOS — só os nomes exatos do nosso mapa, nunca um LIKE no prefixo,
     # que apanharia a tabela de outro app no meio do SELECT dele.
@@ -219,7 +222,7 @@ def atualizar_parquets(forcar=False, total_etapas=None):
         with engine.connect() as conn:
             marcadores = ", ".join(f":n{i}" for i in range(len(nomes)))
             residuos = [linha[0] for linha in conn.execute(
-                text("SELECT TABLE_NAME FROM information_schema.TABLES "
+                text("SELECT TABLE_NAME FROM information_schema.TABLES "  # nosec B608 - nome de tabela validado por identificador(); valores vão como parâmetro
                      f"WHERE TABLE_SCHEMA = 'sibu' AND TABLE_NAME IN ({marcadores})"),
                 {f"n{i}": nome for i, nome in enumerate(nomes)},
             )]
@@ -236,7 +239,7 @@ def atualizar_parquets(forcar=False, total_etapas=None):
 
     def materializar(chave):
         base = TABELAS[chave]
-        nome_tabela = f"{base}{ENV_SUFFIX}"
+        nome_tabela = identificador(f"{base}{ENV_SUFFIX}")
         destino = caminho_parquet(chave)
         caminho_lock = os.path.join(PASTA_PARQUETS, f".lock_{nome_tabela}")
 

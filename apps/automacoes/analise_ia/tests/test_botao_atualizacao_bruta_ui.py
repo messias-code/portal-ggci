@@ -198,8 +198,9 @@ class ModalEmLinhasTests(SimpleTestCase):
 
     def test_marcar_tudo_e_limpar_globais(self):
         self.assertIn('function marcarTodosDocumentos(ligar)', self.html)
-        self.assertIn('marcarTodosDocumentos(true)', self.html)
-        self.assertIn('marcarTodosDocumentos(false)', self.html)
+        # onclick virou data-clique por causa da CSP (static/js/acoes.js)
+        self.assertIn('data-clique="marcarTodosDocumentos" data-clique-args=\'[true]\'', self.html)
+        self.assertIn('data-clique="marcarTodosDocumentos" data-clique-args=\'[false]\'', self.html)
 
 
 class SeletoresNaoDependemDoLayoutTests(SimpleTestCase):
@@ -345,7 +346,7 @@ class ToggleNaTelaTests(SimpleTestCase):
 
     def test_funcao_de_toggle_existe_e_esta_ligada_ao_botao(self):
         self.assertIn('function toggleAtualizacaoBruta(e, el)', self.html)
-        self.assertIn('onclick="toggleAtualizacaoBruta(event, this)"', self.html)
+        self.assertIn('data-clique="toggleAtualizacaoBruta" data-clique-args=\'["$evento", "$elemento"]\'', self.html)
 
     def test_ligar_marca_o_semestre(self):
         """

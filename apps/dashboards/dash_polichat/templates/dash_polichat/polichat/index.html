@@ -658,7 +658,7 @@
             </div>
         </aside>
     </div>
-<script>
+<script nonce="{{ csp_nonce }}">
     // URL do Web Worker de sincronização — precisa vir do template, já que
     // polichat.js é um arquivo estático puro e não passa pelo template engine.
     window.POLICHAT_WORKER_URL = "{% static 'dash_polichat/js/polichat-worker.js' %}?v=2";

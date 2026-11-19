@@ -245,7 +245,7 @@
         </main>
     </div>
 
-    <script>
+    <script nonce="{{ csp_nonce }}">
         const URL_API_ALTERAR_SENHA = "{% url 'api_alterar_senha' %}";
         const URL_LOGOUT_ACAO = "{% url 'logout' %}";
     </script>

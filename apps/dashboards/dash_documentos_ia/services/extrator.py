@@ -26,6 +26,7 @@ import concurrent.futures
 from playwright.sync_api import sync_playwright
 from apps.dashboards.dash_documentos_ia.services import diagnostico
 from dotenv import load_dotenv
+from portal_ggci.sql_seguro import identificador
 
 # Carrega variáveis de ambiente (.env) globais do servidor. override=True é essencial:
 # este processo nasce via subprocess.Popen a partir do worker Django (gunicorn/runserver),
@@ -808,11 +809,12 @@ def atualizar_cache_parquets(docs_selecionados=None):
                 nomes = [nome for nome, _, _ in mapa_tabelas]
                 marcadores = ", ".join([f":n{i}" for i in range(len(nomes))])
                 residuos = [linha[0] for linha in conn_limpeza.execute(
-                    text("SELECT TABLE_NAME FROM information_schema.TABLES "
+                    text("SELECT TABLE_NAME FROM information_schema.TABLES "  # nosec B608 - nome de tabela validado por identificador(); valores vão como parâmetro
                          f"WHERE TABLE_SCHEMA = 'sibu' AND TABLE_NAME IN ({marcadores})"),
                     {f"n{i}": nome for i, nome in enumerate(nomes)},
                 )]
                 for nome_residuo in residuos:
+                    identificador(nome_residuo)
                     conn_limpeza.execute(text(f"DROP VIEW IF EXISTS sibu.{nome_residuo}"))
                     conn_limpeza.execute(text(f"DROP TABLE IF EXISTS sibu.{nome_residuo}"))
                 if residuos:
@@ -830,6 +832,8 @@ def atualizar_cache_parquets(docs_selecionados=None):
                 tabelas_pendentes.append((nome, sql))
 
         def materializar(nome_tabela, caminho_sql):
+            # Entra no SQL como nome de tabela (DROP/SELECT), que não aceita parâmetro.
+            nome_tabela = identificador(nome_tabela)
             caminho_parquet = os.path.join(pasta_parquets, f"{nome_tabela}.parquet")
             caminho_lock = os.path.join(pasta_parquets, f".lock_{nome_tabela}")
             
@@ -910,7 +914,7 @@ def atualizar_cache_parquets(docs_selecionados=None):
                                 conn.execute(text(sql_content))
                         
                         # Lê os dados do MySQL para a memória (Pandas)
-                        df_pandas = pd.read_sql(f"SELECT * FROM sibu.{nome_tabela}", conn)
+                        df_pandas = pd.read_sql(f"SELECT * FROM sibu.{nome_tabela}", conn)  # nosec B608 - nome de tabela validado por identificador(); valores vão como parâmetro
                     finally:
                         # Limpa os resíduos APÓS puxar para a memória (Stateless Database)
                         conn.execute(text(f"DROP VIEW IF EXISTS sibu.{nome_tabela}"))

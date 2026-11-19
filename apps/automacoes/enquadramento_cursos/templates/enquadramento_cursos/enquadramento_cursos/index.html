@@ -314,7 +314,7 @@
         </main>
     </div>
 
-    <script>
+    <script nonce="{{ csp_nonce }}">
         // Utilizando Event Delegation para garantir funcionamento à prova de falhas,
         // independentemente do ciclo de vida do Turbo ou recarregamentos do DOM.
         if (!window.__motorCheckboxesInit) {
@@ -351,7 +351,7 @@
         }
     </script>
 
-    <script>window.CSRF_TOKEN = "{{ csrf_token }}";</script>
+    <script nonce="{{ csp_nonce }}">window.CSRF_TOKEN = "{{ csrf_token }}";</script>
     <script src="{% static 'enquadramento_cursos/js/enquadramento_cursos.js' %}?v=7"></script>
 </body>
 

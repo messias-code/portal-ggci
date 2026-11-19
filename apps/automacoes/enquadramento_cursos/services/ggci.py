@@ -6,7 +6,7 @@ import unicodedata
 import re
 import datetime
 from urllib.parse import quote_plus
-from sqlalchemy import create_engine
+from sqlalchemy import bindparam, create_engine, text
 from dotenv import load_dotenv
 
 # Carrega variáveis de ambiente (.env)
@@ -253,9 +253,8 @@ def buscar_dados_financeiros_sql(semestres_presentes):
     DB_NAME = os.getenv('SIBU_BANCO_DADOS_NAME')
     
     sems_banco = [str(x).strip().replace('-', '/') for x in semestres_presentes]
-    sems_formatados = ",".join([f"'{x}'" for x in sems_banco])
     
-    query = f"""
+    query = """
         SELECT 
             v.uni_codigo, v.semestre, v.tipo_bolsa_final, v.qtd_pagtos, v.valor_ultima_bolsa_paga AS último_valor_pago_referencia,
             v.valor_mensalidade_sem_desconto, v.valor_mensalidade_com_desconto,
@@ -266,7 +265,7 @@ def buscar_dados_financeiros_sql(semestres_presentes):
             b.uni_nome, b.uni_cpf, b.ins_nome, b.cur_nome
         FROM sibu.PY_ggci_analise_IA_completa v
         LEFT JOIN sibu.bolsistas b ON v.uni_codigo = b.uni_codigo
-        WHERE v.semestre IN ({sems_formatados})
+        WHERE v.semestre IN :sems
     """
     
     try:
@@ -275,7 +274,7 @@ def buscar_dados_financeiros_sql(semestres_presentes):
             connect_args={'connect_timeout': 30, 'read_timeout': 300} 
         )
         print("🗄️ Conectando ao banco de dados...")
-        df_sql = pd.read_sql(query, engine)
+        df_sql = pd.read_sql(text(query).bindparams(bindparam('sems', expanding=True)), engine, params={'sems': sems_banco})
         
         if not df_sql.empty:
             df_sql['uni_codigo'] = pd.to_numeric(df_sql['uni_codigo'], errors='coerce').astype('Int64')
@@ -347,14 +346,13 @@ def buscar_dados_pagamentos_mes_a_mes_sql(semestres_presentes):
     DB_NAME = os.getenv('SIBU_BANCO_DADOS_NAME')
     
     sems_banco = [str(x).strip().replace('-', '/') for x in semestres_presentes]
-    sems_formatados = ",".join([f"'{x}'" for x in sems_banco])
     
-    query = f"""
+    query = """
         SELECT 
             uni_codigo, lan_anomes, semestre, valr_bolsa,
             CD_sem_desconto, CD_com_desconto, CD_beneficios, CD_financiamentos, data_coleta
         FROM sibu.PY_ggci_analise_IA_descompactada
-        WHERE semestre IN ({sems_formatados})
+        WHERE semestre IN :sems
     """
     
     try:
@@ -363,7 +361,7 @@ def buscar_dados_pagamentos_mes_a_mes_sql(semestres_presentes):
             connect_args={'connect_timeout': 30, 'read_timeout': 300} 
         )
         pass
-        df_sql_mes = pd.read_sql(query, engine)
+        df_sql_mes = pd.read_sql(text(query).bindparams(bindparam('sems', expanding=True)), engine, params={'sems': sems_banco})
         
         if not df_sql_mes.empty:
             df_sql_mes['uni_codigo'] = pd.to_numeric(df_sql_mes['uni_codigo'], errors='coerce').astype('Int64')

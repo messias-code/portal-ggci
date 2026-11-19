@@ -16,6 +16,7 @@
         localStorage, o modo escolhido na tela de login já chega aplicado aqui.
     -->
     <script src="{% static 'js/tema.js' %}"></script>
+    <script src="{% static 'js/acoes.js' %}?v=2"></script>
 
     <link rel="stylesheet" href="{% static 'css/output.css' %}">
 
@@ -208,7 +209,7 @@
                 </a>
                 {% else %}
                 <button
-                    onclick="mostrarNotificacao('Acesso Negado: Este módulo é restrito para administradores do sistema.', false)"
+                    data-clique="mostrarNotificacao" data-clique-args='["Acesso Negado: Este módulo é restrito para administradores do sistema.", false]'
                     class="card-modulo card-modulo--a text-left group flex flex-row items-center bg-gradient-to-br from-pink-400 to-pink-500 p-5 lg:p-6 border border-white/30 rounded-[2rem] shadow-xl opacity-90 hover:opacity-100 transition-all duration-300 relative overflow-hidden w-full max-w-[28rem] min-h-[14rem] h-[14rem] cursor-not-allowed">
                     <div class="card-modulo__halo absolute -right-10 -top-10 w-48 h-48 bg-white/10 blur-3xl rounded-full transition-all">
                     </div>

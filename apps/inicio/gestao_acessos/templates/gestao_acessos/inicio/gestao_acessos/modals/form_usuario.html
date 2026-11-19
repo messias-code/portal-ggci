@@ -9,7 +9,7 @@
                 </div>
                 <h3 id="modalTitulo" class="text-2xl font-bold text-gray-800">Cadastrar Usuário</h3>
             </div>
-            <button onclick="fecharModal()" class="text-gray-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-red-50"><i class="fa-solid fa-xmark text-xl"></i></button>
+            <button data-clique="fecharModal" class="text-gray-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-red-50"><i class="fa-solid fa-xmark text-xl"></i></button>
         </div>
 
         <div class="p-8 overflow-y-auto max-h-[60vh] custom-scrollbar">
@@ -240,7 +240,7 @@
         </div>
 
         <div class="px-8 py-5 border-t border-purple-100/50 flex justify-end gap-3 bg-gray-50/50 shrink-0 relative z-10 transition-all duration-300">
-            <button onclick="fecharModal()" type="button" class="px-6 py-2.5 rounded-xl font-bold text-gray-500 bg-white border border-purple-100 hover:bg-gray-50 transition-all shadow-sm relative z-10">Cancelar</button>
+            <button data-clique="fecharModal" type="button" class="px-6 py-2.5 rounded-xl font-bold text-gray-500 bg-white border border-purple-100 hover:bg-gray-50 transition-all shadow-sm relative z-10">Cancelar</button>
             <button id="btnSalvarUsuario" type="button" class="px-6 py-2.5 rounded-xl font-bold text-white bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 shadow-lg shadow-pink-500/30 hover:scale-[1.03] transition-all relative z-10">Salvar Acessos</button>
         </div>
     </div>

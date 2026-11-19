@@ -26,6 +26,7 @@
         localStorage, o modo escolhido em qualquer tela já chega aplicado aqui.
     -->
     <script src="{% static 'js/tema.js' %}"></script>
+    <script src="{% static 'js/acoes.js' %}?v=2"></script>
 
     <link rel="stylesheet" href="{% static 'css/output.css' %}">
     <!-- Console de processamento: utilitárias que o bundle purgou + os dois temas. -->
@@ -227,7 +228,7 @@
                                     <!-- `btn-config-acao` não pinta nada no modo claro: é só o gancho
                                          estável de que o modo escuro precisa para sobrepor o roxo
                                          institucional escrito no atributo `style` abaixo. -->
-                                    <button type="button" onclick="openModalDocumentos()" class="btn-config-acao w-full flex items-center justify-center gap-2 px-4 py-2 text-white rounded-xl transition-all shadow-md font-bold text-[12px] uppercase tracking-wider group hover:opacity-90 cursor-pointer" style="background-color: #64528c;">
+                                    <button type="button" data-clique="openModalDocumentos" class="btn-config-acao w-full flex items-center justify-center gap-2 px-4 py-2 text-white rounded-xl transition-all shadow-md font-bold text-[12px] uppercase tracking-wider group hover:opacity-90 cursor-pointer" style="background-color: #64528c;">
                                         <i class="fa-solid fa-sliders group-hover:rotate-90 transition-transform duration-300"></i> Configurar Documentos
                                     </button>
                                 </div>
@@ -243,10 +244,10 @@
                                         Configure as extrações específicas dos relatórios das IES.
                                     </p>
                                     <div class="flex flex-wrap items-center gap-3">
-                                        <button type="button" onclick="openModalConfigContratos()" class="flex-1 min-w-[120px] flex items-center justify-center gap-2 px-3 py-2 border border-purple-200 bg-purple-50 text-purple-700 rounded-xl hover:bg-purple-100 transition-colors text-[12px] font-bold uppercase shadow-sm cursor-pointer" id="btn-config-contratos">
+                                        <button type="button" data-clique="openModalConfigContratos" class="flex-1 min-w-[120px] flex items-center justify-center gap-2 px-3 py-2 border border-purple-200 bg-purple-50 text-purple-700 rounded-xl hover:bg-purple-100 transition-colors text-[12px] font-bold uppercase shadow-sm cursor-pointer" id="btn-config-contratos">
                                             <i class="fa-solid fa-file-contract text-[22px]"></i> Contratos
                                         </button>
-                                        <button type="button" onclick="openModalConfigRiaf()" class="flex-1 min-w-[120px] flex items-center justify-center gap-2 px-3 py-2 border border-purple-200 bg-purple-50 text-purple-700 rounded-xl hover:bg-purple-100 transition-colors text-[12px] font-bold uppercase shadow-sm cursor-pointer" id="btn-config-riaf">
+                                        <button type="button" data-clique="openModalConfigRiaf" class="flex-1 min-w-[120px] flex items-center justify-center gap-2 px-3 py-2 border border-purple-200 bg-purple-50 text-purple-700 rounded-xl hover:bg-purple-100 transition-colors text-[12px] font-bold uppercase shadow-sm cursor-pointer" id="btn-config-riaf">
                                             <i class="fa-solid fa-file-invoice-dollar text-[22px]"></i> RIAF's
                                         </button>
                                     </div>
@@ -426,7 +427,7 @@
                                 <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mt-0.5">Defina as opções e ordem de visualização</p>
                             </div>
                         </div>
-                        <button type="button" onclick="cancelModalConfigRiaf()" class="text-gray-400 hover:text-gray-800 hover:bg-gray-200 w-8 h-8 flex items-center justify-center rounded-lg transition-colors shrink-0">
+                        <button type="button" data-clique="cancelModalConfigRiaf" class="text-gray-400 hover:text-gray-800 hover:bg-gray-200 w-8 h-8 flex items-center justify-center rounded-lg transition-colors shrink-0">
                             <i class="fa-solid fa-xmark"></i>
                         </button>
                     </div>
@@ -469,7 +470,7 @@
                     </div>
                     
                     <div class="px-6 py-4 border-t border-gray-200 flex justify-end bg-gray-50/80">
-                        <button type="button" onclick="closeModalConfigRiaf()" class="modal-confirmar px-6 py-2 text-sm font-bold text-white rounded-xl transition-all shadow-md hover:opacity-90 cursor-pointer" style="background: linear-gradient(135deg, #6B007B, #9B00B3);">
+                        <button type="button" data-clique="closeModalConfigRiaf" class="modal-confirmar px-6 py-2 text-sm font-bold text-white rounded-xl transition-all shadow-md hover:opacity-90 cursor-pointer" style="background: linear-gradient(135deg, #6B007B, #9B00B3);">
                             Concluir Seleção
                         </button>
                     </div>
@@ -489,7 +490,7 @@
                                 <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mt-0.5">Defina as opções e ordem de visualização</p>
                             </div>
                         </div>
-                        <button type="button" onclick="cancelModalConfigContratos()" class="text-gray-400 hover:text-gray-800 hover:bg-gray-200 w-8 h-8 flex items-center justify-center rounded-lg transition-colors">
+                        <button type="button" data-clique="cancelModalConfigContratos" class="text-gray-400 hover:text-gray-800 hover:bg-gray-200 w-8 h-8 flex items-center justify-center rounded-lg transition-colors">
                             <i class="fa-solid fa-xmark"></i>
                         </button>
                     </div>
@@ -552,7 +553,7 @@
                     </div>
                     
                     <div class="px-6 py-4 border-t border-gray-200 flex justify-end bg-gray-50/80">
-                        <button type="button" onclick="closeModalConfigContratos()" class="modal-confirmar px-6 py-2 text-sm font-bold text-white rounded-xl transition-all shadow-md hover:opacity-90 cursor-pointer" style="background: linear-gradient(135deg, #6B007B, #9B00B3);">
+                        <button type="button" data-clique="closeModalConfigContratos" class="modal-confirmar px-6 py-2 text-sm font-bold text-white rounded-xl transition-all shadow-md hover:opacity-90 cursor-pointer" style="background: linear-gradient(135deg, #6B007B, #9B00B3);">
                             Concluir Seleção
                         </button>
                     </div>
@@ -765,15 +766,15 @@
                         <h3>Tipos de documentações</h3>
                         <p>Escolha os documentos e os semestres da extração</p>
                     </div>
-                    <button type="button" onclick="closeModalDocumentos()" class="modal-docs-fechar" aria-label="Fechar">
+                    <button type="button" data-clique="closeModalDocumentos" class="modal-docs-fechar" aria-label="Fechar">
                         <i class="fa-solid fa-xmark"></i>
                     </button>
                 </div>
 
                 <div class="modal-docs-barra">
                     <span class="modal-docs-contador" id="docs-contador">nenhum semestre selecionado</span>
-                    <button type="button" class="btn-mini" onclick="marcarTodosDocumentos(true)">Marcar tudo</button>
-                    <button type="button" class="btn-mini" onclick="marcarTodosDocumentos(false)">Limpar</button>
+                    <button type="button" class="btn-mini" data-clique="marcarTodosDocumentos" data-clique-args='[true]'>Marcar tudo</button>
+                    <button type="button" class="btn-mini" data-clique="marcarTodosDocumentos" data-clique-args='[false]'>Limpar</button>
                 </div>
 
                 <div class="modal-docs-corpo custom-scrollbar">
@@ -785,7 +786,7 @@
                                         <strong class="doc-nome">Contrato de Prestação de Serviços Educacionais / Matrícula</strong>
                                         <span class="doc-sub">
                                             <span class="doc-contagem" data-doc="CONTRATOS">nenhum semestre</span>
-                                            <button type="button" onclick="toggleSemesters(this)" class="btn-selecionar-todos-semestres" data-doc="CONTRATOS">todos</button>
+                                            <button type="button" data-clique="toggleSemesters" data-clique-args='["$elemento"]' class="btn-selecionar-todos-semestres" data-doc="CONTRATOS">todos</button>
                                             <input type="checkbox" name="tipos_documentos" value="CONTRATOS" class="sr-only chk-doc chk-doc-master">
                                         </span>
                                     </span>
@@ -795,9 +796,9 @@
                                         <label class="chip-label">
                                             <input type="checkbox" class="sr-only chk-periodo-inline" value="2025-1" data-doc="CONTRATOS" checked>
                                             <span class="period-chip">
-                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="CONTRATOS" data-sem="2025-1" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="btn-atualizar-bruta" data-clique="toggleAtualizacaoBruta" data-clique-args='["$evento", "$elemento"]' data-doc="CONTRATOS" data-sem="2025-1" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
                                                 <span class="chip-nome">2025-1</span>
-                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                                <span class="btn-abrir-lista" data-clique="toggleTextarea" data-clique-args='["$evento", "$elemento"]' role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
                                             </span>
                                         </label>
                                     </div>
@@ -805,9 +806,9 @@
                                         <label class="chip-label">
                                             <input type="checkbox" class="sr-only chk-periodo-inline" value="2025-2" data-doc="CONTRATOS" checked>
                                             <span class="period-chip">
-                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="CONTRATOS" data-sem="2025-2" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="btn-atualizar-bruta" data-clique="toggleAtualizacaoBruta" data-clique-args='["$evento", "$elemento"]' data-doc="CONTRATOS" data-sem="2025-2" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
                                                 <span class="chip-nome">2025-2</span>
-                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                                <span class="btn-abrir-lista" data-clique="toggleTextarea" data-clique-args='["$evento", "$elemento"]' role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
                                             </span>
                                         </label>
                                     </div>
@@ -815,9 +816,9 @@
                                         <label class="chip-label">
                                             <input type="checkbox" class="sr-only chk-periodo-inline" value="2026-1" data-doc="CONTRATOS">
                                             <span class="period-chip">
-                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="CONTRATOS" data-sem="2026-1" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="btn-atualizar-bruta" data-clique="toggleAtualizacaoBruta" data-clique-args='["$evento", "$elemento"]' data-doc="CONTRATOS" data-sem="2026-1" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
                                                 <span class="chip-nome">2026-1</span>
-                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                                <span class="btn-abrir-lista" data-clique="toggleTextarea" data-clique-args='["$evento", "$elemento"]' role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
                                             </span>
                                         </label>
                                     </div>
@@ -825,9 +826,9 @@
                                         <label class="chip-label">
                                             <input type="checkbox" class="sr-only chk-periodo-inline" value="2026-2" data-doc="CONTRATOS">
                                             <span class="period-chip">
-                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="CONTRATOS" data-sem="2026-2" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="btn-atualizar-bruta" data-clique="toggleAtualizacaoBruta" data-clique-args='["$evento", "$elemento"]' data-doc="CONTRATOS" data-sem="2026-2" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
                                                 <span class="chip-nome">2026-2</span>
-                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                                <span class="btn-abrir-lista" data-clique="toggleTextarea" data-clique-args='["$evento", "$elemento"]' role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
                                             </span>
                                         </label>
                                     </div>
@@ -858,7 +859,7 @@
                                         <strong class="doc-nome">RIAF – Resumo de Informações Acadêmicas e Financeiras</strong>
                                         <span class="doc-sub">
                                             <span class="doc-contagem" data-doc="RIAF">nenhum semestre</span>
-                                            <button type="button" onclick="toggleSemesters(this)" class="btn-selecionar-todos-semestres" data-doc="RIAF">todos</button>
+                                            <button type="button" data-clique="toggleSemesters" data-clique-args='["$elemento"]' class="btn-selecionar-todos-semestres" data-doc="RIAF">todos</button>
                                             <input type="checkbox" name="tipos_documentos" value="RIAF" class="sr-only chk-doc chk-doc-master">
                                         </span>
                                     </span>
@@ -868,9 +869,9 @@
                                         <label class="chip-label">
                                             <input type="checkbox" class="sr-only chk-periodo-inline" value="2026-1" data-doc="RIAF" checked>
                                             <span class="period-chip">
-                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="RIAF" data-sem="2026-1" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="btn-atualizar-bruta" data-clique="toggleAtualizacaoBruta" data-clique-args='["$evento", "$elemento"]' data-doc="RIAF" data-sem="2026-1" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
                                                 <span class="chip-nome">2026-1</span>
-                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                                <span class="btn-abrir-lista" data-clique="toggleTextarea" data-clique-args='["$evento", "$elemento"]' role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
                                             </span>
                                         </label>
                                     </div>
@@ -878,9 +879,9 @@
                                         <label class="chip-label">
                                             <input type="checkbox" class="sr-only chk-periodo-inline" value="2026-2" data-doc="RIAF">
                                             <span class="period-chip">
-                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="RIAF" data-sem="2026-2" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="btn-atualizar-bruta" data-clique="toggleAtualizacaoBruta" data-clique-args='["$evento", "$elemento"]' data-doc="RIAF" data-sem="2026-2" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
                                                 <span class="chip-nome">2026-2</span>
-                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                                <span class="btn-abrir-lista" data-clique="toggleTextarea" data-clique-args='["$evento", "$elemento"]' role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
                                             </span>
                                         </label>
                                     </div>
@@ -888,9 +889,9 @@
                                         <label class="chip-label">
                                             <input type="checkbox" class="sr-only chk-periodo-inline" value="2027-1" data-doc="RIAF">
                                             <span class="period-chip">
-                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="RIAF" data-sem="2027-1" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="btn-atualizar-bruta" data-clique="toggleAtualizacaoBruta" data-clique-args='["$evento", "$elemento"]' data-doc="RIAF" data-sem="2027-1" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
                                                 <span class="chip-nome">2027-1</span>
-                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                                <span class="btn-abrir-lista" data-clique="toggleTextarea" data-clique-args='["$evento", "$elemento"]' role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
                                             </span>
                                         </label>
                                     </div>
@@ -898,9 +899,9 @@
                                         <label class="chip-label">
                                             <input type="checkbox" class="sr-only chk-periodo-inline" value="2027-2" data-doc="RIAF">
                                             <span class="period-chip">
-                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="RIAF" data-sem="2027-2" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="btn-atualizar-bruta" data-clique="toggleAtualizacaoBruta" data-clique-args='["$evento", "$elemento"]' data-doc="RIAF" data-sem="2027-2" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
                                                 <span class="chip-nome">2027-2</span>
-                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                                <span class="btn-abrir-lista" data-clique="toggleTextarea" data-clique-args='["$evento", "$elemento"]' role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
                                             </span>
                                         </label>
                                     </div>
@@ -931,7 +932,7 @@
                                         <strong class="doc-nome">Comprovante Outros Benefícios</strong>
                                         <span class="doc-sub">
                                             <span class="doc-contagem" data-doc="BENEFICIOS">nenhum semestre</span>
-                                            <button type="button" onclick="toggleSemesters(this)" class="btn-selecionar-todos-semestres" data-doc="BENEFICIOS">todos</button>
+                                            <button type="button" data-clique="toggleSemesters" data-clique-args='["$elemento"]' class="btn-selecionar-todos-semestres" data-doc="BENEFICIOS">todos</button>
                                             <input type="checkbox" name="tipos_documentos" value="BENEFICIOS" class="sr-only chk-doc chk-doc-master">
                                         </span>
                                     </span>
@@ -941,9 +942,9 @@
                                         <label class="chip-label">
                                             <input type="checkbox" class="sr-only chk-periodo-inline" value="2025-1" data-doc="BENEFICIOS">
                                             <span class="period-chip">
-                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="BENEFICIOS" data-sem="2025-1" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="btn-atualizar-bruta" data-clique="toggleAtualizacaoBruta" data-clique-args='["$evento", "$elemento"]' data-doc="BENEFICIOS" data-sem="2025-1" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
                                                 <span class="chip-nome">2025-1</span>
-                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                                <span class="btn-abrir-lista" data-clique="toggleTextarea" data-clique-args='["$evento", "$elemento"]' role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
                                             </span>
                                         </label>
                                     </div>
@@ -951,9 +952,9 @@
                                         <label class="chip-label">
                                             <input type="checkbox" class="sr-only chk-periodo-inline" value="2025-2" data-doc="BENEFICIOS">
                                             <span class="period-chip">
-                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="BENEFICIOS" data-sem="2025-2" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="btn-atualizar-bruta" data-clique="toggleAtualizacaoBruta" data-clique-args='["$evento", "$elemento"]' data-doc="BENEFICIOS" data-sem="2025-2" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
                                                 <span class="chip-nome">2025-2</span>
-                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                                <span class="btn-abrir-lista" data-clique="toggleTextarea" data-clique-args='["$evento", "$elemento"]' role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
                                             </span>
                                         </label>
                                     </div>
@@ -961,9 +962,9 @@
                                         <label class="chip-label">
                                             <input type="checkbox" class="sr-only chk-periodo-inline" value="2026-1" data-doc="BENEFICIOS">
                                             <span class="period-chip">
-                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="BENEFICIOS" data-sem="2026-1" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="btn-atualizar-bruta" data-clique="toggleAtualizacaoBruta" data-clique-args='["$evento", "$elemento"]' data-doc="BENEFICIOS" data-sem="2026-1" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
                                                 <span class="chip-nome">2026-1</span>
-                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                                <span class="btn-abrir-lista" data-clique="toggleTextarea" data-clique-args='["$evento", "$elemento"]' role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
                                             </span>
                                         </label>
                                     </div>
@@ -971,9 +972,9 @@
                                         <label class="chip-label">
                                             <input type="checkbox" class="sr-only chk-periodo-inline" value="2026-2" data-doc="BENEFICIOS">
                                             <span class="period-chip">
-                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="BENEFICIOS" data-sem="2026-2" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="btn-atualizar-bruta" data-clique="toggleAtualizacaoBruta" data-clique-args='["$evento", "$elemento"]' data-doc="BENEFICIOS" data-sem="2026-2" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
                                                 <span class="chip-nome">2026-2</span>
-                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                                <span class="btn-abrir-lista" data-clique="toggleTextarea" data-clique-args='["$evento", "$elemento"]' role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
                                             </span>
                                         </label>
                                     </div>
@@ -1004,7 +1005,7 @@
                                         <strong class="doc-nome">Comprovante de Financiamento</strong>
                                         <span class="doc-sub">
                                             <span class="doc-contagem" data-doc="FINANCIAMENTO">nenhum semestre</span>
-                                            <button type="button" onclick="toggleSemesters(this)" class="btn-selecionar-todos-semestres" data-doc="FINANCIAMENTO">todos</button>
+                                            <button type="button" data-clique="toggleSemesters" data-clique-args='["$elemento"]' class="btn-selecionar-todos-semestres" data-doc="FINANCIAMENTO">todos</button>
                                             <input type="checkbox" name="tipos_documentos" value="FINANCIAMENTO" class="sr-only chk-doc chk-doc-master">
                                         </span>
                                     </span>
@@ -1014,9 +1015,9 @@
                                         <label class="chip-label">
                                             <input type="checkbox" class="sr-only chk-periodo-inline" value="2025-1" data-doc="FINANCIAMENTO">
                                             <span class="period-chip">
-                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="FINANCIAMENTO" data-sem="2025-1" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="btn-atualizar-bruta" data-clique="toggleAtualizacaoBruta" data-clique-args='["$evento", "$elemento"]' data-doc="FINANCIAMENTO" data-sem="2025-1" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
                                                 <span class="chip-nome">2025-1</span>
-                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                                <span class="btn-abrir-lista" data-clique="toggleTextarea" data-clique-args='["$evento", "$elemento"]' role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
                                             </span>
                                         </label>
                                     </div>
@@ -1024,9 +1025,9 @@
                                         <label class="chip-label">
                                             <input type="checkbox" class="sr-only chk-periodo-inline" value="2025-2" data-doc="FINANCIAMENTO">
                                             <span class="period-chip">
-                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="FINANCIAMENTO" data-sem="2025-2" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="btn-atualizar-bruta" data-clique="toggleAtualizacaoBruta" data-clique-args='["$evento", "$elemento"]' data-doc="FINANCIAMENTO" data-sem="2025-2" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
                                                 <span class="chip-nome">2025-2</span>
-                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                                <span class="btn-abrir-lista" data-clique="toggleTextarea" data-clique-args='["$evento", "$elemento"]' role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
                                             </span>
                                         </label>
                                     </div>
@@ -1034,9 +1035,9 @@
                                         <label class="chip-label">
                                             <input type="checkbox" class="sr-only chk-periodo-inline" value="2026-1" data-doc="FINANCIAMENTO">
                                             <span class="period-chip">
-                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="FINANCIAMENTO" data-sem="2026-1" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="btn-atualizar-bruta" data-clique="toggleAtualizacaoBruta" data-clique-args='["$evento", "$elemento"]' data-doc="FINANCIAMENTO" data-sem="2026-1" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
                                                 <span class="chip-nome">2026-1</span>
-                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                                <span class="btn-abrir-lista" data-clique="toggleTextarea" data-clique-args='["$evento", "$elemento"]' role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
                                             </span>
                                         </label>
                                     </div>
@@ -1044,9 +1045,9 @@
                                         <label class="chip-label">
                                             <input type="checkbox" class="sr-only chk-periodo-inline" value="2026-2" data-doc="FINANCIAMENTO">
                                             <span class="period-chip">
-                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="FINANCIAMENTO" data-sem="2026-2" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="btn-atualizar-bruta" data-clique="toggleAtualizacaoBruta" data-clique-args='["$evento", "$elemento"]' data-doc="FINANCIAMENTO" data-sem="2026-2" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
                                                 <span class="chip-nome">2026-2</span>
-                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                                <span class="btn-abrir-lista" data-clique="toggleTextarea" data-clique-args='["$evento", "$elemento"]' role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
                                             </span>
                                         </label>
                                     </div>
@@ -1077,7 +1078,7 @@
                                         <strong class="doc-nome">Histórico Escolar</strong>
                                         <span class="doc-sub">
                                             <span class="doc-contagem" data-doc="HISTORICO">nenhum semestre</span>
-                                            <button type="button" onclick="toggleSemesters(this)" class="btn-selecionar-todos-semestres" data-doc="HISTORICO">todos</button>
+                                            <button type="button" data-clique="toggleSemesters" data-clique-args='["$elemento"]' class="btn-selecionar-todos-semestres" data-doc="HISTORICO">todos</button>
                                             <input type="checkbox" name="tipos_documentos" value="HISTORICO" class="sr-only chk-doc chk-doc-master">
                                         </span>
                                     </span>
@@ -1087,9 +1088,9 @@
                                         <label class="chip-label">
                                             <input type="checkbox" class="sr-only chk-periodo-inline" value="2025-1" data-doc="HISTORICO">
                                             <span class="period-chip">
-                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="HISTORICO" data-sem="2025-1" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="btn-atualizar-bruta" data-clique="toggleAtualizacaoBruta" data-clique-args='["$evento", "$elemento"]' data-doc="HISTORICO" data-sem="2025-1" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
                                                 <span class="chip-nome">2025-1</span>
-                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                                <span class="btn-abrir-lista" data-clique="toggleTextarea" data-clique-args='["$evento", "$elemento"]' role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
                                             </span>
                                         </label>
                                     </div>
@@ -1097,9 +1098,9 @@
                                         <label class="chip-label">
                                             <input type="checkbox" class="sr-only chk-periodo-inline" value="2025-2" data-doc="HISTORICO">
                                             <span class="period-chip">
-                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="HISTORICO" data-sem="2025-2" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="btn-atualizar-bruta" data-clique="toggleAtualizacaoBruta" data-clique-args='["$evento", "$elemento"]' data-doc="HISTORICO" data-sem="2025-2" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
                                                 <span class="chip-nome">2025-2</span>
-                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                                <span class="btn-abrir-lista" data-clique="toggleTextarea" data-clique-args='["$evento", "$elemento"]' role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
                                             </span>
                                         </label>
                                     </div>
@@ -1107,9 +1108,9 @@
                                         <label class="chip-label">
                                             <input type="checkbox" class="sr-only chk-periodo-inline" value="2026-1" data-doc="HISTORICO">
                                             <span class="period-chip">
-                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="HISTORICO" data-sem="2026-1" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="btn-atualizar-bruta" data-clique="toggleAtualizacaoBruta" data-clique-args='["$evento", "$elemento"]' data-doc="HISTORICO" data-sem="2026-1" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
                                                 <span class="chip-nome">2026-1</span>
-                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                                <span class="btn-abrir-lista" data-clique="toggleTextarea" data-clique-args='["$evento", "$elemento"]' role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
                                             </span>
                                         </label>
                                     </div>
@@ -1117,9 +1118,9 @@
                                         <label class="chip-label">
                                             <input type="checkbox" class="sr-only chk-periodo-inline" value="2026-2" data-doc="HISTORICO">
                                             <span class="period-chip">
-                                                <span class="btn-atualizar-bruta" onclick="toggleAtualizacaoBruta(event, this)" data-doc="HISTORICO" data-sem="2026-2" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
+                                                <span class="btn-atualizar-bruta" data-clique="toggleAtualizacaoBruta" data-clique-args='["$evento", "$elemento"]' data-doc="HISTORICO" data-sem="2026-2" role="button" tabindex="0" title="Atualização bruta: rebaixa TODAS as inscrições deste semestre (enviados e ausentes), ignorando a lista"><i class="fa-solid fa-arrows-rotate"></i></span>
                                                 <span class="chip-nome">2026-2</span>
-                                                <span class="btn-abrir-lista" onclick="toggleTextarea(event, this)" role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
+                                                <span class="btn-abrir-lista" data-clique="toggleTextarea" data-clique-args='["$evento", "$elemento"]' role="button" tabindex="0" title="Informar inscrições específicas"><i class="fa-solid fa-angle-down"></i></span>
                                             </span>
                                         </label>
                                     </div>
@@ -1146,7 +1147,7 @@
 
                 <div class="modal-docs-rodape">
                     <span class="modal-docs-resumo" id="docs-resumo"></span>
-                    <button type="button" onclick="closeModalDocumentos()" class="modal-confirmar" style="background: linear-gradient(135deg, #6B007B, #9B00B3);">
+                    <button type="button" data-clique="closeModalDocumentos" class="modal-confirmar" style="background: linear-gradient(135deg, #6B007B, #9B00B3);">
                         Concluir seleção
                     </button>
                 </div>
@@ -1157,7 +1158,7 @@
         </main>
     </div>
 
-    <script>
+    <script nonce="{{ csp_nonce }}">
         // ==========================================
         // 1. MODAL DE DOCUMENTOS E PERÍODOS
         // O QUE FAZ: Controla a abertura e fechamento do modal genérico de configuração
@@ -1351,7 +1352,7 @@
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.7/Sortable.min.js" integrity="sha384-DgmC6Xe2bSN2WjTDXzWYbUbxyhNP+NNkGDR/g78pCXV7E7rcVTGxVg0uIVCUUcBc" crossorigin="anonymous"></script>
-    <script>
+    <script nonce="{{ csp_nonce }}">
         // ==========================================
         // 2. MODAIS ESPECÍFICOS E ARRASTAR-E-SOLTAR (SORTABLE.JS)
         // O QUE FAZ: Gerencia as janelas de config de RIAF e Contratos. Injeta a funcionalidade Sortable (Drag n' Drop)
@@ -1536,7 +1537,7 @@ function openModalConfigContratos() {
             }
         };
     </script>
-    <script>
+    <script nonce="{{ csp_nonce }}">
         // ==========================================
         // 3. SISTEMA DE NOTIFICAÇÕES (TOAST)
         // O QUE FAZ: Exibe mensagens temporárias no canto da tela.
@@ -1573,14 +1574,14 @@ function openModalConfigContratos() {
     <script src="{% static 'js/motor-ocupado.js' %}?v=3"></script>
     <script src="{% static 'js/console-motor.js' %}?v=1"></script>
     <script src="{% static 'analise_ia/js/log_ia.js' %}?v=1"></script>
-    <script>window.CSRF_TOKEN = "{{ csrf_token }}";</script>
+    <script nonce="{{ csp_nonce }}">window.CSRF_TOKEN = "{{ csrf_token }}";</script>
     <script src="{% static 'analise_ia/js/analise_ia.js' %}?v=30"></script>
     <div id="toast-container" class="fixed top-5 right-5 z-[70] flex flex-col items-end"></div>
 
     <!-- Modal de Validação -->
     <div id="modal-erro-validacao" class="area-trabalho hidden items-center justify-center p-4" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 999999; display: none;">
         <!-- Overlay -->
-        <div id="modal-erro-overlay" onclick="fecharModalErro()" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(15, 23, 42, 0.5); backdrop-filter: blur(4px); transition: opacity 0.3s; opacity: 0;"></div>
+        <div id="modal-erro-overlay" data-clique="fecharModalErro" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(15, 23, 42, 0.5); backdrop-filter: blur(4px); transition: opacity 0.3s; opacity: 0;"></div>
         
         <!-- Content -->
         <div class="bg-white rounded-2xl shadow-2xl p-6 flex flex-col items-center text-center" id="modal-erro-content" style="position: relative; width: 90%; max-width: 360px; transform: scale(0.95); opacity: 0; transition: all 0.3s;">
@@ -1593,13 +1594,13 @@ function openModalConfigContratos() {
                 Você precisa escolher pelo menos um item na <strong class="text-gray-700">Base de Extração</strong> (Documentos) para que o motor tenha dados para analisar.
             </p>
             
-            <button type="button" onclick="fecharModalErro()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-3 rounded-xl transition-colors shadow-sm text-[13px] uppercase tracking-wider">
+            <button type="button" data-clique="fecharModalErro" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-3 rounded-xl transition-colors shadow-sm text-[13px] uppercase tracking-wider">
                 Ok, entendi
             </button>
         </div>
     </div>
     
-    <script>
+    <script nonce="{{ csp_nonce }}">
         // ==========================================
         // 4. MODAL DE ERRO FATAL E VALIDAÇÃO DE FRONT-END
         // O QUE FAZ: Alerta visual com fade-in e overlay borrado (backdrop) quando o usuário
@@ -1648,7 +1649,7 @@ function openModalConfigContratos() {
                         <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mt-0.5">Defina quais inscrições forçar para cada Documento e Semestre</p>
                     </div>
                 </div>
-                <button type="button" onclick="document.getElementById('modal-processados-hoje').classList.add('hidden')" class="text-gray-400 hover:text-gray-800 hover:bg-gray-200 w-8 h-8 flex items-center justify-center rounded-lg transition-colors">
+                <button type="button" data-clique="ggciOcultar" data-clique-args='["modal-processados-hoje"]' class="text-gray-400 hover:text-gray-800 hover:bg-gray-200 w-8 h-8 flex items-center justify-center rounded-lg transition-colors">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
@@ -1727,7 +1728,7 @@ function openModalConfigContratos() {
 
             </div>
             <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 shrink-0">
-                <button type="button" onclick="document.getElementById('modal-processados-hoje').classList.add('hidden')" class="w-full py-3 bg-pink-500 hover:bg-pink-600 text-white font-bold rounded-xl shadow-md transition-colors text-sm uppercase tracking-wider">
+                <button type="button" data-clique="ggciOcultar" data-clique-args='["modal-processados-hoje"]' class="w-full py-3 bg-pink-500 hover:bg-pink-600 text-white font-bold rounded-xl shadow-md transition-colors text-sm uppercase tracking-wider">
                     Confirmar Configuração
                 </button>
             </div>

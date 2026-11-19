@@ -15,6 +15,7 @@
         localStorage, o modo escolhido em qualquer tela já chega aplicado aqui.
     -->
     <script src="{% static 'js/tema.js' %}"></script>
+    <script src="{% static 'js/acoes.js' %}?v=2"></script>
 
     <link rel="stylesheet" href="{% static 'css/output.css' %}">
 
@@ -345,7 +346,7 @@
                         <!-- Filter IES -->
                         <div class="mt-6">
                             <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">INSTITUIÇÃO DE ENSINO SUPERIOR</h4>
-                            <button type="button" onclick="openModalIES()" class="w-full flex items-center justify-between bg-white border border-gray-200 rounded-xl p-2 hover:bg-gray-50 transition-all shadow-sm group">
+                            <button type="button" data-clique="openModalIES" class="w-full flex items-center justify-between bg-white border border-gray-200 rounded-xl p-2 hover:bg-gray-50 transition-all shadow-sm group">
                                 <div class="flex items-center gap-3 overflow-hidden min-w-0">
                                     <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-colors" class="docia-icone-bg">
                                         <i class="fa-solid fa-building-columns" class="docia-icone-color"></i>
@@ -376,7 +377,7 @@
                                 <p class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mt-0.5">Selecione as Mantenedoras e IES</p>
                             </div>
                         </div>
-                        <button onclick="closeModalIES()" class="text-gray-400 hover:text-gray-800 hover:bg-gray-100 w-10 h-10 flex items-center justify-center rounded-xl transition-colors shrink-0">
+                        <button data-clique="closeModalIES" class="text-gray-400 hover:text-gray-800 hover:bg-gray-100 w-10 h-10 flex items-center justify-center rounded-xl transition-colors shrink-0">
                             <i class="fa-solid fa-xmark text-xl"></i>
                         </button>
                     </div>
@@ -388,7 +389,7 @@
                                 <div class="relative group">
                                     <i class="fa-solid fa-search absolute text-gray-400 group-focus-within:text-pink-600 transition-colors" style="left: 1.25rem; top: 50%; transform: translateY(-50%);"></i>
                                     <input type="text" id="search-ies" placeholder="Pesquisar por nome da Mantenedora ou Instituição..." class="w-full pr-10 py-3 bg-white border-2 border-gray-100 rounded-xl text-sm text-gray-700 shadow-sm focus:outline-none focus:border-pink-500 transition-colors" style="padding-left: 3rem;">
-                                    <button type="button" id="clear-search-ies" onclick="document.getElementById('search-ies').value = ''; document.getElementById('search-ies').dispatchEvent(new Event('input')); document.getElementById('search-ies').focus();" class="absolute hidden text-gray-400 hover:text-pink-600 focus:outline-none transition-colors" style="right: 1.25rem; top: 50%; transform: translateY(-50%);">
+                                    <button type="button" id="clear-search-ies" data-clique="ggciLimparBusca" data-clique-args='["search-ies"]' class="absolute hidden text-gray-400 hover:text-pink-600 focus:outline-none transition-colors" style="right: 1.25rem; top: 50%; transform: translateY(-50%);">
                                         <i class="fa-solid fa-circle-xmark text-lg"></i>
                                     </button>
                                 </div>
@@ -405,7 +406,7 @@
                                     <div class="docia-marcador w-2 h-6 rounded-full" style="background-color: #846496;"></div>
                                     <h4 class="text-sm font-extrabold text-gray-800 uppercase tracking-wide">Selecionadas (<span id="count-selected-ies" class="docia-icone-color">0</span>)</h4>
                                 </div>
-                                <button onclick="clearSelectedIES()" class="docia-btn-limpar text-xs font-bold px-4 py-2 rounded-xl transition-colors border shadow-sm botao-tema">Limpar Tudo</button>
+                                <button data-clique="clearSelectedIES" class="docia-btn-limpar text-xs font-bold px-4 py-2 rounded-xl transition-colors border shadow-sm botao-tema">Limpar Tudo</button>
                             </div>
                             <div class="flex-1 overflow-y-auto p-6 space-y-2 custom-scrollbar-light" id="list-selected-ies" style="min-height: 0;">
                                 <div class="flex flex-col items-center justify-center h-full opacity-40" id="empty-selected-msg">
@@ -417,8 +418,8 @@
                     </div>
                     
                     <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 bg-white shrink-0">
-                        <button onclick="closeModalIES()" class="px-6 py-2.5 text-sm font-bold text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl transition-colors shadow-sm">Cancelar</button>
-                        <button onclick="applyIESFilter()" class="modal-confirmar px-8 py-2.5 text-sm font-bold rounded-xl transition-all shadow-md hover:opacity-90 flex items-center gap-2" class="docia-modal-gradiente text-white">
+                        <button data-clique="closeModalIES" class="px-6 py-2.5 text-sm font-bold text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl transition-colors shadow-sm">Cancelar</button>
+                        <button data-clique="applyIESFilter" class="modal-confirmar px-8 py-2.5 text-sm font-bold rounded-xl transition-all shadow-md hover:opacity-90 flex items-center gap-2" class="docia-modal-gradiente text-white">
                             <i class="fa-solid fa-check"></i> Aplicar Filtro
                         </button>
                     </div>
@@ -430,10 +431,10 @@
 
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js" integrity="sha384-o5uz97et3bErHvpKfD4Jz4n0JfhJDWABFuF4NP+iEEDxE1VwMWJ19QGR0lqFZnr6" crossorigin="anonymous"></script>
     <!-- O sendBeacon não manda header: o token CSRF vai no corpo (ver corpoCsrf). -->
-    <script>window.CSRF_TOKEN = "{{ csrf_token }}"; window.corpoCsrf = () => { const f = new FormData(); f.append('csrfmiddlewaretoken', window.CSRF_TOKEN); return f; };</script>
+    <script nonce="{{ csp_nonce }}">window.CSRF_TOKEN = "{{ csrf_token }}"; window.corpoCsrf = () => { const f = new FormData(); f.append('csrfmiddlewaretoken', window.CSRF_TOKEN); return f; };</script>
     <script src="{% static 'dash_documentos_ia/js/dash_documentos_ia.js' %}?v=20261119a"></script>
     <!--
-        Aqui havia um <script> de ~880 linhas, cópia antiga da lógica que hoje mora em
+        Aqui havia um <script nonce="{{ csp_nonce }}"> de ~880 linhas, cópia antiga da lógica que hoje mora em
         `dash_documentos_ia.js` (modal de IES, Atualizar, beacon de parada). Ele NUNCA rodou:
         redeclarava `let mantenedorasData`, já declarado pelo JS compartilhado, e o navegador
         descartava o bloco inteiro com SyntaxError. Removido em 19/11/2026 sem mudar nada na
@@ -444,7 +445,7 @@
         </main>
     </div>
     
-    <script>
+    <script nonce="{{ csp_nonce }}">
         document.addEventListener('DOMContentLoaded', () => {
             const sidebar = document.getElementById('filter-sidebar');
             const toggleBtn = document.getElementById('toggle-sidebar-btn');

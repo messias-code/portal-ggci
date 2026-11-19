@@ -934,56 +934,16 @@ function run_dev_server() {
     rm -f /tmp/cf_tunnel_dev.log "$CF_ACCEL" 2>/dev/null
     sleep 1
 
-    log_msg "info" "Ativando Tailscale Funnel para DEV (porta 8443)..."
-    priv funnel-dev
-    
+    # O DEV NÃO É PUBLICADO NA INTERNET desde 19/11/2026: sem Funnel na 8443 e sem
+    # túnel do Cloudflare. Ele roda o runserver (feito para desenvolvimento, não para
+    # ficar exposto) com DEBUG=True e as credenciais reais do SIBU. Continua acessível
+    # na rede local e pela tailnet (o firewall libera a 8080 nas duas). Sem o
+    # cf_accel_dev.json os downloads saem direto, sem redirecionar para o túnel.
     local local_ip=$(hostname -I | awk '{print $1}')
     echo -e "   ${C_CYAN}➤ Acesso Local Dev:${C_RESET} ${C_WHIT}http://${local_ip}:8080${C_RESET}"
-    echo -e "   ${C_GREE}➤ Acesso Público Dev (Tailscale):${C_RESET} ${C_WHIT}https://ggci.taila4708a.ts.net:8443${C_RESET}"
-    echo -e "   ${C_PURP}➤ Acesso Público Dev (Cloudflare):${C_RESET} ${C_WHIT}(Aguarde o link do Cloudflare...)${C_RESET}"
+    echo -e "   ${C_GREE}➤ Acesso Dev pela Tailnet:${C_RESET} ${C_WHIT}http://100.105.72.79:8080${C_RESET}"
     echo -e "   ${C_YELL}Pressione CTRL+C para derrubar apenas o DEV.${C_RESET}"
     echo ""
-    
-    log_msg "info" "Ativando Túnel Cloudflare para DEV em Background..."
-    CF_ACCEL="$CF_ACCEL" python3 - << 'EOF' &
-import subprocess, re, json, sys, os
-def main():
-    with open("/tmp/cf_tunnel_dev.log", "w") as logfile:
-        proc = subprocess.Popen(
-            ['cloudflared', 'tunnel', '--protocol', 'http2', '--url', 'http://127.0.0.1:8080'],
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
-        )
-        url = None
-        while True:
-            line = proc.stdout.readline()
-            if not line and proc.poll() is not None: break
-            if line:
-                logfile.write(line)
-                logfile.flush()
-                if not url:
-                    match = re.search(r'(https://[a-zA-Z0-9-]+\.trycloudflare\.com)', line)
-                    if match and 'api.trycloudflare.com' not in match.group(1):
-                        url = match.group(1)
-                        with open(os.environ['CF_ACCEL'], 'w') as f: json.dump({'url': url}, f)
-        proc.wait()
-if __name__ == '__main__': main()
-EOF
-    local cf_pid=$!
-
-    # Aguarda o Cloudflare gerar o link (polling dinâmico de até 15 segundos)
-    local timeout=15
-    local elapsed=0
-    while [ ! -f "$CF_ACCEL" ] && [ $elapsed -lt $timeout ]; do
-        sleep 1
-        elapsed=$((elapsed+1))
-    done
-
-    if [ -f "$CF_ACCEL" ]; then
-        local cf_url=$(python3 -c "import json, sys; print(json.load(open(sys.argv[1]))['url'])" "$CF_ACCEL")
-        echo -e "   ${C_GREE}➤ Link DEV Público (Cloudflare):${C_RESET} ${C_WHIT}${cf_url}${C_RESET}"
-    else
-        echo -e "   ${C_YELL}➤ Aviso: O túnel Cloudflare demorou para responder. Verifique /tmp/cf_tunnel_dev.log${C_RESET}"
-    fi
 
     # Gera E aplica as migrações antes de servir. Antes só gerava, em silêncio:
     # o banco de DEV ficava defasado do model e a falha só aparecia na tela.
@@ -1012,10 +972,9 @@ EOF
     local loop_pid=$!
     
     # Trap exclusivo do DEV
-    trap 'echo -e "\n   ${C_YELL}[!] Desligando Ambiente DEV e Robôs...${C_RESET}"; priv parar-dev; kill $dj_pid 2>/dev/null; kill -TERM $cf_pid 2>/dev/null; kill $loop_pid 2>/dev/null; fuser -k 8080/tcp 2>/dev/null; pkill -f "cloudflared.*8080" 2>/dev/null; rm -f /tmp/cf_tunnel_dev.log "$CF_ACCEL" 2>/dev/null; sleep 1' SIGINT
+    trap 'echo -e "\n   ${C_YELL}[!] Desligando Ambiente DEV e Robôs...${C_RESET}"; kill $dj_pid 2>/dev/null; kill $loop_pid 2>/dev/null; fuser -k 8080/tcp 2>/dev/null; pkill -f "cloudflared.*8080" 2>/dev/null; rm -f /tmp/cf_tunnel_dev.log "$CF_ACCEL" 2>/dev/null; sleep 1' SIGINT
     
     wait $dj_pid 2>/dev/null
-    wait $cf_pid 2>/dev/null
     
     trap - SIGINT
     echo ""
