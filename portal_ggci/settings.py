@@ -106,6 +106,9 @@ INSTALLED_APPS = [
 # Interceptadores de Requisição. Protegem contra ataques (CSRF, Clickjacking) 
 # e gerenciam a autenticação da sessão do usuário antes de carregar a tela.
 MIDDLEWARE = [
+    # Primeiro da lista para ver a resposta final, inclusive erros de outros middlewares.
+    # Só age com DEBUG=True (o DEV público). Ver portal_ggci/middleware_debug_publico.py.
+    'portal_ggci.middleware_debug_publico.OcultarDebugPublicoMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
