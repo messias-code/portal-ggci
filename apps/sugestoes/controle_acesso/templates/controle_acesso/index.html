@@ -493,8 +493,9 @@
         </form>
     </dialog>
 
-    <script>window.CSRF_TOKEN = "{{ csrf_token }}";</script>
+    <!-- O sendBeacon não manda header: o token CSRF vai no corpo (ver corpoCsrf). -->
+    <script>window.CSRF_TOKEN = "{{ csrf_token }}"; window.corpoCsrf = () => { const f = new FormData(); f.append('csrfmiddlewaretoken', window.CSRF_TOKEN); return f; };</script>
     <!-- Busca, reconhecimento de Inscrição/CPF, preenchimento da ficha e o botão Atualizar -->
-    <script src="{% static 'controle_acesso/js/controle_acesso.js' %}?v=20261104d"></script>
+    <script src="{% static 'controle_acesso/js/controle_acesso.js' %}?v=20261119a"></script>
 </body>
 </html>

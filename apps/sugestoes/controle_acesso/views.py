@@ -19,7 +19,6 @@ from django.contrib.auth.decorators import login_required
 from django.http import FileResponse, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.utils.timezone import localtime
-from django.views.decorators.csrf import csrf_exempt
 
 from portal_ggci.processos import abortar_execucao, execucao_viva, popen_com_limite
 
@@ -160,7 +159,6 @@ def api_anexo(request):
     return JsonResponse({'erro': 'Método inválido.'}, status=405)
 
 
-@csrf_exempt
 @login_required(login_url='/')
 def iniciar_atualizacao(request):
     """
@@ -213,13 +211,13 @@ def status_atualizacao(request, processo_id):
     return JsonResponse({'status': proc.status, 'log': proc.log, 'progresso': proc.progresso})
 
 
-@csrf_exempt
 @login_required(login_url='/')
 def parar_atualizacao(request, processo_id):
     """
     O QUE FAZ: Aborta uma atualização em andamento (botão Parar ou saída da página).
     Exige login e a permissão do card: o sendBeacon do `pagehide` leva o cookie de sessão
-    (mesma origem). Segue `csrf_exempt` porque o sendBeacon não manda header.
+    (mesma origem). O token CSRF vai no corpo do beacon (`window.corpoCsrf`), já que ele
+    não manda header.
     """
     if request.method != 'POST':
         return JsonResponse({'status': 'erro', 'msg': 'Método não permitido.'}, status=400)

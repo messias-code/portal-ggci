@@ -1154,7 +1154,7 @@
         });
         window.addEventListener('pagehide', () => {
             if (window.__processoControleAcesso) {
-                navigator.sendBeacon(urlDe(URL_PARAR, window.__processoControleAcesso));
+                navigator.sendBeacon(urlDe(URL_PARAR, window.__processoControleAcesso), window.corpoCsrf());
                 // Abortou: a próxima abertura não deve se reconectar a um processo morto
                 // (abria o console de Falha sozinho e travava o Atualizar).
                 sessionStorage.removeItem(CHAVE_SESSAO);
@@ -1165,7 +1165,7 @@
             if (!confirm('A atualização está em andamento. Tem certeza que deseja sair e cancelar o processo?')) {
                 e.preventDefault();
             } else {
-                navigator.sendBeacon(urlDe(URL_PARAR, window.__processoControleAcesso));
+                navigator.sendBeacon(urlDe(URL_PARAR, window.__processoControleAcesso), window.corpoCsrf());
                 window.__processoControleAcesso = null;
                 sessionStorage.removeItem(CHAVE_SESSAO);
             }
