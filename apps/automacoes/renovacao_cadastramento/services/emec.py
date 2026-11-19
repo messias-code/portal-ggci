@@ -36,7 +36,7 @@ class ErroEmec(Exception):
 
 def _parametro(nome, valor, codificacao='utf-8'):
     valor64 = base64.b64encode(str(valor).encode(codificacao)).decode()
-    return f"{hashlib.md5(nome.encode()).hexdigest()}/{quote(valor64, safe='')}"
+    return f"{hashlib.md5(nome.encode(), usedforsecurity=False).hexdigest()}/{quote(valor64, safe='')}"
 
 
 def url_cursos_agrupados(codigo_ies):
@@ -44,7 +44,7 @@ def url_cursos_agrupados(codigo_ies):
 
 
 def url_cursos_desagrupados(codigo_ies, nome_curso):
-    return (f"/emec/consulta-curso/listar-curso-desagrupado/{hashlib.md5(b'co_curso').hexdigest()}/0/"
+    return (f"/emec/consulta-curso/listar-curso-desagrupado/{hashlib.md5(b'co_curso', usedforsecurity=False).hexdigest()}/0/"
             f"{_parametro('co_ies', codigo_ies)}/{_parametro('ds_curso', nome_curso)}/list/1000")
 
 
