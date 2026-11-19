@@ -141,24 +141,42 @@ function wait_key() {
     read -r
 }
 
+# Pede a senha de administrador. Só as opções com alguém no teclado chamam esta
+# função (1, 5 e 13). As opções 3 e 4 sobem sozinhas no boot, dentro do tmux,
+# e por isso usam `priv` (abaixo), que nunca pede senha.
+#
+# Até 19/11/2026 a senha vinha do .env (PWD_SERVER) para o boot não travar
+# aqui. Quem lesse o .env virava root; o sudoers do ggci-priv substituiu isso.
 function check_sudo() {
     log_msg "info" "Solicitando credenciais de administrador..."
-    local pass=""
-    if [ -f .env ]; then
-        pass=$(grep -E '^PWD_SERVER=' .env | cut -d '=' -f2 | tr -d "'\"")
-    fi
-    
-    if [ -n "$pass" ]; then
-        echo "$pass" | sudo -S -v >/dev/null 2>&1
-        if [ $? -ne 0 ]; then
-            log_msg "warn" "Senha do .env falhou, solicitando manualmente..."
-            sudo -v
-        fi
-    else
-        sudo -v
-    fi
-    
+    sudo -v
     (while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null) &
+}
+
+# Ações de root sem senha: Funnel, nginx e porta 8000 (ver scripts/ggci_priv.sh).
+# `sudo -n` de propósito: se o ggci-priv ainda não foi instalado, falha na hora
+# com aviso, em vez de parar o boot num pedido de senha que ninguém vai ver.
+function priv() {
+    sudo -n /usr/local/sbin/ggci-priv "$@" && return 0
+    log_msg "warn" "ggci-priv $1 falhou ou não está instalado (rode a opção 5 para instalar)."
+    return 1
+}
+
+# Instala o ggci-priv e a regra do sudoers. Idempotente; precisa de check_sudo
+# antes. O sudoers só entra se passar no `visudo -c`: um arquivo inválido em
+# /etc/sudoers.d/ desliga o sudo da máquina inteira.
+function install_priv() {
+    local fonte="${PWD}/scripts"
+    if [ ! -f "${fonte}/ggci_priv.sh" ] || [ ! -f "${fonte}/ggci-sudoers" ]; then
+        log_msg "warn" "scripts/ggci_priv.sh ou scripts/ggci-sudoers não encontrado — ggci-priv não instalado."
+        return 0
+    fi
+    run_with_stream "
+        visudo -cf '${fonte}/ggci-sudoers' >/dev/null &&
+        sudo install -o root -g root -m 755 '${fonte}/ggci_priv.sh' /usr/local/sbin/ggci-priv &&
+        sudo install -o root -g root -m 440 '${fonte}/ggci-sudoers' /etc/sudoers.d/portal-ggci &&
+        sudo visudo -c >/dev/null
+    " "Instalando ações de root sem senha (ggci-priv + sudoers)"
 }
 
 # --------------------------------------------------------------------------
@@ -387,7 +405,6 @@ try:
     new_env += f\\\"SIBU_BANCO_DADOS_NAME='{data.get('SIBU_BANCO_DADOS_NAME', get_val('SIBU_BANCO_DADOS_NAME', 'sibu'))}'\\n\\n\\\"
 
     new_env += '# --- 6. SERVIDOR E AUTOMACOES ---\\n'
-    new_env += f\\\"PWD_SERVER='{data.get('PWD_SERVER', get_val('PWD_SERVER', ''))}'\\n\\\"
     new_env += f\\\"SSH_KEY_PASSPHRASE='{data.get('SSH_KEY_PASSPHRASE', get_val('SSH_KEY_PASSPHRASE', ''))}'\\n\\n\\\"
 
     new_env += '# --- 7. CONTA GOOGLE DO GGCI (RENOVACAO DE CADASTRAMENTO) ---\\n'
@@ -521,9 +538,11 @@ function setup_full() {
         '
     " "Configurando e ativando o Servidor Samba (Rede)"
 
-    local smb_pass=$(grep -E '^PWD_SERVER=' .env | cut -d '=' -f2 | tr -d "'\"")
-    if [ -n "$smb_pass" ]; then
-        run_with_stream "bash -c '(echo \"$smb_pass\"; echo \"$smb_pass\") | sudo smbpasswd -s -a labs'" "Configurando senha do Samba (Rede) para o usuário labs"
+    # A senha do Samba é digitada aqui, por quem roda o setup. Antes vinha do
+    # PWD_SERVER do .env, que deixou de existir em 19/11/2026.
+    if ! sudo pdbedit -L 2>/dev/null | grep -q '^labs:'; then
+        log_msg "info" "Defina a senha do Samba (Rede) para o usuário labs:"
+        sudo smbpasswd -a labs
     fi
 
     print_phase "🗄️ FASE 2: ARQUITETURA DE DADOS (MySQL)"
@@ -643,6 +662,7 @@ function setup_full() {
     # dispara a opção 3). O watchdog cobre o intervalo entre esses ciclos: se o
     # Funnel se desanunciar às 09h, sem ele o site fica fora até a virada do dia.
     install_watchdog
+    install_priv
 
     run_with_stream "grep -q 'default-shell /bin/bash' ~/.tmux.conf || echo 'set-option -g default-shell /bin/bash' >> ~/.tmux.conf" "Configurando bash como terminal padrão do Tmux"
 
@@ -778,70 +798,19 @@ function run_server() {
 
     run_with_stream "python3 manage.py collectstatic --noinput" "Compilando arquivos estáticos para o Nginx"
     
-    log_msg "info" "Configurando Nginx Proxy..."
-    check_sudo
-    cat << 'EOF' > .tmp_nginx.conf
-server {
-    listen 8000;
-    server_name _;
-    
-    # Otimizações drásticas para Tailscale e túneis
-    sendfile off;
-    tcp_nopush on;
-    tcp_nodelay on;
-    
-    # Compressão na camada HTTP.
-    # Otimizado: Comprime apenas texto e CSV. Não comprime XLSX/ZIP pois remove o Content-Length e sobrecarrega a CPU.
-    gzip on;
-    gzip_vary on;
-    gzip_proxied any;
-    gzip_comp_level 6;
-    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript text/csv application/csv;
-
-    location /protected-media/ {
-        internal;
-        alias PWD_PLACEHOLDER/;
-    }
-
-    location / {
-        proxy_pass http://127.0.0.1:8001;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto https;
-        
-        # Aumentar buffers de proxy para não gargalar pacotes
-        proxy_buffer_size 128k;
-        proxy_buffers 4 256k;
-        proxy_busy_buffers_size 256k;
-
-        proxy_connect_timeout 300s;
-        proxy_send_timeout 300s;
-        proxy_read_timeout 300s;
-        send_timeout 300s;
-    }
-
-    client_max_body_size 0;
-}
-EOF
-
-    # Substitui o placeholder pelo diretório atual
-    sed -i "s|PWD_PLACEHOLDER|$PWD|g" .tmp_nginx.conf
-
     # Garantir que o Nginx (www-data) possa acessar a pasta home do usuário 'labs'
     chmod a+x /home/labs
     
     log_msg "info" "Desligando instâncias antigas de Produção..."
-    check_sudo
+    # Gunicorn, robô e cloudflared rodam como labs: o próprio labs os encerra, sem
+    # sudo. Só o Funnel e a porta 8000 (nginx) são de root, e vão pelo `priv`.
     if [ -f /tmp/gunicorn.pid ]; then
-        sudo kill $(cat /tmp/gunicorn.pid) 2>/dev/null || true
+        kill $(cat /tmp/gunicorn.pid) 2>/dev/null || true
     fi
-    sudo pkill -f 'gunicorn.*8001' || true
-    sudo pkill -f "${PWD}/manage.py loop_polichat" || true
-    sudo pkill -f 'tailscale funnel.*8000' || true
-    sudo pkill -f 'cloudflared.*8000' || true
-    sudo fuser -k 8000/tcp 2>/dev/null || true
-    sudo fuser -k 8001/tcp 2>/dev/null || true
+    pkill -f 'gunicorn.*8001' || true
+    pkill -f "${PWD}/manage.py loop_polichat" || true
+    pkill -f 'cloudflared.*8000' || true
+    priv parar-prod
     # O endereço do túnel fica numa pasta do projeto, não em /tmp (onde qualquer processo da
     # máquina pode trocá-lo e redirecionar os downloads). As views leem o mesmo caminho.
     mkdir -p .dados && chmod 700 .dados
@@ -849,8 +818,9 @@ EOF
     rm -f /tmp/gunicorn.pid /tmp/cf_tunnel.log "$CF_ACCEL" 2>/dev/null
     sleep 2
     
-    run_with_stream "sudo rm -f /etc/nginx/sites-available/ggci /etc/nginx/sites-enabled/ggci && sudo cp .tmp_nginx.conf /etc/nginx/sites-available/portal_ggci && sudo ln -sf /etc/nginx/sites-available/portal_ggci /etc/nginx/sites-enabled/ && sudo rm -f /etc/nginx/sites-enabled/default && sudo service nginx restart" "Aplicando blindagem Nginx na porta 8000"
-    rm -f .tmp_nginx.conf
+    # A configuração do nginx mora no ggci-priv (scripts/ggci_priv.sh): gerada lá
+    # dentro, como root, para quem chama não conseguir injetar outra.
+    run_with_stream "sudo -n /usr/local/sbin/ggci-priv nginx-prod '$PWD'" "Aplicando blindagem Nginx na porta 8000"
     
     echo ""
     echo -e "   ${C_GREE}${C_BOLD}✔ O Servidor está ONLINE e Blindado!${C_RESET}"
@@ -860,9 +830,7 @@ EOF
     echo ""
     
     log_msg "info" "Abrindo Túnel Tailscale na porta 8000..."
-    sudo tailscale funnel --https=443 off >/dev/null 2>&1
-    sleep 3
-    sudo tailscale funnel --bg --yes 8000
+    priv funnel-prod
     
     sleep 2 # Dá um tempinho para o Tailscale processar
     
@@ -923,7 +891,7 @@ EOF
     # Prepara a armadilha (trap) para interceptar o CTRL+C.
     # O watchdog_marcar_prod inativa é o primeiro passo: sem ele, o desligamento
     # manual seria lido como pane e a produção voltaria sozinha em ~2 minutos.
-    trap 'echo -e "\n   ${C_YELL}[!] Desligando Servidores, Túneis e Robôs...${C_RESET}"; watchdog_marcar_prod inativa; watchdog_pausar 5; sudo pkill -f "tailscale funnel.*8000" 2>/dev/null; sudo kill $guni_pid 2>/dev/null; sudo kill -TERM $cf_pid 2>/dev/null; sudo kill $loop_pid 2>/dev/null; sudo fuser -k 8000/tcp 2>/dev/null; sudo fuser -k 8001/tcp 2>/dev/null; sudo pkill -f "cloudflared.*8000" 2>/dev/null; rm -f /tmp/gunicorn.pid /tmp/cf_tunnel.log "$CF_ACCEL" 2>/dev/null; sleep 1' SIGINT
+    trap 'echo -e "\n   ${C_YELL}[!] Desligando Servidores, Túneis e Robôs...${C_RESET}"; watchdog_marcar_prod inativa; watchdog_pausar 5; kill $guni_pid 2>/dev/null; kill -TERM $cf_pid 2>/dev/null; kill $loop_pid 2>/dev/null; priv parar-prod; pkill -f "cloudflared.*8000" 2>/dev/null; rm -f /tmp/gunicorn.pid /tmp/cf_tunnel.log "$CF_ACCEL" 2>/dev/null; sleep 1' SIGINT
     
     # Aguarda a execução dos processos
     wait $guni_pid 2>/dev/null
@@ -947,8 +915,6 @@ function run_dev_server() {
     log_msg "info" "Suas alterações no código serão recarregadas automaticamente!"
     log_msg "info" "A Produção NÃO será afetada (rodando em paralelo)."
     
-    check_sudo
-    
     # ATENÇÃO: o DEV não chama watchdog_pausar nem watchdog_retomar, e isso é
     # deliberado. Ele vive na 8080, enquanto o watchdog só observa 8000/8001 —
     # nada aqui pode confundi-lo. Mais importante: o start_server.py sobe a
@@ -957,18 +923,19 @@ function run_dev_server() {
     # estar usando para terminar de subir, e o watchdog atacaria uma pilha
     # ainda pela metade. Quem pausa é quem derruba a produção.
     log_msg "info" "Desligando instâncias antigas de DEV..."
-    sudo fuser -k 8080/tcp 2>/dev/null || true
-    sudo pkill -f 'manage.py runserver.*8080' || true
-    sudo pkill -f "${PWD}/manage.py loop_polichat" || true
-    sudo pkill -f 'cloudflared.*8080' || true
-    sudo tailscale funnel --https=8443 off >/dev/null 2>&1 || true
+    # Tudo do DEV roda como labs; só o Funnel é de root (vai pelo `priv`).
+    fuser -k 8080/tcp 2>/dev/null || true
+    pkill -f 'manage.py runserver.*8080' || true
+    pkill -f "${PWD}/manage.py loop_polichat" || true
+    pkill -f 'cloudflared.*8080' || true
+    priv parar-dev
     mkdir -p .dados && chmod 700 .dados
     local CF_ACCEL="$PWD/.dados/cf_accel_dev.json"
     rm -f /tmp/cf_tunnel_dev.log "$CF_ACCEL" 2>/dev/null
     sleep 1
 
     log_msg "info" "Ativando Tailscale Funnel para DEV (porta 8443)..."
-    sudo tailscale funnel --https=8443 --bg --yes 8080 >/dev/null 2>&1 || true
+    priv funnel-dev
     
     local local_ip=$(hostname -I | awk '{print $1}')
     echo -e "   ${C_CYAN}➤ Acesso Local Dev:${C_RESET} ${C_WHIT}http://${local_ip}:8080${C_RESET}"
@@ -1045,7 +1012,7 @@ EOF
     local loop_pid=$!
     
     # Trap exclusivo do DEV
-    trap 'echo -e "\n   ${C_YELL}[!] Desligando Ambiente DEV e Robôs...${C_RESET}"; sudo tailscale funnel --https=8443 off 2>/dev/null; sudo kill $dj_pid 2>/dev/null; sudo kill -TERM $cf_pid 2>/dev/null; sudo kill $loop_pid 2>/dev/null; sudo fuser -k 8080/tcp 2>/dev/null; sudo pkill -f "cloudflared.*8080" 2>/dev/null; rm -f /tmp/cf_tunnel_dev.log "$CF_ACCEL" 2>/dev/null; sleep 1' SIGINT
+    trap 'echo -e "\n   ${C_YELL}[!] Desligando Ambiente DEV e Robôs...${C_RESET}"; priv parar-dev; kill $dj_pid 2>/dev/null; kill -TERM $cf_pid 2>/dev/null; kill $loop_pid 2>/dev/null; fuser -k 8080/tcp 2>/dev/null; pkill -f "cloudflared.*8080" 2>/dev/null; rm -f /tmp/cf_tunnel_dev.log "$CF_ACCEL" 2>/dev/null; sleep 1' SIGINT
     
     wait $dj_pid 2>/dev/null
     wait $cf_pid 2>/dev/null
@@ -1071,12 +1038,9 @@ function sync_production() {
     log_msg "info" "Iniciando processo de deploy para Produção..."
     check_sudo
     
-    # Passphrase da CHAVE SSH — coisa distinta da senha do servidor. Até 01/09/2026
-    # este trecho lia PWD_SERVER, assumindo que fossem iguais; quando a passphrase
-    # da chave foi rotacionada, o push automático passaria a falhar em silêncio.
-    # O fallback para PWD_SERVER mantém instalações antigas funcionando.
+    # Passphrase da CHAVE SSH — coisa distinta da senha do servidor, que desde
+    # 19/11/2026 não fica mais no .env (ver check_sudo).
     local pass=$(grep -E '^SSH_KEY_PASSPHRASE=' .env | cut -d '=' -f2- | tr -d "'\"")
-    [ -z "$pass" ] && pass=$(grep -E '^PWD_SERVER=' .env | cut -d '=' -f2- | tr -d "'\"")
     if [ -n "$pass" ]; then
         echo -e "#!/bin/bash\necho \"$pass\"" > /tmp/askpass_portal.sh
         chmod +x /tmp/askpass_portal.sh
@@ -1189,6 +1153,7 @@ function sync_production() {
     # arquivo mas nunca entraria em vigor. Estamos no MAIN_DIR, já com o código
     # novo do git pull acima — é o momento certo.
     install_watchdog
+    install_priv
 
     # Mesmo motivo para o cron: o crontab guarda uma CÓPIA de scripts/cron.conf,
     # e um horário novo (os ciclos do DEV às 06:00) chegaria como arquivo e nunca
@@ -1239,12 +1204,9 @@ function user_backup() {
     
     log_msg "info" "Sincronizando backup com o Github..."
     
-    # Passphrase da CHAVE SSH — coisa distinta da senha do servidor. Até 01/09/2026
-    # este trecho lia PWD_SERVER, assumindo que fossem iguais; quando a passphrase
-    # da chave foi rotacionada, o push automático passaria a falhar em silêncio.
-    # O fallback para PWD_SERVER mantém instalações antigas funcionando.
+    # Passphrase da CHAVE SSH — coisa distinta da senha do servidor, que desde
+    # 19/11/2026 não fica mais no .env (ver check_sudo).
     local pass=$(grep -E '^SSH_KEY_PASSPHRASE=' .env | cut -d '=' -f2- | tr -d "'\"")
-    [ -z "$pass" ] && pass=$(grep -E '^PWD_SERVER=' .env | cut -d '=' -f2- | tr -d "'\"")
     if [ -n "$pass" ]; then
         echo -e "#!/bin/bash\necho \"$pass\"" > /tmp/askpass_portal.sh
         chmod +x /tmp/askpass_portal.sh
