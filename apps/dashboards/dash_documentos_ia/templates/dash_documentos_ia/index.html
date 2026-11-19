@@ -42,7 +42,7 @@
     <link rel="stylesheet" href="{% static 'css/tema-conteudo.css' %}">
     
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
     
     <!--
         Flatpickr: o calendário do filtro de data da aba Análise IA. A folha dele
@@ -50,7 +50,7 @@
         desenho inteiro do widget e precisa ganhar da folha original na cascata.
         Versão presa: sem ela um `major` novo no CDN repinta o calendário sozinho.
     -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css" integrity="sha384-RkASv+6KfBMW9eknReJIJ6b3UnjKOKC5bOUaNgIY778NFbQ8MtWq9Lr/khUgqtTt" crossorigin="anonymous">
     
     <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia.css' %}?v=20261116f">
 
@@ -2474,7 +2474,7 @@
         usa. Esta tela era a única ainda em ECharts.
     -->
     <script src="{% static 'js/motor-ocupado.js' %}?v=3"></script>
-    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts@8.9.1/dist/apexcharts.min.js" integrity="sha384-NMzs+HvEnYQxcfWzTfKMJdncu8Hl66AUsbR9Lj+7oRso0Li/Aa5I4OpzHMyesaue" crossorigin="anonymous"></script>
     <script src="{% static 'dash_documentos_ia/js/dash_documentos_ia.js' %}?v=20261103c"></script>
     <!--
         A ABA ANÁLISE IA. Depois de `dash_documentos_ia.js` porque o filtro de
@@ -2488,8 +2488,8 @@
         chamada — "Restaurar Padrão", troca de tema e a primeira consulta da aba —
         nunca chegava a ser registrado.
     -->
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/pt.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js" integrity="sha384-5JqMv4L/Xa0hfvtF06qboNdhvuYXUku9ZrhZh3bSk8VXF0A/RuSLHpLsSV9Zqhl6" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/pt.js" integrity="sha384-agbVpcY312cNMSL1b3CUo060bj9FmbwUX8HUCNSE17+jOU/en4yz3w9ro9IWVusF" crossorigin="anonymous"></script>
     <script src="{% static 'dash_documentos_ia/js/analise_ia.js' %}?v=20261116d"></script>
 </body>
 </html>
