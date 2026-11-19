@@ -305,7 +305,10 @@ VALIDADE_TOKEN_SEGUNDOS = 300
 def _url_do_tunel(request):
     """URL do túnel HTTPS ativo (gravada pelo portal.sh), ou None se não houver ou já estivermos nele."""
     import sys
-    caminho = '/tmp/cf_accel_dev.json' if 'runserver' in sys.argv else '/tmp/cf_accel.json'
+    from django.conf import settings
+    # Gravado pelo portal.sh em `.dados/` do projeto (antes em /tmp).
+    nome = 'cf_accel_dev.json' if 'runserver' in sys.argv else 'cf_accel.json'
+    caminho = os.path.join(settings.BASE_DIR, '.dados', nome)
     try:
         with open(caminho, encoding='utf-8') as arquivo:
             url = json.load(arquivo).get('url') or ''

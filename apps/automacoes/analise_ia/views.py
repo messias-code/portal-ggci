@@ -274,10 +274,10 @@ def baixar_resultado_ia(request, processo_id):
             
             # --- Estratégia de Aceleração por Cloudflare (Se existir conf json) ---
             try:
-                if 'runserver' in sys.argv:
-                    caminho_cf = '/tmp/cf_accel_dev.json'
-                else:
-                    caminho_cf = '/tmp/cf_accel.json'
+                # Gravado pelo portal.sh em `.dados/` do projeto (antes em /tmp, que
+                # qualquer processo da máquina podia trocar).
+                nome_cf = 'cf_accel_dev.json' if 'runserver' in sys.argv else 'cf_accel.json'
+                caminho_cf = os.path.join(settings.BASE_DIR, '.dados', nome_cf)
                     
                 if os.path.exists(caminho_cf):
                     with open(caminho_cf, 'r') as arquivo_conf:
