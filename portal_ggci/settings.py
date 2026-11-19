@@ -51,6 +51,14 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # preload de propósito: o domínio é do Tailscale e do Cloudflare, não nosso.
 SECURE_HSTS_SECONDS = 60 * 60 * 24 * 30
 
+# Cookies de sessão e CSRF só viajam por HTTPS na produção: sem isso, quem estiver na mesma rede
+# e pegar um pedido em http copia a sessão. Ligado em 19/11/2026 porque os logs do nginx de 16 dias
+# mostraram 100% dos acessos pelos túneis (HTTPS); ninguém entrava por http://IP:8000, onde o
+# login deixaria de funcionar. localhost/127.0.0.1 seguem funcionando (o navegador os trata como
+# seguros). No DEV fica desligado: ele é usado por http://IP:8080.
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+
 # Define quais domínios/IPs podem acessar o portal (Ex: ['192.168.0.10', 'ovg.org.br']).
 # Vazio durante o desenvolvimento local.
 # Padrão restrito à própria máquina; os domínios de verdade vêm do .env.
