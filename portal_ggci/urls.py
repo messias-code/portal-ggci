@@ -9,13 +9,21 @@ que processarão e devolverão a página ou os dados corretos.
 
 from django.contrib import admin
 from django.urls import path, include
-from django.views.generic import TemplateView
+from django.templatetags.static import static
+from django.utils.functional import lazy
+from django.views.generic import RedirectView, TemplateView
 
 from apps.inicio.gestao_acessos import views as gestao_acessos_views
 from portal_ggci import execucoes
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+
+    # Ícone da aba do navegador. Todo navegador pede `/favicon.ico` sozinho quando a
+    # página não declara ícone — e nenhuma das telas do portal declara (não há template
+    # base). Uma rota aqui cobre todas de uma vez, inclusive o login. O `lazy` é para o
+    # `static()` resolver a URL com hash do manifest só na hora do pedido.
+    path('favicon.ico', RedirectView.as_view(url=lazy(static, str)('img/favicon.png'))),
     
     # Login e Logout
     path('', TemplateView.as_view(template_name='gestao_acessos/login/index.html'), name='home'),
@@ -43,11 +51,11 @@ urlpatterns = [
     path('automacoes/', include('apps.automacoes.menu_automacoes.urls')),
     path('automacoes/analise-ia/', include('apps.automacoes.analise_ia.urls')),
     path('automacoes/enquadramento-cursos/', include('apps.automacoes.enquadramento_cursos.urls')),
+    path('automacoes/renovacao-cadastramento/', include('apps.automacoes.renovacao_cadastramento.urls')),
 
     # Dashboards
     path('dashboards/', include('apps.dashboards.menu_dashboards.urls')),
     path('dashboards/polichat/', include('apps.dashboards.dash_polichat.urls')),
-    path('dashboards/polichat-financeiro/', include('apps.dashboards.dash_polichat_financeiro.urls')),
     path('dashboards/documentos-ia/', include('apps.dashboards.dash_documentos_ia.urls')),
 
     # Sugestões

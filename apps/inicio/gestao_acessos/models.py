@@ -34,6 +34,7 @@ class Usuario(AbstractBaseUser):
     
     p_analise_ia = models.BooleanField(default=False)
     p_enquadramento_cursos = models.BooleanField(default=False)
+    p_renovacao_cadastramento = models.BooleanField(default=False)
 
     p_sugestoes = models.BooleanField(default=False)
     p_controle_acesso = models.BooleanField(default=False)
@@ -41,7 +42,6 @@ class Usuario(AbstractBaseUser):
     p_dash_polichat = models.BooleanField(default=False)
     p_gestao_polichat = models.BooleanField(default=False)
     p_dash_documentos_ia = models.BooleanField(default=False)
-    p_polichat_financeiro = models.BooleanField(default=False)
 
     # Controles internos do Django
     is_active = models.BooleanField(default=True)

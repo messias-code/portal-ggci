@@ -248,7 +248,9 @@ class TestApiResumoIES(TestCase):
         self.url = reverse("dash_documentos_ia_resumo_ies")
 
     def test_exige_login(self):
-        self.assertEqual(self.cliente.get(self.url).status_code, 302)
+        # Rota /api/: o SingleSessionMiddleware troca o 302 do login por JSON 401 (o fetch da
+        # tela não sabe seguir redirecionamento para HTML).
+        self.assertEqual(self.cliente.get(self.url).status_code, 401)
 
     def test_recusa_quem_nao_tem_permissao(self):
         self.cliente.force_login(self.sem_acesso)
@@ -333,20 +335,16 @@ class TestPecasDaVistaNaTela(TestCase):
             r' sr-only" checked>', self.html)
         self.assertEqual(marcados, ['CONTRATO'])
 
-    def test_a_ordenacao_mora_no_cabecalho_da_tabela_e_so_ali(self):
+    def test_a_ordenacao_tem_a_barra_e_o_cabecalho(self):
         """
-        Houve uma seção "Ordenar por" na barra, com as perguntas nomeadas (menor % de
-        pendência, maior nº de pendências...). Ela saiu: o cabeçalho de cada coluna já
-        ordena, e os cinco chips do topo também. Três caminhos para o mesmo gesto é um a
-        mais do que a tela precisa — e o da barra era o único que exigia abrir a barra.
-
-        A tabela abre em ordem ALFABÉTICA e é para lá que "Restaurar Padrão" volta;
-        ordenar é gesto sobre a tabela, não recorte guardado na barra.
+        Em 02/09/2026 a seção "Ordenar por" saiu da barra, e o cabeçalho ficou como único
+        caminho. Ela VOLTOU em 05/10/2026 (f140ce1, "adiciona controles de ordenação para a
+        tabela por IES"), com o critério e a direção. Os dois caminhos convivem: a seção da
+        barra (escondida fora da vista por IES) e o clique no cabeçalho, delegado na linha.
+        A tabela abre em ordem ALFABÉTICA.
         """
-        self.assertNotIn('filtro-ordem', self.html)
-        self.assertNotIn('filter-ordem-ies', self.html)
-        # E o caminho que restou continua de pé: o cabeçalho é escrito pelo JS dentro
-        # desta linha, e é nela que o clique de ordenação é delegado.
+        self.assertIn('id="filtro-ordem-ies"', self.html)
+        self.assertIn('data-valor="ies" class="btn-ordem-opt docia-ordem-opcao docia-ordem-opcao--ativa"', self.html)
         self.assertIn('id="ies-cabecalho"', self.html)
 
     def test_os_cinco_valores_sao_os_rotulos_que_a_api_conhece(self):
@@ -487,7 +485,9 @@ class TestExportacaoDaVisaoIES(TestCase):
         self.url = reverse("dash_documentos_ia_exportar_ies")
 
     def test_exige_login(self):
-        self.assertEqual(self.cliente.get(self.url).status_code, 302)
+        # Rota /api/: o SingleSessionMiddleware troca o 302 do login por JSON 401 (o fetch da
+        # tela não sabe seguir redirecionamento para HTML).
+        self.assertEqual(self.cliente.get(self.url).status_code, 401)
 
     def test_recusa_quem_nao_tem_permissao(self):
         self.cliente.force_login(self.sem_acesso)

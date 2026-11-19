@@ -11,10 +11,10 @@ import sys
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
+from django.core import signing
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
-from django.views.decorators.csrf import csrf_exempt
 
 from .models import ProcessamentoAnaliseIA
 from portal_ggci.processos import abortar_execucao, execucao_viva, popen_com_limite
@@ -22,6 +22,11 @@ from portal_ggci.processos import abortar_execucao, execucao_viva, popen_com_lim
 # O front reconhece esta frase exata e a troca pelo selo "ABORTADO PELO USUÁRIO".
 AVISO_ABORTADO = "\n\n🚨 [SISTEMA] Processo de IA abortado manualmente pelo usuário!"
 STATUS_ATIVOS = ('PENDENTE', 'EXTRAINDO', 'CONSOLIDANDO', 'CRUZANDO')
+
+
+def _tem_permissao(user):
+    """A mesma regra da tela (`analise_ia_view`): p_analise_ia ou o admin."""
+    return getattr(user, 'p_analise_ia', False) or user.usuario == 'admin@ovg.org.br'
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TRAVA ENTRE OS DOIS MOTORES
@@ -76,7 +81,7 @@ def _bloqueio_do_outro_motor(request, eu):
     return None
 
 
-@csrf_exempt
+@login_required(login_url='/')
 def iniciar_processamento_ia(request):
     """
     O QUE FAZ: Inicia um novo processamento em background (Motor de IA).
@@ -90,6 +95,8 @@ def iniciar_processamento_ia(request):
     RETORNO: JsonResponse com o status e ID do processo gerado.
     EFEITOS COLATERAIS: Cria arquivos no disco, inicia novo processo no SO, insere linha no BD.
     """
+    if not _tem_permissao(request.user):
+        return JsonResponse({'status': 'erro', 'mensagem': 'Acesso negado.'}, status=403)
     if request.method == 'POST':
         bloqueio = _bloqueio_do_outro_motor(request, eu='analise_ia')
         if bloqueio is not None:
@@ -164,7 +171,9 @@ def iniciar_processamento_ia(request):
     return JsonResponse({'status': 'erro', 'mensagem': 'Método inválido'}, status=400)
 
 
-@csrf_exempt
+# Com CSRF: o botão Parar manda `X-CSRFToken`, e o `sendBeacon` da saída da página (que não
+# aceita header) manda o `csrfmiddlewaretoken` num FormData — ver `analise_ia.js`.
+@login_required(login_url='/')
 def parar_processamento_ia(request, processo_id):
     """
     O QUE FAZ: Aborta forçosamente um processamento em andamento.
@@ -174,6 +183,8 @@ def parar_processamento_ia(request, processo_id):
     PARÂMETROS: request, processo_id (int)
     RETORNO: JsonResponse confirmando a parada — quando ela chega, o motor já morreu.
     """
+    if not _tem_permissao(request.user):
+        return JsonResponse({'status': 'erro', 'mensagem': 'Acesso negado.'}, status=403)
     if request.method == 'POST':
         parou = abortar_execucao(ProcessamentoAnaliseIA, 'executar_motor_ia', processo_id, AVISO_ABORTADO)
         for outro_id in (ProcessamentoAnaliseIA.objects
@@ -188,12 +199,15 @@ def parar_processamento_ia(request, processo_id):
     return JsonResponse({'status': 'erro', 'mensagem': 'Método inválido'}, status=400)
 
 
+@login_required(login_url='/')
 def checar_status_ia(request, processo_id):
     """
     O QUE FAZ: Retorna o status atual de um processamento.
     POR QUÊ EXISTE: Para ser consumido via long-polling (AJAX) pelo front-end.
     COMO FUNCIONA: Busca o ID no banco e retorna seus campos.
     """
+    if not _tem_permissao(request.user):
+        return JsonResponse({'status': 'erro', 'mensagem': 'Acesso negado.'}, status=403)
     try:
         processo = ProcessamentoAnaliseIA.objects.get(id=processo_id)
         if processo.status in STATUS_ATIVOS and not execucao_viva('executar_motor_ia', processo_id):
@@ -217,6 +231,13 @@ def checar_status_ia(request, processo_id):
         return JsonResponse({'status': 'erro', 'mensagem': 'Processo não encontrado'}, status=404)
 
 
+# O acelerador redireciona o download para o túnel HTTPS do Cloudflare, outro domínio, onde a
+# pessoa não tem sessão. O redirecionamento leva um token assinado que vale 5 minutos e só abre
+# este processo — o mesmo desenho de `renovacao_cadastramento.views.api_baixar`.
+SAL_DOWNLOAD = 'analise_ia.baixar'
+VALIDADE_TOKEN_SEGUNDOS = 300
+
+
 def baixar_resultado_ia(request, processo_id):
     """
     O QUE FAZ: Fornece o arquivo Excel final gerado.
@@ -225,7 +246,21 @@ def baixar_resultado_ia(request, processo_id):
       1. Tenta redirecionar para um servidor externo Cloudflare se configurado (Acelerador).
       2. Em falha/local, delega o envio do payload ao Nginx através do header `X-Accel-Redirect` (altíssima performance).
     PARÂMETROS: request, processo_id (int)
+    ACESSO: sessão logada, ou o token `t` que o próprio redirecionamento ao túnel acrescenta.
     """
+    token = request.GET.get('t')
+    if token:
+        try:
+            if signing.loads(token, salt=SAL_DOWNLOAD, max_age=VALIDADE_TOKEN_SEGUNDOS) != processo_id:
+                raise signing.BadSignature
+        except signing.BadSignature:   # inclui o token vencido
+            return JsonResponse({'status': 'erro', 'mensagem': 'Link de download vencido. Clique em Baixar de novo.'},
+                                status=403)
+    elif not request.user.is_authenticated:
+        return redirect('/')
+    elif not _tem_permissao(request.user):
+        return JsonResponse({'status': 'erro', 'mensagem': 'Acesso negado.'}, status=403)
+
     try:
         processo = ProcessamentoAnaliseIA.objects.get(id=processo_id)
         
@@ -239,10 +274,10 @@ def baixar_resultado_ia(request, processo_id):
             
             # --- Estratégia de Aceleração por Cloudflare (Se existir conf json) ---
             try:
-                if 'runserver' in sys.argv:
-                    caminho_cf = '/tmp/cf_accel_dev.json'
-                else:
-                    caminho_cf = '/tmp/cf_accel.json'
+                # Gravado pelo portal.sh em `.dados/` do projeto (antes em /tmp, que
+                # qualquer processo da máquina podia trocar).
+                nome_cf = 'cf_accel_dev.json' if 'runserver' in sys.argv else 'cf_accel.json'
+                caminho_cf = os.path.join(settings.BASE_DIR, '.dados', nome_cf)
                     
                 if os.path.exists(caminho_cf):
                     with open(caminho_cf, 'r') as arquivo_conf:
@@ -251,8 +286,9 @@ def baixar_resultado_ia(request, processo_id):
                         host_atual = request.get_host()
                         
                         # Prevenção de Loop de Redirecionamento e bug de extração da URL
-                        if url_cf and "api.trycloudflare.com" not in url_cf and "trycloudflare.com" not in host_atual:
-                            return redirect(f"{url_cf}/automacoes/analise-ia/api/baixar-resultado/{processo_id}/")
+                        if not token and url_cf and "api.trycloudflare.com" not in url_cf and "trycloudflare.com" not in host_atual:
+                            token = signing.dumps(processo_id, salt=SAL_DOWNLOAD)
+                            return redirect(f"{url_cf}/automacoes/analise-ia/api/baixar-resultado/{processo_id}/?t={token}")
             except Exception:
                 pass  # Segue para o envio local em caso de erro
 

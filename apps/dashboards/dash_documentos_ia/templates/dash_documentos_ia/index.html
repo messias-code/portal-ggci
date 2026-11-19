@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Documentos IA - Dashboards</title>
+    <link rel="icon" type="image/png" href="{% static 'img/favicon.png' %}?v=1">
     
     <!--
         MOTOR DE TEMAS — precisa vir antes de tudo.
@@ -27,7 +28,7 @@
 
     <link rel="stylesheet" href="{% static 'css/output.css' %}">
     <!-- Console de atualização: utilitárias que o bundle purgou + os dois temas. -->
-    <link rel="stylesheet" href="{% static 'css/console.css' %}?v=1">
+    <link rel="stylesheet" href="{% static 'css/console.css' %}?v=2">
     <!-- Aviso de motor ocupado: impede as duas atualizações de brigarem pelo SIBU. -->
     <link rel="stylesheet" href="{% static 'css/motor-ocupado.css' %}?v=2">
 
@@ -41,7 +42,7 @@
     <link rel="stylesheet" href="{% static 'css/tema-conteudo.css' %}">
     
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
     
     <!--
         Flatpickr: o calendário do filtro de data da aba Análise IA. A folha dele
@@ -49,12 +50,12 @@
         desenho inteiro do widget e precisa ganhar da folha original na cascata.
         Versão presa: sem ela um `major` novo no CDN repinta o calendário sozinho.
     -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css" integrity="sha384-RkASv+6KfBMW9eknReJIJ6b3UnjKOKC5bOUaNgIY778NFbQ8MtWq9Lr/khUgqtTt" crossorigin="anonymous">
     
-    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia.css' %}?v=20261026e">
+    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia.css' %}?v=20261116f">
 
     <!-- Camada escura desta tela: o que os arquivos compartilhados não alcançam -->
-    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia-eleitoral.css' %}?v=20261026e">
+    <link rel="stylesheet" href="{% static 'dash_documentos_ia/css/dash_documentos_ia-eleitoral.css' %}?v=20261116f">
 </head>
 
 <body class="docia-corpo grid-bg bg-[#f8f6fb] text-gray-800 fixed inset-0 p-4 lg:p-6 flex transition-colors duration-500 overflow-hidden">
@@ -303,13 +304,13 @@
                                     é uma planilha comum. Ela leva os MESMOS filtros da tela.
                                 -->
                                 <button type="button" id="btn-exportar"
-                                        class="h-8 px-3 shrink-0 flex items-center justify-center gap-2 border rounded-lg transition-colors shadow-sm botao-tema botao-tema--excel"
+                                        class="tela-voltar h-8 px-3 shrink-0 bg-white font-bold rounded-xl transition-all shadow-sm border flex items-center justify-center gap-2 botao-tema botao-tema--excel"
                                        >
                                     <i class="fa-solid fa-file-excel text-xs"></i>
                                     <span class="text-[10px] font-bold uppercase tracking-wider leading-none">Excel</span>
                                 </button>
                                 <button type="button" id="btn-expandir"
-                                        class="h-8 w-8 shrink-0 flex items-center justify-center border rounded-lg transition-colors shadow-sm botao-tema"
+                                        class="tela-voltar h-8 w-8 shrink-0 bg-white hover:bg-pink-50 text-pink-600 font-bold rounded-xl transition-all shadow-sm border border-pink-100 flex items-center justify-center botao-tema"
                                         aria-pressed="false">
                                     <i class="fa-solid fa-expand text-xs" id="icone-expandir"></i>
                                 </button>
@@ -426,13 +427,13 @@
                         Leva os MESMOS filtros da tela.
                     -->
                     <button type="button" id="btn-exportar-ies"
-                            class="h-8 px-3 shrink-0 flex items-center justify-center gap-2 border rounded-lg transition-colors shadow-sm botao-tema botao-tema--excel"
+                            class="tela-voltar h-8 px-3 shrink-0 bg-white font-bold rounded-xl transition-all shadow-sm border flex items-center justify-center gap-2 botao-tema botao-tema--excel"
                            >
                         <i class="fa-solid fa-file-excel text-xs"></i>
                         <span class="text-[10px] font-bold uppercase tracking-wider leading-none">Excel</span>
                     </button>
                     <button type="button" id="btn-expandir-ies"
-                            class="h-8 w-8 shrink-0 flex items-center justify-center border rounded-lg transition-colors shadow-sm botao-tema"
+                            class="tela-voltar h-8 w-8 shrink-0 bg-white hover:bg-pink-50 text-pink-600 font-bold rounded-xl transition-all shadow-sm border border-pink-100 flex items-center justify-center botao-tema"
                             aria-pressed="false">
                         <i class="fa-solid fa-expand text-xs" id="icone-expandir-ies"></i>
                     </button>
@@ -905,7 +906,7 @@
                                         filtros da tela.
                                     -->
                                     <button type="button" id="ia-btn-exportar"
-                                            class="h-8 px-3 shrink-0 flex items-center justify-center gap-2 border rounded-lg transition-colors shadow-sm botao-tema botao-tema--excel">
+                                            class="tela-voltar h-8 px-3 shrink-0 bg-white font-bold rounded-xl transition-all shadow-sm border flex items-center justify-center gap-2 botao-tema botao-tema--excel">
                                         <i class="fa-solid fa-file-excel text-xs"></i>
                                         <span class="text-[10px] font-bold uppercase tracking-wider leading-none">Excel</span>
                                     </button>
@@ -916,7 +917,7 @@
                                         a janela, porque a casca tem `backdrop-filter`.
                                     -->
                                     <button type="button" id="ia-btn-expandir"
-                                            class="h-8 w-8 shrink-0 flex items-center justify-center border rounded-lg transition-colors shadow-sm botao-tema"
+                                            class="tela-voltar h-8 w-8 shrink-0 bg-white hover:bg-pink-50 text-pink-600 font-bold rounded-xl transition-all shadow-sm border border-pink-100 flex items-center justify-center botao-tema"
                                             aria-pressed="false" aria-label="Expandir a tabela">
                                         <i class="fa-solid fa-expand text-xs" id="ia-icone-expandir"></i>
                                     </button>
@@ -1630,13 +1631,20 @@
                             </div>
                         </section>
                         <!--
-                            DATA DE PROCESSAMENTO — UM DIA, e só o dia.
+                            DATA DE PROCESSAMENTO — UM PERÍODO, de dia a dia.
 
                             A coluna `data_processamento` guarda data E hora
                             ("09/02/2026 17:54:06"), mas a pergunta que se faz aqui é
-                            sempre de dia inteiro: "o que a IA leu na segunda?". Hora
-                            exigiria saber o minuto de uma execução que roda em lote —
-                            não existe pergunta assim nesta tela.
+                            sempre de dia inteiro: "o que a IA leu na segunda?", ou
+                            "de segunda a sexta?". Hora exigiria saber o minuto de uma
+                            execução que roda em lote — não existe pergunta assim nesta
+                            tela.
+
+                            É UM PERÍODO, com as duas pontas inclusivas: o calendário
+                            (flatpickr em `mode: 'range'`) acende o início no primeiro
+                            clique e o fim no segundo, e o campo mostra as duas datas
+                            ("09/02/2026 até 15/02/2026"). Um dia só é o mesmo dia nas
+                            duas pontas — dois cliques nele, ou um clique e OK.
 
                             UM CAMPO, e não uma grade de caixinhas como as seções
                             vizinhas: são centenas de dias distintos no arquivo, e
@@ -1645,15 +1653,16 @@
 
                             O `<input type="date">` CONTINUA AQUI, mas quem se vê na
                             tela é o campo gêmeo que o flatpickr põe ao lado (`altInput`):
-                            este guarda a data em ISO, que é o formato que a view compara,
-                            e o gêmeo mostra dd/mm/aaaa e abre o calendário. O popup do
+                            o período aplicado vive no JS em ISO (`data_proc_inicio` e
+                            `data_proc_fim`, que é o que a view compara), e o gêmeo
+                            mostra dd/mm/aaaa e abre o calendário. O popup do
                             nativo é desenhado pelo NAVEGADOR e não aceita CSS nenhum —
                             nem borda, nem corpo de letra, nem rodapé com botão —, e era
                             por isso que a seleção não se parecia com o resto da tela.
 
                             NASCE VAZIO, e vazio é "todos os dias". O `placeholder`
                             daqui é o que o campo diz em repouso; em foco ele vira o
-                            molde `dd/mm/aaaa`, trocado pelo JS — o `type="date"` não
+                            molde `dd/mm/aaaa até dd/mm/aaaa`, trocado pelo JS — o `type="date"` não
                             aceitava `placeholder` nenhum, era o navegador que desenhava
                             o molde, e não havia como dizer outra coisa no lugar.
 
@@ -1670,8 +1679,8 @@
                             <div class="docia-campo-data" id="campo-data-proc-ia">
                                 <i class="fa-regular fa-calendar docia-campo-data__icone" aria-hidden="true"></i>
                                 <input type="date" id="filtro-data-proc-ia" class="docia-campo-data__entrada"
-                                       placeholder="Selecione uma data"
-                                       aria-label="Filtrar pela data de processamento">
+                                       placeholder="Selecione o período"
+                                       aria-label="Filtrar por período da data de processamento">
                                 <i class="fa-solid fa-chevron-down docia-campo-data__seta" aria-hidden="true"></i>
                             </div>
                         </section>
@@ -2107,7 +2116,7 @@
                             <div class="docia-marcador w-2 h-6 rounded-full" style="background-color: #6B007B;"></div>
                             <h4 class="text-sm font-extrabold text-gray-800 uppercase tracking-wide">Selecionadas (<span id="ia-inc-contagem" class="docia-icone-color">0</span>)</h4>
                         </div>
-                        <button type="button" id="ia-inc-limpar" class="docia-btn-limpar text-xs font-bold px-4 py-2 rounded-xl transition-colors border shadow-sm botao-tema">Limpar Tudo</button>
+                        <button type="button" id="ia-inc-limpar" class="tela-voltar docia-btn-limpar text-xs font-bold px-4 py-2 bg-white hover:bg-pink-50 text-pink-600 rounded-xl transition-all shadow-sm border border-pink-100 botao-tema">Limpar Tudo</button>
                     </div>
                     <div class="flex-1 overflow-y-auto p-6 space-y-2 custom-scrollbar-light" id="ia-inc-selecionadas" style="min-height: 0;">
                         <!-- Montado pelo JS -->
@@ -2116,7 +2125,7 @@
             </div>
 
             <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 bg-white shrink-0">
-                <button type="button" id="ia-inc-cancelar" class="px-6 py-2.5 text-sm font-bold border rounded-xl transition-colors shadow-sm botao-tema">Cancelar</button>
+                <button type="button" id="ia-inc-cancelar" class="tela-voltar px-6 py-2.5 text-sm font-bold bg-white hover:bg-pink-50 text-pink-600 rounded-xl transition-all shadow-sm border border-pink-100 botao-tema">Cancelar</button>
                 <button type="button" id="ia-inc-aplicar" class="modal-confirmar px-8 py-2.5 text-sm font-bold rounded-xl transition-all shadow-md hover:opacity-90 flex items-center gap-2 docia-modal-gradiente text-white">
                     <i class="fa-solid fa-check"></i> Aplicar
                 </button>
@@ -2164,7 +2173,7 @@
                             <div class="docia-marcador w-2 h-6 rounded-full" style="background-color: #6B007B;"></div>
                             <h4 class="text-sm font-extrabold text-gray-800 uppercase tracking-wide">Selecionadas (<span id="count-selected-ies" class="docia-icone-color">0</span>)</h4>
                         </div>
-                        <button onclick="clearSelectedIES()" class="docia-btn-limpar text-xs font-bold px-4 py-2 rounded-xl transition-colors border shadow-sm botao-tema">Limpar Tudo</button>
+                        <button onclick="clearSelectedIES()" class="tela-voltar docia-btn-limpar text-xs font-bold px-4 py-2 bg-white hover:bg-pink-50 text-pink-600 rounded-xl transition-all shadow-sm border border-pink-100 botao-tema">Limpar Tudo</button>
                     </div>
                     <div class="flex-1 overflow-y-auto p-6 space-y-2 custom-scrollbar-light" id="list-selected-ies" style="min-height: 0;">
                         <div class="flex flex-col items-center justify-center h-full opacity-40" id="empty-selected-msg">
@@ -2176,7 +2185,7 @@
             </div>
             
             <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 bg-white shrink-0">
-                <button onclick="closeModalIES()" class="px-6 py-2.5 text-sm font-bold border rounded-xl transition-colors shadow-sm botao-tema">Cancelar</button>
+                <button onclick="closeModalIES()" class="tela-voltar px-6 py-2.5 text-sm font-bold bg-white hover:bg-pink-50 text-pink-600 rounded-xl transition-all shadow-sm border border-pink-100 botao-tema">Cancelar</button>
                 <button onclick="applyIESFilter()" class="modal-confirmar px-8 py-2.5 text-sm font-bold rounded-xl transition-all shadow-md hover:opacity-90 flex items-center gap-2 docia-modal-gradiente text-white">
                     <i class="fa-solid fa-check"></i> Aplicar
                 </button>
@@ -2459,14 +2468,16 @@
     <script>
         window.DASH_DOC_IA_INICIAR_URL = "{% url 'dash_documentos_ia_iniciar' %}";
         window.CSRF_TOKEN = "{{ csrf_token }}";
+        // O sendBeacon não manda header: o token CSRF vai no corpo.
+        window.corpoCsrf = () => { const f = new FormData(); f.append('csrfmiddlewaretoken', window.CSRF_TOKEN); return f; };
     </script>
     <!--
         ApexCharts é a biblioteca de gráficos do portal — a mesma que o Polichat
         usa. Esta tela era a única ainda em ECharts.
     -->
     <script src="{% static 'js/motor-ocupado.js' %}?v=3"></script>
-    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-    <script src="{% static 'dash_documentos_ia/js/dash_documentos_ia.js' %}?v=20261103c"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts@8.9.1/dist/apexcharts.min.js" integrity="sha384-NMzs+HvEnYQxcfWzTfKMJdncu8Hl66AUsbR9Lj+7oRso0Li/Aa5I4OpzHMyesaue" crossorigin="anonymous"></script>
+    <script src="{% static 'dash_documentos_ia/js/dash_documentos_ia.js' %}?v=20261119a"></script>
     <!--
         A ABA ANÁLISE IA. Depois de `dash_documentos_ia.js` porque o filtro de
         instituições e o console de atualização vivem lá e são compartilhados; este
@@ -2479,8 +2490,8 @@
         chamada — "Restaurar Padrão", troca de tema e a primeira consulta da aba —
         nunca chegava a ser registrado.
     -->
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/pt.js"></script>
-    <script src="{% static 'dash_documentos_ia/js/analise_ia.js' %}?v=20261103b"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js" integrity="sha384-5JqMv4L/Xa0hfvtF06qboNdhvuYXUku9ZrhZh3bSk8VXF0A/RuSLHpLsSV9Zqhl6" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/pt.js" integrity="sha384-agbVpcY312cNMSL1b3CUo060bj9FmbwUX8HUCNSE17+jOU/en4yz3w9ro9IWVusF" crossorigin="anonymous"></script>
+    <script src="{% static 'dash_documentos_ia/js/analise_ia.js' %}?v=20261116d"></script>
 </body>
 </html>

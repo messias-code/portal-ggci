@@ -388,7 +388,11 @@ try:
 
     new_env += '# --- 6. SERVIDOR E AUTOMACOES ---\\n'
     new_env += f\\\"PWD_SERVER='{data.get('PWD_SERVER', get_val('PWD_SERVER', ''))}'\\n\\\"
-    new_env += f\\\"SSH_KEY_PASSPHRASE='{data.get('SSH_KEY_PASSPHRASE', get_val('SSH_KEY_PASSPHRASE', ''))}'\\n\\\"
+    new_env += f\\\"SSH_KEY_PASSPHRASE='{data.get('SSH_KEY_PASSPHRASE', get_val('SSH_KEY_PASSPHRASE', ''))}'\\n\\n\\\"
+
+    new_env += '# --- 7. CONTA GOOGLE DO GGCI (RENOVACAO DE CADASTRAMENTO) ---\\n'
+    new_env += f\\\"GOOGLE_GGCI_USER='{data.get('GOOGLE_GGCI_USER', get_val('GOOGLE_GGCI_USER', ''))}'\\n\\\"
+    new_env += f\\\"GOOGLE_GGCI_PASS='{data.get('GOOGLE_GGCI_PASS', get_val('GOOGLE_GGCI_PASS', ''))}'\\n\\\"
 
     with open('.env', 'w') as f: f.write(new_env)
 except Exception as e:
@@ -838,7 +842,11 @@ EOF
     sudo pkill -f 'cloudflared.*8000' || true
     sudo fuser -k 8000/tcp 2>/dev/null || true
     sudo fuser -k 8001/tcp 2>/dev/null || true
-    rm -f /tmp/gunicorn.pid /tmp/cf_tunnel.log /tmp/cf_accel.json 2>/dev/null
+    # O endereço do túnel fica numa pasta do projeto, não em /tmp (onde qualquer processo da
+    # máquina pode trocá-lo e redirecionar os downloads). As views leem o mesmo caminho.
+    mkdir -p .dados && chmod 700 .dados
+    local CF_ACCEL="$PWD/.dados/cf_accel.json"
+    rm -f /tmp/gunicorn.pid /tmp/cf_tunnel.log "$CF_ACCEL" 2>/dev/null
     sleep 2
     
     run_with_stream "sudo rm -f /etc/nginx/sites-available/ggci /etc/nginx/sites-enabled/ggci && sudo cp .tmp_nginx.conf /etc/nginx/sites-available/portal_ggci && sudo ln -sf /etc/nginx/sites-available/portal_ggci /etc/nginx/sites-enabled/ && sudo rm -f /etc/nginx/sites-enabled/default && sudo service nginx restart" "Aplicando blindagem Nginx na porta 8000"
@@ -859,8 +867,8 @@ EOF
     sleep 2 # Dá um tempinho para o Tailscale processar
     
     log_msg "info" "Ativando Acelerador Cloudflare em Background..."
-    python3 - << 'EOF' &
-import subprocess, re, json, sys
+    CF_ACCEL="$CF_ACCEL" python3 - << 'EOF' &
+import subprocess, re, json, sys, os
 def main():
     with open("/tmp/cf_tunnel.log", "w") as logfile:
         proc = subprocess.Popen(
@@ -878,7 +886,7 @@ def main():
                     match = re.search(r'(https://[a-zA-Z0-9-]+\.trycloudflare\.com)', line)
                     if match and match.group(1) != 'https://api.trycloudflare.com':
                         url = match.group(1)
-                        with open('/tmp/cf_accel.json', 'w') as f: json.dump({'url': url}, f)
+                        with open(os.environ['CF_ACCEL'], 'w') as f: json.dump({'url': url}, f)
         proc.wait()
 if __name__ == '__main__': main()
 EOF
@@ -886,8 +894,8 @@ EOF
 
     # Aguarda 5 segundos e tenta ler o link do Cloudflare
     sleep 5
-    if [ -f /tmp/cf_accel.json ]; then
-        local cf_url=$(python3 -c "import json; print(json.load(open('/tmp/cf_accel.json'))['url'])")
+    if [ -f "$CF_ACCEL" ]; then
+        local cf_url=$(python3 -c "import json, sys; print(json.load(open(sys.argv[1]))['url'])" "$CF_ACCEL")
         echo -e "   ${C_GREE}➤ Acesso Público (Cloudflare):${C_RESET} ${C_WHIT}${cf_url}${C_RESET}"
     fi
 
@@ -915,7 +923,7 @@ EOF
     # Prepara a armadilha (trap) para interceptar o CTRL+C.
     # O watchdog_marcar_prod inativa é o primeiro passo: sem ele, o desligamento
     # manual seria lido como pane e a produção voltaria sozinha em ~2 minutos.
-    trap 'echo -e "\n   ${C_YELL}[!] Desligando Servidores, Túneis e Robôs...${C_RESET}"; watchdog_marcar_prod inativa; watchdog_pausar 5; sudo pkill -f "tailscale funnel.*8000" 2>/dev/null; sudo kill $guni_pid 2>/dev/null; sudo kill -TERM $cf_pid 2>/dev/null; sudo kill $loop_pid 2>/dev/null; sudo fuser -k 8000/tcp 2>/dev/null; sudo fuser -k 8001/tcp 2>/dev/null; sudo pkill -f "cloudflared.*8000" 2>/dev/null; rm -f /tmp/gunicorn.pid /tmp/cf_tunnel.log /tmp/cf_accel.json 2>/dev/null; sleep 1' SIGINT
+    trap 'echo -e "\n   ${C_YELL}[!] Desligando Servidores, Túneis e Robôs...${C_RESET}"; watchdog_marcar_prod inativa; watchdog_pausar 5; sudo pkill -f "tailscale funnel.*8000" 2>/dev/null; sudo kill $guni_pid 2>/dev/null; sudo kill -TERM $cf_pid 2>/dev/null; sudo kill $loop_pid 2>/dev/null; sudo fuser -k 8000/tcp 2>/dev/null; sudo fuser -k 8001/tcp 2>/dev/null; sudo pkill -f "cloudflared.*8000" 2>/dev/null; rm -f /tmp/gunicorn.pid /tmp/cf_tunnel.log "$CF_ACCEL" 2>/dev/null; sleep 1' SIGINT
     
     # Aguarda a execução dos processos
     wait $guni_pid 2>/dev/null
@@ -954,7 +962,9 @@ function run_dev_server() {
     sudo pkill -f "${PWD}/manage.py loop_polichat" || true
     sudo pkill -f 'cloudflared.*8080' || true
     sudo tailscale funnel --https=8443 off >/dev/null 2>&1 || true
-    rm -f /tmp/cf_tunnel_dev.log /tmp/cf_accel_dev.json 2>/dev/null
+    mkdir -p .dados && chmod 700 .dados
+    local CF_ACCEL="$PWD/.dados/cf_accel_dev.json"
+    rm -f /tmp/cf_tunnel_dev.log "$CF_ACCEL" 2>/dev/null
     sleep 1
 
     log_msg "info" "Ativando Tailscale Funnel para DEV (porta 8443)..."
@@ -968,8 +978,8 @@ function run_dev_server() {
     echo ""
     
     log_msg "info" "Ativando Túnel Cloudflare para DEV em Background..."
-    python3 - << 'EOF' &
-import subprocess, re, json, sys
+    CF_ACCEL="$CF_ACCEL" python3 - << 'EOF' &
+import subprocess, re, json, sys, os
 def main():
     with open("/tmp/cf_tunnel_dev.log", "w") as logfile:
         proc = subprocess.Popen(
@@ -987,7 +997,7 @@ def main():
                     match = re.search(r'(https://[a-zA-Z0-9-]+\.trycloudflare\.com)', line)
                     if match and 'api.trycloudflare.com' not in match.group(1):
                         url = match.group(1)
-                        with open('/tmp/cf_accel_dev.json', 'w') as f: json.dump({'url': url}, f)
+                        with open(os.environ['CF_ACCEL'], 'w') as f: json.dump({'url': url}, f)
         proc.wait()
 if __name__ == '__main__': main()
 EOF
@@ -996,13 +1006,13 @@ EOF
     # Aguarda o Cloudflare gerar o link (polling dinâmico de até 15 segundos)
     local timeout=15
     local elapsed=0
-    while [ ! -f /tmp/cf_accel_dev.json ] && [ $elapsed -lt $timeout ]; do
+    while [ ! -f "$CF_ACCEL" ] && [ $elapsed -lt $timeout ]; do
         sleep 1
         elapsed=$((elapsed+1))
     done
 
-    if [ -f /tmp/cf_accel_dev.json ]; then
-        local cf_url=$(python3 -c "import json; print(json.load(open('/tmp/cf_accel_dev.json'))['url'])")
+    if [ -f "$CF_ACCEL" ]; then
+        local cf_url=$(python3 -c "import json, sys; print(json.load(open(sys.argv[1]))['url'])" "$CF_ACCEL")
         echo -e "   ${C_GREE}➤ Link DEV Público (Cloudflare):${C_RESET} ${C_WHIT}${cf_url}${C_RESET}"
     else
         echo -e "   ${C_YELL}➤ Aviso: O túnel Cloudflare demorou para responder. Verifique /tmp/cf_tunnel_dev.log${C_RESET}"
@@ -1035,7 +1045,7 @@ EOF
     local loop_pid=$!
     
     # Trap exclusivo do DEV
-    trap 'echo -e "\n   ${C_YELL}[!] Desligando Ambiente DEV e Robôs...${C_RESET}"; sudo tailscale funnel --https=8443 off 2>/dev/null; sudo kill $dj_pid 2>/dev/null; sudo kill -TERM $cf_pid 2>/dev/null; sudo kill $loop_pid 2>/dev/null; sudo fuser -k 8080/tcp 2>/dev/null; sudo pkill -f "cloudflared.*8080" 2>/dev/null; rm -f /tmp/cf_tunnel_dev.log /tmp/cf_accel_dev.json 2>/dev/null; sleep 1' SIGINT
+    trap 'echo -e "\n   ${C_YELL}[!] Desligando Ambiente DEV e Robôs...${C_RESET}"; sudo tailscale funnel --https=8443 off 2>/dev/null; sudo kill $dj_pid 2>/dev/null; sudo kill -TERM $cf_pid 2>/dev/null; sudo kill $loop_pid 2>/dev/null; sudo fuser -k 8080/tcp 2>/dev/null; sudo pkill -f "cloudflared.*8080" 2>/dev/null; rm -f /tmp/cf_tunnel_dev.log "$CF_ACCEL" 2>/dev/null; sleep 1' SIGINT
     
     wait $dj_pid 2>/dev/null
     wait $cf_pid 2>/dev/null
@@ -1162,12 +1172,12 @@ function sync_production() {
     sudo pkill -f 'tailscale funnel.*8000' || true
     sudo fuser -k 8000/tcp 2>/dev/null || true
     sudo fuser -k 8001/tcp 2>/dev/null || true
-    rm -f /tmp/gunicorn.pid /tmp/cf_tunnel.log /tmp/cf_accel.json 2>/dev/null
+    rm -f /tmp/gunicorn.pid /tmp/cf_tunnel.log "$PROD_DIR/.dados/cf_accel.json" 2>/dev/null
     tmux kill-session -t prod 2>/dev/null || true
     sleep 1
 
     log_msg "info" "Atualizando a pasta de PRODUÇÃO com os novos arquivos..."
-    rsync -a --exclude 'venv' --exclude '.git' --exclude '.env' "$MAIN_DIR/" "$PROD_DIR/"
+    rsync -a --exclude 'venv' --exclude '.git' --exclude '.env' --exclude '.dados' "$MAIN_DIR/" "$PROD_DIR/"
 
     # Garante que o ambiente de Produção tenha as bibliotecas atualizadas (ex: psutil)
     if [ -f "$PROD_DIR/requirements.txt" ] && [ -f "$PROD_DIR/venv/bin/pip" ]; then

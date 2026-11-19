@@ -31,18 +31,30 @@ load_dotenv(os.path.join(BASE_DIR, '.env'))
 # ==========================================================================
 # Chave criptográfica mestre do Django. Usada para assinar sessões e tokens.
 # ⚠️ IMPORTANTE: Nunca vaze essa chave em ambientes de Produção!
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-&41lq+jr!j1mgh7m014*f+a3-u^fxqbj+d_zxwcw&esw$f6rba')
+# Sem valor padrão: a chave antiga de fallback estava no Git, e com ela qualquer um assina
+# sessões e tokens. Sem SECRET_KEY no .env o portal se recusa a subir, em vez de subir inseguro.
+SECRET_KEY = os.environ.get('SECRET_KEY')
+if not SECRET_KEY:
+    from django.core.exceptions import ImproperlyConfigured
+    raise ImproperlyConfigured('SECRET_KEY ausente no .env.')
 
 # Modo de Depuração. 
 # True: Mostra telas amarelas com detalhes do erro (Apenas para Desenvolvimento).
 # False: Esconde o código-fonte em caso de erro (Obrigatório em Produção).
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+# Padrão False: se o .env não for lido, o portal sobe sem expor código e erros na tela.
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
+# HSTS: o Django só manda o cabeçalho em resposta HTTPS (Tailscale/Cloudflare), então o acesso
+# por http://IP:porta segue igual — navegador não aplica HSTS a IP. Sem includeSubDomains e sem
+# preload de propósito: o domínio é do Tailscale e do Cloudflare, não nosso.
+SECURE_HSTS_SECONDS = 60 * 60 * 24 * 30
+
 # Define quais domínios/IPs podem acessar o portal (Ex: ['192.168.0.10', 'ovg.org.br']).
 # Vazio durante o desenvolvimento local.
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
+# Padrão restrito à própria máquina; os domínios de verdade vêm do .env.
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 # Diz ao Django para confiar nos formulários de login enviados por esse link
 CSRF_TRUSTED_ORIGINS = [
@@ -82,10 +94,10 @@ INSTALLED_APPS = [
     'apps.automacoes.menu_automacoes',
     'apps.automacoes.analise_ia',
     'apps.automacoes.enquadramento_cursos',
+    'apps.automacoes.renovacao_cadastramento',
     'apps.dashboards.menu_dashboards',
     'apps.dashboards.dash_documentos_ia',
     'apps.dashboards.dash_polichat',
-    'apps.dashboards.dash_polichat_financeiro',
     'apps.sugestoes.menu_sugestoes',
     'apps.sugestoes.controle_acesso',
 
@@ -233,3 +245,21 @@ SESSION_COOKIE_AGE = 1200
 SESSION_SAVE_EVERY_REQUEST = True
 # Se fechar o navegador, também desloga
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+# ==========================================================================
+# 10. CACHE DO LIMITE DE TENTATIVAS DE SENHA
+# ==========================================================================
+# `default` continua o mesmo de antes (memória do processo). `tentativas` fica em arquivo
+# porque o gunicorn roda 4 workers: em memória, cada um teria o próprio contador.
+# A pasta `.dados/` é do próprio ambiente (fora do Git e do rsync para a produção).
+CACHES = {
+    'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'},
+    'tentativas': {
+        'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+        'LOCATION': BASE_DIR / '.dados' / 'tentativas_login',
+    },
+}
+# Nos testes o contador fica em memória: em arquivo, um teste que erra a senha deixaria
+# o usuário bloqueado para a execução seguinte.
+if 'test' in sys.argv:
+    CACHES['tentativas'] = {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+                            'LOCATION': 'tentativas-teste'}

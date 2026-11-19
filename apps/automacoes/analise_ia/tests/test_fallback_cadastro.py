@@ -26,7 +26,7 @@ from django.test import SimpleTestCase
 from apps.automacoes.analise_ia.services.ggci import mesclar_sql_e_reordenar
 
 
-COLS_CADASTRO = ['Modalidade Aluno', 'Período atual', 'Período quantidade', 'Matricula']
+COLS_CADASTRO = ['Modalidade Aluno', 'Modalidade IES', 'Período atual', 'Período quantidade', 'Matricula']
 
 
 def _documento(inscricao, semestre):

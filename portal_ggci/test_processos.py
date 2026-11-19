@@ -178,7 +178,7 @@ class AbortarEIniciarNaoDeslogaTests(TestCase):
 
         cls.usuario = Usuario.objects.create_user(
             usuario='parar.teste@ovg.org.br', password='x', nome='Parar Teste',
-            p_dash_documentos_ia=True,
+            p_dash_documentos_ia=True, p_analise_ia=True,
         )
 
     def test_abortar_o_outro_motor_mantem_a_sessao(self):
@@ -270,7 +270,8 @@ class FluxoCompletoComProcessoRealTests(TestCase):
         from apps.inicio.gestao_acessos.models import Usuario
 
         cls.usuario = Usuario.objects.create_user(
-            usuario='fluxo.parar@ovg.org.br', password='x', nome='Fluxo', p_dash_documentos_ia=True)
+            usuario='fluxo.parar@ovg.org.br', password='x', nome='Fluxo', p_dash_documentos_ia=True,
+            p_analise_ia=True)
 
     def setUp(self):
         codigo = _codigo_da_arvore()
@@ -343,7 +344,8 @@ class RetratoDoMotorTests(TestCase):
         from apps.inicio.gestao_acessos.models import Usuario
 
         cls.usuario = Usuario.objects.create_user(
-            usuario='retrato@ovg.org.br', password='x', nome='Retrato', p_dash_documentos_ia=True)
+            usuario='retrato@ovg.org.br', password='x', nome='Retrato', p_dash_documentos_ia=True,
+            p_analise_ia=True)
 
     def setUp(self):
         self.cliente = Client()

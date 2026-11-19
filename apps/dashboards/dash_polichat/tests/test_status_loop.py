@@ -136,6 +136,9 @@ class TestChecarStatus(TestCase):
 
     def setUp(self):
         self.rf = RequestFactory()
+        # Desde 18/11/2026 a rota exige login e a permissão da tela; como em TestStatusLoop,
+        # um usuário qualquer no atributo basta para o corpo da view rodar.
+        self.usuario = mock.Mock(is_authenticated=True)
 
     def test_devolve_log_e_progresso_da_rodada(self):
         proc = criar("TRATANDO", progresso=70)
@@ -143,6 +146,7 @@ class TestChecarStatus(TestCase):
         proc.save(update_fields=["log"])
 
         pedido = self.rf.get(f"/dashboards/polichat/api/status/{proc.id}/")
+        pedido.user = self.usuario
         dados = json.loads(views.checar_status_polichat(pedido, proc.id).content)
 
         self.assertEqual(dados["status_codigo"], "TRATANDO")
@@ -151,4 +155,5 @@ class TestChecarStatus(TestCase):
 
     def test_processo_inexistente_responde_404(self):
         pedido = self.rf.get("/dashboards/polichat/api/status/999999/")
+        pedido.user = self.usuario
         self.assertEqual(views.checar_status_polichat(pedido, 999999).status_code, 404)

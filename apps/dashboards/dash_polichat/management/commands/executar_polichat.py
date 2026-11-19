@@ -156,12 +156,10 @@ class Command(BaseCommand):
             import datetime
             hoje_str = datetime.date.today().strftime("%Y-%m-%d")
             arquivo_controle = os.path.join(polichat_extrator.DOWNLOAD_PATH, "ultimo_anual.txt")
-            arquivo_pickle = os.path.join(polichat_extrator.DOWNLOAD_PATH, "cache_dataframe.pkl")
-            
             primeira_vez_dia = True
             extracao_completa = False
             
-            if not os.path.exists(arquivo_pickle):
+            if not polichat_extrator.tem_cache():
                 extracao_completa = True
             elif os.path.exists(arquivo_controle):
                 with open(arquivo_controle, "r") as f:

@@ -11,9 +11,9 @@ import sys
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
+from django.core import signing
 from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import redirect, render
-from django.views.decorators.csrf import csrf_exempt
 
 from .models import ProcessamentoEnquadramentoCursos
 from portal_ggci.processos import abortar_execucao, popen_com_limite
@@ -22,7 +22,12 @@ from portal_ggci.processos import abortar_execucao, popen_com_limite
 AVISO_ABORTADO = "\n\n🚨 [SISTEMA] Processo de IA abortado manualmente pelo usuário!"
 
 
-@csrf_exempt
+def _tem_permissao(user):
+    """A mesma regra da tela (`enquadramento_cursos_view`): p_enquadramento_cursos ou o admin."""
+    return getattr(user, 'p_enquadramento_cursos', False) or user.usuario == 'admin@ovg.org.br'
+
+
+@login_required(login_url='/')
 def iniciar_processamento_ia(request):
     """
     O QUE FAZ: Inicia um novo processamento em background (Motor de Enquadramento).
@@ -36,6 +41,8 @@ def iniciar_processamento_ia(request):
     RETORNO: JsonResponse com o status e ID do processo gerado.
     EFEITOS COLATERAIS: Cria arquivos no disco, inicia novo processo no SO, insere linha no BD.
     """
+    if not _tem_permissao(request.user):
+        return JsonResponse({'status': 'erro', 'mensagem': 'Acesso negado.'}, status=403)
     if request.method == 'POST':
         # 1. Leitura e Configuração de Payload
         payload = {}
@@ -92,7 +99,7 @@ def iniciar_processamento_ia(request):
     return JsonResponse({'status': 'erro', 'mensagem': 'Método inválido'}, status=400)
 
 
-@csrf_exempt
+@login_required(login_url='/')
 def parar_processamento_ia(request, processo_id):
     """
     O QUE FAZ: Aborta forçosamente um processamento em andamento.
@@ -102,6 +109,8 @@ def parar_processamento_ia(request, processo_id):
     PARÂMETROS: request, processo_id (int)
     RETORNO: JsonResponse confirmando a parada — quando ela chega, o motor já morreu.
     """
+    if not _tem_permissao(request.user):
+        return JsonResponse({'status': 'erro', 'mensagem': 'Acesso negado.'}, status=403)
     if request.method == 'POST':
         if abortar_execucao(ProcessamentoEnquadramentoCursos, 'executar_motor_enquadramento',
                             processo_id, AVISO_ABORTADO):
@@ -111,12 +120,15 @@ def parar_processamento_ia(request, processo_id):
     return JsonResponse({'status': 'erro', 'mensagem': 'Método inválido'}, status=400)
 
 
+@login_required(login_url='/')
 def checar_status_ia(request, processo_id):
     """
     O QUE FAZ: Retorna o status atual de um processamento.
     POR QUÊ EXISTE: Para ser consumido via long-polling (AJAX) pelo front-end.
     COMO FUNCIONA: Busca o ID no banco e retorna seus campos.
     """
+    if not _tem_permissao(request.user):
+        return JsonResponse({'status': 'erro', 'mensagem': 'Acesso negado.'}, status=403)
     try:
         processo = ProcessamentoEnquadramentoCursos.objects.get(id=processo_id)
         
@@ -131,6 +143,12 @@ def checar_status_ia(request, processo_id):
         return JsonResponse({'status': 'erro', 'mensagem': 'Processo não encontrado'}, status=404)
 
 
+# Download pelo túnel do Cloudflare: o domínio dele não tem a sessão, então o redirecionamento
+# leva um token assinado de 5 minutos que só abre este processo (ver `analise_ia.views`).
+SAL_DOWNLOAD = 'enquadramento_cursos.baixar'
+VALIDADE_TOKEN_SEGUNDOS = 300
+
+
 def baixar_resultado_ia(request, processo_id):
     """
     O QUE FAZ: Fornece o arquivo ZIP final gerado.
@@ -139,7 +157,21 @@ def baixar_resultado_ia(request, processo_id):
       1. Tenta redirecionar para um servidor externo Cloudflare se configurado (Acelerador).
       2. Em falha/local, responde diretamente com o arquivo (em memória, que não é o ideal para ZIPs grandes).
     PARÂMETROS: request, processo_id (int)
+    ACESSO: sessão logada, ou o token `t` que o próprio redirecionamento ao túnel acrescenta.
     """
+    token = request.GET.get('t')
+    if token:
+        try:
+            if signing.loads(token, salt=SAL_DOWNLOAD, max_age=VALIDADE_TOKEN_SEGUNDOS) != processo_id:
+                raise signing.BadSignature
+        except signing.BadSignature:   # inclui o token vencido
+            return JsonResponse({'status': 'erro', 'mensagem': 'Link de download vencido. Clique em Baixar de novo.'},
+                                status=403)
+    elif not request.user.is_authenticated:
+        return redirect('/')
+    elif not _tem_permissao(request.user):
+        return JsonResponse({'status': 'erro', 'mensagem': 'Acesso negado.'}, status=403)
+
     try:
         processo = ProcessamentoEnquadramentoCursos.objects.get(id=processo_id)
         
@@ -152,7 +184,9 @@ def baixar_resultado_ia(request, processo_id):
             
             # --- Estratégia de Aceleração por Cloudflare (Se existir conf json) ---
             try:
-                caminho_cf = '/tmp/cf_accel_dev.json' if getattr(settings, 'DEBUG', False) else '/tmp/cf_accel.json'
+                # Gravado pelo portal.sh em `.dados/` do projeto (antes em /tmp).
+                nome_cf = 'cf_accel_dev.json' if getattr(settings, 'DEBUG', False) else 'cf_accel.json'
+                caminho_cf = os.path.join(settings.BASE_DIR, '.dados', nome_cf)
                 if os.path.exists(caminho_cf):
                     with open(caminho_cf, 'r') as arquivo_conf:
                         dados_cf = json.load(arquivo_conf)
@@ -160,8 +194,9 @@ def baixar_resultado_ia(request, processo_id):
                         host_atual = request.get_host()
                         
                         # Prevenção de Loop de Redirecionamento
-                        if url_cf and "trycloudflare.com" not in host_atual:
-                            return redirect(f"{url_cf}/automacoes/enquadramento-cursos/api/baixar-resultado/{processo_id}/")
+                        if not token and url_cf and "trycloudflare.com" not in host_atual:
+                            token = signing.dumps(processo_id, salt=SAL_DOWNLOAD)
+                            return redirect(f"{url_cf}/automacoes/enquadramento-cursos/api/baixar-resultado/{processo_id}/?t={token}")
             except Exception:
                 pass  # Segue para o envio local em caso de erro
 

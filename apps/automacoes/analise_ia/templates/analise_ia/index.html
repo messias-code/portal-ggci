@@ -16,6 +16,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Análise IA - Portal GGCI</title>
+    <link rel="icon" type="image/png" href="{% static 'img/favicon.png' %}?v=1">
 
     <!--
         MOTOR DE TEMAS — precisa vir antes de tudo.
@@ -28,7 +29,8 @@
 
     <link rel="stylesheet" href="{% static 'css/output.css' %}">
     <!-- Console de processamento: utilitárias que o bundle purgou + os dois temas. -->
-    <link rel="stylesheet" href="{% static 'css/console.css' %}?v=1">
+    <link rel="stylesheet" href="{% static 'css/console.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'css/motor-botoes.css' %}?v=1">
     <!-- Aviso de motor ocupado: impede as duas atualizações de brigarem pelo SIBU. -->
     <link rel="stylesheet" href="{% static 'css/motor-ocupado.css' %}?v=2">
 
@@ -47,9 +49,9 @@
 
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
 
-    <link rel="stylesheet" href="{% static 'analise_ia/css/analise_ia.css' %}?v=20261103c">
+    <link rel="stylesheet" href="{% static 'analise_ia/css/analise_ia.css' %}?v=20261116a">
     <script type="module" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@8.0.4/dist/turbo.es.2017-esm.js"></script>
 </head>
 
@@ -1348,7 +1350,7 @@
 
     </script>
 
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.7/Sortable.min.js" integrity="sha384-DgmC6Xe2bSN2WjTDXzWYbUbxyhNP+NNkGDR/g78pCXV7E7rcVTGxVg0uIVCUUcBc" crossorigin="anonymous"></script>
     <script>
         // ==========================================
         // 2. MODAIS ESPECÍFICOS E ARRASTAR-E-SOLTAR (SORTABLE.JS)
@@ -1569,7 +1571,10 @@ function openModalConfigContratos() {
     </script>
     <!-- Scripts: Separação de Responsabilidades (UI, Eventos, Automação) -->
     <script src="{% static 'js/motor-ocupado.js' %}?v=3"></script>
-    <script src="{% static 'analise_ia/js/analise_ia.js' %}?v=26"></script>
+    <script src="{% static 'js/console-motor.js' %}?v=1"></script>
+    <script src="{% static 'analise_ia/js/log_ia.js' %}?v=1"></script>
+    <script>window.CSRF_TOKEN = "{{ csrf_token }}";</script>
+    <script src="{% static 'analise_ia/js/analise_ia.js' %}?v=30"></script>
     <div id="toast-container" class="fixed top-5 right-5 z-[70] flex flex-col items-end"></div>
 
     <!-- Modal de Validação -->

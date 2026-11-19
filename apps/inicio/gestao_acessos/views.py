@@ -7,6 +7,7 @@ segurança, autenticação de usuários e manipulação do banco de dados (CRUD)
 """
 
 import json
+import logging
 from django.http import JsonResponse
 from django.contrib.auth import authenticate, login, logout
 from django.shortcuts import render, redirect
@@ -16,6 +17,9 @@ from django.contrib.sessions.models import Session
 from django.utils import timezone
 from django.conf import settings
 from .models import Usuario
+from . import limite_tentativas
+
+logger = logging.getLogger(__name__)
 import re
 
 # --------------------------------------------------------------------------
@@ -43,22 +47,35 @@ def verificar_login(request):
             if usuario and '@' not in usuario:
                 usuario += '@ovg.org.br'
 
+            eh_ajax = request.content_type == 'application/json' or request.headers.get('x-requested-with') == 'XMLHttpRequest'
+
+            # Força bruta: com 5 erros em 15 min o login deste usuário fica recusado até a
+            # janela expirar, mesmo com a senha certa. Ver `limite_tentativas`.
+            if limite_tentativas.bloqueado('login', usuario):
+                if eh_ajax:
+                    return JsonResponse({'sucesso': False, 'mensagem': limite_tentativas.MENSAGEM_BLOQUEIO})
+                return redirect('home')
+
             # O Django autentica usando o campo 'username' mapeado para nosso campo 'usuario'
             user = authenticate(request, username=usuario, password=senha)
 
             if user is not None:
+                limite_tentativas.limpar('login', usuario)
                 login(request, user)
                 if request.content_type == 'application/json' or request.headers.get('x-requested-with') == 'XMLHttpRequest':
                     return JsonResponse({'sucesso': True})
                 return redirect('inicio')
             else:
+                limite_tentativas.registrar_falha('login', usuario)
                 if request.content_type == 'application/json' or request.headers.get('x-requested-with') == 'XMLHttpRequest':
                     return JsonResponse({'sucesso': False, 'mensagem': 'Usuário ou senha incorretos.'})
                 return redirect('home')
                 
-        except Exception as e:
+        except Exception:
+            # O detalhe vai para o log; a tela de login não pode expor a exceção.
+            logger.exception("Erro no login")
             if request.content_type == 'application/json' or request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return JsonResponse({'sucesso': False, 'mensagem': f'Erro interno: {str(e)}'})
+                return JsonResponse({'sucesso': False, 'mensagem': 'Erro interno. Tente novamente.'})
             return redirect('home')
             
     return JsonResponse({'sucesso': False, 'mensagem': 'Método não permitido.'})
@@ -190,12 +207,12 @@ def gestao_acessos(request):
             'p_formatador_dados': 1 if u.p_formatador_dados else 0,
             'p_analise_ia': 1 if u.p_analise_ia else 0,
             'p_enquadramento_cursos': 1 if u.p_enquadramento_cursos else 0,
+            'p_renovacao_cadastramento': 1 if u.p_renovacao_cadastramento else 0,
             'p_sugestoes': 1 if u.p_sugestoes else 0,
             'p_controle_acesso': 1 if u.p_controle_acesso else 0,
             'p_dash_polichat': 1 if u.p_dash_polichat else 0,
             'p_gestao_polichat': 1 if u.p_gestao_polichat else 0,
             'p_dash_documentos_ia': 1 if u.p_dash_documentos_ia else 0,
-            'p_polichat_financeiro': 1 if getattr(u, 'p_polichat_financeiro', False) else 0,
             'username_only': username_only,
             'can_edit': can_edit,
             'can_delete': can_delete,
@@ -270,6 +287,7 @@ def api_salvar_usuario(request):
             
             p_analise_ia = 1 if request.POST.get('p_analise_ia') else 0
             p_enquadramento_cursos = 1 if request.POST.get('p_enquadramento_cursos') else 0
+            p_renovacao_cadastramento = 1 if request.POST.get('p_renovacao_cadastramento') else 0
             
             p_sugestoes = 1 if request.POST.get('p_sugestoes') else 0
             p_controle_acesso = 1 if request.POST.get('p_controle_acesso') else 0
@@ -277,7 +295,6 @@ def api_salvar_usuario(request):
             p_dash_polichat = 1 if request.POST.get('p_dash_polichat') else 0
             p_gestao_polichat = 1 if request.POST.get('p_gestao_polichat') else 0
             p_dash_documentos_ia = 1 if request.POST.get('p_dash_documentos_ia') else 0
-            p_polichat_financeiro = 1 if request.POST.get('p_polichat_financeiro') else 0
 
             # MODO: NOVO USUÁRIO
             if not usuario_id:
@@ -294,12 +311,12 @@ def api_salvar_usuario(request):
                     p_formatador_dados=p_formatador_dados,
                     p_analise_ia=p_analise_ia,
                     p_enquadramento_cursos=p_enquadramento_cursos,
+                    p_renovacao_cadastramento=p_renovacao_cadastramento,
                     p_sugestoes=p_sugestoes,
                     p_controle_acesso=p_controle_acesso,
                     p_dash_polichat=p_dash_polichat,
                     p_gestao_polichat=p_gestao_polichat,
-                    p_dash_documentos_ia=p_dash_documentos_ia,
-                    p_polichat_financeiro=p_polichat_financeiro
+                    p_dash_documentos_ia=p_dash_documentos_ia
                 )
                 novo_usuario.set_password(senha_gerada)
                 novo_usuario.save()
@@ -330,6 +347,7 @@ def api_salvar_usuario(request):
                 
                 alvo.p_analise_ia = p_analise_ia
                 alvo.p_enquadramento_cursos = p_enquadramento_cursos
+                alvo.p_renovacao_cadastramento = p_renovacao_cadastramento
                 
                 alvo.p_sugestoes = p_sugestoes
                 alvo.p_controle_acesso = p_controle_acesso
@@ -337,17 +355,16 @@ def api_salvar_usuario(request):
                 alvo.p_dash_polichat = p_dash_polichat
                 alvo.p_gestao_polichat = p_gestao_polichat
                 alvo.p_dash_documentos_ia = p_dash_documentos_ia
-                alvo.p_polichat_financeiro = p_polichat_financeiro
 
                 if alterar_nome:
                     alvo.nome = nome_completo
                     alvo.usuario = email
 
+                # A conta master nunca chega aqui com `resetar_senha` (forçado a False acima). O
+                # ramo que a resetava para uma senha fixa escrita no código era inalcançável e
+                # saiu: a senha não pode morar no código.
                 if resetar_senha:
-                    if email_atual == 'admin@ovg.org.br':
-                        alvo.set_password('4dmin_0VG@2026')
-                    else:
-                        alvo.set_password(senha_gerada)
+                    alvo.set_password(senha_gerada)
 
                 alvo.save()
                 return JsonResponse({'sucesso': True, 'mensagem': 'Acessos atualizados com sucesso!'})

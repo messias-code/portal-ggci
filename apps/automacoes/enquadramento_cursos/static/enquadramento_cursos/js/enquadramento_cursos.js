@@ -118,7 +118,7 @@ function initEnquadramentoCursos() {
 
         fetch('/automacoes/enquadramento-cursos/api/iniciar-processamento/', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': window.CSRF_TOKEN },
             body: JSON.stringify(payloadConfig)
         })
             .then(response => response.json())
@@ -145,7 +145,9 @@ function initEnquadramentoCursos() {
         btnStop.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Parando...</span>';
         const currentId = window.__processo_id;
         if (currentId) {
-            fetch(`/automacoes/enquadramento-cursos/api/parar-processamento/${currentId}/`, { method: 'POST' })
+            fetch(`/automacoes/enquadramento-cursos/api/parar-processamento/${currentId}/`, {
+                method: 'POST', headers: { 'X-CSRFToken': window.CSRF_TOKEN }
+            })
                 // Só é "Abortado" se o servidor disser que parou — ver o mesmo trecho em analise_ia.js.
                 .then(res => res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`)))
                 .then(data => {

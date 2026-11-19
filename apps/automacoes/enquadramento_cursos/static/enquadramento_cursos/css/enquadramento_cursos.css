@@ -34,6 +34,15 @@ html { font-size: 90%; }
     --color-purple-950: #2e2242;
 }
 
+/* A MANCHA ROXA DO FUNDO NÃO ENTRA NA TROCA ACIMA. O terceiro borrão da página
+   (`.menu-blob--3`, canto inferior esquerdo) é `bg-purple-700/60`: com a escala
+   redefinida ele virava o roxo OVG acinzentado, e o fundo destas telas ficava menos
+   colorido que o dos menus. Aqui ele volta ao violeta original do Tailwind. No
+   eleitoral quem pinta é `tema-menu.css`, com especificidade maior. */
+.menu-blob--3 {
+    background-color: color-mix(in oklab, oklch(49.6% 0.265 301.924) 60%, transparent);
+}
+
 body { font-family: 'Poppins', sans-serif; }
 
 /* Animações das Bolhas de Fundo */

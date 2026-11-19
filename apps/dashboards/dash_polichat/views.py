@@ -1,18 +1,19 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
+import logging
 import os
-import traceback
 import subprocess
 import sys
 import time
 import pandas as pd
 from datetime import datetime
 from django.http import JsonResponse, FileResponse, Http404
-from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from django.utils import timezone
 from .models import ProcessamentoPolichat
 from portal_ggci.processos import popen_com_limite
+
+logger = logging.getLogger(__name__)
 
 # ── SLA de resolução do chat ──────────────────────────────────────────────
 # O prazo é do beneficiário, não de uma etapa isolada: 15 min de fila mais
@@ -22,9 +23,21 @@ from portal_ggci.processos import popen_com_limite
 SLA_ESPERA_SEG = 15 * 60   # limite da fila (status Aguardando)
 SLA_TOTAL_SEG  = 45 * 60   # limite fila + conversa (status Em Atendimento)
 
+# Cache da base tratada, gravado pelo extrator. Era `cache_dataframe.pkl`: o pickle executa
+# código ao ser lido, então um arquivo adulterado no disco virava execução no servidor. O
+# Parquet devolve o mesmo DataFrame (tipos e valores conferidos em 18/11/2026) e é só dado.
+ARQUIVO_CACHE = "cache_dataframe.parquet"
 
-@csrf_exempt
+
+def _tem_permissao(user):
+    """A mesma regra da tela (`gestao_polichat_view`): p_gestao_polichat ou o admin."""
+    return user.p_gestao_polichat or user.usuario == 'admin@ovg.org.br'
+
+
+@login_required(login_url='/')
 def iniciar_extracao_polichat(request):
+    if not _tem_permissao(request.user):
+        return JsonResponse({'status': 'erro', 'mensagem': 'Acesso negado.'}, status=403)
     if request.method == 'POST':
         # --- BLOQUEIO DE HORÁRIO ---
         agora_sp = timezone.localtime()
@@ -144,7 +157,10 @@ def iniciar_extracao_polichat(request):
 
     return JsonResponse({'status': 'erro', 'mensagem': 'Método inválido'}, status=400)
 
+@login_required(login_url='/')
 def checar_status_polichat(request, processo_id):
+    if not _tem_permissao(request.user):
+        return JsonResponse({'status': 'erro', 'mensagem': 'Acesso negado.'}, status=403)
     try:
         processo = ProcessamentoPolichat.objects.get(id=processo_id)
         return JsonResponse({
@@ -159,9 +175,11 @@ def checar_status_polichat(request, processo_id):
 
 @login_required(login_url='/')
 def status_loop_polichat(request):
+    if not _tem_permissao(request.user):
+        return JsonResponse({'status': 'erro', 'mensagem': 'Acesso negado.'}, status=403)
     pasta_dados = os.path.join(settings.BASE_DIR, "apps", "dashboards", "dash_polichat", "dados")
-    arquivo_pickle = os.path.join(pasta_dados, "cache_dataframe.pkl")
-    last_sync_ts = os.path.getmtime(arquivo_pickle) if os.path.exists(arquivo_pickle) else 0
+    arquivo_cache = os.path.join(pasta_dados, ARQUIVO_CACHE)
+    last_sync_ts = os.path.getmtime(arquivo_cache) if os.path.exists(arquivo_cache) else 0
     
     # Registra que o usuário ainda está ativamente monitorando
     pasta_logs = os.path.join(settings.BASE_DIR, "apps", "dashboards", "dash_polichat", "logs")
@@ -206,7 +224,10 @@ def status_loop_polichat(request):
     })
 
 
+@login_required(login_url='/')
 def baixar_resultado_polichat(request, processo_id):
+    if not _tem_permissao(request.user):
+        return JsonResponse({'status': 'erro', 'mensagem': 'Acesso negado.'}, status=403)
     try:
         processo = ProcessamentoPolichat.objects.get(id=processo_id)
         if processo.status != 'CONCLUIDO' or not processo.arquivo_resultado:
@@ -234,11 +255,14 @@ def baixar_resultado_polichat(request, processo_id):
         raise Http404("Processo não encontrado")
 
 
+@login_required(login_url='/')
 def api_polichat_dados(request):
+    if not _tem_permissao(request.user):
+        return JsonResponse({'status': 'erro', 'mensagem': 'Acesso negado.'}, status=403)
     try:
         pasta_dados = os.path.join(settings.BASE_DIR, "apps", "dashboards", "dash_polichat", "dados")
         arquivo_excel = os.path.join(pasta_dados, "relatorio_chats_pronto.xlsx")
-        arquivo_pickle = os.path.join(pasta_dados, "cache_dataframe.pkl")
+        arquivo_cache = os.path.join(pasta_dados, ARQUIVO_CACHE)
 
         data_inicio_str = request.GET.get('inicio', '').strip()
         data_fim_str    = request.GET.get('fim', '').strip()
@@ -262,7 +286,7 @@ def api_polichat_dados(request):
 
         df = pd.DataFrame()
         tem_excel  = os.path.exists(arquivo_excel)
-        tem_pickle = os.path.exists(arquivo_pickle)
+        tem_cache  = os.path.exists(arquivo_cache)
 
         # Forçar o Pandas a ler o arquivo fresco do disco sem usar buffers de processo
         def carregar_do_excel():
@@ -272,15 +296,14 @@ def api_polichat_dados(request):
                 return _df
             except: return None
 
-        def carregar_do_pickle():
+        def carregar_do_cache():
             try:
-                # O read_pickle do pandas é geralmente seguro, mas vamos garantir que o cache de IO do SO não nos engane
-                return pd.read_pickle(arquivo_pickle)
+                return pd.read_parquet(arquivo_cache)
             except: return None
 
         # Tenta carregar a base mais fresca
-        if tem_pickle:
-            df = carregar_do_pickle()
+        if tem_cache:
+            df = carregar_do_cache()
             if (df is None or df.empty) and tem_excel:
                 df = carregar_do_excel()
         elif tem_excel:
@@ -969,7 +992,7 @@ def api_polichat_dados(request):
         kpis_gestor['criticos'] = int(c_fora_sla)
 
         import time
-        last_sync_ts = os.path.getmtime(arquivo_pickle) if tem_pickle else 0
+        last_sync_ts = os.path.getmtime(arquivo_cache) if tem_cache else 0
         segundos_desde_sync = max(0, time.time() - last_sync_ts) if last_sync_ts > 0 else 0
         return JsonResponse({
             'status': 'ok',
@@ -997,10 +1020,11 @@ def api_polichat_dados(request):
             'trafego_diario': trafego_diario
         })
 
-    except Exception as e:
-        print(f"Erro na API Polichat: {e}")
-        traceback.print_exc()
-        return JsonResponse({'status': 'erro', 'mensagem': traceback.format_exc()}, status=500)
+    except Exception:
+        # O detalhe vai para o log do servidor; a tela recebe só o aviso. Devolver o
+        # traceback expunha caminhos e linhas do código a quem chamasse a rota.
+        logger.exception("Erro na API Polichat")
+        return JsonResponse({'status': 'erro', 'mensagem': 'Não foi possível carregar os dados agora. Tente novamente.'}, status=500)
 @login_required(login_url='/')
 def gestao_polichat_view(request):
     """Renderiza a tela do Dashboard Gestão Polichat (página inteira)."""

@@ -14,7 +14,6 @@ def dashboards(request):
     tem_acesso = (
         request.user.p_dash_polichat
         or request.user.p_dash_documentos_ia
-        or getattr(request.user, 'p_polichat_financeiro', False)
     )
     if not tem_acesso and request.user.usuario != 'admin@ovg.org.br':
         return redirect('inicio')

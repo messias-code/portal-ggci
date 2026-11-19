@@ -79,7 +79,7 @@ FUNÇÃO limpar_pasta_raiz(caminho)
 ## 🤖 Sessão 2: Worker - Documentos (Scriptcase)
 
 ### O que é e por quê existe
-O portal interno `10.237.1.11/pbu/entrar/` foi feito em Scriptcase (PHP). Isso significa pesadelo para automação: navegação baseada em Iframes, requisições escondidas e menus dinâmicos. A decisão arquitetural foi usar **Playwright em vez de Selenium ou BeautifulSoup**. O Playwright lida melhor com Iframes aninhados e downloads em segundo plano de forma nativa e paralela (via contexts).
+O portal interno `10.237.1.4/probem_gestao/entrar/` (até 10/11/2026 era `10.237.1.11/pbu/entrar/`) foi feito em Scriptcase (PHP). Isso significa pesadelo para automação: navegação baseada em Iframes, requisições escondidas e menus dinâmicos. A decisão arquitetural foi usar **Playwright em vez de Selenium ou BeautifulSoup**. O Playwright lida melhor com Iframes aninhados e downloads em segundo plano de forma nativa e paralela (via contexts).
 
 ### Como funciona
 ```python
@@ -295,8 +295,8 @@ playwright install chromium
 
 | Input UI | Origem Extração | Transformação/Restrição | Output (Disco) |
 | :--- | :--- | :--- | :--- |
-| Contrato 25-1 | 10.237.1.11/pbu | Tag: `2025-1##@@2025-1` | `contratos_2025-1.xlsx` |
-| RIAF 25-2 | 10.237.1.11/pbu | Tag: `2025-2` | **BLOQUEADO (Regra de Ano)** |
+| Contrato 25-1 | 10.237.1.4/probem_gestao | Tag: `2025-1##@@2025-1` | `contratos_2025-1.xlsx` |
+| RIAF 25-2 | 10.237.1.4/probem_gestao | Tag: `2025-2` | **BLOQUEADO (Regra de Ano)** |
 | Faturamento 2025 | 10.237.1.11/bolsa | Teto: Mês Corrente - 1 | `pagamento_2025_jan.xls` (múltiplos) |
 
 ### 3. Fluxo de decisão em árvore ASCII (Filtro Global)

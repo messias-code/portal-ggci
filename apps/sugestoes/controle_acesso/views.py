@@ -19,7 +19,6 @@ from django.contrib.auth.decorators import login_required
 from django.http import FileResponse, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.utils.timezone import localtime
-from django.views.decorators.csrf import csrf_exempt
 
 from portal_ggci.processos import abortar_execucao, execucao_viva, popen_com_limite
 
@@ -160,7 +159,6 @@ def api_anexo(request):
     return JsonResponse({'erro': 'Método inválido.'}, status=405)
 
 
-@csrf_exempt
 @login_required(login_url='/')
 def iniciar_atualizacao(request):
     """
@@ -213,15 +211,18 @@ def status_atualizacao(request, processo_id):
     return JsonResponse({'status': proc.status, 'log': proc.log, 'progresso': proc.progresso})
 
 
-@csrf_exempt
+@login_required(login_url='/')
 def parar_atualizacao(request, processo_id):
     """
     O QUE FAZ: Aborta uma atualização em andamento (botão Parar ou saída da página).
-    Sem `login_required` de propósito: o sendBeacon do `pagehide` não carrega a sessão de
-    forma confiável, e o alvo é sempre um ID específico já criado.
+    Exige login e a permissão do card: o sendBeacon do `pagehide` leva o cookie de sessão
+    (mesma origem). O token CSRF vai no corpo do beacon (`window.corpoCsrf`), já que ele
+    não manda header.
     """
     if request.method != 'POST':
         return JsonResponse({'status': 'erro', 'msg': 'Método não permitido.'}, status=400)
+    if not _tem_acesso(request.user):
+        return JsonResponse({'status': 'erro', 'msg': 'Acesso negado.'}, status=403)
     # Mata a árvore inteira (antes o pkill pegava só o Python, e o Chromium da leitura
     # bruta podia ficar órfão) e só depois grava FALHA — ver `abortar_execucao`.
     if not abortar_execucao(ProcessamentoControleAcesso, 'executar_controle_acesso', processo_id,

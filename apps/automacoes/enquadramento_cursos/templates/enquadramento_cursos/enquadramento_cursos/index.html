@@ -6,6 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Enquadramento de Cursos - Portal GGCI</title>
+    <link rel="icon" type="image/png" href="{% static 'img/favicon.png' %}?v=1">
 
     <!--
         MOTOR DE TEMAS — precisa vir antes de tudo.
@@ -18,7 +19,7 @@
 
     <link rel="stylesheet" href="{% static 'css/output.css' %}">
     <!-- Console de processamento: utilitárias que o bundle purgou + os dois temas. -->
-    <link rel="stylesheet" href="{% static 'css/console.css' %}?v=1">
+    <link rel="stylesheet" href="{% static 'css/console.css' %}?v=2">
 
     <!-- Tokens de cor dos temas e o botão sol/lua (compartilhado por todo o portal) -->
     <link rel="stylesheet" href="{% static 'css/tema.css' %}">
@@ -35,9 +36,9 @@
 
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
 
-    <link rel="stylesheet" href="{% static 'enquadramento_cursos/css/enquadramento_cursos.css' %}?v=20261103c">
+    <link rel="stylesheet" href="{% static 'enquadramento_cursos/css/enquadramento_cursos.css' %}?v=20261116a">
     <script type="module" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@8.0.4/dist/turbo.es.2017-esm.js"></script>
 </head>
 
@@ -350,7 +351,8 @@
         }
     </script>
 
-    <script src="{% static 'enquadramento_cursos/js/enquadramento_cursos.js' %}?v=6"></script>
+    <script>window.CSRF_TOKEN = "{{ csrf_token }}";</script>
+    <script src="{% static 'enquadramento_cursos/js/enquadramento_cursos.js' %}?v=7"></script>
 </body>
 
 </html>

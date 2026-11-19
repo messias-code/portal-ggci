@@ -480,9 +480,9 @@ function abrirModalNovo() {
     // Dispara reset visual das permissões granulares
     const campos = [
         'p_ferramentas', 'p_formatador_listas', 'p_formatador_dados', 
-        'toggle_menu_automacoes', 'p_analise_ia', 'p_enquadramento_cursos',
+        'toggle_menu_automacoes', 'p_analise_ia', 'p_enquadramento_cursos', 'p_renovacao_cadastramento',
         'p_sugestoes', 'p_controle_acesso',
-        'p_dash_polichat', 'p_gestao_polichat', 'p_dash_documentos_ia', 'p_polichat_financeiro'
+        'p_dash_polichat', 'p_gestao_polichat', 'p_dash_documentos_ia'
     ];
     campos.forEach(campo => {
         const el = document.getElementById(campo);
@@ -530,8 +530,8 @@ function abrirModalEdicao(user) {
     // Marca os acessos modulares e granulares do usuário de forma segura
     const camposBooleanos = [
         'p_ferramentas', 'p_formatador_listas', 'p_formatador_dados', 
-        'p_analise_ia', 'p_enquadramento_cursos', 'p_sugestoes', 'p_controle_acesso',
-        'p_dash_polichat', 'p_gestao_polichat', 'p_dash_documentos_ia', 'p_polichat_financeiro'
+        'p_analise_ia', 'p_enquadramento_cursos', 'p_renovacao_cadastramento', 'p_sugestoes', 'p_controle_acesso',
+        'p_dash_polichat', 'p_gestao_polichat', 'p_dash_documentos_ia'
     ];
     
     let isMasterUser = (user.usuario === 'admin@ovg.org.br');
@@ -548,7 +548,7 @@ function abrirModalEdicao(user) {
     // PASSO 1.5: Trata o Menu Automações que não possui campo no BD e herda dos filhos
     const toggleAutomacoes = document.getElementById('toggle_menu_automacoes');
     if (toggleAutomacoes) {
-        toggleAutomacoes.checked = isMasterUser ? true : (user.p_analise_ia == 1 ||user.p_enquadramento_cursos == 1);
+        toggleAutomacoes.checked = isMasterUser ? true : (user.p_analise_ia == 1 || user.p_enquadramento_cursos == 1 || user.p_renovacao_cadastramento == 1);
         toggleAutomacoes.dispatchEvent(new Event('change'));
     }
 

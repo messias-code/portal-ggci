@@ -3,6 +3,8 @@ from django.http import JsonResponse
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 
+from apps.inicio.gestao_acessos import limite_tentativas
+
 @login_required(login_url='/')
 def alterar_senha_page(request):
     """Renderiza a tela de formulário para o usuário mudar a própria senha."""
@@ -33,8 +35,15 @@ def api_alterar_senha(request):
 
     user = request.user
 
+    # Quem tem a sessão aberta não pode usar esta tela para adivinhar a senha atual.
+    if limite_tentativas.bloqueado('troca_senha', user.pk):
+        return JsonResponse({'sucesso': False, 'mensagem': limite_tentativas.MENSAGEM_BLOQUEIO})
+
     if not user.check_password(senha_atual):
+        limite_tentativas.registrar_falha('troca_senha', user.pk)
         return JsonResponse({'sucesso': False, 'mensagem': 'Sua senha atual está incorreta.'})
+
+    limite_tentativas.limpar('troca_senha', user.pk)
 
     user.set_password(nova_senha)
     user.save()

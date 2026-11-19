@@ -277,6 +277,21 @@ html[data-tema="eleitoral"] .menu-sair:hover {
    branco por cima precisa de contraste, e um card saturado sobre fundo escuro
    vira um bloco luminoso que rouba a atenção da tela inteira.
    -------------------------------------------------------------------------- */
+/* LARGURA PADRÃO DO CARD — vale para os dois temas e para os cinco menus.
+   Cada card ocupa UM TERÇO da fileira: três cards fecham a linha certinho, e
+   menu com um ou dois cards mantém o mesmo tamanho (por isso é `width`, e não
+   `flex-grow`, que esticaria os poucos). O `4rem` são os dois vãos de `gap-8`.
+   O piso de 31rem é o que o título mais longo da grade ("Renovação de
+   Cadastramento") precisa para caber em UMA linha: em tela estreita o terço
+   ficaria menor que isso, então a fileira passa a ter dois cards.
+   O markup traz `w-full max-w-[28rem]`; esta regra vem depois do output.css e
+   ganha dele. Fica em CSS porque o Tailwind do portal é um bundle purgado.
+   Título novo que quebrar linha: aumente o piso AQUI, nunca num card só. */
+.card-modulo {
+    width: max(31rem, calc((100% - 4rem) / 3));
+    max-width: none;
+}
+
 html[data-tema="eleitoral"] .card-modulo--a {
     background-image: linear-gradient(to bottom right, #3E5C93, #2B4068);
 }

@@ -224,17 +224,20 @@ html[data-tema="eleitoral"] .console-ggci__barra {
     100% { content: '⠋'; }
 }
 
-.console-spinner {
+/* Escopado em `.console-ggci`, como o resto do componente: sem o escopo a regra vale em
+   qualquer tela que carregar este arquivo. O Polichat não usa `.console-ggci` e tem o
+   spinner no próprio `polichat.css`. */
+.console-ggci .console-spinner {
     display: inline-block;
     color: oklch(52.6% 0.19 337.893); /* text-pink-600 */
     font-weight: 700;
     margin-left: 0.25rem;
     font-size: 16px;
 }
-html[data-tema="eleitoral"] .console-spinner {
+html[data-tema="eleitoral"] .console-ggci .console-spinner {
     color: var(--tema-primaria);
 }
-.console-spinner::after {
+.console-ggci .console-spinner::after {
     content: '⠋';
     animation: console-braille-spin 0.8s step-end infinite;
 }

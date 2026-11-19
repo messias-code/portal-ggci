@@ -1012,6 +1012,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (manual) { formData.append('force', 'true'); }
         fetch('/dashboards/polichat/api/iniciar/', {
             method: 'POST',
+            headers: { 'X-CSRFToken': window.CSRF_TOKEN },
             body: formData,
             credentials: 'same-origin'
         })

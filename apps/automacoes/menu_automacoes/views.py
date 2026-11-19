@@ -20,6 +20,7 @@ def automacoes(request):
     tem_acesso = (
         request.user.p_analise_ia
         or request.user.p_enquadramento_cursos
+        or request.user.p_renovacao_cadastramento
     )
     if not tem_acesso and request.user.usuario != 'admin@ovg.org.br':
         return redirect('inicio')
