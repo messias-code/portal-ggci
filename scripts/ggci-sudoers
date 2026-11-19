@@ -1,0 +1,4 @@
+# Instalado pelo portal.sh em /etc/sudoers.d/portal-ggci (dono root, modo 440).
+# Libera para o labs, sem senha, SÓ o ggci-priv: o script aceita uma lista
+# fechada de ações (Funnel, nginx, porta 8000). Ver scripts/ggci_priv.sh.
+labs ALL=(root) NOPASSWD: /usr/local/sbin/ggci-priv
