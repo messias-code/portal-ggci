@@ -46,6 +46,11 @@ DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
+# HSTS: o Django só manda o cabeçalho em resposta HTTPS (Tailscale/Cloudflare), então o acesso
+# por http://IP:porta segue igual — navegador não aplica HSTS a IP. Sem includeSubDomains e sem
+# preload de propósito: o domínio é do Tailscale e do Cloudflare, não nosso.
+SECURE_HSTS_SECONDS = 60 * 60 * 24 * 30
+
 # Define quais domínios/IPs podem acessar o portal (Ex: ['192.168.0.10', 'ovg.org.br']).
 # Vazio durante o desenvolvimento local.
 # Padrão restrito à própria máquina; os domínios de verdade vêm do .env.
