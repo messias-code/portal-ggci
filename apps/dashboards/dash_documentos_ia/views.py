@@ -21,7 +21,6 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.utils.timezone import localtime
-from django.views.decorators.csrf import csrf_exempt
 
 from portal_ggci.processos import abortar_execucao, execucao_viva, popen_com_limite
 
@@ -266,7 +265,6 @@ def _bloqueio_do_outro_motor(request, eu):
     return None
 
 
-@csrf_exempt
 @login_required(login_url='/')
 def iniciar_atualizacao_docia(request):
     """
@@ -352,7 +350,6 @@ def status_atualizacao_docia(request, processo_id):
     })
 
 
-@csrf_exempt
 @login_required(login_url='/')
 def parar_atualizacao_docia(request, processo_id):
     """
@@ -362,8 +359,8 @@ def parar_atualizacao_docia(request, processo_id):
         resposta chega, o motor já morreu: dá para iniciar outra atualização na sequência.
 
     Exige login e a permissão do dashboard: o sendBeacon do `pagehide` leva o cookie de
-    sessão (mesma origem — conferido no Chromium ao navegar, recarregar e fechar a aba). Segue
-    `csrf_exempt` porque o sendBeacon não manda header. A permissão é a do módulo, e não "só
+    sessão (mesma origem — conferido no Chromium ao navegar, recarregar e fechar a aba). O
+    token CSRF vai no corpo do beacon (`window.corpoCsrf`), já que ele não manda header. A permissão é a do módulo, e não "só
     quem iniciou": a execução é compartilhada, e quem a acompanha também pode pará-la.
     """
     if request.method != 'POST':

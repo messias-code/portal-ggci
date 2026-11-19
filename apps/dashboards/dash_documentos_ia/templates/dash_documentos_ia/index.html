@@ -2468,6 +2468,8 @@
     <script>
         window.DASH_DOC_IA_INICIAR_URL = "{% url 'dash_documentos_ia_iniciar' %}";
         window.CSRF_TOKEN = "{{ csrf_token }}";
+        // O sendBeacon não manda header: o token CSRF vai no corpo.
+        window.corpoCsrf = () => { const f = new FormData(); f.append('csrfmiddlewaretoken', window.CSRF_TOKEN); return f; };
     </script>
     <!--
         ApexCharts é a biblioteca de gráficos do portal — a mesma que o Polichat
@@ -2475,7 +2477,7 @@
     -->
     <script src="{% static 'js/motor-ocupado.js' %}?v=3"></script>
     <script src="https://cdn.jsdelivr.net/npm/apexcharts@8.9.1/dist/apexcharts.min.js" integrity="sha384-NMzs+HvEnYQxcfWzTfKMJdncu8Hl66AUsbR9Lj+7oRso0Li/Aa5I4OpzHMyesaue" crossorigin="anonymous"></script>
-    <script src="{% static 'dash_documentos_ia/js/dash_documentos_ia.js' %}?v=20261103c"></script>
+    <script src="{% static 'dash_documentos_ia/js/dash_documentos_ia.js' %}?v=20261119a"></script>
     <!--
         A ABA ANÁLISE IA. Depois de `dash_documentos_ia.js` porque o filtro de
         instituições e o console de atualização vivem lá e são compartilhados; este

@@ -429,7 +429,9 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js" integrity="sha384-o5uz97et3bErHvpKfD4Jz4n0JfhJDWABFuF4NP+iEEDxE1VwMWJ19QGR0lqFZnr6" crossorigin="anonymous"></script>
-    <script src="{% static 'dash_documentos_ia/js/dash_documentos_ia.js' %}?v=20260916b"></script>
+    <!-- O sendBeacon não manda header: o token CSRF vai no corpo (ver corpoCsrf). -->
+    <script>window.CSRF_TOKEN = "{{ csrf_token }}"; window.corpoCsrf = () => { const f = new FormData(); f.append('csrfmiddlewaretoken', window.CSRF_TOKEN); return f; };</script>
+    <script src="{% static 'dash_documentos_ia/js/dash_documentos_ia.js' %}?v=20261119a"></script>
     <script>
 
             function getDociaColors() {
@@ -997,7 +999,7 @@
             // Abortar de fato caso ele saia da aba
             window.addEventListener('pagehide', () => {
                 if (window.__processo_id_docia) {
-                    navigator.sendBeacon(`/dashboards/documentos-ia/api/parar/${window.__processo_id_docia}/`);
+                    navigator.sendBeacon(`/dashboards/documentos-ia/api/parar/${window.__processo_id_docia}/`, window.corpoCsrf());
                 }
             });
 
@@ -1007,7 +1009,7 @@
                     if (!confirm('A extração está em andamento. Tem certeza que deseja sair e cancelar o processo?')) {
                         e.preventDefault();
                     } else {
-                        navigator.sendBeacon(`/dashboards/documentos-ia/api/parar/${window.__processo_id_docia}/`);
+                        navigator.sendBeacon(`/dashboards/documentos-ia/api/parar/${window.__processo_id_docia}/`, window.corpoCsrf());
                         window.__processo_id_docia = null;
                     }
                 }

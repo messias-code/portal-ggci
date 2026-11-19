@@ -4104,7 +4104,7 @@ document.addEventListener('turbo:load', () => {
             // Abortar de fato caso ele saia da aba
             window.addEventListener('pagehide', () => {
                 if (window.__processo_id_docia && saidaDeVerdade()) {
-                    navigator.sendBeacon(`/dashboards/documentos-ia/api/parar/${window.__processo_id_docia}/`);
+                    navigator.sendBeacon(`/dashboards/documentos-ia/api/parar/${window.__processo_id_docia}/`, window.corpoCsrf());
                     // Abortou: a próxima abertura não deve se reconectar a um processo morto
                     // (abria o console de Falha sozinho e travava o Atualizar).
                     sessionStorage.removeItem('__processo_id_docia');
@@ -4117,7 +4117,7 @@ document.addEventListener('turbo:load', () => {
                     if (!confirm('A extração está em andamento. Tem certeza que deseja sair e cancelar o processo?')) {
                         e.preventDefault();
                     } else {
-                        navigator.sendBeacon(`/dashboards/documentos-ia/api/parar/${window.__processo_id_docia}/`);
+                        navigator.sendBeacon(`/dashboards/documentos-ia/api/parar/${window.__processo_id_docia}/`, window.corpoCsrf());
                         window.__processo_id_docia = null;
                     }
                 }
