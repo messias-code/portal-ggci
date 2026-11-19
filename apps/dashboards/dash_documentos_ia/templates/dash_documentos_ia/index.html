@@ -15,6 +15,7 @@
         localStorage, o modo escolhido em qualquer tela já chega aplicado aqui.
     -->
     <script src="{% static 'js/tema.js' %}"></script>
+    <script src="{% static 'js/acoes.js' %}?v=2"></script>
 
     <!--
         AS DUAS ABAS — precisa vir aqui, antes de tudo.
@@ -1456,7 +1457,7 @@
                                 `docia-icone-color` nunca chegavam ao elemento, e o
                                 ícone aparecia sem fundo e sem cor nos dois temas.
                             -->
-                            <button type="button" onclick="openModalIES()" class="w-full flex items-center justify-between bg-white border border-gray-200 rounded-xl p-2 hover:bg-gray-50 transition-all shadow-sm group">
+                            <button type="button" data-clique="openModalIES" class="w-full flex items-center justify-between bg-white border border-gray-200 rounded-xl p-2 hover:bg-gray-50 transition-all shadow-sm group">
                                 <div class="flex items-center gap-3 overflow-hidden min-w-0">
                                     <div class="docia-icone-bg w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-colors">
                                         <i class="fa-solid fa-building-columns docia-icone-color"></i>
@@ -1986,7 +1987,7 @@
                                 <h4 class="docia-filtro-titulo">Instituição</h4>
                                 <span class="docia-filtro-contador" id="contador-ies-ia" style="display: none;">0</span>
                             </div>
-                            <button type="button" onclick="openModalIES()" class="w-full flex items-center justify-between bg-white border border-gray-200 rounded-xl p-2 hover:bg-gray-50 transition-all shadow-sm group">
+                            <button type="button" data-clique="openModalIES" class="w-full flex items-center justify-between bg-white border border-gray-200 rounded-xl p-2 hover:bg-gray-50 transition-all shadow-sm group">
                                 <div class="flex items-center gap-3 overflow-hidden min-w-0">
                                     <div class="docia-icone-bg w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-colors">
                                         <i class="fa-solid fa-building-columns docia-icone-color"></i>
@@ -2144,7 +2145,7 @@
                         <p class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mt-0.5">Selecione as Mantenedoras e IES</p>
                     </div>
                 </div>
-                <button onclick="closeModalIES()" class="text-gray-400 hover:text-gray-800 hover:bg-gray-100 w-10 h-10 flex items-center justify-center rounded-xl transition-colors shrink-0">
+                <button data-clique="closeModalIES" class="text-gray-400 hover:text-gray-800 hover:bg-gray-100 w-10 h-10 flex items-center justify-center rounded-xl transition-colors shrink-0">
                     <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
@@ -2156,7 +2157,7 @@
                         <div class="relative group">
                             <i class="fa-solid fa-search absolute text-gray-400 group-focus-within:text-pink-600 transition-colors" style="left: 1.25rem; top: 50%; transform: translateY(-50%);"></i>
                             <input type="text" id="search-ies" placeholder="Pesquisar por nome da Mantenedora ou Instituição..." class="w-full pr-10 py-3 bg-white border-2 border-gray-100 rounded-xl text-sm text-gray-700 shadow-sm focus:outline-none focus:border-pink-500 transition-colors" style="padding-left: 3rem;">
-                            <button type="button" id="clear-search-ies" onclick="document.getElementById('search-ies').value = ''; document.getElementById('search-ies').dispatchEvent(new Event('input')); document.getElementById('search-ies').focus();" class="absolute hidden text-gray-400 hover:text-pink-600 focus:outline-none transition-colors" style="right: 1.25rem; top: 50%; transform: translateY(-50%);">
+                            <button type="button" id="clear-search-ies" data-clique="ggciLimparBusca" data-clique-args='["search-ies"]' class="absolute hidden text-gray-400 hover:text-pink-600 focus:outline-none transition-colors" style="right: 1.25rem; top: 50%; transform: translateY(-50%);">
                                 <i class="fa-solid fa-circle-xmark text-lg"></i>
                             </button>
                         </div>
@@ -2173,7 +2174,7 @@
                             <div class="docia-marcador w-2 h-6 rounded-full" style="background-color: #6B007B;"></div>
                             <h4 class="text-sm font-extrabold text-gray-800 uppercase tracking-wide">Selecionadas (<span id="count-selected-ies" class="docia-icone-color">0</span>)</h4>
                         </div>
-                        <button onclick="clearSelectedIES()" class="tela-voltar docia-btn-limpar text-xs font-bold px-4 py-2 bg-white hover:bg-pink-50 text-pink-600 rounded-xl transition-all shadow-sm border border-pink-100 botao-tema">Limpar Tudo</button>
+                        <button data-clique="clearSelectedIES" class="tela-voltar docia-btn-limpar text-xs font-bold px-4 py-2 bg-white hover:bg-pink-50 text-pink-600 rounded-xl transition-all shadow-sm border border-pink-100 botao-tema">Limpar Tudo</button>
                     </div>
                     <div class="flex-1 overflow-y-auto p-6 space-y-2 custom-scrollbar-light" id="list-selected-ies" style="min-height: 0;">
                         <div class="flex flex-col items-center justify-center h-full opacity-40" id="empty-selected-msg">
@@ -2185,8 +2186,8 @@
             </div>
             
             <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 bg-white shrink-0">
-                <button onclick="closeModalIES()" class="tela-voltar px-6 py-2.5 text-sm font-bold bg-white hover:bg-pink-50 text-pink-600 rounded-xl transition-all shadow-sm border border-pink-100 botao-tema">Cancelar</button>
-                <button onclick="applyIESFilter()" class="modal-confirmar px-8 py-2.5 text-sm font-bold rounded-xl transition-all shadow-md hover:opacity-90 flex items-center gap-2 docia-modal-gradiente text-white">
+                <button data-clique="closeModalIES" class="tela-voltar px-6 py-2.5 text-sm font-bold bg-white hover:bg-pink-50 text-pink-600 rounded-xl transition-all shadow-sm border border-pink-100 botao-tema">Cancelar</button>
+                <button data-clique="applyIESFilter" class="modal-confirmar px-8 py-2.5 text-sm font-bold rounded-xl transition-all shadow-md hover:opacity-90 flex items-center gap-2 docia-modal-gradiente text-white">
                     <i class="fa-solid fa-check"></i> Aplicar
                 </button>
             </div>
@@ -2465,7 +2466,7 @@
         </div>
     </div>
 
-    <script>
+    <script nonce="{{ csp_nonce }}">
         window.DASH_DOC_IA_INICIAR_URL = "{% url 'dash_documentos_ia_iniciar' %}";
         window.CSRF_TOKEN = "{{ csrf_token }}";
         // O sendBeacon não manda header: o token CSRF vai no corpo.

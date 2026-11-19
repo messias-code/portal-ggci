@@ -374,7 +374,7 @@ class TestPecasDaVistaNaTela(TestCase):
         self.assertNotIn('class="filter-semestre',
                          bloco.split('id="filtro-documentos"', 1)[0])
         self.assertIn('filter-semestre', self.html)
-        self.assertIn('openModalIES()', self.html)
+        self.assertIn('data-clique="openModalIES"', self.html)
 
 
 class TestSemanticaDoPercentualNaTabela(SimpleTestCase):

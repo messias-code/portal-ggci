@@ -59,6 +59,28 @@ SECURE_HSTS_SECONDS = 60 * 60 * 24 * 30
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
 
+# Content Security Policy: o navegador só executa script vindo daqui, das duas CDNs (com SRI) ou
+# de um <script nonce="{{ csp_nonce }}"> escrito no template. Texto injetado via innerHTML que
+# contenha <script> ou onclick= não roda. Por isso os templates não usam onclick: os cliques
+# vão por data-clique (static/js/acoes.js). style 'unsafe-inline' fica por causa dos ~300 style=""
+# dos templates e dos estilos que o ApexCharts escreve; CSS injetado não executa código.
+from django.utils.csp import CSP  # noqa: E402
+
+_CDNS = ['https://cdn.jsdelivr.net', 'https://cdnjs.cloudflare.com']
+SECURE_CSP = {
+    'default-src': [CSP.SELF],
+    'script-src': [CSP.SELF, CSP.NONCE, *_CDNS],
+    'style-src': [CSP.SELF, CSP.UNSAFE_INLINE, 'https://fonts.googleapis.com', *_CDNS],
+    'font-src': [CSP.SELF, 'data:', 'https://fonts.gstatic.com', *_CDNS],
+    'img-src': [CSP.SELF, 'data:', 'blob:'],
+    'connect-src': [CSP.SELF],
+    'worker-src': [CSP.SELF, 'blob:'],
+    'object-src': [CSP.NONE],
+    'base-uri': [CSP.SELF],
+    'form-action': [CSP.SELF],
+    'frame-ancestors': [CSP.SELF],
+}
+
 # Define quais domínios/IPs podem acessar o portal (Ex: ['192.168.0.10', 'ovg.org.br']).
 # Vazio durante o desenvolvimento local.
 # Padrão restrito à própria máquina; os domínios de verdade vêm do .env.
@@ -125,6 +147,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'django.middleware.csp.ContentSecurityPolicyMiddleware',
     'apps.inicio.gestao_acessos.middleware.SingleSessionMiddleware',
 ]
 
@@ -148,6 +171,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'django.template.context_processors.csp',
             ],
         },
     },
