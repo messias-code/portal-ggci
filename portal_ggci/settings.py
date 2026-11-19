@@ -31,18 +31,25 @@ load_dotenv(os.path.join(BASE_DIR, '.env'))
 # ==========================================================================
 # Chave criptográfica mestre do Django. Usada para assinar sessões e tokens.
 # ⚠️ IMPORTANTE: Nunca vaze essa chave em ambientes de Produção!
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-&41lq+jr!j1mgh7m014*f+a3-u^fxqbj+d_zxwcw&esw$f6rba')
+# Sem valor padrão: a chave antiga de fallback estava no Git, e com ela qualquer um assina
+# sessões e tokens. Sem SECRET_KEY no .env o portal se recusa a subir, em vez de subir inseguro.
+SECRET_KEY = os.environ.get('SECRET_KEY')
+if not SECRET_KEY:
+    from django.core.exceptions import ImproperlyConfigured
+    raise ImproperlyConfigured('SECRET_KEY ausente no .env.')
 
 # Modo de Depuração. 
 # True: Mostra telas amarelas com detalhes do erro (Apenas para Desenvolvimento).
 # False: Esconde o código-fonte em caso de erro (Obrigatório em Produção).
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+# Padrão False: se o .env não for lido, o portal sobe sem expor código e erros na tela.
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Define quais domínios/IPs podem acessar o portal (Ex: ['192.168.0.10', 'ovg.org.br']).
 # Vazio durante o desenvolvimento local.
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
+# Padrão restrito à própria máquina; os domínios de verdade vêm do .env.
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 # Diz ao Django para confiar nos formulários de login enviados por esse link
 CSRF_TRUSTED_ORIGINS = [
