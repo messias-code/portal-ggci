@@ -109,13 +109,6 @@ dados_esperados:
   matricula_aluno: '(uni_matricula)'
   curso: '(cur_nome)'
   tipo_da_bolsa: '(tipo_bolsa)'
-
-  tipo_bolsa: '(tipo_bolsa)'             # 2. Chave padronizada
-  teste_placeholder_1: '(tipo_da_bolsa)' # 3. Placeholder com 'da'
-  teste_placeholder_2: '(bolsa)'         # 4. Placeholder simples
-  teste_placeholder_3: '(situacao_integral)' # 5. Nome da coluna no SIBU
-  teste_placeholder_4: '(uni_tipo_bolsa)'    # 6. Padrão uni_*
-
   semestre: '(semestre)'
   valor_matricula_sem_desconto: '(valor_matricula_sem_desconto)'
   valor_matricula_com_desconto: '(valor_matricula_com_desconto)'
