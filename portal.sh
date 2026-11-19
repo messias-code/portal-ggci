@@ -1106,7 +1106,7 @@ function sync_production() {
         wait_key
         return 1
     fi
-    run_with_stream "python3 manage.py dumpdata gestao_acessos.Usuario --indent 4 | python3 -c 'import sys, json; d=json.load(sys.stdin); [item.get(\"fields\", {}).pop(\"last_login\", None) for item in d]; print(json.dumps(d, indent=4))' > .tmp_backup.json && mv .tmp_backup.json gestao_acessos_iniciais.json || { rm -f .tmp_backup.json; false; }" "Gerando snapshot de segurança do banco PROD"
+    run_with_stream "python3 manage.py dumpdata gestao_acessos.Usuario --indent 4 | python3 -c 'import sys, json; d=json.load(sys.stdin); [item.get(\"fields\", {}).pop(\"last_login\", None) for item in d]; print(json.dumps(d, indent=4))' > .tmp_backup.json && mv .tmp_backup.json gestao_acessos_iniciais.json && chmod 600 gestao_acessos_iniciais.json || { rm -f .tmp_backup.json; false; }" "Gerando snapshot de segurança do banco PROD"
 
     # Espelha o snapshot de usuários de PROD para DEV por CÓPIA, sem passar pelo Git.
     # Antes daqui saía um commit + push automático — era ele que publicava nome,
@@ -1235,7 +1235,7 @@ function sync_production() {
 function user_backup() {
     print_ovg_logo
     print_phase "💾 SNAPSHOT DE SEGURANÇA"
-    run_with_stream "python3 manage.py dumpdata gestao_acessos.Usuario --indent 4 | python3 -c 'import sys, json; d=json.load(sys.stdin); [item.get(\"fields\", {}).pop(\"last_login\", None) for item in d]; print(json.dumps(d, indent=4))' > .tmp_backup.json && mv .tmp_backup.json gestao_acessos_iniciais.json || { rm -f .tmp_backup.json; false; }" "Extraindo e formatando JSON de Usuários Atuais"
+    run_with_stream "python3 manage.py dumpdata gestao_acessos.Usuario --indent 4 | python3 -c 'import sys, json; d=json.load(sys.stdin); [item.get(\"fields\", {}).pop(\"last_login\", None) for item in d]; print(json.dumps(d, indent=4))' > .tmp_backup.json && mv .tmp_backup.json gestao_acessos_iniciais.json && chmod 600 gestao_acessos_iniciais.json || { rm -f .tmp_backup.json; false; }" "Extraindo e formatando JSON de Usuários Atuais"
     
     log_msg "info" "Sincronizando backup com o Github..."
     
